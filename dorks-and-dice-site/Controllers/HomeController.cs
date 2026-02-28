@@ -61,7 +61,7 @@ namespace dorks_and_dice_site.Controllers
 
         public IActionResult SimLabExpo()
         {
-            return View();
+            return RedirectToAction(nameof(ExperienceSimLab));
         }
 
         public IActionResult WiredWorks()
