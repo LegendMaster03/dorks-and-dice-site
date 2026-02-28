@@ -217,8 +217,8 @@ body.dark-mode code {
   body {
     background: #fff !important;
     color: #000;
-    font-size: 7.9pt;
-    line-height: 1.02;
+    font-size: 8.05pt;
+    line-height: 1.03;
     font-family: "Times New Roman", Times, serif;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
@@ -307,7 +307,7 @@ body.dark-mode code {
   #projects-section .row.row-cols-1.row-cols-md-2.g-4.mt-1 {
     display: block !important;
     column-count: 2;
-    column-gap: 0.14in;
+    column-gap: 0.12in;
     margin-left: 0 !important;
     margin-right: 0 !important;
   }
@@ -325,6 +325,12 @@ body.dark-mode code {
   #projects-section .card,
   #projects-section .card.h-100 {
     height: auto !important;
+    margin: 0 !important;
+  }
+
+  #projects-section .card-title {
+    font-size: 8.35pt !important;
+    line-height: 1.08 !important;
     margin: 0 !important;
   }
 

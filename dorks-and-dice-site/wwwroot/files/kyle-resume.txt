@@ -11,6 +11,7 @@ github.com/LegendMaster03 (https://github.com/LegendMaster03)
 Education
 University of North Florida, Jacksonville, FL
 Information Science (Bachelor's), Minor in Leadership
+Senior currently working toward a bachelor's degree in Information Science.
 August 2023 - Present | Expected Graduation: May 1, 2026 | Dean's List | Upsilon Pi Epsilon member
 Florida State College at Jacksonville, Jacksonville, FL
 Associate of Arts completed
@@ -22,7 +23,7 @@ Skills
 Industry Knowledge
 Back-end Web Development, Front-end Development, Patch Management, Cybersecurity, Application Development, Multimedia, Game Development, Game Design, Level Design, Technical Support
 Tools and Technologies
-Python, JavaScript, C, C#, Java, HTML5, HTML, Unity, Unreal Engine, Unreal Engine 4, Creation Kit, Gamebryo, 3D Printing, Audio Visual (AV) Systems, Computer Building
+Python, JavaScript, C, C#, Java, HTML5, HTML, Unity, Unreal Engine, Unreal Engine 4, Creation Kit, Gamebryo, 3D Printing, Audio Visual (AV) Systems, Computer Building, Technical Support (Windows, Mac, Linux)
 Interpersonal Skills
 Leadership, collaboration, mentoring, communication, conflict resolution, and instructional coaching through the EDGE method.
 Honors and Memberships
