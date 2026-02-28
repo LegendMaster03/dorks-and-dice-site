@@ -2,8 +2,32 @@
     ViewData["Title"] = "XnGine Framework";
 }
 
-<h1 class="mb-3">XnGine Framework</h1>
+<h1 class="mb-3">Mod Organizer 2: XnGine Game Plugins</h1>
 <p>
-    Personal project: in-progress framework architecture and engineering documentation.
+    I built a set of Mod Organizer 2 game plugins for Bethesda's classic XnGine titles:
+    Battlespire, Daggerfall, and Redguard.
 </p>
-<p class="text-muted mb-0">More implementation details will be added as the framework evolves.</p>
+<p>
+    The project uses a shared XnGine base with per-game modules to handle game-specific behavior,
+    giving older games modern mod management support inside MO2.
+</p>
+
+<h2 class="h5 mt-4">Highlights</h2>
+<ul>
+    <li>Added support for multiple XnGine games through a modular plugin architecture</li>
+    <li>Implemented parsers and tooling for legacy game assets and save-game formats</li>
+    <li>Integrated with the MO2 plugin ecosystem using C++ and Qt</li>
+    <li>Set up repeatable Windows build/deploy workflows with CMake, Ninja, and vcpkg</li>
+</ul>
+
+<h2 class="h5 mt-4">Tech Stack</h2>
+<p>
+    C++, Qt 6, CMake, Ninja, vcpkg, Mod Organizer 2 SDK, Windows/Visual Studio toolchain
+</p>
+
+<p class="mb-0">
+    Repository:
+    <a href="https://github.com/LegendMaster03/modorganizer-game_xngine" target="_blank" rel="noopener noreferrer">
+        github.com/LegendMaster03/modorganizer-game_xngine
+    </a>
+</p>
