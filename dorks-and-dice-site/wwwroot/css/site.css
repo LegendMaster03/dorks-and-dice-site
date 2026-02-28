@@ -203,7 +203,7 @@ body.dark-mode code {
 @media print {
   @page {
     size: Letter portrait;
-    margin: 0.12in;
+    margin: 0.08in;
   }
 
   .container,
@@ -217,7 +217,7 @@ body.dark-mode code {
   body {
     background: #fff !important;
     color: #000;
-    font-size: 7.75pt;
+    font-size: 7.6pt;
     line-height: 1;
     font-family: "Times New Roman", Times, serif;
     -webkit-print-color-adjust: exact;
