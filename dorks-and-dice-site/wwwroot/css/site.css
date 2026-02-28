@@ -87,3 +87,14 @@ body {
   object-fit: contain;
   flex: 0 0 22px;
 }
+
+.discord-card {
+  border-left: 4px solid #5865f2;
+}
+
+.discord-widget iframe {
+  border: 0;
+  border-radius: 0.5rem;
+  width: 100%;
+  height: 100%;
+}

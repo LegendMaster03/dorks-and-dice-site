@@ -6,8 +6,17 @@ namespace dorks_and_dice_site.Controllers
 {
     public class HomeController : Controller
     {
+        private readonly IConfiguration _configuration;
+
+        public HomeController(IConfiguration configuration)
+        {
+            _configuration = configuration;
+        }
+
         public IActionResult Index()
         {
+            ViewData["DiscordInviteUrl"] = _configuration["Discord:InviteUrl"];
+            ViewData["DiscordWidgetUrl"] = _configuration["Discord:WidgetUrl"];
             return View();
         }
 

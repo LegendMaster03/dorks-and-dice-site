@@ -1,5 +1,7 @@
 @{
     ViewData["Title"] = "Home";
+    var discordInviteUrl = ViewData["DiscordInviteUrl"] as string;
+    var discordWidgetUrl = ViewData["DiscordWidgetUrl"] as string;
 }
 
 <section class="p-4 p-md-5 mb-4 rounded-3 border bg-light-subtle">
@@ -58,6 +60,44 @@
                 on the Resume page, plus the downloadable PDF.
             </p>
             <a class="btn btn-primary" asp-controller="Home" asp-action="Resume">Open Full Profile</a>
+        </div>
+    </div>
+</section>
+
+<section class="mt-4">
+    <div class="card discord-card">
+        <div class="card-body">
+            <h2 class="h4 mb-2">Discord Integration</h2>
+            <p class="mb-3">
+                Join the Dorks & Dice community on Discord for campaign updates, community chat, and project announcements.
+            </p>
+            @if (!string.IsNullOrWhiteSpace(discordInviteUrl))
+            {
+                <a class="btn btn-primary mb-3" href="@discordInviteUrl" target="_blank" rel="noopener noreferrer">Join on Discord</a>
+            }
+            else
+            {
+                <div class="alert alert-warning mb-3" role="alert">
+                    Discord invite link is not configured yet.
+                </div>
+            }
+
+            @if (!string.IsNullOrWhiteSpace(discordWidgetUrl))
+            {
+                <div class="ratio ratio-16x9 discord-widget">
+                    <iframe title="Discord Server Widget"
+                            src="@discordWidgetUrl"
+                            allowtransparency="true"
+                            frameborder="0"
+                            sandbox="allow-popups allow-popups-to-escape-sandbox allow-same-origin allow-scripts"></iframe>
+                </div>
+            }
+            else
+            {
+                <p class="text-muted mb-0">
+                    Set <code>Discord:WidgetUrl</code> to embed your live server widget.
+                </p>
+            }
         </div>
     </div>
 </section>
