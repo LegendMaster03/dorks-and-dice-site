@@ -218,7 +218,7 @@ body.dark-mode code {
     background: #fff !important;
     color: #000;
     font-size: 7.75pt;
-    line-height: 1.01;
+    line-height: 1;
     font-family: "Times New Roman", Times, serif;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
@@ -361,14 +361,19 @@ body.dark-mode code {
   }
 
   #leadership-section .card:last-child p.mt-3 {
-    font-size: 7.15pt !important;
-    line-height: 1 !important;
-    margin-top: 0.003in !important;
+    font-size: 7pt !important;
+    line-height: 0.97 !important;
+    margin-top: 0.002in !important;
     margin-bottom: 0 !important;
   }
 
   #leadership-section .card:last-child ul {
-    margin-bottom: 0.004in !important;
+    margin-bottom: 0.002in !important;
+    line-height: 0.98 !important;
+  }
+
+  #leadership-section .card:last-child p.text-muted {
+    margin-bottom: 0.002in !important;
   }
 
   #header-section .small,
