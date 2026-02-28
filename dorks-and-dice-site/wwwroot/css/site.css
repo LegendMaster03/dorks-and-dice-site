@@ -61,8 +61,8 @@ body {
 }
 
 .experience-logo {
-  max-height: 72px;
-  width: auto;
+  width: 200px;
+  height: 88px;
   object-fit: contain;
 }
 
