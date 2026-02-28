@@ -54,6 +54,12 @@ body {
   object-fit: cover;
 }
 
+.resume-identity {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
 .experience-logo {
   max-height: 72px;
   width: auto;
@@ -102,6 +108,19 @@ body {
   border: 0;
   border-radius: 0.5rem;
   max-width: 100%;
+}
+
+@media (min-width: 992px) {
+  .resume-hero-main {
+    min-height: 100%;
+  }
+
+  .profile-headshot-hero {
+    width: auto;
+    height: 100%;
+    max-height: 290px;
+    aspect-ratio: 1 / 1;
+  }
 }
 
 body.dark-mode {
