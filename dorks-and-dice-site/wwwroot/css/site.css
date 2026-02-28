@@ -421,4 +421,12 @@ body.dark-mode code {
     color: #000 !important;
     text-decoration: none !important;
   }
+
+  /* Keep section titles readable on blue bars in print. */
+  h2.h4,
+  h2.h4 * {
+    color: #fff !important;
+    -webkit-text-fill-color: #fff !important;
+    opacity: 1 !important;
+  }
 }
