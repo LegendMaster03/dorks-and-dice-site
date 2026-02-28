@@ -228,11 +228,19 @@ body.dark-mode code {
 
   * {
     color: #000 !important;
+    opacity: 1 !important;
+    -webkit-text-fill-color: #000 !important;
   }
 
   .text-muted,
-  .card-text {
+  .text-body-secondary,
+  [class*="text-muted"],
+  .card-text,
+  small,
+  .small {
     color: #000 !important;
+    opacity: 1 !important;
+    -webkit-text-fill-color: #000 !important;
   }
 
   .navbar,
