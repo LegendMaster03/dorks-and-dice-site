@@ -94,6 +94,13 @@ body {
   flex: 0 0 22px;
 }
 
+.github-icon {
+  background-color: #ffffff;
+  border-radius: 50%;
+  padding: 2px;
+  box-sizing: content-box;
+}
+
 .discord-panel {
   border-left: 4px solid #5865f2;
   background: linear-gradient(180deg, #ffffff 0%, #eef2ff 100%);
@@ -168,6 +175,10 @@ body.dark-mode .contact-link {
 
 body.dark-mode .contact-link:hover {
   background-color: rgba(147, 197, 253, 0.15);
+}
+
+body.dark-mode .github-icon {
+  background-color: #ffffff;
 }
 
 body.dark-mode code {
