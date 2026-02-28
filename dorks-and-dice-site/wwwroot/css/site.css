@@ -217,8 +217,8 @@ body.dark-mode code {
   body {
     background: #fff !important;
     color: #000;
-    font-size: 9pt;
-    line-height: 1.15;
+    font-size: 8.6pt;
+    line-height: 1.1;
     font-family: "Times New Roman", Times, serif;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
@@ -242,17 +242,17 @@ body.dark-mode code {
   .card,
   .contact-card,
   .contact-link {
-    border: 1px solid #9aa7bb !important;
+    border: 0 !important;
     box-shadow: none !important;
     background: #fff !important;
   }
 
   .card-body {
-    padding: 0.06in !important;
+    padding: 0 !important;
   }
 
   .mb-4 {
-    margin-bottom: 0.06in !important;
+    margin-bottom: 0.03in !important;
   }
 
   h2.h4 {
@@ -268,24 +268,63 @@ body.dark-mode code {
   }
 
   h3.h6 {
-    font-size: 9.4pt !important;
-    margin-bottom: 0.02in !important;
+    font-size: 8.8pt !important;
+    margin-bottom: 0.01in !important;
   }
 
   p,
   li {
-    margin-bottom: 0.015in !important;
+    margin-bottom: 0.008in !important;
   }
 
   ul {
-    margin-bottom: 0.02in !important;
-    padding-left: 0.15in !important;
+    margin-bottom: 0.01in !important;
+    padding-left: 0.12in !important;
   }
 
-  .row.row-cols-1.row-cols-md-2.g-4.mt-1 {
+  #projects-section .row.row-cols-1.row-cols-md-2.g-4.mt-1 {
     display: grid !important;
     grid-template-columns: 1fr 1fr;
-    gap: 0.05in !important;
+    gap: 0.02in !important;
+  }
+
+  #projectFilters,
+  #projects-section .card-text,
+  #projects-section .btn,
+  #projects-section .badge,
+  #projects-section .text-muted,
+  #experience-section .btn,
+  #leadership-section .card:last-child p.mt-3 {
+    display: none !important;
+  }
+
+  #projects-section .card-title {
+    font-size: 8.2pt !important;
+    margin: 0 !important;
+  }
+
+  #experience-section ul li:nth-child(n+3) {
+    display: none;
+  }
+
+  #contact {
+    padding: 0 !important;
+    margin-top: 0.01in;
+  }
+
+  #contact h2,
+  .contact-icon {
+    display: none !important;
+  }
+
+  #contact .contact-link {
+    display: inline;
+    margin-right: 0.08in;
+    padding: 0;
+  }
+
+  #contact .contact-link span {
+    font-size: 8.3pt;
   }
 
   a {
