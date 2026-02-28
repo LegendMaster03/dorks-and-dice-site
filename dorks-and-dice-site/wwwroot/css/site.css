@@ -217,8 +217,8 @@ body.dark-mode code {
   body {
     background: #fff !important;
     color: #000;
-    font-size: 8.2pt;
-    line-height: 1.04;
+    font-size: 8pt;
+    line-height: 1.02;
     font-family: "Times New Roman", Times, serif;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
@@ -255,6 +255,8 @@ body.dark-mode code {
     box-shadow: none !important;
     background: #fff !important;
     margin-bottom: 0.01in !important;
+    break-inside: auto !important;
+    page-break-inside: auto !important;
   }
 
   .card-body {
@@ -294,12 +296,12 @@ body.dark-mode code {
 
   p,
   li {
-    margin-bottom: 0.008in !important;
+    margin-bottom: 0.006in !important;
   }
 
   ul {
-    margin-bottom: 0.01in !important;
-    padding-left: 0.12in !important;
+    margin-bottom: 0.008in !important;
+    padding-left: 0.1in !important;
   }
 
   #projects-section .row.row-cols-1.row-cols-md-2.g-4.mt-1 {
@@ -330,6 +332,12 @@ body.dark-mode code {
   #header-section .small,
   #header-section p.mb-0 {
     display: none !important;
+  }
+
+  #leadership-section .row,
+  #leadership-section [class*="col-"] {
+    break-inside: auto !important;
+    page-break-inside: auto !important;
   }
 
   #contact {
