@@ -78,6 +78,10 @@ Key static assets:
 - PDF resume: `dorks-and-dice-site/wwwroot/files/kyle-resume.pdf`
 - ATS text resume: `dorks-and-dice-site/wwwroot/files/kyle-resume.txt`
 
+The text resume is auto-generated from `Views/Home/Resume.cshtml` during build by:
+- `tools/ResumeTxtGenerator/`
+- MSBuild target `GenerateResumeTextFile` in `dorks-and-dice-site.csproj`
+
 ## Notes for Future Changes
 
 - Keep deployment port/proxy assumptions unchanged unless infrastructure is updated first.

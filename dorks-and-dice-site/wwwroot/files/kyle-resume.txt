@@ -1,48 +1,94 @@
 Kyle W. Barnett
+Information Science Student | Cybersecurity and Software Development
 Ponte Vedra Beach, FL
-Email: kbarnett0306@gmail.com
-Phone: 904-803-8980
-LinkedIn: https://www.linkedin.com/in/kyle-barnett03/
-GitHub: https://github.com/LegendMaster03
-
-Target Role
-Information Science Student focused on cybersecurity and software development.
-
+Download PDF: kyle-resume.pdf (~/files/kyle-resume.pdf)
+Text: kyle-resume.txt (~/files/kyle-resume.txt)
+Last updated: February 2026
+Contact
+kbarnett0306@gmail.com (mailto:kbarnett0306@gmail.com)
+904-803-8980 (tel:+19048038980)
+linkedin.com/in/kyle-barnett03 (https://www.linkedin.com/in/kyle-barnett03/)
+github.com/LegendMaster03 (https://github.com/LegendMaster03)
 Education
 University of North Florida, Jacksonville, FL
 Information Science (Bachelor's), Minor in Leadership
-August 2023 - Present
-Expected Graduation: May 1, 2026
-Dean's List, Upsilon Pi Epsilon (UPE)
-
+August 2023 - Present | Expected Graduation: May 1, 2026 | Dean's List | Upsilon Pi Epsilon member
 Florida State College at Jacksonville, Jacksonville, FL
 Associate of Arts completed
-January 2023 - August 2023
-Additional study: August 2020 - July 2022
-
+January 2023 - August 2023 (plus prior study August 2020 - July 2022)
 Florida Polytechnic University, Lakeland, FL
 August 2022 - December 2022
-
-Experience
-UNF Cyber Security Team - Web Specialist and Windows Specialist (2024 - Present)
-Technology Services (Personal Business) - Tech Enthusiast (2019 - Present)
-Florida Polytechnic University S.I.M. Lab - Student Worker (Aug 2022 - Dec 2022)
-Wired Works - Assistant Audio Visual Installer (Apr 2021 - Sep 2021)
-Skyblivion Global Project - Interior Level Designer (Mar 2021 - Aug 2022)
-Skywind - Interior Level Designer (Dec 2021 - 2022)
-
-Selected Projects
-XnGine Framework (Personal)
-Senior Project (Professional)
-UNF Cyber Security Team Work (Professional)
-Skyblivion Interiors (Professional)
-Skywind Interiors (Professional)
-Technology Services (Professional)
-Weed Wacker (S.I.M. Lab Expo Prototype) (Professional)
-D&D Tooling and Campaign Systems (Personal)
-
 Skills
-Back-End Web Development, Front-End Development, Patch Management, Cybersecurity,
-Application Development, Multimedia, Game Development, Game Design, Level Design,
-Technical Support, Python, JavaScript, C, C#, Java, HTML5, HTML, Unity, Creation Kit,
-Gamebryo, 3D Printing, Audio Visual (AV) Systems, Computer Building, Leadership.
+Industry Knowledge
+Back-end Web Development, Front-end Development, Patch Management, Cybersecurity, Application Development, Multimedia, Game Development, Game Design, Level Design, Technical Support
+Tools and Technologies
+Python, JavaScript, C, C#, Java, HTML5, HTML, Unity, Unreal Engine, Unreal Engine 4, Creation Kit, Gamebryo, 3D Printing, Audio Visual (AV) Systems, Computer Building
+Interpersonal Skills
+Leadership, collaboration, mentoring, communication, conflict resolution, and instructional coaching through the EDGE method.
+Honors and Memberships
+Upsilon Pi Epsilon (UPE), International Honor Society for the Computing Sciences
+Issued February 2026 | Associated with University of North Florida
+Recognized membership in the international honor society for computing and information disciplines.
+Dean's List
+Issued May 2025 by William F. Klostermeyer | Associated with University of North Florida
+Awarded for strong academic performance.
+Eagle Scout
+Issued August 5, 2020 by Boy Scouts of America
+Experience
+UNF Cyber Security Team - Web Specialist and Windows Specialist
+2024 - Present
+- Participates in a competitive travel team environment.
+- Attends daily practices to optimize methods for complex security use cases.
+- Attends lectures from global security experts.
+Technology Services (Personal Business) - Tech Enthusiast
+2019 - Present
+- Performs computer migrations and software upgrades for local clients.
+- Assists with data-entry projects and network management tasks.
+Florida Polytechnic University S.I.M. Lab - Student Worker
+August 2022 - December 2022
+- Handled asset management and supported motion-capture capabilities.
+- Created a video game for a Game Expo showcase.
+Wired Works (Network and Audio Visual) - Assistant Audio-Visual Installer
+April 2021 - September 2021
+- Installed internet networks for businesses and homes.
+- Configured smart-home automations with platforms like Alexa and Sonos.
+Skyblivion Global Project - Interior Level Designer
+March 2021 - August 2022
+- Completed 11 detailed interior levels with a global development team.
+- Tested experimental workloads as the project transitioned to cloud workflows.
+- Mentored new team members for faster onboarding success.
+Skywind - Interior Level Designer
+December 2021 - 2022
+Projects
+Select a project for details and visuals.
+XnGine Framework
+Personal project: in-progress framework architecture and engineering documentation.
+Senior Project
+Capstone work focused on practical system implementation and delivery.
+UNF Cyber Security Team Work
+Security practice methodologies, team prep, and competition workflows.
+Skyblivion Interiors
+Detailed interior design work and image gallery.
+Skywind Interiors
+Interior level design work completed for the Skywind project.
+Technology Services (Personal Business)
+Client-focused upgrades, migrations, and network support work.
+Weed Wacker (S.I.M. Lab Expo Prototype)
+Motion capture, asset support, and game demo creation.
+D&D Tooling and Campaign Systems
+Frameworks and tools for long-form collaborative campaigns.
+Leadership and Activities
+Dungeons & Dragons Game Master
+2024 - Present
+- Plans and runs sessions with long-term creative and systems planning.
+- Builds team communication, conflict resolution, adaptability, and collaboration.
+Eagle Scout
+August 2009 - March 2021
+- Held multiple troop leadership roles, including Senior Patrol Leader and Webmaster.
+- Completed National Youth Leadership Training and later served as an instructor.
+- Applied EDGE leadership methodology: Educate, Demonstrate, Guide, and Enable.
+As a Boy Scout, I learned the value of strong leadership through multiple Positions of Responsibility:
+Den Chief, Historian, Web Master, SPL, ASPL, OA Representative, and Junior Assistant Scout Master.
+I attended NYLT and later returned to staff NYLT. These experiences built practical skills in teamwork,
+teaching through the EDGE method, patience, social communication, conflict resolution, motivation,
+and mentoring younger scouts. These lessons continue to shape my professional and personal leadership style.
