@@ -1,22 +1,23 @@
-name: Deploy to Homelab
+name: Deploy dorks-and-dice-site
 
 on:
   push:
     branches: [ "main" ]
 
+concurrency:
+  group: dorks-and-dice-site
+  cancel-in-progress: true
+
 jobs:
   deploy:
     runs-on: [self-hosted, dorks-and-dice-site]
-
     steps:
-      - name: Check out repo
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Deploy site files to live folder
-        run: |
-          rsync -av --delete public/ /mnt/HDDs/www/dorks-and-dice-site/
+      - name: Build image
+        run: docker build -t dorks-and-dice-site:latest .
 
-      - name: Ensure nginx container is running
+      - name: Deploy
         run: |
-          cd /mnt/HDDs/home/deploy/dorks-and-dice-site
-          docker compose up -d
+          cd /mnt/HDDs/www/dorks-and-dice-site
+          docker compose up -d --force-recreate
