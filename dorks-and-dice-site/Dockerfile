@@ -11,8 +11,8 @@ EXPOSE 8081
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
-COPY ["dorks-and-dice-site/dorks-and-dice-site.csproj", "dorks-and-dice-site/"]
-RUN dotnet restore "./dorks-and-dice-site/dorks-and-dice-site.csproj"
+COPY ["dorks-and-dice-site.csproj", "."]
+RUN dotnet restore "./dorks-and-dice-site.csproj"
 COPY . .
 WORKDIR "/src/dorks-and-dice-site"
 RUN dotnet build "./dorks-and-dice-site.csproj" -c $BUILD_CONFIGURATION -o /app/build
