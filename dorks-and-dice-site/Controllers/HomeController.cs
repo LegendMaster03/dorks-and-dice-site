@@ -13,7 +13,7 @@ namespace dorks_and_dice_site.Controllers
 
         public IActionResult Projects()
         {
-            return View();
+            return Redirect("/Home/Resume#projects");
         }
 
         public IActionResult Resume()
@@ -27,51 +27,6 @@ namespace dorks_and_dice_site.Controllers
         }
 
         public IActionResult DorksAndDice()
-        {
-            return View();
-        }
-
-        public IActionResult XnGine()
-        {
-            return View();
-        }
-
-        public IActionResult SeniorProject()
-        {
-            return View();
-        }
-
-        public IActionResult CyberSecurityTeam()
-        {
-            return View();
-        }
-
-        public IActionResult Skyblivion()
-        {
-            return View();
-        }
-
-        public IActionResult TechnologyServices()
-        {
-            return View();
-        }
-
-        public IActionResult SimLabExpo()
-        {
-            return View();
-        }
-
-        public IActionResult WiredWorks()
-        {
-            return View();
-        }
-
-        public IActionResult DndTools()
-        {
-            return View();
-        }
-
-        public IActionResult Skywind()
         {
             return View();
         }
