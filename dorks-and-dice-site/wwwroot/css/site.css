@@ -203,7 +203,7 @@ body.dark-mode code {
 @media print {
   @page {
     size: Letter portrait;
-    margin: 0.45in;
+    margin: 0.3in;
   }
 
   .resume-screen-only {
@@ -218,33 +218,63 @@ body.dark-mode code {
     display: block !important;
     color: #000;
     background: #fff;
-    font-size: 10.25pt;
-    line-height: 1.25;
+    font-size: 9.6pt;
+    line-height: 1.16;
+    font-family: "Times New Roman", Times, serif;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .resume-print-sheet {
+    border: 1px solid #6c85ad;
+    padding: 0.14in 0.2in;
+  }
+
+  .resume-print-only .contact-line {
+    font-size: 9pt;
+    text-align: center;
+    margin-bottom: 0.04in !important;
   }
 
   .resume-print-only h1 {
-    font-size: 18pt;
-    margin-bottom: 0.1in;
+    text-align: center;
+    font-size: 21pt;
+    margin-bottom: 0.01in;
   }
 
-  .resume-print-only h2 {
-    font-size: 11pt;
+  .resume-print-only h2.print-section-title {
+    font-size: 11.2pt;
+    color: #fff;
+    background: #0f3b86;
     text-transform: uppercase;
-    letter-spacing: 0.02em;
-    border-bottom: 1px solid #999;
-    margin-top: 0.12in;
-    margin-bottom: 0.04in;
-    padding-bottom: 0.02in;
+    letter-spacing: 0.01em;
+    margin-top: 0.06in;
+    margin-bottom: 0.03in;
+    padding: 0.01in 0.05in;
+    text-align: center;
+    border: 0;
+  }
+
+  .print-skills-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .print-skills-table td {
+    border: 1px solid #777;
+    padding: 0.02in 0.04in;
+    vertical-align: top;
+    width: 33.33%;
   }
 
   .resume-print-only p,
   .resume-print-only li {
-    margin-bottom: 0.03in !important;
+    margin-bottom: 0.02in !important;
   }
 
   .resume-print-only ul {
-    margin-bottom: 0.04in;
-    padding-left: 0.2in;
+    margin-bottom: 0.02in;
+    padding-left: 0.16in;
   }
 
   body {
