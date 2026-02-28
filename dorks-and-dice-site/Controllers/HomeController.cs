@@ -71,6 +71,41 @@ namespace dorks_and_dice_site.Controllers
             return View();
         }
 
+        public IActionResult Skywind()
+        {
+            return View();
+        }
+
+        public IActionResult ExperienceCyberSecurityTeam()
+        {
+            return View();
+        }
+
+        public IActionResult ExperienceTechnologyServices()
+        {
+            return View();
+        }
+
+        public IActionResult ExperienceSimLab()
+        {
+            return View();
+        }
+
+        public IActionResult ExperienceWiredWorks()
+        {
+            return View();
+        }
+
+        public IActionResult ExperienceSkyblivion()
+        {
+            return View();
+        }
+
+        public IActionResult ExperienceSkywind()
+        {
+            return View();
+        }
+
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
         public IActionResult Error()
         {
