@@ -223,6 +223,7 @@ body.dark-mode code {
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
     color: #000 !important;
+    zoom: 0.97;
   }
 
   * {
