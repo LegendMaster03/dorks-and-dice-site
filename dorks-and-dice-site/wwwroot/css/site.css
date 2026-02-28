@@ -203,7 +203,7 @@ body.dark-mode code {
 @media print {
   @page {
     size: Letter portrait;
-    margin: 0.2in;
+    margin: 0.15in;
   }
 
   .container,
@@ -217,7 +217,7 @@ body.dark-mode code {
   body {
     background: #fff !important;
     color: #000;
-    font-size: 8pt;
+    font-size: 7.9pt;
     line-height: 1.02;
     font-family: "Times New Roman", Times, serif;
     -webkit-print-color-adjust: exact;
@@ -264,7 +264,7 @@ body.dark-mode code {
   }
 
   .mb-4 {
-    margin-bottom: 0.03in !important;
+    margin-bottom: 0.02in !important;
   }
 
   .mb-3,
@@ -283,8 +283,8 @@ body.dark-mode code {
     background: #0f3b86 !important;
     text-transform: uppercase;
     letter-spacing: 0.02em;
-    margin-top: 0.05in !important;
-    margin-bottom: 0.03in !important;
+    margin-top: 0.04in !important;
+    margin-bottom: 0.02in !important;
     padding: 0.01in 0.06in;
     border: 0 !important;
   }
@@ -305,9 +305,25 @@ body.dark-mode code {
   }
 
   #projects-section .row.row-cols-1.row-cols-md-2.g-4.mt-1 {
-    display: grid !important;
-    grid-template-columns: 1fr 1fr;
-    gap: 0.01in !important;
+    display: block !important;
+    column-count: 2;
+    column-gap: 0.14in;
+  }
+
+  #projects-section .project-card,
+  #projects-section .col {
+    display: block !important;
+    width: auto !important;
+    padding: 0 !important;
+    margin: 0 0 0.01in 0 !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  #projects-section .card,
+  #projects-section .card.h-100 {
+    height: auto !important;
+    margin: 0 !important;
   }
 
   #projectFilters,
