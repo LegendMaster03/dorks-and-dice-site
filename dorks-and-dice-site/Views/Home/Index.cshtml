@@ -4,15 +4,24 @@
 
 <section class="p-4 p-md-5 mb-4 rounded-3 border bg-light-subtle">
     <div class="container-fluid py-3 px-0">
-        <h1 class="display-5 fw-bold">Dorks & Dice</h1>
-        <p class="col-md-9 fs-5 mb-4">
-            Kyle W. Barnett - Information Science senior at the University of North Florida, technology builder,
-            and organizer behind Dorks & Dice. This site is the full web profile version of the one-page resume.
-        </p>
-        <div class="d-flex gap-2 flex-wrap">
-            <a class="btn btn-primary btn-lg" asp-controller="Home" asp-action="Projects">View Projects</a>
-            <a class="btn btn-outline-secondary btn-lg" asp-controller="Home" asp-action="Resume">Resume</a>
-            <a class="btn btn-outline-secondary btn-lg" asp-controller="Home" asp-action="Contact">Contact</a>
+        <div class="row align-items-center g-4">
+            <div class="col-md-3 col-lg-2 text-center text-md-start">
+                <img src="~/images/profile/kyle-headshot.jpg"
+                     class="profile-headshot img-fluid rounded-circle border"
+                     alt="Headshot of Kyle Barnett" />
+            </div>
+            <div class="col-md-9 col-lg-10">
+                <h1 class="display-5 fw-bold">Dorks & Dice</h1>
+                <p class="fs-5 mb-4">
+                    Kyle W. Barnett - Information Science senior at the University of North Florida, technology builder,
+                    and organizer behind Dorks & Dice. This site is the full web profile version of the one-page resume.
+                </p>
+                <div class="d-flex gap-2 flex-wrap">
+                    <a class="btn btn-primary btn-lg" asp-controller="Home" asp-action="Projects">View Projects</a>
+                    <a class="btn btn-outline-secondary btn-lg" asp-controller="Home" asp-action="Resume">Resume</a>
+                    <a class="btn btn-outline-secondary btn-lg" asp-controller="Home" asp-action="Contact">Contact</a>
+                </div>
+            </div>
         </div>
     </div>
 </section>
