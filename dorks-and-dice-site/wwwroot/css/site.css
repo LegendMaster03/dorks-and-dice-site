@@ -217,8 +217,8 @@ body.dark-mode code {
   body {
     background: #fff !important;
     color: #000;
-    font-size: 8.05pt;
-    line-height: 1.03;
+    font-size: 7.85pt;
+    line-height: 1.01;
     font-family: "Times New Roman", Times, serif;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
@@ -278,13 +278,13 @@ body.dark-mode code {
   }
 
   h2.h4 {
-    font-size: 10.8pt !important;
+    font-size: 10.4pt !important;
     color: #fff !important;
     background: #0f3b86 !important;
     text-transform: uppercase;
     letter-spacing: 0.02em;
-    margin-top: 0.04in !important;
-    margin-bottom: 0.02in !important;
+    margin-top: 0.03in !important;
+    margin-bottom: 0.015in !important;
     padding: 0.01in 0.06in;
     border: 0 !important;
   }
@@ -317,7 +317,7 @@ body.dark-mode code {
     display: block !important;
     width: auto !important;
     padding: 0 !important;
-    margin: 0 0 0.01in 0 !important;
+    margin: 0 0 0.006in 0 !important;
     break-inside: avoid;
     page-break-inside: avoid;
   }
@@ -328,12 +328,6 @@ body.dark-mode code {
     margin: 0 !important;
   }
 
-  #projects-section .card-title {
-    font-size: 8.35pt !important;
-    line-height: 1.08 !important;
-    margin: 0 !important;
-  }
-
   #projectFilters,
   #projects-section .btn,
   #experience-section .btn {
@@ -341,8 +335,31 @@ body.dark-mode code {
   }
 
   #projects-section .card-title {
-    font-size: 8.2pt !important;
+    font-size: 8pt !important;
+    line-height: 1.02 !important;
     margin: 0 !important;
+  }
+
+  #projects-section .card-text {
+    font-size: 7.45pt !important;
+    line-height: 1 !important;
+    margin: 0.002in 0 0 0 !important;
+  }
+
+  #projects-section .badge {
+    font-size: 6.8pt !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: none !important;
+    border: 0 !important;
+    display: inline !important;
+    color: #000 !important;
+  }
+
+  #leadership-section .card:last-child p.mt-3 {
+    font-size: 7.5pt !important;
+    line-height: 1 !important;
+    margin-top: 0.005in !important;
   }
 
   #header-section .small,
