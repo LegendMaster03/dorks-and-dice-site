@@ -210,6 +210,10 @@ body.dark-mode code {
     display: none !important;
   }
 
+  main > section:not(.resume-print-only) {
+    display: none !important;
+  }
+
   .resume-print-only {
     display: block !important;
     color: #000;
