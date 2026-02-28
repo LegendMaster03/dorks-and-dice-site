@@ -20,6 +20,8 @@ app.UseAuthorization();
 
 app.MapStaticAssets();
 
+app.MapGet("/health", () => Results.Text("OK", "text/plain"));
+
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}")

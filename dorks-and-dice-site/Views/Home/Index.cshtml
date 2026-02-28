@@ -1,8 +1,37 @@
-﻿@{
-    ViewData["Title"] = "Home Page";
+@{
+    ViewData["Title"] = "Home";
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
-</div>
+<section class="p-4 p-md-5 mb-4 rounded-3 border bg-light-subtle">
+    <div class="container-fluid py-3 px-0">
+        <h1 class="display-5 fw-bold">Dorks & Dice</h1>
+        <p class="col-md-9 fs-5 mb-4">
+            Personal and professional front door for Kyle: software engineer, builder, and organizer behind the
+            Dorks & Dice community.
+        </p>
+        <div class="d-flex gap-2 flex-wrap">
+            <a class="btn btn-primary btn-lg" asp-controller="Home" asp-action="Projects">View Projects</a>
+            <a class="btn btn-outline-secondary btn-lg" asp-controller="Home" asp-action="Resume">Resume</a>
+            <a class="btn btn-outline-secondary btn-lg" asp-controller="Home" asp-action="Contact">Contact</a>
+        </div>
+    </div>
+</section>
+
+<section class="row g-4">
+    <div class="col-md-6">
+        <h2 class="h4">Professional Focus</h2>
+        <p>
+            I build practical systems with an emphasis on reliability, maintainability, and fast iteration.
+            This site highlights current work and serves as a stable landing page for future portfolio content.
+        </p>
+    </div>
+    <div class="col-md-6">
+        <h2 class="h4">What You'll Find Here</h2>
+        <ul>
+            <li>Current project portfolio with placeholders for upcoming write-ups</li>
+            <li>Hosted resume PDF and quick download access</li>
+            <li>Community links for Dorks & Dice</li>
+            <li>Contact routes for professional outreach</li>
+        </ul>
+    </div>
+</section>
