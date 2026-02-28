@@ -21,7 +21,7 @@ namespace dorks_and_dice_site.Controllers
 
         public IActionResult Projects()
         {
-            return View();
+            return Redirect("/Home/Resume#projects");
         }
 
         public IActionResult Resume()
