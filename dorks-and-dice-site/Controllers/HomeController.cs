@@ -19,11 +19,6 @@ namespace dorks_and_dice_site.Controllers
             return View();
         }
 
-        public IActionResult Projects()
-        {
-            return Redirect("/Home/Resume#projects");
-        }
-
         public IActionResult Resume()
         {
             return View();

@@ -6,13 +6,34 @@
     var siteSuffix = isResumeContext ? "Kyle Barnett" : "Dorks & Dice";
     var brandText = isResumeContext ? "Kyle Barnett" : "Dorks & Dice";
     var footerText = isResumeContext ? "Kyle Barnett" : "Dorks & Dice";
+    var pageTitle = $"{ViewData["Title"]} - {siteSuffix}";
+    var metaTitle = ViewData["MetaTitle"]?.ToString() ?? pageTitle;
+    var metaDescription = ViewData["MetaDescription"]?.ToString()
+        ?? (isResumeContext
+            ? "Kyle Barnett's resume, experience, and selected projects."
+            : "Dorks & Dice community front door for campaigns, tools, and updates.");
+    var metaImagePath = ViewData["MetaImage"]?.ToString() ?? Url.Content("~/images/profile/kyle-headshot.jpg");
+    var metaImage = metaImagePath?.StartsWith("http", StringComparison.OrdinalIgnoreCase) == true
+        ? metaImagePath
+        : $"{Context.Request.Scheme}://{Context.Request.Host}{metaImagePath}";
+    var metaUrl = $"{Context.Request.Scheme}://{Context.Request.Host}{Context.Request.Path}{Context.Request.QueryString}";
 }
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - @siteSuffix</title>
+    <title>@pageTitle</title>
+    <meta name="description" content="@metaDescription" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="@metaTitle" />
+    <meta property="og:description" content="@metaDescription" />
+    <meta property="og:url" content="@metaUrl" />
+    <meta property="og:image" content="@metaImage" />
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:title" content="@metaTitle" />
+    <meta property="twitter:description" content="@metaDescription" />
+    <meta property="twitter:image" content="@metaImage" />
     <script type="importmap"></script>
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />

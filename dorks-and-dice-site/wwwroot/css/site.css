@@ -48,6 +48,10 @@ body {
   object-fit: cover;
 }
 
+#projectFilters .btn.active {
+  color: #fff;
+}
+
 .profile-headshot {
   width: 160px;
   height: 160px;
@@ -179,6 +183,17 @@ body.dark-mode .contact-link:hover {
 
 body.dark-mode .github-icon {
   background-color: #ffffff;
+}
+
+body.dark-mode #projectFilters .btn {
+  border-color: #475569;
+  color: #cbd5e1;
+}
+
+body.dark-mode #projectFilters .btn.active {
+  background-color: #2563eb;
+  border-color: #2563eb;
+  color: #fff;
 }
 
 body.dark-mode code {
