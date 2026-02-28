@@ -41,17 +41,17 @@ namespace dorks_and_dice_site.Controllers
 
         public IActionResult CyberSecurityTeam()
         {
-            return View();
+            return RedirectToAction(nameof(ExperienceCyberSecurityTeam));
         }
 
         public IActionResult Skyblivion()
         {
-            return View();
+            return RedirectToAction(nameof(ExperienceSkyblivion));
         }
 
         public IActionResult Skywind()
         {
-            return View();
+            return RedirectToAction(nameof(ExperienceSkywind));
         }
 
         public IActionResult TechnologyServices()
