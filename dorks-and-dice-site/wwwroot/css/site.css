@@ -217,11 +217,20 @@ body.dark-mode code {
   body {
     background: #fff !important;
     color: #000;
-    font-size: 8.6pt;
-    line-height: 1.1;
+    font-size: 8.2pt;
+    line-height: 1.04;
     font-family: "Times New Roman", Times, serif;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
+    color: #000 !important;
+  }
+
+  * {
+    color: #000 !important;
+  }
+
+  .text-muted,
+  .card-text {
     color: #000 !important;
   }
 
@@ -245,6 +254,7 @@ body.dark-mode code {
     border: 0 !important;
     box-shadow: none !important;
     background: #fff !important;
+    margin-bottom: 0.01in !important;
   }
 
   .card-body {
@@ -253,6 +263,16 @@ body.dark-mode code {
 
   .mb-4 {
     margin-bottom: 0.03in !important;
+  }
+
+  .mb-3,
+  .mb-2,
+  .mb-1,
+  .mt-3,
+  .mt-2,
+  .mt-1 {
+    margin-bottom: 0.01in !important;
+    margin-top: 0.01in !important;
   }
 
   h2.h4 {
@@ -285,7 +305,7 @@ body.dark-mode code {
   #projects-section .row.row-cols-1.row-cols-md-2.g-4.mt-1 {
     display: grid !important;
     grid-template-columns: 1fr 1fr;
-    gap: 0.02in !important;
+    gap: 0.01in !important;
   }
 
   #projectFilters,
@@ -303,8 +323,13 @@ body.dark-mode code {
     margin: 0 !important;
   }
 
-  #experience-section ul li:nth-child(n+3) {
+  #experience-section ul li:nth-child(n+2) {
     display: none;
+  }
+
+  #header-section .small,
+  #header-section p.mb-0 {
+    display: none !important;
   }
 
   #contact {
