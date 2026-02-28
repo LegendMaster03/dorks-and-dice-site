@@ -88,8 +88,9 @@ body {
   flex: 0 0 22px;
 }
 
-.discord-card {
+.discord-panel {
   border-left: 4px solid #5865f2;
+  background: linear-gradient(180deg, #ffffff 0%, #eef2ff 100%);
 }
 
 .discord-widget-wrapper {
