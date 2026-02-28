@@ -17,6 +17,28 @@ jobs:
       - name: Build image
         run: docker build -t dorks-and-dice-site:latest -f dorks-and-dice-site/Dockerfile dorks-and-dice-site
 
+      - name: Smoke test container health endpoint
+        run: |
+          docker rm -f dorks-and-dice-site-smoketest 2>/dev/null || true
+          docker run -d --name dorks-and-dice-site-smoketest -p 18080:8080 dorks-and-dice-site:latest
+
+          for i in {1..20}; do
+            body=$(curl -fsS http://127.0.0.1:18080/health || true)
+            if [ "$body" = "OK" ]; then
+              echo "Smoke test passed."
+              exit 0
+            fi
+            sleep 1
+          done
+
+          echo "Smoke test failed. Container logs:"
+          docker logs dorks-and-dice-site-smoketest || true
+          exit 1
+
+      - name: Cleanup smoke test container
+        if: always()
+        run: docker rm -f dorks-and-dice-site-smoketest 2>/dev/null || true
+
       - name: Deploy
         run: |
           cd /mnt/HDDs/www/dorks-and-dice-site
