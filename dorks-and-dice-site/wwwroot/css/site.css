@@ -308,6 +308,8 @@ body.dark-mode code {
     display: block !important;
     column-count: 2;
     column-gap: 0.14in;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
   }
 
   #projects-section .project-card,
