@@ -17,12 +17,12 @@
                     </div>
                 </div>
                 <p class="fs-5 mb-4">
-                    Information Science senior at the University of North Florida, technology builder,
-                    and organizer behind Dorks & Dice. This site is the full web profile version of the one-page resume.
+                    Dorks & Dice is a community for tabletop gaming, collaborative worldbuilding,
+                    and practical tech-enabled campaign management.
                 </p>
                 <div class="d-flex gap-2 flex-wrap">
-                    <a class="btn btn-primary btn-lg" asp-controller="Home" asp-action="Projects">View Projects</a>
-                    <a class="btn btn-outline-secondary btn-lg" asp-controller="Home" asp-action="Resume">Resume</a>
+                    <a class="btn btn-primary btn-lg" asp-controller="Home" asp-action="Resume">Professional Resume</a>
+                    <a class="btn btn-outline-secondary btn-lg" asp-controller="Home" asp-action="Resume" asp-fragment="projects">Project Portfolio</a>
                     <a class="btn btn-outline-secondary btn-lg" asp-controller="Home" asp-action="Resume" asp-fragment="contact">Contact</a>
                 </div>
             </div>
@@ -52,23 +52,22 @@
 
 <section class="row g-4">
     <div class="col-md-6">
-        <h2 class="h4">Professional Summary</h2>
+        <h2 class="h4">About Dorks & Dice</h2>
         <p>
-            Experience spans full stack development, technical support, cybersecurity team operations,
-            and game development collaboration. Current emphasis is on building reliable systems,
-            practical tooling, and strong team execution.
+            Dorks & Dice is built around long-form campaigns, consistent session operations,
+            and collaborative storytelling. The goal is to make every game night organized, welcoming, and fun.
         </p>
         <p class="mb-0">
-            Core domains: software development, system support, networking, automation, and team leadership.
+            The group uses structured planning, digital tools, and play-tested systems to keep campaigns moving.
         </p>
     </div>
     <div class="col-md-6">
-        <h2 class="h4">Current Snapshot</h2>
+        <h2 class="h4">What You Will Find Here</h2>
         <ul>
-            <li>UNF Cyber Security Team member (2024-present)</li>
-            <li>Dean's List recipient and Upsilon Pi Epsilon member</li>
-            <li>Hands-on experience across Windows, macOS, Linux, and networking</li>
-            <li>Community leadership through tabletop game mastering and Eagle Scout service history</li>
+            <li>Discord-connected community coordination</li>
+            <li>Campaign framework and session operations</li>
+            <li>D&amp;D tooling and process design</li>
+            <li>A direct path to Kyle Barnett's professional resume and project portfolio</li>
         </ul>
     </div>
 </section>
@@ -76,12 +75,12 @@
 <section class="mt-4">
     <div class="card">
         <div class="card-body">
-            <h2 class="h4">Explore Full Details</h2>
+            <h2 class="h4">Professional Profile</h2>
             <p class="mb-3">
-                Full education timeline, technical skills, work history, and extracurricular leadership are available
-                on the Resume page, plus the downloadable PDF.
+                Applying for jobs or internships? Use the Resume page as the direct professional view,
+                including detailed experience, linked project pages, and downloadable PDF.
             </p>
-            <a class="btn btn-primary" asp-controller="Home" asp-action="Resume">Open Full Profile</a>
+            <a class="btn btn-primary" href="/resume">Open Resume</a>
         </div>
     </div>
 </section>

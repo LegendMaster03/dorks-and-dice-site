@@ -23,6 +23,11 @@ app.MapStaticAssets();
 app.MapGet("/health", () => Results.Text("OK", "text/plain"));
 
 app.MapControllerRoute(
+    name: "resume",
+    pattern: "resume",
+    defaults: new { controller = "Home", action = "Resume" });
+
+app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}")
     .WithStaticAssets();
