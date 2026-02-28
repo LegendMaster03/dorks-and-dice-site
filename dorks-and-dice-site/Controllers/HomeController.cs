@@ -29,11 +29,6 @@ namespace dorks_and_dice_site.Controllers
             return View();
         }
 
-        public IActionResult Contact()
-        {
-            return View();
-        }
-
         public IActionResult DorksAndDice()
         {
             return View();
