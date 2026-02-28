@@ -99,6 +99,12 @@ namespace dorks_and_dice_site.Controllers
             return View();
         }
 
+        public IActionResult NotFoundPage()
+        {
+            Response.StatusCode = 404;
+            return View();
+        }
+
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
         public IActionResult Error()
         {

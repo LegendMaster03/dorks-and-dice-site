@@ -199,3 +199,32 @@ body.dark-mode #projectFilters .btn.active {
 body.dark-mode code {
   color: #bfdbfe;
 }
+
+@media print {
+  body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+
+  .navbar,
+  .footer,
+  #themeToggle,
+  #projectFilters,
+  .discord-panel,
+  .btn,
+  a.btn {
+    display: none !important;
+  }
+
+  .card,
+  .contact-card {
+    border: 1px solid #ddd !important;
+    box-shadow: none !important;
+    background: #fff !important;
+  }
+
+  a {
+    color: #000 !important;
+    text-decoration: none !important;
+  }
+}
