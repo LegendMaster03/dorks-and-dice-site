@@ -13,8 +13,15 @@
     <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.23.0" />
   </ItemGroup>
 
-  <Target Name="GenerateResumeTextFile" BeforeTargets="BeforeBuild" Condition="'$(DesignTimeBuild)' != 'true'">
-    <Exec Command="dotnet run --project &quot;$(MSBuildProjectDirectory)/../tools/ResumeTxtGenerator/ResumeTxtGenerator.csproj&quot; -- &quot;$(MSBuildProjectDirectory)&quot;" />
+  <ItemGroup>
+    <Compile Remove="tools\**\*.cs" />
+    <None Remove="tools\**\*" />
+    <Content Remove="tools\**\*" />
+    <EmbeddedResource Remove="tools\**\*" />
+  </ItemGroup>
+
+  <Target Name="GenerateResumeTextFile" BeforeTargets="BeforeBuild" Condition="'$(DesignTimeBuild)' != 'true' and Exists('$(MSBuildProjectDirectory)/tools/ResumeTxtGenerator/ResumeTxtGenerator.csproj')">
+    <Exec Command="dotnet run --project &quot;$(MSBuildProjectDirectory)/tools/ResumeTxtGenerator/ResumeTxtGenerator.csproj&quot; -- &quot;$(MSBuildProjectDirectory)&quot;" />
   </Target>
 
 </Project>
