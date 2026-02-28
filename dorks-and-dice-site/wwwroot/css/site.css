@@ -201,6 +201,48 @@ body.dark-mode code {
 }
 
 @media print {
+  @page {
+    size: Letter portrait;
+    margin: 0.45in;
+  }
+
+  .resume-screen-only {
+    display: none !important;
+  }
+
+  .resume-print-only {
+    display: block !important;
+    color: #000;
+    background: #fff;
+    font-size: 10.25pt;
+    line-height: 1.25;
+  }
+
+  .resume-print-only h1 {
+    font-size: 18pt;
+    margin-bottom: 0.1in;
+  }
+
+  .resume-print-only h2 {
+    font-size: 11pt;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    border-bottom: 1px solid #999;
+    margin-top: 0.12in;
+    margin-bottom: 0.04in;
+    padding-bottom: 0.02in;
+  }
+
+  .resume-print-only p,
+  .resume-print-only li {
+    margin-bottom: 0.03in !important;
+  }
+
+  .resume-print-only ul {
+    margin-bottom: 0.04in;
+    padding-left: 0.2in;
+  }
+
   body {
     background: #fff !important;
     color: #000 !important;
@@ -227,4 +269,8 @@ body.dark-mode code {
     color: #000 !important;
     text-decoration: none !important;
   }
+}
+
+.resume-print-only {
+  display: none;
 }
