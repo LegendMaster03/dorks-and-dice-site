@@ -203,7 +203,15 @@ body.dark-mode code {
 @media print {
   @page {
     size: Letter portrait;
-    margin: 0.3in;
+    margin: 0.2in;
+  }
+
+  .container,
+  .container.py-4 {
+    max-width: none !important;
+    width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
   }
 
   .resume-screen-only {
@@ -218,16 +226,19 @@ body.dark-mode code {
     display: block !important;
     color: #000;
     background: #fff;
-    font-size: 9.6pt;
+    font-size: 10.1pt;
     line-height: 1.16;
     font-family: "Times New Roman", Times, serif;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
+    width: 100%;
   }
 
   .resume-print-sheet {
     border: 1px solid #6c85ad;
-    padding: 0.14in 0.2in;
+    padding: 0.14in 0.16in;
+    width: 100%;
+    box-sizing: border-box;
   }
 
   .resume-print-only .contact-line {
