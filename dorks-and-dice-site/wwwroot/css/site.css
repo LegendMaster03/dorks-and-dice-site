@@ -214,82 +214,14 @@ body.dark-mode code {
     margin: 0 !important;
   }
 
-  .resume-screen-only {
-    display: none !important;
-  }
-
-  main > section:not(.resume-print-only) {
-    display: none !important;
-  }
-
-  .resume-print-only {
-    display: block !important;
+  body {
+    background: #fff !important;
     color: #000;
-    background: #fff;
-    font-size: 10.3pt;
-    line-height: 1.16;
+    font-size: 9pt;
+    line-height: 1.15;
     font-family: "Times New Roman", Times, serif;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
-    width: 100%;
-  }
-
-  .resume-print-sheet {
-    border: 1px solid #6c85ad;
-    padding: 0.14in 0.16in;
-    width: 100%;
-    box-sizing: border-box;
-  }
-
-  .resume-print-only .contact-line {
-    font-size: 9pt;
-    text-align: center;
-    margin-bottom: 0.04in !important;
-  }
-
-  .resume-print-only h1 {
-    text-align: center;
-    font-size: 21pt;
-    margin-bottom: 0.01in;
-  }
-
-  .resume-print-only h2.print-section-title {
-    font-size: 11.2pt;
-    color: #fff;
-    background: #0f3b86;
-    text-transform: uppercase;
-    letter-spacing: 0.01em;
-    margin-top: 0.06in;
-    margin-bottom: 0.03in;
-    padding: 0.01in 0.05in;
-    text-align: center;
-    border: 0;
-  }
-
-  .print-skills-table {
-    width: 100%;
-    border-collapse: collapse;
-  }
-
-  .print-skills-table td {
-    border: 1px solid #777;
-    padding: 0.02in 0.04in;
-    vertical-align: top;
-    width: 33.33%;
-  }
-
-  .resume-print-only p,
-  .resume-print-only li {
-    margin-bottom: 0.02in !important;
-  }
-
-  .resume-print-only ul {
-    margin-bottom: 0.02in;
-    padding-left: 0.16in;
-  }
-
-  body {
-    background: #fff !important;
     color: #000 !important;
   }
 
@@ -303,19 +235,61 @@ body.dark-mode code {
     display: none !important;
   }
 
+  .profile-headshot {
+    display: none !important;
+  }
+
   .card,
-  .contact-card {
-    border: 1px solid #ddd !important;
+  .contact-card,
+  .contact-link {
+    border: 1px solid #9aa7bb !important;
     box-shadow: none !important;
     background: #fff !important;
+  }
+
+  .card-body {
+    padding: 0.06in !important;
+  }
+
+  .mb-4 {
+    margin-bottom: 0.06in !important;
+  }
+
+  h2.h4 {
+    font-size: 10.8pt !important;
+    color: #fff !important;
+    background: #0f3b86 !important;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    margin-top: 0.05in !important;
+    margin-bottom: 0.03in !important;
+    padding: 0.01in 0.06in;
+    border: 0 !important;
+  }
+
+  h3.h6 {
+    font-size: 9.4pt !important;
+    margin-bottom: 0.02in !important;
+  }
+
+  p,
+  li {
+    margin-bottom: 0.015in !important;
+  }
+
+  ul {
+    margin-bottom: 0.02in !important;
+    padding-left: 0.15in !important;
+  }
+
+  .row.row-cols-1.row-cols-md-2.g-4.mt-1 {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.05in !important;
   }
 
   a {
     color: #000 !important;
     text-decoration: none !important;
   }
-}
-
-.resume-print-only {
-  display: none;
 }
