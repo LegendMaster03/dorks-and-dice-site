@@ -103,3 +103,54 @@ body {
   border-radius: 0.5rem;
   max-width: 100%;
 }
+
+body.dark-mode {
+  background-color: #0f172a;
+  color: #e2e8f0;
+}
+
+body.dark-mode .navbar {
+  background-color: #111827 !important;
+  border-bottom-color: #1f2937 !important;
+}
+
+body.dark-mode .navbar .navbar-brand,
+body.dark-mode .navbar .nav-link {
+  color: #e5e7eb !important;
+}
+
+body.dark-mode .navbar .nav-link:hover {
+  color: #93c5fd !important;
+}
+
+body.dark-mode .card,
+body.dark-mode .contact-card,
+body.dark-mode .discord-panel {
+  background: #111827;
+  color: #e5e7eb;
+  border-color: #1f2937 !important;
+}
+
+body.dark-mode .text-muted {
+  color: #9ca3af !important;
+}
+
+body.dark-mode .footer {
+  border-top-color: #1f2937 !important;
+}
+
+body.dark-mode .footer a {
+  color: #93c5fd;
+}
+
+body.dark-mode .contact-link {
+  color: #e5e7eb;
+}
+
+body.dark-mode .contact-link:hover {
+  background-color: rgba(147, 197, 253, 0.15);
+}
+
+body.dark-mode code {
+  color: #bfdbfe;
+}
