@@ -335,22 +335,14 @@ body.dark-mode code {
   }
 
   #projectFilters,
-  #projects-section .card-text,
   #projects-section .btn,
-  #projects-section .badge,
-  #projects-section .text-muted,
-  #experience-section .btn,
-  #leadership-section .card:last-child p.mt-3 {
+  #experience-section .btn {
     display: none !important;
   }
 
   #projects-section .card-title {
     font-size: 8.2pt !important;
     margin: 0 !important;
-  }
-
-  #experience-section ul li:nth-child(n+2) {
-    display: none;
   }
 
   #header-section .small,
