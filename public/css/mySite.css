@@ -1,0 +1,20 @@
+body {
+  padding: 25px;
+  background-color: white;
+  color: black;
+  font-size: 25px;
+  table, th, td {
+    border: 1px solid black;
+    border-collapse: collapse;
+  }
+}
+
+.dark-mode {
+  background-color: black;
+  color: white;
+  table, th, td {
+    border: 1px solid white;
+    border-collapse: collapse;
+  }
+}
+

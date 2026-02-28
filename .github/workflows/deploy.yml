@@ -1,0 +1,22 @@
+name: Deploy to Homelab
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  deploy:
+    runs-on: [self-hosted, dorks-and-dice-site]
+
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Deploy site files to live folder
+        run: |
+          rsync -av --delete public/ /mnt/HDDs/www/dorks-and-dice-site/
+
+      - name: Ensure nginx container is running
+        run: |
+          cd /mnt/HDDs/home/deploy/dorks-and-dice-site
+          docker compose up -d
