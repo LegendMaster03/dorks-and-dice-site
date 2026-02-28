@@ -203,7 +203,7 @@ body.dark-mode code {
 @media print {
   @page {
     size: Letter portrait;
-    margin: 0.15in;
+    margin: 0.12in;
   }
 
   .container,
@@ -217,7 +217,7 @@ body.dark-mode code {
   body {
     background: #fff !important;
     color: #000;
-    font-size: 7.85pt;
+    font-size: 7.75pt;
     line-height: 1.01;
     font-family: "Times New Roman", Times, serif;
     -webkit-print-color-adjust: exact;
@@ -341,7 +341,7 @@ body.dark-mode code {
   }
 
   #projects-section .card-text {
-    font-size: 7.45pt !important;
+    font-size: 7.3pt !important;
     line-height: 1 !important;
     margin: 0.002in 0 0 0 !important;
   }
@@ -357,7 +357,7 @@ body.dark-mode code {
   }
 
   #leadership-section .card:last-child p.mt-3 {
-    font-size: 7.5pt !important;
+    font-size: 7.3pt !important;
     line-height: 1 !important;
     margin-top: 0.005in !important;
   }
