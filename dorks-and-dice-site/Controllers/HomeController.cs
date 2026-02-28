@@ -31,6 +31,46 @@ namespace dorks_and_dice_site.Controllers
             return View();
         }
 
+        public IActionResult XnGine()
+        {
+            return View();
+        }
+
+        public IActionResult SeniorProject()
+        {
+            return View();
+        }
+
+        public IActionResult CyberSecurityTeam()
+        {
+            return View();
+        }
+
+        public IActionResult Skyblivion()
+        {
+            return View();
+        }
+
+        public IActionResult TechnologyServices()
+        {
+            return View();
+        }
+
+        public IActionResult SimLabExpo()
+        {
+            return View();
+        }
+
+        public IActionResult WiredWorks()
+        {
+            return View();
+        }
+
+        public IActionResult DndTools()
+        {
+            return View();
+        }
+
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
         public IActionResult Error()
         {
