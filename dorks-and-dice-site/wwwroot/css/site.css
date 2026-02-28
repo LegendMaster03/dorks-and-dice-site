@@ -289,6 +289,7 @@ body.dark-mode code {
   h2.h4 {
     font-size: 10.4pt !important;
     color: #fff !important;
+    -webkit-text-fill-color: #fff !important;
     background: #0f3b86 !important;
     text-transform: uppercase;
     letter-spacing: 0.02em;
