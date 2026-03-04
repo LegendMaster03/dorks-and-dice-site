@@ -19,6 +19,23 @@ January 2023 - August 2023 (plus prior study August 2020 - July 2022)
 Florida Polytechnic University, Lakeland, FL
 August 2022 - December 2022
 Prior study at Florida State College at Jacksonville: August 2020 - July 2022
+Honors & Awards
+Upsilon Pi Epsilon (UPE), International Honor Society for the Computing Sciences
+Issued February 2026 by Upsilon Pi Epsilon | Associated with University of North Florida
+International Honor Society for the Computing Sciences.
+Dean's List
+Issued May 2025 by William F. Klostermeyer | Associated with University of North Florida
+Awarded for strong academic performance.
+Eagle Scout
+Issued August 5, 2020 by Boy Scouts of America
+- Held multiple troop leadership roles, including Senior Patrol Leader and Webmaster.
+- Completed National Youth Leadership Training and later served as an instructor.
+- Applied EDGE leadership methodology: Educate, Demonstrate, Guide, and Enable.
+As a Boy Scout, I learned the value of strong leadership through multiple Positions of Responsibility:
+Den Chief, Historian, Web Master, SPL, ASPL, OA Representative, and Junior Assistant Scout Master.
+I attended NYLT and later returned to staff NYLT. These experiences built practical skills in teamwork,
+teaching through the EDGE method, patience, social communication, conflict resolution, motivation,
+and mentoring younger scouts. These lessons continue to shape my professional and personal leadership style.
 Skills
 Industry Knowledge
 Back-end Web Development, Front-end Development, Patch Management, Cybersecurity, Application Development, Multimedia, Game Development, Game Design, Level Design, Technical Support
@@ -26,15 +43,6 @@ Tools and Technologies
 Python, JavaScript, C, C#, Java, HTML5, HTML, Unity, Unreal Engine, Unreal Engine 4, Creation Kit, Gamebryo, 3D Printing, Audio Visual (AV) Systems, Computer Building, Technical Support (Windows, Mac, Linux)
 Interpersonal Skills
 Leadership, collaboration, mentoring, communication, conflict resolution, and instructional coaching through the EDGE method.
-Honors and Memberships
-Upsilon Pi Epsilon (UPE), International Honor Society for the Computing Sciences
-Issued February 2026 | Associated with University of North Florida
-Recognized membership in the international honor society for computing and information disciplines.
-Dean's List
-Issued May 2025 by William F. Klostermeyer | Associated with University of North Florida
-Awarded for strong academic performance.
-Eagle Scout
-Issued August 5, 2020 by Boy Scouts of America
 Experience
 UNF Cyber Security Team - Web Specialist and Windows Specialist
 2024 - Present
@@ -84,13 +92,3 @@ Dungeons & Dragons Game Master
 2024 - Present
 - Plans and runs sessions with long-term creative and systems planning.
 - Builds team communication, conflict resolution, adaptability, and collaboration.
-Eagle Scout
-August 2009 - March 2021
-- Held multiple troop leadership roles, including Senior Patrol Leader and Webmaster.
-- Completed National Youth Leadership Training and later served as an instructor.
-- Applied EDGE leadership methodology: Educate, Demonstrate, Guide, and Enable.
-As a Boy Scout, I learned the value of strong leadership through multiple Positions of Responsibility:
-Den Chief, Historian, Web Master, SPL, ASPL, OA Representative, and Junior Assistant Scout Master.
-I attended NYLT and later returned to staff NYLT. These experiences built practical skills in teamwork,
-teaching through the EDGE method, patience, social communication, conflict resolution, motivation,
-and mentoring younger scouts. These lessons continue to shape my professional and personal leadership style.
