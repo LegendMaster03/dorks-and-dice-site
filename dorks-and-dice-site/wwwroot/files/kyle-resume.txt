@@ -87,8 +87,12 @@ Weed Wacker (S.I.M. Lab Expo Prototype)
 Motion capture, asset support, and game demo creation.
 D&D Tooling and Campaign Systems
 Frameworks and tools for long-form collaborative campaigns.
-Leadership and Activities
+Leadership Experience
 Dungeons & Dragons Game Master
 2024 - Present
-- Plans and runs sessions with long-term creative and systems planning.
-- Builds team communication, conflict resolution, adaptability, and collaboration.
+Related project:
+D&D Tooling and Campaign Systems
+- Plans and facilitates recurring sessions, balancing long-term roadmap planning with weekly execution.
+- Leads live group communication and public-speaking-style facilitation for collaborative decision-making.
+- Resolves interpersonal conflicts and keeps teams aligned under changing priorities and constraints.
+- Builds repeatable systems and documentation to improve onboarding, consistency, and delivery quality.
