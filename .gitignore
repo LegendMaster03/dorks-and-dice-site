@@ -6,4 +6,5 @@
 # Build outputs
 bin/
 obj/
+.tmp/
 *.png

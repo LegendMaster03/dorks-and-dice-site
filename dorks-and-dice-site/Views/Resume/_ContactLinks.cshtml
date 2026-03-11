@@ -10,7 +10,7 @@
        href="@link.Href"
        target="@(link.OpenInNewTab ? "_blank" : null)"
        rel="@(link.OpenInNewTab ? "me noopener noreferrer" : null)">
-        <img src="@link.IconUrl" class="@iconCss" alt="@link.IconAltText" />
+        <img src="@Url.Content(link.IconUrl)" class="@iconCss" alt="@link.IconAltText" />
         <span>@link.Label</span>
     </a>
 }

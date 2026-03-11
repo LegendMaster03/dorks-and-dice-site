@@ -10,7 +10,7 @@
     <div class="row g-4 align-items-stretch">
         <div class="col-lg-8 d-flex">
             <div class="resume-hero-main d-flex align-items-stretch gap-3 flex-grow-1 flex-wrap flex-md-nowrap">
-                <img src="@Model.Header.HeadshotImageUrl"
+                <img src="@Url.Content(Model.Header.HeadshotImageUrl)"
                      class="profile-headshot profile-headshot-hero img-fluid rounded-circle border"
                      alt="@Model.Header.HeadshotAltText"
                      width="613"
@@ -20,7 +20,7 @@
                     <p class="mb-1">@Model.Header.Headline</p>
                     <p class="text-muted mb-3">@Model.Header.Location</p>
                     <p class="mb-0">
-                        Download PDF: <a class="fw-semibold" href="@Model.Header.ResumePdfUrl" download>@Model.Header.ResumePdfFileName</a>
+                        Download PDF: <a class="fw-semibold" href="@Url.Content(Model.Header.ResumePdfUrl)" download>@Model.Header.ResumePdfFileName</a>
                     </p>
                     <p class="text-muted small mb-0 mt-2">Last updated: @Model.Header.LastUpdatedText</p>
                 </div>
