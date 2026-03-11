@@ -36,7 +36,12 @@ namespace dorks_and_dice_site.Controllers
 
         public IActionResult CyberSecurityTeam()
         {
-            return RedirectToAction(nameof(ResumeController.CyberSecurityTeam), "Resume");
+            return RedirectToAction(nameof(ResumeController.DirectedIndependentStudy), "Resume");
+        }
+
+        public IActionResult DirectedIndependentStudy()
+        {
+            return RedirectToAction(nameof(ResumeController.DirectedIndependentStudy), "Resume");
         }
 
         public IActionResult Skyblivion()

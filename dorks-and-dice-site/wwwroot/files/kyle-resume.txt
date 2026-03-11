@@ -76,9 +76,9 @@ Skyblivion Interiors
 Detailed interior design work and image gallery.
 Skywind Interiors
 Interior level design work completed for the Skywind project.
-Technology Services (Personal Business)
+Technology Services
 Client-focused upgrades, migrations, and network support work.
-Weed Wacker (S.I.M. Lab Expo Prototype)
+Weed Wacker
 Motion capture, asset support, and game demo creation.
 D&D Tooling and Campaign Systems
 Frameworks and tools for long-form collaborative campaigns.

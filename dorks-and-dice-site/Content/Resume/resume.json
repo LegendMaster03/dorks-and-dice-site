@@ -244,7 +244,7 @@
       "subtitle": "UNF Cyber Team Performance",
       "summary": "Independent study deliverables focused on cybersecurity team process analysis, gap planning, and curriculum recommendations.",
       "category": "professional",
-      "action": "CyberSecurityTeam",
+      "action": "DirectedIndependentStudy",
       "tags": [
         "cybersecurity",
         "research"
@@ -272,7 +272,8 @@
       ]
     },
     {
-      "title": "Technology Services (Personal Business)",
+      "title": "Technology Services",
+      "subtitle": "Personal Business",
       "summary": "Client-focused upgrades, migrations, and network support work.",
       "category": "professional",
       "action": "TechnologyServices",
@@ -281,7 +282,8 @@
       ]
     },
     {
-      "title": "Weed Wacker (S.I.M. Lab Expo Prototype)",
+      "title": "Weed Wacker",
+      "subtitle": "S.I.M. Lab Expo Prototype",
       "summary": "Motion capture, asset support, and game demo creation.",
       "category": "professional",
       "action": "SimLabExpo",

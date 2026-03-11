@@ -27,9 +27,14 @@ namespace dorks_and_dice_site.Controllers
             return View();
         }
 
-        public IActionResult CyberSecurityTeam()
+        public IActionResult DirectedIndependentStudy()
         {
             return View();
+        }
+
+        public IActionResult CyberSecurityTeam()
+        {
+            return RedirectToAction(nameof(DirectedIndependentStudy));
         }
 
         public IActionResult Skyblivion()
