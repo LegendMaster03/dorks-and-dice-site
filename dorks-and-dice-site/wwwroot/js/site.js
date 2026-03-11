@@ -25,6 +25,40 @@
     });
 })();
 
+// Image gallery modal expand logic
+(() => {
+    const gallery = document.querySelector('.project-gallery');
+    const modal = document.getElementById('imageModal');
+    const modalImg = document.getElementById('imageModalImg');
+    const closeBtn = modal ? modal.querySelector('.image-modal-close') : null;
+    const backdrop = modal ? modal.querySelector('.image-modal-backdrop') : null;
+
+    if (!gallery || !modal || !modalImg || !closeBtn || !backdrop) return;
+
+    gallery.addEventListener('click', function(e) {
+        const img = e.target.closest('img.card-img-top');
+        if (!img) return;
+        modalImg.src = img.src;
+        modalImg.alt = img.alt;
+        modal.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+    });
+
+    function closeModal() {
+        modal.style.display = 'none';
+        modalImg.src = '';
+        document.body.style.overflow = '';
+    }
+
+    closeBtn.addEventListener('click', closeModal);
+    backdrop.addEventListener('click', closeModal);
+    document.addEventListener('keydown', function(e) {
+        if (modal.style.display === 'flex' && (e.key === 'Escape' || e.key === 'Esc')) {
+            closeModal();
+        }
+    });
+})();
+
 (() => {
     const filterContainer = document.getElementById("projectFilters");
     if (!filterContainer) {
