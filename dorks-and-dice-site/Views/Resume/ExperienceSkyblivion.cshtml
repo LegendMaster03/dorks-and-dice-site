@@ -1,16 +1,18 @@
 @{
     ViewData["Title"] = "Experience: Skyblivion";
+    var header = new dorks_and_dice_site.Models.Resume.ResumeDetailHeaderViewModel
+    {
+        Title = "Experience: Skyblivion Global Project",
+        Subtitle = "Skyblivion",
+        MetaLine = "Interior Level Designer | March 2021 - August 2022 | Ponte Vedra Beach, FL",
+        LogoUrl = Url.Content("~/images/logos/skyblivion.png"),
+        LogoAltText = "Skyblivion logo",
+        LogoLinkUrl = "https://skyblivion.com/",
+        LogoAriaLabel = "Skyblivion website"
+    };
 }
 
-<div class="d-flex justify-content-between align-items-start gap-3 mb-3 flex-wrap">
-    <div>
-        <h1 class="mb-1">Experience: Skyblivion Global Project</h1>
-        <p class="text-muted mb-0">Interior Level Designer | March 2021 - August 2022 | Ponte Vedra Beach, FL</p>
-    </div>
-    <a href="https://skyblivion.com/" target="_blank" rel="noopener noreferrer" aria-label="Skyblivion website">
-        <img src="~/images/logos/skyblivion.png" class="experience-logo" alt="Skyblivion logo" />
-    </a>
-</div>
+@await Html.PartialAsync("_ResumeDetailHeader", header)
 
 <p>
     Collaborative game-development role on a distributed team with a focus on interior level design and technical iteration.

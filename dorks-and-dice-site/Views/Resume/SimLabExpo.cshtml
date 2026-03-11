@@ -1,8 +1,14 @@
 @{
     ViewData["Title"] = "Weed Wacker (S.I.M. Lab Expo Prototype)";
+    var header = new dorks_and_dice_site.Models.Resume.ResumeDetailHeaderViewModel
+    {
+        Title = "Weed Wacker (S.I.M. Lab Expo Prototype)",
+        Subtitle = "Florida Polytechnic University S.I.M. Lab project",
+        MetaLine = "Student worker contributor | Fall 2022 | Lakeland, FL"
+    };
 }
 
-<h1 class="mb-3">Weed Wacker (S.I.M. Lab Expo Prototype)</h1>
+@await Html.PartialAsync("_ResumeDetailHeader", header)
 <p>
     Student worker contribution at Florida Polytechnic University's S.I.M. Lab.
     Work included media production support, motion capture support, and building a game demo for the Fall 2022 Game Expo.

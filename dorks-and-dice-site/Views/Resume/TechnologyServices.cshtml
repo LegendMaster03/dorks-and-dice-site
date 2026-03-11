@@ -1,9 +1,14 @@
 @{
     ViewData["Title"] = "Technology Services";
+    var header = new dorks_and_dice_site.Models.Resume.ResumeDetailHeaderViewModel
+    {
+        Title = "Technology Services (Personal Business)",
+        Subtitle = "Client-focused technology support and systems work",
+        MetaLine = "Tech Enthusiast | 2019 - Present | Ponte Vedra Beach, FL"
+    };
 }
 
-<h1 class="mb-3">Technology Services (Personal Business)</h1>
-<p>Client-focused technology support and systems work (2019 - Present).</p>
+@await Html.PartialAsync("_ResumeDetailHeader", header)
 <ul>
     <li>Computer migrations and software upgrades</li>
     <li>Data-entry support and network management tasks</li>

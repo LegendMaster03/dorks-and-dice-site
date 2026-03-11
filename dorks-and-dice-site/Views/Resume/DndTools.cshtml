@@ -1,8 +1,14 @@
 @{
     ViewData["Title"] = "D&D Tools";
+    var header = new dorks_and_dice_site.Models.Resume.ResumeDetailHeaderViewModel
+    {
+        Title = "D&D Tooling and Campaign Systems",
+        Subtitle = "Leadership and systems-design project",
+        MetaLine = "Game Master | 2024 - Present | Jacksonville, FL"
+    };
 }
 
-<h1 class="mb-3">D&amp;D Tooling and Campaign Systems</h1>
+@await Html.PartialAsync("_ResumeDetailHeader", header)
 <p>
     A leadership and systems-design project built through long-form campaign operations.
     This work demonstrates planning, facilitation, communication, and process design that

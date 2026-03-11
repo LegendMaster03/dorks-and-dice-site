@@ -1,8 +1,14 @@
 @{
     ViewData["Title"] = "XnGine Framework";
+    var header = new dorks_and_dice_site.Models.Resume.ResumeDetailHeaderViewModel
+    {
+        Title = "XnGine Framework",
+        Subtitle = "Mod Organizer 2: XnGine Game Plugins",
+        MetaLine = "Plugin developer | Ongoing personal project | Remote"
+    };
 }
 
-<h1 class="mb-3">Mod Organizer 2: XnGine Game Plugins</h1>
+@await Html.PartialAsync("_ResumeDetailHeader", header)
 <p>
     I built a set of Mod Organizer 2 game plugins for Bethesda's classic XnGine titles:
     Battlespire, Daggerfall, and Redguard.
@@ -25,9 +31,12 @@
     C++, Qt 6, CMake, Ninja, vcpkg, Mod Organizer 2 SDK, Windows/Visual Studio toolchain
 </p>
 
+<h2 class="h5 mt-4">Repository</h2>
 <p class="mb-0">
-    Repository:
-    <a href="https://github.com/LegendMaster03/modorganizer-game_xngine" target="_blank" rel="noopener noreferrer">
-        github.com/LegendMaster03/modorganizer-game_xngine
+    <a class="btn btn-sm btn-outline-primary"
+       href="https://github.com/LegendMaster03/modorganizer-game_xngine"
+       target="_blank"
+       rel="noopener noreferrer">
+        View on GitHub
     </a>
 </p>

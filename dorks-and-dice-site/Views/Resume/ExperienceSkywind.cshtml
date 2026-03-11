@@ -1,16 +1,18 @@
 @{
     ViewData["Title"] = "Experience: Skywind";
+    var header = new dorks_and_dice_site.Models.Resume.ResumeDetailHeaderViewModel
+    {
+        Title = "Experience: Skywind",
+        Subtitle = "Skywind",
+        MetaLine = "Interior Level Designer | December 2021 - 2022",
+        LogoUrl = Url.Content("~/images/logos/skywind.png"),
+        LogoAltText = "Skywind logo",
+        LogoLinkUrl = "https://tesrskywind.com/",
+        LogoAriaLabel = "Skywind website"
+    };
 }
 
-<div class="d-flex justify-content-between align-items-start gap-3 mb-3 flex-wrap">
-    <div>
-        <h1 class="mb-1">Experience: Skywind</h1>
-        <p class="text-muted mb-0">Interior Level Designer | December 2021 - 2022</p>
-    </div>
-    <a href="https://tesrskywind.com/" target="_blank" rel="noopener noreferrer" aria-label="Skywind website">
-        <img src="~/images/logos/skywind.png" class="experience-logo" alt="Skywind logo" />
-    </a>
-</div>
+@await Html.PartialAsync("_ResumeDetailHeader", header)
 
 <p>
     Parallel mod-development collaboration focused on interior level design and environment execution.

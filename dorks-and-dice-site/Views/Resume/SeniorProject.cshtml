@@ -1,44 +1,28 @@
 @{
     ViewData["Title"] = "Senior Project";
+    var header = new dorks_and_dice_site.Models.Resume.ResumeDetailHeaderViewModel
+    {
+        Title = "Senior Project",
+        Subtitle = "Safe Future Barcode for Good",
+        MetaLine = "Student developer on a team-based client project | Year-long UNF senior capstone | Jacksonville, FL",
+        LogoUrl = Url.Content("~/images/logos/safe-future-logo.png"),
+        LogoAltText = "Safe Future Foundation logo",
+        LogoLinkUrl = "https://www.asafefuture.org/",
+        LogoAriaLabel = "Safe Future Foundation website",
+        InfoItems = new Dictionary<string, string>
+        {
+            ["Client"] = "Safe Future Foundation",
+            ["Client contact"] = "Chris Tobey",
+            ["Project type"] = "Year-long UNF senior capstone",
+            ["Project name"] = "Safe Future Barcode for Good",
+            ["Role"] = "Student developer on a team-based client project",
+            ["Focus areas"] = "QR workflow, CSV export, error handling, requirements iteration",
+            ["Process"] = "Scrum, Jira, recurring client meetings, class demos"
+        }
+    };
 }
 
-<div class="d-flex justify-content-between align-items-start gap-3 mb-3 flex-wrap">
-    <div>
-        <h1 class="mb-1">Senior Project</h1>
-        <p class="text-muted mb-0">Safe Future Barcode for Good</p>
-    </div>
-    <a href="https://www.asafefuture.org/" target="_blank" rel="noopener noreferrer" aria-label="Safe Future Foundation website">
-        <img src="~/images/logos/safe-future-logo.png" class="experience-logo" alt="Safe Future Foundation logo" />
-    </a>
-</div>
-
-<section class="card mb-4">
-    <div class="card-body">
-        <h2 class="h6 text-uppercase mb-3">Project Metadata</h2>
-        <dl class="row mb-0">
-            <dt class="col-sm-3">Client</dt>
-            <dd class="col-sm-9">Safe Future Foundation</dd>
-
-            <dt class="col-sm-3">Client contact</dt>
-            <dd class="col-sm-9">Chris Tobey</dd>
-
-            <dt class="col-sm-3">Project type</dt>
-            <dd class="col-sm-9">Year-long UNF senior capstone</dd>
-
-            <dt class="col-sm-3">Project name</dt>
-            <dd class="col-sm-9">Safe Future Barcode for Good</dd>
-
-            <dt class="col-sm-3">Role</dt>
-            <dd class="col-sm-9">Student developer on a team-based client project</dd>
-
-            <dt class="col-sm-3">Focus areas</dt>
-            <dd class="col-sm-9">QR workflow, CSV export, error handling, requirements iteration</dd>
-
-            <dt class="col-sm-3">Process</dt>
-            <dd class="col-sm-9 mb-0">Scrum, Jira, recurring client meetings, class demos</dd>
-        </dl>
-    </div>
-</section>
+@await Html.PartialAsync("_ResumeDetailHeader", header)
 
 <h2 class="h5 mt-4">Overview</h2>
 <p>

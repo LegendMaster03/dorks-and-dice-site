@@ -1,0 +1,42 @@
+@model dorks_and_dice_site.Models.Resume.ResumeDetailHeaderViewModel
+
+<div class="d-flex justify-content-between align-items-start gap-3 mb-3 flex-wrap">
+    <div>
+        <h1 class="mb-1">@Model.Title</h1>
+        @if (!string.IsNullOrWhiteSpace(Model.Subtitle))
+        {
+            <p class="text-muted mb-1">@Model.Subtitle</p>
+        }
+        @if (!string.IsNullOrWhiteSpace(Model.MetaLine))
+        {
+            <p class="resume-detail-meta text-muted mb-0">@Model.MetaLine</p>
+        }
+    </div>
+    @if (!string.IsNullOrWhiteSpace(Model.LogoUrl) && !string.IsNullOrWhiteSpace(Model.LogoLinkUrl))
+    {
+        <a href="@Model.LogoLinkUrl"
+           target="_blank"
+           rel="noopener noreferrer"
+           aria-label="@(string.IsNullOrWhiteSpace(Model.LogoAriaLabel) ? "Organization website" : Model.LogoAriaLabel)">
+            <img src="@Model.LogoUrl"
+                 class="experience-logo"
+                 alt="@(string.IsNullOrWhiteSpace(Model.LogoAltText) ? "Organization logo" : Model.LogoAltText)" />
+        </a>
+    }
+</div>
+
+@if (Model.InfoItems.Count > 0)
+{
+    <section class="card mb-4">
+        <div class="card-body">
+            <h2 class="h6 text-uppercase mb-3">Project Information</h2>
+            <dl class="row mb-0">
+                @foreach (var item in Model.InfoItems)
+                {
+                    <dt class="col-sm-3">@item.Key</dt>
+                    <dd class="col-sm-9">@item.Value</dd>
+                }
+            </dl>
+        </div>
+    </section>
+}

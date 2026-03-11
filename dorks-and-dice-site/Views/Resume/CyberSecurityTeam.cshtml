@@ -1,9 +1,14 @@
 @{
     ViewData["Title"] = "UNF Cyber Security Team";
+    var header = new dorks_and_dice_site.Models.Resume.ResumeDetailHeaderViewModel
+    {
+        Title = "UNF Cyber Security Team Work",
+        Subtitle = "Team preparation and competition workflows",
+        MetaLine = "Web Specialist and Windows Specialist | 2024 - Present | Jacksonville, FL"
+    };
 }
 
-<h1 class="mb-3">UNF Cyber Security Team Work</h1>
-<p>Role: Web Specialist and Windows Specialist (2024 - Present).</p>
+@await Html.PartialAsync("_ResumeDetailHeader", header)
 
 <figure class="mb-3">
     <img src="~/images/cybersecurity/unf-cptc-regionals-2025.jpg"

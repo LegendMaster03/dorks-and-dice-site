@@ -250,6 +250,10 @@ body {
   font-weight: 600;
 }
 
+.resume-detail-meta {
+  font-size: 0.95rem;
+}
+
 .contact-link {
   display: flex;
   align-items: center;
