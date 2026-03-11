@@ -3,10 +3,10 @@
 @for (var i = 0; i < Model.Count; i++)
 {
     var link = Model[i];
+    var linkCssClass = i == Model.Count - 1 ? "contact-link mb-0" : "contact-link";
     var iconCss = $"contact-icon{(string.IsNullOrWhiteSpace(link.IconCssClass) ? string.Empty : $" {link.IconCssClass}")}";
-    var lastClass = i == Model.Count - 1 ? " mb-0" : string.Empty;
 
-    <a class="contact-link@lastClass"
+    <a class="@linkCssClass"
        href="@link.Href"
        target="@(link.OpenInNewTab ? "_blank" : null)"
        rel="@(link.OpenInNewTab ? "me noopener noreferrer" : null)">
