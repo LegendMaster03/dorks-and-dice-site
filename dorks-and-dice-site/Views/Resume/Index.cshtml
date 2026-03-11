@@ -98,6 +98,10 @@
                         <article class="featured-project-tile h-100">
                             <p class="featured-project-meta mb-2">@categoryLabel</p>
                             <h4 class="h5 mb-2">@project.Title</h4>
+                            @if (!string.IsNullOrWhiteSpace(project.Subtitle))
+                            {
+                                <p class="featured-project-subtitle text-muted mb-2">@project.Subtitle</p>
+                            }
                             <p class="mb-3">@project.Summary</p>
                             <a class="btn btn-sm btn-primary" asp-controller="Resume" asp-action="@project.Action">
                                 @(string.IsNullOrWhiteSpace(project.LinkText) ? "Open project" : project.LinkText)

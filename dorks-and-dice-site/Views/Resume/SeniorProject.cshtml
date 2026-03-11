@@ -2,15 +2,148 @@
     ViewData["Title"] = "Senior Project";
 }
 
-<h1 class="mb-3">Senior Project</h1>
+<h1 class="mb-1">Senior Project</h1>
+<p class="text-muted mb-3">Safe Future Barcode for Good</p>
+
+<h2 class="h5 mt-4">Overview</h2>
 <p>
-    Capstone work focused on practical system implementation, end-to-end delivery,
-    and lessons learned from scope management and execution.
+    For my senior project at the University of North Florida, I worked on a year-long team engagement with
+    Safe Future Foundation, a Jacksonville nonprofit. Rather than building a hypothetical class project,
+    our team served as an unpaid development team for a real client and worked on a web-based inventory system
+    designed to improve how donated goods were tracked, labeled, and managed.
+</p>
+<p>
+    The project focused on inventory visibility, item identification, and operational reporting.
+    Safe Future Foundation needed a better way to track items coming in and going out, generate scannable labels,
+    and make inventory data easier to search, review, and export.
 </p>
 
-<h2 class="h5 mt-4">Tech Stack</h2>
-<p class="mb-0">
-    Back-End Web Development, Front-End Development, Application Development, HTML5, JavaScript.
+<h2 class="h5 mt-4">Why It Mattered</h2>
+<p>
+    Safe Future Foundation supports families and the local community through programs related to food access,
+    diaper distribution, and other essential resources. Because of that, inventory accuracy was not just a convenience issue.
+    It affected day-to-day operations, reporting, and confidence in what items were available.
+</p>
+<p>
+    The project gave me experience working on software with a real stakeholder, real constraints,
+    and real operational value. It also required balancing course deliverables with the practical needs
+    of a nonprofit client.
+</p>
+
+<h2 class="h5 mt-4">My Role</h2>
+<p>
+    This was a team project, but my work concentrated on several specific areas of the application and its supporting documentation.
+    My contribution was not primarily focused on broad frontend design. Instead, I contributed in areas such as:
+</p>
+<ul>
+    <li>QR code workflow design and implementation</li>
+    <li>feature refinement and simplification</li>
+    <li>CSV inventory export</li>
+    <li>error handling and user-facing feedback</li>
+    <li>use-case documentation and iteration over changing requirements</li>
+</ul>
+<p>
+    One of the more important ways I contributed was by helping refine the scope of the QR-label workflow over time.
+    I rewrote that use case multiple times as the design evolved, and I also took the initiative to review whether
+    the earlier persistence-oriented approach was worth keeping. After doing my own analysis, I recommended simplifying
+    the feature toward on-demand QR generation rather than storing QR records as a separate workflow.
+    That recommendation was later accepted and helped reduce unnecessary complexity.
+</p>
+
+<h2 class="h5 mt-4">How The Project Worked</h2>
+<p>
+    The project ran across the academic year and followed a more structured team workflow than a typical class assignment.
+    We used Scrum and Jira to manage work, track progress, and iterate on features over time.
+</p>
+<p>
+    Our team also met with the client regularly throughout the year to gather feedback and adjust the system around actual operational needs.
+    Separately, we submitted formal deliverables to the professor and presented recurring demos in class to show progress against project milestones.
+    Those were separate parts of the workflow: client meetings informed the product, while course deliverables documented and evaluated the work.
+</p>
+
+<h2 class="h5 mt-4">Technologies And Tools</h2>
+<ul>
+    <li>ASP.NET Core MVC</li>
+    <li>Entity Framework Core</li>
+    <li>C#</li>
+    <li>QR generation with ZXing and SkiaSharp</li>
+    <li>Jira</li>
+    <li>Scrum</li>
+</ul>
+
+<h2 class="h5 mt-4">What I Worked On</h2>
+
+<h3 class="h6 mt-3">QR Code Workflow</h3>
+<p>
+    One of the most visible parts of my contribution was the inventory QR workflow.
+    From the inventory interface, users could open a QR page for an individual item, preview the generated code,
+    download it as a PNG, print it, and return to the item record. The generated QR code pointed to that item's detail page,
+    which created a simple labeling workflow tied directly to the inventory system.
+</p>
+<p>
+    This part of the project changed significantly over time. Early in development, I had worked on a more complicated
+    barcode-oriented storage approach. Fairly early on, I removed that direction and rebuilt the workflow around QR codes instead.
+    As development continued, I pushed further toward simplifying the feature by supporting dynamic QR generation on demand rather than
+    treating QR codes as a separate stored record type. That reduced overhead and better matched the actual use case.
+</p>
+
+<h3 class="h6 mt-3">Inventory CSV Export</h3>
+<p>
+    I also added a server-side CSV export for inventory data.
+    This was a smaller feature compared with the QR workflow, but it was still useful because it made the system more practical
+    for reporting, portability, and offline review.
+</p>
+<p>
+    The export produced a timestamped CSV file containing key inventory fields such as item ID, name, description, quantity,
+    category, barcode, expiration date, and date added. It was not the most complex part of the project, but it was a concrete
+    improvement that made the application more useful outside the browser.
+</p>
+
+<h3 class="h6 mt-3">Error Handling And User Feedback</h3>
+<p>
+    I worked on improving error handling and making the application more understandable when something went wrong.
+    That included user-facing error messaging, logging, and more consistent handling of missing or invalid requests.
+</p>
+<p>
+    For example, the application used a shared error view with clearer messaging and request IDs, and the inventory workflow
+    included item-specific not-found handling, including a more helpful message when a QR code pointed to an item that could no longer be found.
+    This was one of the less flashy parts of the project, but it mattered because it made the application more usable and easier to diagnose.
+</p>
+
+<h3 class="h6 mt-3">Documentation And Requirements Work</h3>
+<p>
+    Because this was a year-long senior project, documentation was a real part of the work, not just something done at the end.
+    I contributed to use-case documentation and revised the QR-related use case multiple times as the design changed.
+</p>
+<p>
+    That process reflected a broader reality of the project: the client's needs stayed consistent, but the best implementation approach
+    became clearer only as the team built and reviewed the system over time.
+</p>
+
+<h2 class="h5 mt-4">Challenges And Lessons</h2>
+<p>
+    This project involved more than just implementing features. It required working within a team, communicating with a real client,
+    responding to feedback over time, and staying grounded in what the organization actually needed.
+</p>
+<ul>
+    <li>A simpler implementation is often better than a more elaborate one.</li>
+    <li>Client-facing usefulness matters more than feature count.</li>
+    <li>Documentation, communication, and demos are part of real software work.</li>
+    <li>Error handling and operational polish matter just as much as major features.</li>
+</ul>
+<p>
+    The QR workflow is the clearest example. It started as a more complicated design, evolved into a simpler QR-based workflow,
+    and eventually became a practical on-demand implementation. That progression taught me a lot about scope control and engineering judgment.
+</p>
+
+<h2 class="h5 mt-4">Current Status</h2>
+<p>
+    This project was completed as part of my UNF senior project sequence. It represents a year of team-based client work
+    rather than a short standalone build.
+</p>
+<p>
+    What I find most valuable about it now is not just the finished application, but the combination of client communication,
+    iterative development, technical problem-solving, documentation, and feature decisions shaped by real constraints.
 </p>
 
 <h2 class="h5 mt-4">Repository</h2>

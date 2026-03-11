@@ -22,6 +22,10 @@
                 <p class="small text-muted project-featured-note mb-2">Also shown above in Featured Projects.</p>
             }
             <h2 class="h5 card-title">@Model.Title</h2>
+            @if (!string.IsNullOrWhiteSpace(Model.Subtitle))
+            {
+                <p class="project-card-subtitle text-muted mb-2">@Model.Subtitle</p>
+            }
             <p class="card-text">@Model.Summary</p>
             @if (Model.Tags.Count > 0)
             {

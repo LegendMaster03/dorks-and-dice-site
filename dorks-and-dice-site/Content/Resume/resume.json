@@ -230,7 +230,8 @@
     },
     {
       "title": "Senior Project",
-      "summary": "Capstone work focused on practical system implementation and delivery.",
+      "subtitle": "Safe Future Barcode for Good",
+      "summary": "Year-long UNF capstone project for Safe Future Foundation, a Jacksonville nonprofit. Worked on a web-based inventory system with QR-based item labeling, CSV export, error handling, and iterative feature refinement driven by real client needs.",
       "category": "professional",
       "action": "SeniorProject",
       "featured": true,

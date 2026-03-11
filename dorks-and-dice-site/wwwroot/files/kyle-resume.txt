@@ -69,7 +69,7 @@ Projects
 XnGine Framework
 Personal project: in-progress framework architecture and engineering documentation.
 Senior Project
-Capstone work focused on practical system implementation and delivery.
+Year-long UNF capstone project for Safe Future Foundation, a Jacksonville nonprofit. Worked on a web-based inventory system with QR-based item labeling, CSV export, error handling, and iterative feature refinement driven by real client needs.
 UNF Cyber Security Team Work
 Security practice methodologies, team prep, and competition workflows.
 Skyblivion Interiors
