@@ -26,7 +26,8 @@ public static class ResumePageContentBuilder
             throw new InvalidOperationException($"Failed to deserialize resume content from '{jsonPath}'.");
         }
 
-        ValidateRequiredContent(model, jsonPath);
+        NormalizeCollections(model);
+        ResumeContentValidator.ValidateOrThrow(model, jsonPath);
         return model;
     }
 
@@ -61,51 +62,40 @@ public static class ResumePageContentBuilder
             $"Resume content JSON was not found. Checked: {string.Join("; ", candidatePaths)}");
     }
 
-    private static void ValidateRequiredContent(ResumeViewModel model, string sourcePath)
+    private static void NormalizeCollections(ResumeViewModel model)
     {
-        if (model.Header is null)
+        model.ContactLinks ??= [];
+        model.EducationEntries ??= [];
+        model.AwardEntries ??= [];
+        model.SkillCategories ??= [];
+        model.ExperienceItems ??= [];
+        model.ProjectItems ??= [];
+        model.LeadershipEntries ??= [];
+
+        foreach (var educationEntry in model.EducationEntries)
         {
-            throw new InvalidOperationException($"Resume header is required in '{sourcePath}'.");
+            educationEntry.Lines ??= [];
         }
 
-        if (string.IsNullOrWhiteSpace(model.Header.FullName))
+        foreach (var awardEntry in model.AwardEntries)
         {
-            throw new InvalidOperationException($"Resume header fullName is required in '{sourcePath}'.");
+            awardEntry.Highlights ??= [];
         }
 
-        if (model.ContactLinks is null || model.ContactLinks.Count == 0)
+        foreach (var experienceItem in model.ExperienceItems)
         {
-            throw new InvalidOperationException($"At least one contact link is required in '{sourcePath}'.");
+            experienceItem.Highlights ??= [];
+            experienceItem.Tags ??= [];
         }
 
-        if (model.EducationEntries is null || model.EducationEntries.Count == 0)
+        foreach (var projectItem in model.ProjectItems)
         {
-            throw new InvalidOperationException($"At least one education entry is required in '{sourcePath}'.");
+            projectItem.Tags ??= [];
         }
 
-        if (model.AwardEntries is null || model.AwardEntries.Count == 0)
+        foreach (var leadershipEntry in model.LeadershipEntries)
         {
-            throw new InvalidOperationException($"At least one award entry is required in '{sourcePath}'.");
-        }
-
-        if (model.SkillCategories is null || model.SkillCategories.Count == 0)
-        {
-            throw new InvalidOperationException($"At least one skill category is required in '{sourcePath}'.");
-        }
-
-        if (model.ExperienceItems is null || model.ExperienceItems.Count == 0)
-        {
-            throw new InvalidOperationException($"At least one experience item is required in '{sourcePath}'.");
-        }
-
-        if (model.ProjectItems is null || model.ProjectItems.Count == 0)
-        {
-            throw new InvalidOperationException($"At least one project item is required in '{sourcePath}'.");
-        }
-
-        if (model.LeadershipEntries is null || model.LeadershipEntries.Count == 0)
-        {
-            throw new InvalidOperationException($"At least one leadership entry is required in '{sourcePath}'.");
+            leadershipEntry.Highlights ??= [];
         }
     }
 }

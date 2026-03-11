@@ -27,7 +27,11 @@
     <EmbeddedResource Remove="tools\**\*" />
   </ItemGroup>
 
-  <Target Name="GenerateResumeTextFile" BeforeTargets="BeforeBuild" Condition="'$(DesignTimeBuild)' != 'true' and Exists('$(MSBuildProjectDirectory)/tools/ResumeTxtGenerator/ResumeTxtGenerator.csproj')">
+  <Target Name="ValidateResumeContentJson" BeforeTargets="BeforeBuild" Condition="'$(DesignTimeBuild)' != 'true' and Exists('$(MSBuildProjectDirectory)/tools/ResumeTxtGenerator/ResumeTxtGenerator.csproj')">
+    <Exec Command="dotnet run --project &quot;$(MSBuildProjectDirectory)/tools/ResumeTxtGenerator/ResumeTxtGenerator.csproj&quot; -- --validate &quot;$(MSBuildProjectDirectory)&quot;" />
+  </Target>
+
+  <Target Name="GenerateResumeTextFile" BeforeTargets="BeforeBuild" DependsOnTargets="ValidateResumeContentJson" Condition="'$(DesignTimeBuild)' != 'true' and Exists('$(MSBuildProjectDirectory)/tools/ResumeTxtGenerator/ResumeTxtGenerator.csproj')">
     <Exec Command="dotnet run --project &quot;$(MSBuildProjectDirectory)/tools/ResumeTxtGenerator/ResumeTxtGenerator.csproj&quot; -- &quot;$(MSBuildProjectDirectory)&quot;" />
   </Target>
 

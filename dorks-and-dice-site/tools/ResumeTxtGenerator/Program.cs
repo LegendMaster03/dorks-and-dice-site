@@ -2,22 +2,45 @@ using System.Text;
 using dorks_and_dice_site.Models.Resume;
 using dorks_and_dice_site.Services.Resume;
 
-if (args.Length != 1)
+if (args.Length is < 1 or > 2)
 {
-    Console.Error.WriteLine("Usage: ResumeTxtGenerator <mvc-project-directory>");
+    Console.Error.WriteLine("Usage:");
+    Console.Error.WriteLine("  ResumeTxtGenerator <mvc-project-directory>");
+    Console.Error.WriteLine("  ResumeTxtGenerator --validate <mvc-project-directory>");
     return 1;
 }
 
-var projectDir = args[0];
-var outputPath = Path.Combine(projectDir, "wwwroot", "files", "kyle-resume.txt");
-var model = ResumePageContentBuilder.Build(projectDir);
-var text = ConvertModelToPlainText(model);
+var validateOnly = args.Length == 2 && string.Equals(args[0], "--validate", StringComparison.OrdinalIgnoreCase);
+var projectDir = validateOnly ? args[1] : args[0];
+if (string.IsNullOrWhiteSpace(projectDir))
+{
+    Console.Error.WriteLine("Project directory is required.");
+    return 1;
+}
 
-Directory.CreateDirectory(Path.GetDirectoryName(outputPath)!);
-File.WriteAllText(outputPath, text + Environment.NewLine, new UTF8Encoding(false));
+try
+{
+    var model = ResumePageContentBuilder.Build(projectDir);
+    if (validateOnly)
+    {
+        Console.WriteLine($"Validated: {Path.Combine(projectDir, "Content", "Resume", "resume.json")}");
+        return 0;
+    }
 
-Console.WriteLine($"Generated: {outputPath}");
-return 0;
+    var outputPath = Path.Combine(projectDir, "wwwroot", "files", "kyle-resume.txt");
+    var text = ConvertModelToPlainText(model);
+
+    Directory.CreateDirectory(Path.GetDirectoryName(outputPath)!);
+    File.WriteAllText(outputPath, text + Environment.NewLine, new UTF8Encoding(false));
+
+    Console.WriteLine($"Generated: {outputPath}");
+    return 0;
+}
+catch (Exception ex)
+{
+    Console.Error.WriteLine($"Resume content processing failed: {ex.Message}");
+    return 1;
+}
 
 static string ConvertModelToPlainText(ResumeViewModel model)
 {
