@@ -245,6 +245,7 @@
       "summary": "Independent study deliverables focused on cybersecurity team process analysis, gap planning, and curriculum recommendations.",
       "category": "professional",
       "action": "DirectedIndependentStudy",
+      "featured": true,
       "tags": [
         "cybersecurity",
         "research"
@@ -297,7 +298,6 @@
       "summary": "Frameworks and tools for long-form collaborative campaigns.",
       "category": "personal",
       "action": "DndTools",
-      "featured": true,
       "tags": [
         "tooling",
         "leadership"
