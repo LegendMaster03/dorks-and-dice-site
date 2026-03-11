@@ -14,6 +14,13 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Content Update="Content\**\*.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
     <Compile Remove="tools\**\*.cs" />
     <None Remove="tools\**\*" />
     <Content Remove="tools\**\*" />

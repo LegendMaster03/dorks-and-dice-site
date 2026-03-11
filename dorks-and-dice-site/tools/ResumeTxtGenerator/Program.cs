@@ -10,7 +10,7 @@ if (args.Length != 1)
 
 var projectDir = args[0];
 var outputPath = Path.Combine(projectDir, "wwwroot", "files", "kyle-resume.txt");
-var model = ResumePageContentBuilder.Build();
+var model = ResumePageContentBuilder.Build(projectDir);
 var text = ConvertModelToPlainText(model);
 
 Directory.CreateDirectory(Path.GetDirectoryName(outputPath)!);

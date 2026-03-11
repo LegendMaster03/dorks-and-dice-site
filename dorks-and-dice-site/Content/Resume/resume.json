@@ -1,0 +1,319 @@
+{
+  "header": {
+    "fullName": "Kyle W. Barnett",
+    "headline": "Information Science Student | Cybersecurity and Software Development",
+    "location": "Ponte Vedra Beach, FL",
+    "headshotImageUrl": "~/images/profile/kyle-headshot.jpg",
+    "headshotAltText": "Headshot of Kyle Barnett",
+    "resumePdfUrl": "~/files/kyle-resume.pdf",
+    "resumePdfFileName": "kyle-resume.pdf",
+    "lastUpdatedText": "February 2026"
+  },
+  "contactLinks": [
+    {
+      "label": "kbarnett0306@gmail.com",
+      "href": "mailto:kbarnett0306@gmail.com",
+      "iconUrl": "~/images/icons/gmail.svg",
+      "iconAltText": "Email icon"
+    },
+    {
+      "label": "904-803-8980",
+      "href": "tel:+19048038980",
+      "iconUrl": "~/images/icons/phone.svg",
+      "iconAltText": "Phone icon"
+    },
+    {
+      "label": "linkedin.com/in/kyle-barnett03",
+      "href": "https://www.linkedin.com/in/kyle-barnett03/",
+      "iconUrl": "~/images/icons/linkedin.png",
+      "iconAltText": "LinkedIn icon",
+      "openInNewTab": true
+    },
+    {
+      "label": "github.com/LegendMaster03",
+      "href": "https://github.com/LegendMaster03",
+      "iconUrl": "~/images/icons/github.svg",
+      "iconAltText": "GitHub icon",
+      "iconCssClass": "github-icon",
+      "openInNewTab": true
+    }
+  ],
+  "educationEntries": [
+    {
+      "institution": "University of North Florida, Jacksonville, FL",
+      "cardCssClass": "card mb-2",
+      "lines": [
+        {
+          "text": "Information Science (Bachelor's), Minor in Leadership",
+          "cssClass": "mb-1"
+        },
+        {
+          "text": "Senior currently working toward a bachelor's degree in Information Science.",
+          "cssClass": "mb-1"
+        },
+        {
+          "text": "August 2023 - Present | Expected Graduation: May 1, 2026 | Dean's List | Upsilon Pi Epsilon member",
+          "cssClass": "mb-0",
+          "isMuted": true
+        }
+      ]
+    },
+    {
+      "institution": "Florida State College at Jacksonville, Jacksonville, FL",
+      "cardCssClass": "card mb-2",
+      "lines": [
+        {
+          "text": "Associate of Arts completed",
+          "cssClass": "mb-1"
+        },
+        {
+          "text": "January 2023 - August 2023 (plus prior study August 2020 - July 2022)",
+          "cssClass": "mb-0",
+          "isMuted": true
+        }
+      ]
+    },
+    {
+      "institution": "Florida Polytechnic University, Lakeland, FL",
+      "cardCssClass": "card",
+      "lines": [
+        {
+          "text": "August 2022 - December 2022",
+          "cssClass": "mb-1",
+          "isMuted": true
+        },
+        {
+          "text": "Prior study at Florida State College at Jacksonville: August 2020 - July 2022",
+          "cssClass": "mb-0",
+          "isMuted": true
+        }
+      ]
+    }
+  ],
+  "awardEntries": [
+    {
+      "title": "Upsilon Pi Epsilon (UPE), International Honor Society for the Computing Sciences",
+      "cardCssClass": "card mb-2",
+      "metaText": "Issued February 2026 by Upsilon Pi Epsilon | Associated with University of North Florida",
+      "summary": "International Honor Society for the Computing Sciences."
+    },
+    {
+      "title": "Dean's List",
+      "cardCssClass": "card mb-2",
+      "metaText": "Issued May 2025 by William F. Klostermeyer | Associated with University of North Florida",
+      "summary": "Awarded for strong academic performance."
+    },
+    {
+      "title": "Eagle Scout",
+      "cardCssClass": "card",
+      "metaText": "Issued August 5, 2020 by Boy Scouts of America",
+      "highlights": [
+        "Held multiple troop leadership roles, including Senior Patrol Leader and Webmaster.",
+        "Completed National Youth Leadership Training and later served as an instructor.",
+        "Applied EDGE leadership methodology: Educate, Demonstrate, Guide, and Enable."
+      ],
+      "additionalDescription": "As a Boy Scout, I learned the value of strong leadership through multiple Positions of Responsibility: Den Chief, Historian, Web Master, SPL, ASPL, OA Representative, and Junior Assistant Scout Master. I attended NYLT and later returned to staff NYLT. These experiences built practical skills in teamwork, teaching through the EDGE method, patience, social communication, conflict resolution, motivation, and mentoring younger scouts. These lessons continue to shape my professional and personal leadership style."
+    }
+  ],
+  "skillCategories": [
+    {
+      "name": "Industry Knowledge",
+      "description": "Back-end Web Development, Front-end Development, Patch Management, Cybersecurity, Application Development, Multimedia, Game Development, Game Design, Level Design, Technical Support"
+    },
+    {
+      "name": "Tools and Technologies",
+      "description": "Python, JavaScript, C, C#, Java, HTML5, HTML, Unity, Unreal Engine, Unreal Engine 4, Creation Kit, Gamebryo, 3D Printing, Audio Visual (AV) Systems, Computer Building, Technical Support (Windows, Mac, Linux)"
+    },
+    {
+      "name": "Interpersonal Skills",
+      "description": "Leadership, collaboration, mentoring, communication, conflict resolution, and instructional coaching through the EDGE method."
+    }
+  ],
+  "experienceItems": [
+    {
+      "title": "UNF Cyber Security Team - Web Specialist and Windows Specialist",
+      "dateRange": "2024 - Present",
+      "cardCssClass": "card mb-2",
+      "highlights": [
+        "Participates in a competitive travel team environment.",
+        "Attends daily practices to optimize methods for complex security use cases.",
+        "Attends lectures from global security experts."
+      ],
+      "detailsAction": "ExperienceCyberSecurityTeam",
+      "featured": true,
+      "tags": [
+        "cybersecurity",
+        "professional"
+      ]
+    },
+    {
+      "title": "Technology Services (Personal Business) - Tech Enthusiast",
+      "dateRange": "2019 - Present",
+      "cardCssClass": "card mb-2",
+      "highlights": [
+        "Performs computer migrations and software upgrades for local clients.",
+        "Assists with data-entry projects and network management tasks."
+      ],
+      "detailsAction": "ExperienceTechnologyServices",
+      "featured": true,
+      "tags": [
+        "professional",
+        "it-support"
+      ]
+    },
+    {
+      "title": "Florida Polytechnic University S.I.M. Lab - Student Worker",
+      "dateRange": "August 2022 - December 2022",
+      "cardCssClass": "card mb-2",
+      "highlights": [
+        "Handled asset management and supported motion-capture capabilities.",
+        "Created a video game for a Game Expo showcase."
+      ],
+      "detailsAction": "ExperienceSimLab",
+      "tags": [
+        "professional",
+        "game-dev"
+      ]
+    },
+    {
+      "title": "Wired Works (Network and Audio Visual) - Assistant Audio-Visual Installer",
+      "dateRange": "April 2021 - September 2021",
+      "cardCssClass": "card mb-2",
+      "highlights": [
+        "Installed internet networks for businesses and homes.",
+        "Configured smart-home automations with platforms like Alexa and Sonos.",
+        "Summer role completed prior to starting college."
+      ],
+      "detailsAction": "ExperienceWiredWorks",
+      "tags": [
+        "professional",
+        "networking"
+      ]
+    },
+    {
+      "title": "Skyblivion Global Project - Interior Level Designer",
+      "dateRange": "March 2021 - August 2022",
+      "cardCssClass": "card",
+      "highlights": [
+        "Completed 11 detailed interior levels with a global development team.",
+        "Tested experimental workloads as the project transitioned to cloud workflows.",
+        "Mentored new team members for faster onboarding success."
+      ],
+      "detailsAction": "ExperienceSkyblivion",
+      "tags": [
+        "professional",
+        "game-dev"
+      ]
+    },
+    {
+      "title": "Skywind - Interior Level Designer",
+      "dateRange": "December 2021 - 2022",
+      "cardCssClass": "card mt-2",
+      "detailsAction": "ExperienceSkywind",
+      "tags": [
+        "professional",
+        "game-dev"
+      ]
+    }
+  ],
+  "projectItems": [
+    {
+      "title": "XnGine Framework",
+      "summary": "Personal project: in-progress framework architecture and engineering documentation.",
+      "category": "personal",
+      "action": "XnGine",
+      "featured": true,
+      "tags": [
+        "framework",
+        "engineering"
+      ]
+    },
+    {
+      "title": "Senior Project",
+      "summary": "Capstone work focused on practical system implementation and delivery.",
+      "category": "professional",
+      "action": "SeniorProject",
+      "featured": true,
+      "tags": [
+        "capstone"
+      ]
+    },
+    {
+      "title": "UNF Cyber Security Team Work",
+      "summary": "Security practice methodologies, team prep, and competition workflows.",
+      "category": "professional",
+      "action": "CyberSecurityTeam",
+      "tags": [
+        "cybersecurity",
+        "teamwork"
+      ]
+    },
+    {
+      "title": "Skyblivion Interiors",
+      "summary": "Detailed interior design work and image gallery.",
+      "category": "professional",
+      "action": "Skyblivion",
+      "tags": [
+        "game-dev",
+        "level-design"
+      ]
+    },
+    {
+      "title": "Skywind Interiors",
+      "summary": "Interior level design work completed for the Skywind project.",
+      "category": "professional",
+      "action": "Skywind",
+      "tags": [
+        "game-dev",
+        "level-design"
+      ]
+    },
+    {
+      "title": "Technology Services (Personal Business)",
+      "summary": "Client-focused upgrades, migrations, and network support work.",
+      "category": "professional",
+      "action": "TechnologyServices",
+      "tags": [
+        "it-support"
+      ]
+    },
+    {
+      "title": "Weed Wacker (S.I.M. Lab Expo Prototype)",
+      "summary": "Motion capture, asset support, and game demo creation.",
+      "category": "professional",
+      "action": "SimLabExpo",
+      "tags": [
+        "game-dev",
+        "prototype"
+      ]
+    },
+    {
+      "title": "D&D Tooling and Campaign Systems",
+      "summary": "Frameworks and tools for long-form collaborative campaigns.",
+      "category": "personal",
+      "action": "DndTools",
+      "featured": true,
+      "tags": [
+        "tooling",
+        "leadership"
+      ]
+    }
+  ],
+  "leadershipEntries": [
+    {
+      "title": "Dungeons & Dragons Game Master",
+      "dateRange": "2024 - Present",
+      "cardCssClass": "card mb-2",
+      "relatedProjectAction": "DndTools",
+      "relatedProjectLabel": "D&D Tooling and Campaign Systems",
+      "highlights": [
+        "Plans and facilitates recurring sessions, balancing long-term roadmap planning with weekly execution.",
+        "Leads live group communication and public-speaking-style facilitation for collaborative decision-making.",
+        "Resolves interpersonal conflicts and keeps teams aligned under changing priorities and constraints.",
+        "Builds repeatable systems and documentation to improve onboarding, consistency, and delivery quality."
+      ],
+      "primaryAction": "DndTools",
+      "primaryActionText": "Open Project"
+    }
+  ]
+}
