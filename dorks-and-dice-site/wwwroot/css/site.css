@@ -137,6 +137,25 @@ body {
   object-fit: contain;
 }
 
+.resume-detail-heading {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+}
+
+.resume-detail-logo-link {
+  display: flex;
+  align-items: stretch;
+}
+
+.resume-detail-logo {
+  width: auto;
+  height: 100%;
+  max-height: 116px;
+  min-height: 88px;
+  object-fit: contain;
+}
+
 .contact-card {
   background: linear-gradient(180deg, #ffffff 0%, #f1f5f9 100%);
   box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
@@ -440,6 +459,16 @@ body.dark-mode code {
 }
 
 @media (max-width: 575.98px) {
+  .resume-detail-header {
+    align-items: flex-start !important;
+  }
+
+  .resume-detail-logo {
+    height: auto;
+    max-height: 72px;
+    min-height: 0;
+  }
+
   .resume-section-nav {
     flex-wrap: nowrap;
     overflow-x: auto;

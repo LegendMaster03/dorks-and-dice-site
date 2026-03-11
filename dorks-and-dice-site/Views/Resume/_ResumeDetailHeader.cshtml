@@ -1,7 +1,7 @@
 @model dorks_and_dice_site.Models.Resume.ResumeDetailHeaderViewModel
 
-<div class="d-flex justify-content-between align-items-start gap-3 mb-3 flex-wrap">
-    <div>
+<div class="resume-detail-header d-flex justify-content-between align-items-stretch gap-3 mb-3 flex-wrap">
+    <div class="resume-detail-heading">
         <h1 class="mb-1">@Model.Title</h1>
         @if (!string.IsNullOrWhiteSpace(Model.Subtitle))
         {
@@ -15,11 +15,12 @@
     @if (!string.IsNullOrWhiteSpace(Model.LogoUrl) && !string.IsNullOrWhiteSpace(Model.LogoLinkUrl))
     {
         <a href="@Model.LogoLinkUrl"
+           class="resume-detail-logo-link"
            target="_blank"
            rel="noopener noreferrer"
            aria-label="@(string.IsNullOrWhiteSpace(Model.LogoAriaLabel) ? "Organization website" : Model.LogoAriaLabel)">
             <img src="@Model.LogoUrl"
-                 class="experience-logo"
+                 class="experience-logo resume-detail-logo"
                  alt="@(string.IsNullOrWhiteSpace(Model.LogoAltText) ? "Organization logo" : Model.LogoAltText)" />
         </a>
     }
