@@ -2,8 +2,43 @@
     ViewData["Title"] = "Senior Project";
 }
 
-<h1 class="mb-1">Senior Project</h1>
-<p class="text-muted mb-3">Safe Future Barcode for Good</p>
+<div class="d-flex justify-content-between align-items-start gap-3 mb-3 flex-wrap">
+    <div>
+        <h1 class="mb-1">Senior Project</h1>
+        <p class="text-muted mb-0">Safe Future Barcode for Good</p>
+    </div>
+    <a href="https://www.asafefuture.org/" target="_blank" rel="noopener noreferrer" aria-label="Safe Future Foundation website">
+        <img src="~/images/logos/safe-future-logo.png" class="experience-logo" alt="Safe Future Foundation logo" />
+    </a>
+</div>
+
+<section class="card mb-4">
+    <div class="card-body">
+        <h2 class="h6 text-uppercase mb-3">Project Metadata</h2>
+        <dl class="row mb-0">
+            <dt class="col-sm-3">Client</dt>
+            <dd class="col-sm-9">Safe Future Foundation</dd>
+
+            <dt class="col-sm-3">Client contact</dt>
+            <dd class="col-sm-9">Chris Tobey</dd>
+
+            <dt class="col-sm-3">Project type</dt>
+            <dd class="col-sm-9">Year-long UNF senior capstone</dd>
+
+            <dt class="col-sm-3">Project name</dt>
+            <dd class="col-sm-9">Safe Future Barcode for Good</dd>
+
+            <dt class="col-sm-3">Role</dt>
+            <dd class="col-sm-9">Student developer on a team-based client project</dd>
+
+            <dt class="col-sm-3">Focus areas</dt>
+            <dd class="col-sm-9">QR workflow, CSV export, error handling, requirements iteration</dd>
+
+            <dt class="col-sm-3">Process</dt>
+            <dd class="col-sm-9 mb-0">Scrum, Jira, recurring client meetings, class demos</dd>
+        </dl>
+    </div>
+</section>
 
 <h2 class="h5 mt-4">Overview</h2>
 <p>
@@ -80,6 +115,17 @@
     download it as a PNG, print it, and return to the item record. The generated QR code pointed to that item's detail page,
     which created a simple labeling workflow tied directly to the inventory system.
 </p>
+<figure class="mb-3">
+    <img src="~/images/projects/seniorproject-qr-localhost.png"
+         class="img-fluid rounded border"
+         alt="Localhost testing screenshot of the Safe Future QR code workflow UI for an inventory item"
+         width="560"
+         height="560" />
+    <figcaption class="text-muted mt-2">
+        QR workflow screenshot from a localhost testing environment.
+        The QR code shown here points to a local test URL and will not link to a live item on a public site.
+    </figcaption>
+</figure>
 <p>
     This part of the project changed significantly over time. Early in development, I had worked on a more complicated
     barcode-oriented storage approach. Fairly early on, I removed that direction and rebuilt the workflow around QR codes instead.
