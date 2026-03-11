@@ -254,6 +254,7 @@
       "summary": "Detailed interior design work and image gallery.",
       "category": "professional",
       "action": "Skyblivion",
+      "featured": true,
       "tags": [
         "game-dev",
         "level-design"

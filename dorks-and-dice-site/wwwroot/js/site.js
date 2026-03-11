@@ -25,35 +25,63 @@
     });
 })();
 
-// Image gallery modal expand logic
 (() => {
-    const gallery = document.querySelector('.project-gallery');
-    const modal = document.getElementById('imageModal');
-    const modalImg = document.getElementById('imageModalImg');
-    const closeBtn = modal ? modal.querySelector('.image-modal-close') : null;
-    const backdrop = modal ? modal.querySelector('.image-modal-backdrop') : null;
-
-    if (!gallery || !modal || !modalImg || !closeBtn || !backdrop) return;
-
-    gallery.addEventListener('click', function(e) {
-        const img = e.target.closest('img.card-img-top');
-        if (!img) return;
-        modalImg.src = img.src;
-        modalImg.alt = img.alt;
-        modal.style.display = 'flex';
-        document.body.style.overflow = 'hidden';
-    });
-
-    function closeModal() {
-        modal.style.display = 'none';
-        modalImg.src = '';
-        document.body.style.overflow = '';
+    const galleries = document.querySelectorAll(".project-gallery");
+    if (!galleries.length) {
+        return;
     }
 
-    closeBtn.addEventListener('click', closeModal);
-    backdrop.addEventListener('click', closeModal);
-    document.addEventListener('keydown', function(e) {
-        if (modal.style.display === 'flex' && (e.key === 'Escape' || e.key === 'Esc')) {
+    let modal = document.getElementById("imageModal");
+    if (!modal) {
+        modal = document.createElement("div");
+        modal.id = "imageModal";
+        modal.className = "image-modal";
+        modal.innerHTML = `
+            <div class="image-modal-backdrop"></div>
+            <div class="image-modal-content" role="dialog" aria-modal="true" aria-label="Expanded image view">
+                <button type="button" class="image-modal-close" aria-label="Close expanded image view">&times;</button>
+                <img id="imageModalImg" src="" alt="Expanded image view" />
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+
+    const modalImg = modal.querySelector("#imageModalImg");
+    const closeBtn = modal.querySelector(".image-modal-close");
+    const backdrop = modal.querySelector(".image-modal-backdrop");
+
+    if (!modalImg || !closeBtn || !backdrop) {
+        return;
+    }
+
+    const openModal = (img) => {
+        modalImg.src = img.currentSrc || img.src;
+        modalImg.alt = img.alt || "Expanded image view";
+        modal.classList.add("is-open");
+        document.body.style.overflow = "hidden";
+    };
+
+    const closeModal = () => {
+        modal.classList.remove("is-open");
+        modalImg.src = "";
+        document.body.style.overflow = "";
+    };
+
+    galleries.forEach((gallery) => {
+        gallery.addEventListener("click", (event) => {
+            const img = event.target.closest("img.card-img-top");
+            if (!img) {
+                return;
+            }
+
+            openModal(img);
+        });
+    });
+
+    closeBtn.addEventListener("click", closeModal);
+    backdrop.addEventListener("click", closeModal);
+    document.addEventListener("keydown", (event) => {
+        if (modal.classList.contains("is-open") && event.key === "Escape") {
             closeModal();
         }
     });
