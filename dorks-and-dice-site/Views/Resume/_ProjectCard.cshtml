@@ -14,9 +14,13 @@
                 <span class="badge text-bg-light border">@categoryLabel</span>
                 @if (Model.Featured)
                 {
-                    <span class="badge text-bg-primary">Featured</span>
+                    <span class="badge featured-badge">Featured</span>
                 }
             </div>
+            @if (Model.Featured)
+            {
+                <p class="small text-muted project-featured-note mb-2">Also shown above in Featured Projects.</p>
+            }
             <h2 class="h5 card-title">@Model.Title</h2>
             <p class="card-text">@Model.Summary</p>
             @if (Model.Tags.Count > 0)
