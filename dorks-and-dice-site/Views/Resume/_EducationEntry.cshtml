@@ -5,7 +5,7 @@
         <h3 class="h6 mb-1">@Model.Institution</h3>
         @foreach (var line in Model.Lines)
         {
-            var textClass = line.IsMuted ? $"text-muted {line.CssClass}" : line.CssClass;
+            var textClass = line.IsMuted ? $"resume-entry-meta text-muted {line.CssClass}" : line.CssClass;
             <p class="@textClass">@line.Text</p>
         }
     </div>

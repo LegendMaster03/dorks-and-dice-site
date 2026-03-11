@@ -1,11 +1,36 @@
 @model dorks_and_dice_site.Models.Resume.ProjectItemViewModel
+@{
+    var categoryLabel = string.Equals(Model.Category, "professional", StringComparison.OrdinalIgnoreCase)
+        ? "Professional"
+        : string.Equals(Model.Category, "personal", StringComparison.OrdinalIgnoreCase)
+            ? "Personal"
+            : Model.Category;
+}
 
 <div class="col project-card" data-category="@Model.Category" data-tags="@string.Join(' ', Model.Tags)">
-    <div class="card h-100">
+    <div class="card h-100 project-card-inner @(Model.Featured ? "project-card-featured" : string.Empty)">
         <div class="card-body">
+            <div class="project-card-meta mb-2">
+                <span class="badge text-bg-light border">@categoryLabel</span>
+                @if (Model.Featured)
+                {
+                    <span class="badge text-bg-primary">Featured</span>
+                }
+            </div>
             <h2 class="h5 card-title">@Model.Title</h2>
             <p class="card-text">@Model.Summary</p>
-            <a class="btn btn-sm btn-outline-primary" asp-controller="Resume" asp-action="@Model.Action">@Model.LinkText</a>
+            @if (Model.Tags.Count > 0)
+            {
+                <p class="project-card-tags mb-3">
+                    @for (var i = 0; i < Model.Tags.Count; i++)
+                    {
+                        <span class="badge rounded-pill text-bg-secondary-subtle text-secondary-emphasis">@Model.Tags[i]</span>
+                    }
+                </p>
+            }
+            <a class="btn btn-sm btn-outline-primary" asp-controller="Resume" asp-action="@Model.Action">
+                @(string.IsNullOrWhiteSpace(Model.LinkText) ? "Open project" : Model.LinkText)
+            </a>
         </div>
     </div>
 </div>

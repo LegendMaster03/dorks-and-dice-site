@@ -75,6 +75,92 @@ body {
   box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
 }
 
+.resume-section-title {
+  margin-bottom: 0.9rem;
+  padding-bottom: 0.25rem;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.12);
+}
+
+.resume-section-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.resume-section-nav a {
+  padding: 0.28rem 0.65rem;
+  border-radius: 999px;
+  border: 1px solid rgba(15, 23, 42, 0.15);
+  text-decoration: none;
+  font-size: 0.83rem;
+  font-weight: 600;
+  color: #334155;
+  background-color: #fff;
+}
+
+.resume-section-nav a:hover {
+  background-color: rgba(37, 99, 235, 0.08);
+  border-color: rgba(37, 99, 235, 0.35);
+}
+
+.featured-projects {
+  padding: 1rem;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  border-radius: 0.75rem;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+}
+
+.featured-project-tile {
+  border: 1px solid rgba(37, 99, 235, 0.22);
+  border-radius: 0.7rem;
+  padding: 0.95rem;
+  background-color: #fff;
+}
+
+.featured-project-meta {
+  font-size: 0.73rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #64748b;
+}
+
+.project-card-inner {
+  border-width: 1px;
+}
+
+.project-card[data-category="professional"] .project-card-inner {
+  border-left: 3px solid rgba(59, 130, 246, 0.55);
+}
+
+.project-card[data-category="personal"] .project-card-inner {
+  border-left: 3px solid rgba(14, 116, 144, 0.4);
+}
+
+.project-card-featured {
+  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.12);
+}
+
+.project-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.project-card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.resume-entry-meta {
+  font-size: 0.88rem;
+}
+
+.resume-entry-action {
+  font-weight: 600;
+}
+
 .contact-link {
   display: flex;
   align-items: center;
@@ -185,6 +271,42 @@ body.dark-mode .github-icon {
   background-color: #ffffff;
 }
 
+body.dark-mode .resume-section-title {
+  border-bottom-color: rgba(148, 163, 184, 0.35);
+}
+
+body.dark-mode .resume-section-nav a {
+  background-color: #0f172a;
+  border-color: rgba(148, 163, 184, 0.45);
+  color: #dbeafe;
+}
+
+body.dark-mode .resume-section-nav a:hover {
+  background-color: rgba(37, 99, 235, 0.22);
+}
+
+body.dark-mode .featured-projects,
+body.dark-mode .featured-project-tile {
+  background: #111827;
+  border-color: #1e3a8a;
+}
+
+body.dark-mode .featured-project-meta {
+  color: #94a3b8;
+}
+
+body.dark-mode .project-card[data-category="professional"] .project-card-inner {
+  border-left-color: rgba(96, 165, 250, 0.75);
+}
+
+body.dark-mode .project-card[data-category="personal"] .project-card-inner {
+  border-left-color: rgba(125, 211, 252, 0.65);
+}
+
+body.dark-mode .project-card-featured {
+  box-shadow: 0 10px 22px rgba(30, 64, 175, 0.24);
+}
+
 body.dark-mode #projectFilters .btn {
   border-color: #475569;
   color: #cbd5e1;
@@ -246,7 +368,9 @@ body.dark-mode code {
   .navbar,
   .footer,
   #themeToggle,
+  .resume-section-nav,
   #projectFilters,
+  .featured-projects,
   .discord-panel,
   .btn,
   a.btn {

@@ -4,9 +4,10 @@
     ViewData["MetaTitle"] = "Kyle Barnett Resume";
     ViewData["MetaDescription"] = "Professional resume for Kyle Barnett: experience, education, and selected projects.";
     ViewData["MetaImage"] = Url.Content(Model.Header.HeadshotImageUrl);
+    var featuredProjects = Model.ProjectItems.FindAll(project => project.Featured);
 }
 
-<section class="mb-4" id="header-section">
+<section class="resume-section mb-4" id="header-section">
     <div class="row g-4 align-items-stretch">
         <div class="col-lg-8 d-flex">
             <div class="resume-hero-main d-flex align-items-stretch gap-3 flex-grow-1 flex-wrap flex-md-nowrap">
@@ -35,24 +36,33 @@
     </div>
 </section>
 
-<section class="mb-4" id="education-section">
-    <h2 class="h4">Education</h2>
+<nav class="resume-section-nav mb-4" aria-label="Resume section navigation">
+    <a href="#experience-section">Experience</a>
+    <a href="#projects-section">Projects</a>
+    <a href="#skills-section">Skills</a>
+    <a href="#education-section">Education</a>
+    <a href="#honors-section">Honors</a>
+    <a href="#leadership-section">Leadership</a>
+</nav>
+
+<section class="resume-section mb-4" id="education-section">
+    <h2 class="h4 resume-section-title">Education</h2>
     @foreach (var educationEntry in Model.EducationEntries)
     {
         @await Html.PartialAsync("_EducationEntry", educationEntry)
     }
 </section>
 
-<section class="mb-4" id="honors-section">
-    <h2 class="h4">Honors &amp; Awards</h2>
+<section class="resume-section mb-4" id="honors-section">
+    <h2 class="h4 resume-section-title">Honors &amp; Awards</h2>
     @foreach (var awardEntry in Model.AwardEntries)
     {
         @await Html.PartialAsync("_AwardEntry", awardEntry)
     }
 </section>
 
-<section class="mb-4" id="skills-section">
-    <h2 class="h4">Skills</h2>
+<section class="resume-section mb-4" id="skills-section">
+    <h2 class="h4 resume-section-title">Skills</h2>
     <div class="card">
         <div class="card-body">
             @await Html.PartialAsync("_SkillsSection", Model.SkillCategories)
@@ -60,23 +70,52 @@
     </div>
 </section>
 
-<section class="mb-4" id="experience-section">
-    <h2 class="h4">Experience</h2>
+<section class="resume-section mb-4" id="experience-section">
+    <h2 class="h4 resume-section-title">Experience</h2>
     @foreach (var experience in Model.ExperienceItems)
     {
         @await Html.PartialAsync("_ExperienceCard", experience)
     }
 </section>
 
-<section class="mb-4" id="projects-section">
-    <h2 class="h4" id="projects">Projects</h2>
-    <p class="text-muted">Select a project for details and visuals.</p>
+<section class="resume-section mb-4" id="projects-section">
+    <h2 class="h4 resume-section-title" id="projects">Projects</h2>
+    <p class="text-muted mb-3">Selected projects are highlighted first. Use filters to narrow the full list.</p>
+
+    @if (featuredProjects.Count > 0)
+    {
+        <div class="featured-projects mb-4">
+            <h3 class="h6 text-uppercase mb-3">Featured Projects</h3>
+            <div class="row row-cols-1 row-cols-lg-2 g-3">
+                @foreach (var project in featuredProjects)
+                {
+                    var categoryLabel = string.Equals(project.Category, "professional", StringComparison.OrdinalIgnoreCase)
+                        ? "Professional"
+                        : string.Equals(project.Category, "personal", StringComparison.OrdinalIgnoreCase)
+                            ? "Personal"
+                            : project.Category;
+                    <div class="col">
+                        <article class="featured-project-tile h-100">
+                            <p class="featured-project-meta mb-2">@categoryLabel</p>
+                            <h4 class="h5 mb-2">@project.Title</h4>
+                            <p class="mb-3">@project.Summary</p>
+                            <a class="btn btn-sm btn-primary" asp-controller="Resume" asp-action="@project.Action">
+                                @(string.IsNullOrWhiteSpace(project.LinkText) ? "Open project" : project.LinkText)
+                            </a>
+                        </article>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+
     <div id="projectFilters" class="d-flex flex-wrap gap-2 mb-3">
         <button type="button" class="btn btn-sm btn-outline-secondary active" data-filter="all">All</button>
         <button type="button" class="btn btn-sm btn-outline-secondary" data-filter="professional">Professional</button>
         <button type="button" class="btn btn-sm btn-outline-secondary" data-filter="personal">Personal</button>
     </div>
 
+    <h3 class="h6 text-uppercase text-muted mb-3">All Projects</h3>
     <div class="row row-cols-1 row-cols-md-2 g-4 mt-1">
         @foreach (var project in Model.ProjectItems)
         {
@@ -85,8 +124,8 @@
     </div>
 </section>
 
-<section id="leadership-section">
-    <h2 class="h4">Leadership Experience</h2>
+<section class="resume-section" id="leadership-section">
+    <h2 class="h4 resume-section-title">Leadership Experience</h2>
     @foreach (var leadershipEntry in Model.LeadershipEntries)
     {
         @await Html.PartialAsync("_LeadershipEntry", leadershipEntry)
