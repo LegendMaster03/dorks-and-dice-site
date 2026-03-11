@@ -29,7 +29,7 @@ namespace dorks_and_dice_site.Controllers
 
         public IActionResult CyberSecurityTeam()
         {
-            return RedirectToAction(nameof(ExperienceCyberSecurityTeam));
+            return View();
         }
 
         public IActionResult Skyblivion()
