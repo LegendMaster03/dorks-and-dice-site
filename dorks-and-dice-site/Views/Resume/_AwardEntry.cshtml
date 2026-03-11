@@ -1,0 +1,28 @@
+@model dorks_and_dice_site.Models.Resume.AwardEntryViewModel
+
+<div class="@Model.CardCssClass">
+    <div class="card-body">
+        <h3 class="h6 mb-1">@Model.Title</h3>
+        @if (!string.IsNullOrWhiteSpace(Model.MetaText))
+        {
+            <p class="mb-1 text-muted">@Model.MetaText</p>
+        }
+        @if (!string.IsNullOrWhiteSpace(Model.Summary))
+        {
+            <p class="mb-0">@Model.Summary</p>
+        }
+        @if (Model.Highlights.Count > 0)
+        {
+            <ul class="mt-2 mb-0">
+                @foreach (var highlight in Model.Highlights)
+                {
+                    <li>@highlight</li>
+                }
+            </ul>
+        }
+        @if (!string.IsNullOrWhiteSpace(Model.AdditionalDescription))
+        {
+            <p class="mt-3 mb-0">@Model.AdditionalDescription</p>
+        }
+    </div>
+</div>

@@ -1,7 +1,10 @@
+using dorks_and_dice_site.Services.Resume;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllersWithViews();
+builder.Services.AddSingleton<IResumeContentService, ResumeContentService>();
 
 var app = builder.Build();
 
@@ -26,7 +29,7 @@ app.MapGet("/health", () => Results.Text("OK", "text/plain"));
 app.MapControllerRoute(
     name: "resume",
     pattern: "resume",
-    defaults: new { controller = "Home", action = "Resume" });
+    defaults: new { controller = "Resume", action = "Index" });
 
 app.MapControllerRoute(
     name: "default",

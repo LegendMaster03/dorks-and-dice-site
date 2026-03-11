@@ -1,0 +1,11 @@
+@model dorks_and_dice_site.Models.Resume.ProjectItemViewModel
+
+<div class="col project-card" data-category="@Model.Category" data-tags="@string.Join(' ', Model.Tags)">
+    <div class="card h-100">
+        <div class="card-body">
+            <h2 class="h5 card-title">@Model.Title</h2>
+            <p class="card-text">@Model.Summary</p>
+            <a class="btn btn-sm btn-outline-primary" asp-controller="Resume" asp-action="@Model.Action">@Model.LinkText</a>
+        </div>
+    </div>
+</div>

@@ -5,4 +5,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="..\..\Models\Resume\*.cs" Link="Shared\Models\Resume\%(Filename)%(Extension)" />
+    <Compile Include="..\..\Services\Resume\ResumePageContentBuilder.cs" Link="Shared\Services\Resume\ResumePageContentBuilder.cs" />
+  </ItemGroup>
 </Project>

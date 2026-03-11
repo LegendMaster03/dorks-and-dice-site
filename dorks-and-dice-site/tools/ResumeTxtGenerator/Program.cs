@@ -1,6 +1,6 @@
-using System.Net;
 using System.Text;
-using System.Text.RegularExpressions;
+using dorks_and_dice_site.Models.Resume;
+using dorks_and_dice_site.Services.Resume;
 
 if (args.Length != 1)
 {
@@ -9,17 +9,9 @@ if (args.Length != 1)
 }
 
 var projectDir = args[0];
-var resumeViewPath = Path.Combine(projectDir, "Views", "Home", "Resume.cshtml");
 var outputPath = Path.Combine(projectDir, "wwwroot", "files", "kyle-resume.txt");
-
-if (!File.Exists(resumeViewPath))
-{
-    Console.Error.WriteLine($"Resume view not found: {resumeViewPath}");
-    return 1;
-}
-
-var source = File.ReadAllText(resumeViewPath);
-var text = ConvertRazorToPlainText(source);
+var model = ResumePageContentBuilder.Build();
+var text = ConvertModelToPlainText(model);
 
 Directory.CreateDirectory(Path.GetDirectoryName(outputPath)!);
 File.WriteAllText(outputPath, text + Environment.NewLine, new UTF8Encoding(false));
@@ -27,65 +19,85 @@ File.WriteAllText(outputPath, text + Environment.NewLine, new UTF8Encoding(false
 Console.WriteLine($"Generated: {outputPath}");
 return 0;
 
-static string ConvertRazorToPlainText(string source)
+static string ConvertModelToPlainText(ResumeViewModel model)
 {
-    // Remove Razor code blocks and directives first.
-    source = Regex.Replace(source, @"@\{[\s\S]*?\}", string.Empty, RegexOptions.Multiline);
-    source = Regex.Replace(source, @"@\w+\([^\)]*\)", string.Empty, RegexOptions.Multiline);
-
-    // Keep line breaks for common block-level elements.
-    source = Regex.Replace(source, @"</(h1|h2|h3|h4|h5|h6|p|section|div|ul|ol|li|br|tr|table)>", "\n", RegexOptions.IgnoreCase);
-    source = Regex.Replace(source, @"<li[^>]*>", "- ", RegexOptions.IgnoreCase);
-
-    // Preserve link text + URL in plain text.
-    source = Regex.Replace(
-        source,
-        @"<a[^>]*href=""([^""]+)""[^>]*>(.*?)</a>",
-        m =>
-        {
-            var href = WebUtility.HtmlDecode(m.Groups[1].Value);
-            var label = StripTags(m.Groups[2].Value).Trim();
-            return string.IsNullOrWhiteSpace(label) ? href : $"{label} ({href})";
-        },
-        RegexOptions.IgnoreCase | RegexOptions.Singleline);
-
-    // Remove remaining HTML tags.
-    source = StripTags(source);
-    source = WebUtility.HtmlDecode(source);
-
-    var lines = source
-        .Split('\n')
-        .Select(line => Regex.Replace(line, @"\s+", " ").Trim())
-        .Where(line => !string.IsNullOrWhiteSpace(line))
-        .ToList();
-
-    // De-duplicate immediate repeats from Razor formatting.
-    var skipLines = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+    var lines = new List<string>
     {
-        "|",
-        "All",
-        "Professional",
-        "Personal",
-        "Open Project",
-        "Detailed experience view"
+        model.Header.FullName,
+        model.Header.Headline,
+        model.Header.Location,
+        $"Download PDF: {model.Header.ResumePdfFileName} ({model.Header.ResumePdfUrl})",
+        $"Last updated: {model.Header.LastUpdatedText}",
+        "Contact"
     };
 
-    var cleaned = new List<string>(lines.Count);
-    foreach (var line in lines)
+    lines.AddRange(model.ContactLinks.Select(link => $"{link.Label} ({link.Href})"));
+
+    lines.Add("Education");
+    foreach (var educationEntry in model.EducationEntries)
     {
-        if (skipLines.Contains(line))
+        lines.Add(educationEntry.Institution);
+        lines.AddRange(educationEntry.Lines.Select(line => line.Text));
+    }
+
+    lines.Add("Honors & Awards");
+    foreach (var awardEntry in model.AwardEntries)
+    {
+        lines.Add(awardEntry.Title);
+        if (!string.IsNullOrWhiteSpace(awardEntry.MetaText))
         {
-            continue;
+            lines.Add(awardEntry.MetaText);
         }
 
-        if (cleaned.Count == 0 || !string.Equals(cleaned[^1], line, StringComparison.Ordinal))
+        if (!string.IsNullOrWhiteSpace(awardEntry.Summary))
         {
-            cleaned.Add(line);
+            lines.Add(awardEntry.Summary);
+        }
+
+        lines.AddRange(awardEntry.Highlights.Select(highlight => $"- {highlight}"));
+
+        if (!string.IsNullOrWhiteSpace(awardEntry.AdditionalDescription))
+        {
+            lines.Add(awardEntry.AdditionalDescription);
         }
     }
 
-    return string.Join(Environment.NewLine, cleaned);
-}
+    lines.Add("Skills");
+    foreach (var skillCategory in model.SkillCategories)
+    {
+        lines.Add(skillCategory.Name);
+        lines.Add(skillCategory.Description);
+    }
 
-static string StripTags(string input) =>
-    Regex.Replace(input, @"<[^>]+>", string.Empty, RegexOptions.Singleline);
+    lines.Add("Experience");
+    foreach (var experienceItem in model.ExperienceItems)
+    {
+        lines.Add(experienceItem.Title);
+        lines.Add(experienceItem.DateRange);
+        lines.AddRange(experienceItem.Highlights.Select(highlight => $"- {highlight}"));
+    }
+
+    lines.Add("Projects");
+    foreach (var projectItem in model.ProjectItems)
+    {
+        lines.Add(projectItem.Title);
+        lines.Add(projectItem.Summary);
+    }
+
+    lines.Add("Leadership Experience");
+    foreach (var leadershipEntry in model.LeadershipEntries)
+    {
+        lines.Add(leadershipEntry.Title);
+        lines.Add(leadershipEntry.DateRange);
+        if (!string.IsNullOrWhiteSpace(leadershipEntry.RelatedProjectLabel))
+        {
+            lines.Add($"Related project: {leadershipEntry.RelatedProjectLabel}");
+        }
+
+        lines.AddRange(leadershipEntry.Highlights.Select(highlight => $"- {highlight}"));
+    }
+
+    return string.Join(
+        Environment.NewLine,
+        lines.Where(line => !string.IsNullOrWhiteSpace(line)).Select(line => line.Trim()));
+}

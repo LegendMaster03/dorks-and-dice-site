@@ -1,0 +1,94 @@
+@model dorks_and_dice_site.Models.Resume.ResumeViewModel
+@{
+    ViewData["Title"] = "Resume";
+    ViewData["MetaTitle"] = "Kyle Barnett Resume";
+    ViewData["MetaDescription"] = "Professional resume for Kyle Barnett: experience, education, and selected projects.";
+    ViewData["MetaImage"] = Url.Content(Model.Header.HeadshotImageUrl);
+}
+
+<section class="mb-4" id="header-section">
+    <div class="row g-4 align-items-stretch">
+        <div class="col-lg-8 d-flex">
+            <div class="resume-hero-main d-flex align-items-stretch gap-3 flex-grow-1 flex-wrap flex-md-nowrap">
+                <img src="@Model.Header.HeadshotImageUrl"
+                     class="profile-headshot profile-headshot-hero img-fluid rounded-circle border"
+                     alt="@Model.Header.HeadshotAltText"
+                     width="613"
+                     height="613" />
+                <div class="resume-identity">
+                    <h1 class="mb-1">@Model.Header.FullName</h1>
+                    <p class="mb-1">@Model.Header.Headline</p>
+                    <p class="text-muted mb-3">@Model.Header.Location</p>
+                    <p class="mb-0">
+                        Download PDF: <a class="fw-semibold" href="@Model.Header.ResumePdfUrl" download>@Model.Header.ResumePdfFileName</a>
+                    </p>
+                    <p class="text-muted small mb-0 mt-2">Last updated: @Model.Header.LastUpdatedText</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <aside id="contact" class="contact-card p-3 rounded-3 border h-100">
+                <h2 class="h6 text-uppercase mb-3">Contact</h2>
+                @await Html.PartialAsync("_ContactLinks", Model.ContactLinks)
+            </aside>
+        </div>
+    </div>
+</section>
+
+<section class="mb-4" id="education-section">
+    <h2 class="h4">Education</h2>
+    @foreach (var educationEntry in Model.EducationEntries)
+    {
+        @await Html.PartialAsync("_EducationEntry", educationEntry)
+    }
+</section>
+
+<section class="mb-4" id="honors-section">
+    <h2 class="h4">Honors &amp; Awards</h2>
+    @foreach (var awardEntry in Model.AwardEntries)
+    {
+        @await Html.PartialAsync("_AwardEntry", awardEntry)
+    }
+</section>
+
+<section class="mb-4" id="skills-section">
+    <h2 class="h4">Skills</h2>
+    <div class="card">
+        <div class="card-body">
+            @await Html.PartialAsync("_SkillsSection", Model.SkillCategories)
+        </div>
+    </div>
+</section>
+
+<section class="mb-4" id="experience-section">
+    <h2 class="h4">Experience</h2>
+    @foreach (var experience in Model.ExperienceItems)
+    {
+        @await Html.PartialAsync("_ExperienceCard", experience)
+    }
+</section>
+
+<section class="mb-4" id="projects-section">
+    <h2 class="h4" id="projects">Projects</h2>
+    <p class="text-muted">Select a project for details and visuals.</p>
+    <div id="projectFilters" class="d-flex flex-wrap gap-2 mb-3">
+        <button type="button" class="btn btn-sm btn-outline-secondary active" data-filter="all">All</button>
+        <button type="button" class="btn btn-sm btn-outline-secondary" data-filter="professional">Professional</button>
+        <button type="button" class="btn btn-sm btn-outline-secondary" data-filter="personal">Personal</button>
+    </div>
+
+    <div class="row row-cols-1 row-cols-md-2 g-4 mt-1">
+        @foreach (var project in Model.ProjectItems)
+        {
+            @await Html.PartialAsync("_ProjectCard", project)
+        }
+    </div>
+</section>
+
+<section id="leadership-section">
+    <h2 class="h4">Leadership Experience</h2>
+    @foreach (var leadershipEntry in Model.LeadershipEntries)
+    {
+        @await Html.PartialAsync("_LeadershipEntry", leadershipEntry)
+    }
+</section>

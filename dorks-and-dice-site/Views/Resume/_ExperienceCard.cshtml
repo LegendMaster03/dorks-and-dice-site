@@ -1,0 +1,23 @@
+@model dorks_and_dice_site.Models.Resume.ExperienceItemViewModel
+
+<div class="@Model.CardCssClass" data-tags="@string.Join(' ', Model.Tags)">
+    <div class="card-body">
+        <h3 class="h6 mb-1">@Model.Title</h3>
+        <p class="text-muted mb-2">@Model.DateRange</p>
+        @if (Model.Highlights.Count > 0)
+        {
+            <ul class="mb-0">
+                @foreach (var highlight in Model.Highlights)
+                {
+                    <li>@highlight</li>
+                }
+            </ul>
+        }
+        @if (!string.IsNullOrWhiteSpace(Model.DetailsAction))
+        {
+            <p class="mt-2 mb-0">
+                <a class="btn btn-sm btn-outline-primary" asp-controller="Resume" asp-action="@Model.DetailsAction">@Model.DetailsLinkText</a>
+            </p>
+        }
+    </div>
+</div>

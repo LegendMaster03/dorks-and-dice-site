@@ -1,0 +1,9 @@
+@model IReadOnlyList<dorks_and_dice_site.Models.Resume.SkillCategoryViewModel>
+
+@for (var i = 0; i < Model.Count; i++)
+{
+    var category = Model[i];
+    var paragraphClass = i == Model.Count - 1 ? "mb-0" : "mb-3";
+    <h3 class="h6">@category.Name</h3>
+    <p class="@paragraphClass">@category.Description</p>
+}

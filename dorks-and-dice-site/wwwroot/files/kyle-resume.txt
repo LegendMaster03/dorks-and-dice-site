@@ -31,11 +31,7 @@ Issued August 5, 2020 by Boy Scouts of America
 - Held multiple troop leadership roles, including Senior Patrol Leader and Webmaster.
 - Completed National Youth Leadership Training and later served as an instructor.
 - Applied EDGE leadership methodology: Educate, Demonstrate, Guide, and Enable.
-As a Boy Scout, I learned the value of strong leadership through multiple Positions of Responsibility:
-Den Chief, Historian, Web Master, SPL, ASPL, OA Representative, and Junior Assistant Scout Master.
-I attended NYLT and later returned to staff NYLT. These experiences built practical skills in teamwork,
-teaching through the EDGE method, patience, social communication, conflict resolution, motivation,
-and mentoring younger scouts. These lessons continue to shape my professional and personal leadership style.
+As a Boy Scout, I learned the value of strong leadership through multiple Positions of Responsibility: Den Chief, Historian, Web Master, SPL, ASPL, OA Representative, and Junior Assistant Scout Master. I attended NYLT and later returned to staff NYLT. These experiences built practical skills in teamwork, teaching through the EDGE method, patience, social communication, conflict resolution, motivation, and mentoring younger scouts. These lessons continue to shape my professional and personal leadership style.
 Skills
 Industry Knowledge
 Back-end Web Development, Front-end Development, Patch Management, Cybersecurity, Application Development, Multimedia, Game Development, Game Design, Level Design, Technical Support
@@ -70,7 +66,6 @@ March 2021 - August 2022
 Skywind - Interior Level Designer
 December 2021 - 2022
 Projects
-Select a project for details and visuals.
 XnGine Framework
 Personal project: in-progress framework architecture and engineering documentation.
 Senior Project
@@ -90,8 +85,7 @@ Frameworks and tools for long-form collaborative campaigns.
 Leadership Experience
 Dungeons & Dragons Game Master
 2024 - Present
-Related project:
-D&D Tooling and Campaign Systems
+Related project: D&D Tooling and Campaign Systems
 - Plans and facilitates recurring sessions, balancing long-term roadmap planning with weekly execution.
 - Leads live group communication and public-speaking-style facilitation for collaborative decision-making.
 - Resolves interpersonal conflicts and keeps teams aligned under changing priorities and constraints.

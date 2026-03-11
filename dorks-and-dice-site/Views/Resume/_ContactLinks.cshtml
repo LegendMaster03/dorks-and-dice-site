@@ -1,0 +1,16 @@
+@model IReadOnlyList<dorks_and_dice_site.Models.Resume.ContactLinkViewModel>
+
+@for (var i = 0; i < Model.Count; i++)
+{
+    var link = Model[i];
+    var iconCss = $"contact-icon{(string.IsNullOrWhiteSpace(link.IconCssClass) ? string.Empty : $" {link.IconCssClass}")}";
+    var lastClass = i == Model.Count - 1 ? " mb-0" : string.Empty;
+
+    <a class="contact-link@lastClass"
+       href="@link.Href"
+       target="@(link.OpenInNewTab ? "_blank" : null)"
+       rel="@(link.OpenInNewTab ? "me noopener noreferrer" : null)">
+        <img src="@link.IconUrl" class="@iconCss" alt="@link.IconAltText" />
+        <span>@link.Label</span>
+    </a>
+}
