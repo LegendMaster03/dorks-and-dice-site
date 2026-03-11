@@ -10,4 +10,5 @@ public class ResumeDetailHeaderViewModel
     public string? LogoLinkUrl { get; set; }
     public string? LogoAriaLabel { get; set; }
     public Dictionary<string, string> InfoItems { get; set; } = [];
+    public Dictionary<string, string> InfoItemLinks { get; set; } = [];
 }

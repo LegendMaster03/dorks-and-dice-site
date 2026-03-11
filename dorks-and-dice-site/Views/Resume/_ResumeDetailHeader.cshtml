@@ -35,7 +35,16 @@
                 @foreach (var item in Model.InfoItems)
                 {
                     <dt class="col-sm-3">@item.Key</dt>
-                    <dd class="col-sm-9">@item.Value</dd>
+                    <dd class="col-sm-9">
+                        @if (Model.InfoItemLinks.TryGetValue(item.Key, out var itemLink) && !string.IsNullOrWhiteSpace(itemLink))
+                        {
+                            <a href="@itemLink" target="_blank" rel="noopener noreferrer">@item.Value</a>
+                        }
+                        else
+                        {
+                            @item.Value
+                        }
+                    </dd>
                 }
             </dl>
         </div>
