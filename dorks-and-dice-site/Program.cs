@@ -17,6 +17,16 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+// Redirect root URL '/' to '/resume'
+app.Use(async (context, next) =>
+{
+    if (context.Request.Path == "/")
+    {
+        context.Response.Redirect("/resume");
+        return;
+    }
+    await next();
+});
 app.UseRouting();
 app.UseStatusCodePagesWithReExecute("/Home/NotFoundPage");
 
