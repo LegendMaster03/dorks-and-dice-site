@@ -27,11 +27,16 @@ app.Use(async (context, next) =>
     var path = context.Request.Path.ToString().ToLower();
     bool isProDomain = professionalDomains.Contains(host);
     bool isResumePath = path == "/resume" || path.StartsWith("/resume/");
+    // Allow static asset paths
+    bool isStaticAsset = path.StartsWith("/css/") || path.StartsWith("/js/") || path.StartsWith("/lib/") || path.StartsWith("/images/") || path.StartsWith("/files/") || path.StartsWith("/favicon") || path.StartsWith("/robots.txt");
+
+    // Set a flag for professional domain branding
+    context.Items["ForceKyleBarnettBranding"] = isProDomain;
 
     if (isProDomain)
     {
-        // Restrict professional domains to /resume and its subpaths
-        if (!isResumePath)
+        // Restrict professional domains to /resume, its subpaths, or static assets
+        if (!isResumePath && !isStaticAsset)
         {
             context.Response.Redirect("/resume");
             return;
