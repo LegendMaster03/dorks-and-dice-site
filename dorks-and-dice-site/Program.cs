@@ -17,13 +17,25 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-// Redirect root URL '/' to '/resume'
+// List of professional domains
+var professionalDomains = new[] { "k-barnett.com", "kyle-barnett.com" };
+
+// Restrict professional domains to /resume and its subpaths
 app.Use(async (context, next) =>
 {
-    if (context.Request.Path == "/")
+    var host = context.Request.Host.Host.ToLower();
+    var path = context.Request.Path.ToString().ToLower();
+    bool isProDomain = professionalDomains.Contains(host);
+    bool isResumePath = path == "/resume" || path.StartsWith("/resume/");
+
+    if (isProDomain)
     {
-        context.Response.Redirect("/resume");
-        return;
+        // Restrict professional domains to /resume and its subpaths
+        if (!isResumePath)
+        {
+            context.Response.Redirect("/resume");
+            return;
+        }
     }
     await next();
 });
