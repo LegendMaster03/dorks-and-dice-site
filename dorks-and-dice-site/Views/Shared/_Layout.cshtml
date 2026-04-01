@@ -1,18 +1,20 @@
 @{
     var controller = ViewContext.RouteData.Values["controller"]?.ToString() ?? string.Empty;
     var action = ViewContext.RouteData.Values["action"]?.ToString() ?? string.Empty;
+    var forceKyleBarnettBranding = Context.Items["ForceKyleBarnettBranding"] as bool? ?? false;
     var isResumeContext = controller == "Resume"
         || action == "Resume"
         || action.StartsWith("Experience", StringComparison.Ordinal)
         || action is "XnGine" or "SeniorProject" or "CyberSecurityTeam" or "DirectedIndependentStudy" or "Skyblivion" or "Skywind" or "TechnologyServices" or "SimLabExpo" or "WiredWorks" or "DndTools";
-    var siteSuffix = isResumeContext ? "Kyle Barnett" : "Dorks & Dice";
-    var brandText = isResumeContext ? "Kyle Barnett" : "Dorks & Dice";
-    var brandController = isResumeContext ? "Resume" : "Home";
-    var footerText = isResumeContext ? "Kyle Barnett" : "Dorks & Dice";
+    var useKyleBarnettBranding = forceKyleBarnettBranding || isResumeContext;
+    var siteSuffix = useKyleBarnettBranding ? "Kyle Barnett" : "Dorks & Dice";
+    var brandText = useKyleBarnettBranding ? "Kyle Barnett" : "Dorks & Dice";
+    var brandController = useKyleBarnettBranding ? "Resume" : "Home";
+    var footerText = useKyleBarnettBranding ? "Kyle Barnett" : "Dorks & Dice";
     var pageTitle = $"{ViewData["Title"]} - {siteSuffix}";
     var metaTitle = ViewData["MetaTitle"]?.ToString() ?? pageTitle;
     var metaDescription = ViewData["MetaDescription"]?.ToString()
-        ?? (isResumeContext
+        ?? (useKyleBarnettBranding
             ? "Kyle Barnett's resume, experience, and selected projects."
             : "Dorks & Dice community front door for campaigns, tools, and updates.");
     var metaImagePath = ViewData["MetaImage"]?.ToString() ?? Url.Content("~/images/profile/kyle-headshot.jpg");
