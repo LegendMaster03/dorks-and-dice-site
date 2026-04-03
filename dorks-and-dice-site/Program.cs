@@ -24,6 +24,11 @@ var professionalDomains = new[] { "k-barnett.com", "kyle-barnett.com", "kylebarn
 app.Use(async (context, next) =>
 {
     var host = context.Request.Host.Host.ToLower();
+    // Normalize host by removing leading 'www.' if present
+    if (host.StartsWith("www."))
+    {
+        host = host.Substring(4);
+    }
     var path = context.Request.Path.ToString().ToLower();
     bool isProDomain = professionalDomains.Contains(host);
     bool isResumePath = path == "/resume" || path.StartsWith("/resume/");
