@@ -18,7 +18,7 @@ if (!app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 // List of professional domains
-var professionalDomains = new[] { "k-barnett.com", "kyle-barnett.com" };
+var professionalDomains = new[] { "k-barnett.com", "kyle-barnett.com", "kylebarnett.com" };
 
 // Restrict professional domains to /resume and its subpaths
 app.Use(async (context, next) =>
