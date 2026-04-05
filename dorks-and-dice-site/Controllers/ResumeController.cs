@@ -44,7 +44,7 @@ namespace dorks_and_dice_site.Controllers
 
         public IActionResult Skywind()
         {
-            return RedirectToAction(nameof(ExperienceSkywind));
+            return View();
         }
 
         public IActionResult TechnologyServices()
@@ -94,7 +94,7 @@ namespace dorks_and_dice_site.Controllers
 
         public IActionResult ExperienceSkywind()
         {
-            return View();
+            return RedirectToAction(nameof(Skywind));
         }
     }
 }

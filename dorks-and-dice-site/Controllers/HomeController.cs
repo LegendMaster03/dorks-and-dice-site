@@ -101,7 +101,7 @@ namespace dorks_and_dice_site.Controllers
 
         public IActionResult ExperienceSkywind()
         {
-            return RedirectToAction(nameof(ResumeController.ExperienceSkywind), "Resume");
+            return RedirectToAction(nameof(ResumeController.Skywind), "Resume");
         }
 
         public IActionResult NotFoundPage()
