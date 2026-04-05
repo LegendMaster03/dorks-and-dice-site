@@ -141,16 +141,24 @@ body {
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.resume-detail-heading h1 {
+  overflow-wrap: anywhere;
 }
 
 .resume-detail-logo-link {
   display: flex;
-  align-items: stretch;
+  align-items: flex-start;
+  flex: 0 0 auto;
 }
 
 .resume-detail-logo {
+  display: block;
   width: auto;
-  height: 100%;
+  height: auto;
   max-height: 116px;
   min-height: 88px;
   object-fit: contain;
