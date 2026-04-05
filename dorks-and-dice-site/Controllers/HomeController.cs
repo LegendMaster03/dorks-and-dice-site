@@ -96,7 +96,7 @@ namespace dorks_and_dice_site.Controllers
 
         public IActionResult ExperienceSkyblivion()
         {
-            return RedirectToAction(nameof(ResumeController.ExperienceSkyblivion), "Resume");
+            return RedirectToAction(nameof(ResumeController.Skyblivion), "Resume");
         }
 
         public IActionResult ExperienceSkywind()

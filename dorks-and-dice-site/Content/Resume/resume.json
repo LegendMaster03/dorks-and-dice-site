@@ -199,7 +199,7 @@
         "Tested experimental workloads as the project transitioned to cloud workflows.",
         "Mentored new team members for faster onboarding success."
       ],
-      "detailsAction": "ExperienceSkyblivion",
+      "detailsAction": "Skyblivion",
       "tags": [
         "professional",
         "game-dev"
@@ -220,7 +220,7 @@
     {
       "title": "XnGine Framework",
       "subtitle": "MO2 plugin framework for classic XnGine games",
-      "summary": "Reverse-engineering and plugin-engineering project for for classic XnGine games such as Arena, Battlespire, Daggerfall, and Redguard. Implements binary format parsing, BSA archive tooling, save-system integration, and safer runtime patch workflows for xdelta/IPS/BPS/UPS/PPF mod pipelines.",
+      "summary": "Personal reverse-engineering and framework engineering project for classic Bethesda XnGine games (Arena, Battlespire, Daggerfall, and Redguard). Implements binary format parsing, BSA archive tooling, save integration, and safer runtime patch workflows for xdelta/IPS/BPS/UPS/PPF pipelines.",
       "category": "personal",
       "action": "XnGine",
       "featured": true,
@@ -232,7 +232,7 @@
     {
       "title": "Capstone Client Project: Safe Future Barcode for Good",
       "subtitle": "Safe Future Foundation | Nonprofit Inventory System",
-      "summary": "Year-long UNF capstone project for Safe Future Foundation, a Jacksonville nonprofit. Worked on a web-based inventory system with QR-based item labeling, CSV export, error handling, and iterative feature refinement driven by real client needs.",
+      "summary": "Year-long UNF capstone project for Safe Future Foundation, a Jacksonville nonprofit. Built and refined a web-based inventory system with QR item labeling, CSV export, stronger error handling, and client-driven iteration.",
       "category": "professional",
       "action": "SeniorProject",
       "featured": true,
@@ -243,7 +243,7 @@
     {
       "title": "Directed Independent Study",
       "subtitle": "UNF Cyber Team Readiness, Gap Analysis, and Curriculum Design",
-      "summary": "Completed directed independent study at UNF analyzing cybersecurity competition team readiness, workflow, leadership continuity, and training structure. Produced a current-state analysis, a future-state model with gap analysis and recommendations, and a penetration testing course proposal aligned to the study findings.",
+      "summary": "Directed independent study at UNF focused on cybersecurity team readiness, workflow gaps, leadership continuity, and training structure. Delivered current-state analysis, future-state recommendations, and a penetration testing course proposal.",
       "category": "professional",
       "action": "DirectedIndependentStudy",
       "featured": true,
@@ -254,7 +254,8 @@
     },
     {
       "title": "Skyblivion Interiors",
-      "summary": "Detailed interior design work and image gallery.",
+      "subtitle": "Skyblivion Global Project | Interior Level Design",
+      "summary": "Interior level design contributions to the Skyblivion global project, including completed spaces, iterative polish passes, and collaborative review-driven refinements.",
       "category": "professional",
       "action": "Skyblivion",
       "featured": true,
@@ -265,7 +266,8 @@
     },
     {
       "title": "Skywind Interiors",
-      "summary": "Interior level design work completed for the Skywind project.",
+      "subtitle": "Skywind Global Project | Interior Level Design",
+      "summary": "Interior level design contributions for Skywind with a focus on layout readability, environment storytelling, and standards-aligned iterative refinement.",
       "category": "professional",
       "action": "Skywind",
       "tags": [
@@ -276,7 +278,7 @@
     {
       "title": "Technology Services",
       "subtitle": "Personal Business",
-      "summary": "Client-focused upgrades, migrations, and network support work.",
+      "summary": "Client-focused technology services including system upgrades, device migrations, network setup, and practical troubleshooting support.",
       "category": "professional",
       "action": "TechnologyServices",
       "tags": [
@@ -286,7 +288,7 @@
     {
       "title": "Weed Wacker",
       "subtitle": "S.I.M. Lab Expo Prototype",
-      "summary": "Motion capture, asset support, and game demo creation.",
+      "summary": "S.I.M. Lab expo prototype work spanning motion-capture support, asset pipeline coordination, and playable demo delivery.",
       "category": "professional",
       "action": "SimLabExpo",
       "tags": [
@@ -296,7 +298,7 @@
     },
     {
       "title": "D&D Tooling and Campaign Systems",
-      "summary": "Frameworks and tools for long-form collaborative campaigns.",
+      "summary": "Design and tooling systems for long-form collaborative tabletop campaigns, including reusable frameworks, planning workflows, and session operations support.",
       "category": "personal",
       "action": "DndTools",
       "tags": [

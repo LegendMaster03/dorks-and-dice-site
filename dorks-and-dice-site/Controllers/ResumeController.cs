@@ -39,7 +39,7 @@ namespace dorks_and_dice_site.Controllers
 
         public IActionResult Skyblivion()
         {
-            return RedirectToAction(nameof(ExperienceSkyblivion));
+            return View();
         }
 
         public IActionResult Skywind()
@@ -89,7 +89,7 @@ namespace dorks_and_dice_site.Controllers
 
         public IActionResult ExperienceSkyblivion()
         {
-            return View();
+            return RedirectToAction(nameof(Skyblivion));
         }
 
         public IActionResult ExperienceSkywind()
