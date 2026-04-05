@@ -1,12 +1,52 @@
 @{
     ViewData["Title"] = "Skywind Interiors";
+    var header = new dorks_and_dice_site.Models.Resume.ResumeDetailHeaderViewModel
+    {
+        Title = "Skywind Interiors",
+        Subtitle = "Skywind Global Project",
+        MetaLine = "Interior Level Designer | December 2021 - 2022 | Global remote collaboration",
+        InfoItems = new Dictionary<string, string>
+        {
+            ["Project type"] = "Volunteer game development",
+            ["Role"] = "Interior Level Designer",
+            ["Team model"] = "Global distributed collaboration",
+            ["Timeline"] = "December 2021 - 2022"
+        }
+    };
 }
 
-<h1 class="mb-3">Skywind Interiors</h1>
+@await Html.PartialAsync("_ResumeDetailHeader", header)
+
+<h2 class="h5 mt-4">Overview</h2>
 <p>
-    Interior level design contributions for the Skywind project.
+    This page highlights my interior level design contributions to Skywind, a large-scale volunteer project
+    recreating Morrowind in a modernized engine environment.
 </p>
 
+<h2 class="h5 mt-4">Role and Contribution Scope</h2>
+<p>
+    My work focused on interior environment design, layout readability, and consistency with team quality standards.
+    Collaboration happened through distributed review and iterative feedback cycles.
+</p>
+<ul>
+    <li>Designed interior spaces with attention to exploration flow and environmental storytelling</li>
+    <li>Iterated layouts and detail passes based on team feedback</li>
+    <li>Aligned delivered spaces with project visual and gameplay expectations</li>
+</ul>
+
+<h2 class="h5 mt-4">Results</h2>
+<ul>
+    <li>Delivered interior level design work during the active contribution window</li>
+    <li>Supported team progress through collaborative review and iteration</li>
+</ul>
+
+<h2 class="h5 mt-4">Tools and Skills Applied</h2>
+<p>
+    Creation Kit, interior level design, environment composition, iterative polishing,
+    and remote team collaboration workflows.
+</p>
+
+<h2 class="h5 mt-4">Project Timeline</h2>
 <ul>
     <li>Role: Interior Level Designer</li>
     <li>Timeline: December 2021 - 2022</li>
