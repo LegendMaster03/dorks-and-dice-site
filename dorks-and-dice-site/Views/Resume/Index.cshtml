@@ -48,7 +48,7 @@
 
 <section class="resume-section mb-4" id="projects-section">
     <h2 class="h4 resume-section-title" id="projects">Projects</h2>
-    <p class="text-muted mb-3">Selected projects are highlighted first. The full list below still includes every project for filtering.</p>
+    <p class="text-muted mb-3">These are selected highlights from my portfolio. For a complete list, see the "All Projects" section below.</p>
 
     @if (featuredProjects.Count > 0)
     {
@@ -130,59 +130,6 @@
     {
         @await Html.PartialAsync("_ExperienceCard", experience)
     }
-</section>
-
-<section class="resume-section mb-4" id="projects-section">
-    <h2 class="h4 resume-section-title" id="projects">Projects</h2>
-    <p class="text-muted mb-3">Selected projects are highlighted first. The full list below still includes every project for filtering.</p>
-
-    @if (featuredProjects.Count > 0)
-    {
-        <div class="featured-projects mb-4">
-            <h3 class="h6 text-uppercase mb-3">Featured Projects</h3>
-            <div class="row row-cols-1 row-cols-lg-2 g-3">
-                @foreach (var project in featuredProjects)
-                {
-                    var categoryLabel = string.Equals(project.Category, "professional", StringComparison.OrdinalIgnoreCase)
-                        ? "Professional"
-                        : string.Equals(project.Category, "personal", StringComparison.OrdinalIgnoreCase)
-                            ? "Personal"
-                            : project.Category;
-                    <div class="col">
-                        <article class="featured-project-tile h-100">
-                            <p class="featured-project-meta mb-2">@categoryLabel</p>
-                            <h4 class="h5 mb-2">@project.Title</h4>
-                            @if (!string.IsNullOrWhiteSpace(project.Subtitle))
-                            {
-                                <p class="featured-project-subtitle text-muted mb-2">@project.Subtitle</p>
-                            }
-                            <p class="mb-3">@project.Summary</p>
-                            <a class="btn btn-sm btn-primary" asp-controller="Resume" asp-action="@project.Action">
-                                @(string.IsNullOrWhiteSpace(project.LinkText) ? "Open project" : project.LinkText)
-                            </a>
-                        </article>
-                    </div>
-                }
-            </div>
-        </div>
-    }
-
-    <div id="projectFilters" class="d-flex flex-wrap gap-2 mb-3">
-        <button type="button" class="btn btn-sm btn-outline-secondary active" data-filter="all">All</button>
-        <button type="button" class="btn btn-sm btn-outline-secondary" data-filter="professional">Professional</button>
-        <button type="button" class="btn btn-sm btn-outline-secondary" data-filter="personal">Personal</button>
-    </div>
-
-    <div class="projects-transition mb-3">
-        <h3 class="h6 text-uppercase text-muted mb-1">All Projects</h3>
-        <p class="small text-muted mb-0">Featured projects are repeated here intentionally so category filters operate across the complete set.</p>
-    </div>
-    <div class="row row-cols-1 row-cols-md-2 g-4 mt-1">
-        @foreach (var project in Model.ProjectItems)
-        {
-            @await Html.PartialAsync("_ProjectCard", project)
-        }
-    </div>
 </section>
 
 <section class="resume-section" id="leadership-section">
