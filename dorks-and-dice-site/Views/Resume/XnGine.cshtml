@@ -8,12 +8,13 @@
         InfoItems = new Dictionary<string, string>
         {
             ["Project type"] = "Reverse engineering + framework engineering",
-            ["Primary stack"] = "C++, CMake, MO2 plugin architecture",
+            ["Primary stack"] = "C++20, CMake, Qt6, MO2 plugin architecture",
             ["Examples of supported games"] = "Arena, Battlespire, Daggerfall, Redguard",
             ["Historical context"] = "Bethesda's in-house XnGine era (mid-to-late 1990s), before the early-2000s shift to NetImmerse/Gamebryo-era technology",
             ["Current status"] = "Approaching 1.0 release readiness",
             ["Core objective"] = "Reverse engineer and implement full mod-relevant format coverage",
-            ["Remaining 1.0 items"] = "Built-in BSA packer, Redguard save-path parsing refinement",
+            ["Patch formats"] = ".xdelta/.xdelta3/.vcdiff/.ips/.bps/.ups/.ppf + JSON byte-patch catalogs",
+            ["Remaining 1.0 items"] = "Cross-game compatibility hardening, Redguard stability, broader regression replay",
             ["Repository"] = "LegendMaster03/modorganizer-game_xngine"
         },
         InfoItemLinks = new Dictionary<string, string>
@@ -27,15 +28,26 @@
 
 <h2 class="h5 mt-4">Overview</h2>
 <p>
-    XnGine Framework is primarily a reverse engineering project. The core challenge is not just plugin integration,
-    but accurately decoding legacy XnGine-era file formats, mapping their structures, and building reliable parsers
-    that can support modern mod workflows inside Mod Organizer 2 (MO2).
+    XnGine Framework is a C++ MO2 plugin suite that combines reverse engineering, binary format tooling, and runtime
+    patch orchestration for classic Bethesda XnGine games. The implementation is split between a shared core
+    (<strong>src/xngine</strong>) and per-game plugin modules (<strong>src/games/arena</strong>,
+    <strong>src/games/battlespire</strong>, <strong>src/games/daggerfall</strong>, and
+    <strong>src/games/redguard</strong>).
 </p>
 <p>
-    These games were never designed with modern mod-management standards in mind. Much of the work requires working from
-    incomplete references, validating assumptions against real game data, and iterating until parser behavior is stable
-    across both vanilla assets and modded edge cases.
+    The project is not a thin launcher wrapper. It implements format readers/writers, save integration, mod-data
+    validation, patch discovery, patch application, and defensive diagnostics so legacy game content can be managed
+    through MO2's virtualized workflow without destructive base-install edits.
 </p>
+
+<h2 class="h5 mt-4">Technical Stack and Build System</h2>
+<ul>
+    <li>C++20 codebase with CMake 3.16+ build configuration</li>
+    <li>Qt6 (Core/Gui/Widgets) for MO2-facing plugin integration surfaces</li>
+    <li>MO2 uibase SDK integration through configurable CMake paths</li>
+    <li>vcpkg-managed dependencies including <strong>zlib</strong> and <strong>lz4</strong></li>
+    <li>Windows-focused toolchain (Visual Studio Build Tools + Ninja) for plugin build/deploy loops</li>
+</ul>
 
 <h2 class="h5 mt-4">Historical Significance</h2>
 <p>
@@ -51,14 +63,14 @@
 
 <h2 class="h5 mt-4">Reverse Engineering Focus</h2>
 <p>
-    The project goal is format-level coverage: identify every mod-relevant file format used across XnGine titles,
-    then implement support for patch-safe parsing and output generation.
+    The reverse engineering objective is format-level operational coverage: identify mod-relevant formats, decode
+    undocumented structures, and convert that knowledge into parser behavior that survives real mod packages.
 </p>
 <ul>
-    <li>Identified and cataloged game-specific and shared XnGine data formats used by real mod ecosystems</li>
-    <li>Reverse engineered undocumented or partially documented binary structures</li>
-    <li>Built parsers that prioritize correctness, repeatability, and compatibility with existing mods</li>
-    <li>Validated behavior through cross-checks against in-game outcomes and known community expectations</li>
+    <li>Cross-game format cataloging (shared + game-specific containers, resources, and patch artifacts)</li>
+    <li>Binary parser implementation for core formats such as BSA variants, WLD/TBL/RSC-related assets, and game-specific save data</li>
+    <li>Compatibility-first parsing strategy with explicit unsupported-format diagnostics instead of silent acceptance</li>
+    <li>Validation against real-world mod payloads and observed in-game behavior, not only synthetic test fixtures</li>
 </ul>
 <p>
     Supported games currently include titles such as <strong>Arena</strong>, <strong>Battlespire</strong>,
@@ -66,15 +78,66 @@
     full coverage of mod-relevant formats across the XnGine ecosystem.
 </p>
 
+<h2 class="h5 mt-4">Core Architecture and Game Modules</h2>
+<p>
+    The shared core exposes reusable features for save discovery, mod-data checking, archive operations, and patch
+    tooling. Game modules register specialized behavior on top of that foundation (game IDs, executable layouts,
+    save naming conventions, extension handling, and content signatures).
+</p>
+<ul>
+    <li><strong>GameXngine</strong> base behavior: install detection, save scanning, and common archive helpers</li>
+    <li><strong>XngineBSAFormat</strong> tooling: archive read/write, variant detection, directory unpack, manifest-driven pack</li>
+    <li><strong>XngineModDataChecker/XngineModDataContent</strong>: conservative safety checks plus per-game content classification</li>
+    <li>Per-game registration of features like <strong>XngineSaveGameInfo</strong>, local-save wiring, and unmanaged-mod handling</li>
+</ul>
+
+<h2 class="h5 mt-4">Patch Pipeline and Runtime Safety</h2>
+<p>
+    Patching is implemented as controlled runtime staging. Instead of mutating the base install, patch outputs are
+    generated into temporary MO2-managed output paths, then cleaned up after run completion.
+</p>
+<ul>
+    <li>Patch-family support includes <strong>.xdelta</strong>, <strong>.xdelta3</strong>, <strong>.vcdiff</strong>, <strong>.ips</strong>, <strong>.bps</strong>, <strong>.ups</strong>, and <strong>.ppf</strong></li>
+    <li>JSON byte-patch catalogs are validated before use (offset parsing, expected/replacement byte checks)</li>
+    <li>Patch target candidate ordering uses heuristic scoring (basename, known executable naming, layout hints)</li>
+    <li>xdelta tool discovery supports configured paths plus MO2/plugin, modding-root, environment, and PATH fallbacks</li>
+    <li>Failure paths are explicit, with actionable warnings when tool discovery or patch application cannot complete</li>
+</ul>
+
+<h2 class="h5 mt-4">Format Operations and Archive Engineering</h2>
+<p>
+    Archive handling is implemented as a first-class subsystem, not a one-off utility. BSA workflows include both
+    unpack and pack paths, archive trait customization, known-archive index mapping, and optional manifest files to
+    preserve deterministic archive construction rules.
+</p>
+<ul>
+    <li>BSA read/write error paths validate header/footer layout and index-type constraints</li>
+    <li>Known-archive mappings drive safer automatic index-type selection for repack operations</li>
+    <li>Extraction can emit manifest metadata for deterministic rebuild and auditability</li>
+    <li>Archive extractor features are wired into game modules for game-aware unpack/pack behavior</li>
+</ul>
+
+<h2 class="h5 mt-4">Mod Intake, Validation, and Defensive Checks</h2>
+<p>
+    Mod intake logic is intentionally defensive. The pipeline detects patch payloads, classic archive payloads, and
+    risky installer-style payloads (batch/executable/self-extracting patterns) before they are treated as safe content.
+</p>
+<ul>
+    <li>Patch payload detection includes extension checks and named patch-catalog conventions</li>
+    <li>Unity-side compatibility signals are handled via explicit payload detection (for limited compatibility modes)</li>
+    <li>Installer/extractor keyword heuristics reduce accidental execution-oriented mod ingestion</li>
+    <li>Content categorization tags patch instructions, file overrides, audio, textures, config, scripts, and text content</li>
+</ul>
+
 <h2 class="h5 mt-4">Current State (Toward 1.0)</h2>
 <p>
-    The framework is approaching a 1.0 state that I am comfortable with. In practical terms, the work has moved from
-    broad foundational format onboarding into diminishing returns: high-impact reverse engineering is complete, and
-    remaining tasks are now mostly long-tail compatibility cases.
+    Current work is in late-stage MVP hardening. Core architecture and major patch flows are implemented across Arena,
+    Daggerfall, Battlespire, and Redguard, with most remaining effort focused on compatibility regression depth,
+    edge-case hardening, and release-stability validation.
 </p>
 <p>
-    At this point, all commonly used formats are implemented. Most remaining gaps are obscure 1990s-era formats tied
-    to a small number of rare mods where documentation is minimal or missing.
+    Based on the current progress baseline, Arena and Daggerfall are near complete for defined 1.0 MVP scope,
+    Battlespire is in late polish, and Redguard remains the main remaining depth area for format and stability parity.
 </p>
 
 <h2 class="h5 mt-4">Architecture: Reverse Engineering to Runtime Patching</h2>
@@ -105,12 +168,45 @@
 
 <h2 class="h5 mt-4">Remaining 1.0 Milestones</h2>
 <ul>
-    <li><strong>Built-in BSA packer:</strong> complete integrated archive packaging support</li>
-    <li><strong>Redguard save-location parsing refinement:</strong> improve reliability and edge-case handling</li>
+    <li><strong>Cross-game compatibility verification:</strong> run curated real-world mod packs through repeatable install/enable/disable/uninstall cycles</li>
+    <li><strong>Redguard hardening:</strong> close remaining stability and format-depth gaps to match other game modules</li>
+    <li><strong>Regression harness expansion:</strong> improve scripted replay coverage for patch and save edge cases</li>
+    <li><strong>Operational resilience:</strong> continue reducing environment-level blockers such as plugin DLL lock deploy interruptions</li>
 </ul>
 <p>
-    Once these are complete, the framework reaches the release baseline I consider appropriate for a 1.0 designation.
+    Completing these items will move the framework from advanced implementation to a release-ready 1.0 baseline with
+    stronger reproducibility and safer long-term maintenance.
 </p>
+
+<h2 class="h5 mt-4">Technical Documentation</h2>
+<p>
+    This project includes direct engineering documentation and implementation references. These are the primary
+    technical sources I use for architecture decisions, compatibility tracking, and reverse-engineering validation.
+</p>
+
+<h3 class="h6 mt-3">Primary Documentation</h3>
+<ul>
+    <li><a href="https://github.com/LegendMaster03/modorganizer-game_xngine/blob/main/README.md" target="_blank" rel="noopener noreferrer">README.md</a> - project scope, supported games, and high-level structure</li>
+    <li><a href="https://github.com/LegendMaster03/modorganizer-game_xngine/blob/main/BUILDING.md" target="_blank" rel="noopener noreferrer">BUILDING.md</a> - build/deploy setup and tooling requirements</li>
+    <li><a href="https://github.com/LegendMaster03/modorganizer-game_xngine/blob/main/classic_es_file_formats.md" target="_blank" rel="noopener noreferrer">classic_es_file_formats.md</a> - cross-game format catalog and core-vs-game format analysis</li>
+    <li><a href="https://github.com/LegendMaster03/modorganizer-game_xngine/blob/main/XNGINE_PROGRESS_2026-03-03.md" target="_blank" rel="noopener noreferrer">XNGINE_PROGRESS_2026-03-03.md</a> - 1.0 MVP criteria, per-game status, and hardening roadmap</li>
+</ul>
+
+<h3 class="h6 mt-3">Core Implementation References</h3>
+<ul>
+    <li><a href="https://github.com/LegendMaster03/modorganizer-game_xngine/blob/main/src/xngine/gamexngine.cpp" target="_blank" rel="noopener noreferrer">src/xngine/gamexngine.cpp</a> - shared plugin base behavior, save scanning, and archive helper flow</li>
+    <li><a href="https://github.com/LegendMaster03/modorganizer-game_xngine/blob/main/src/xngine/xnginebsaformat.cpp" target="_blank" rel="noopener noreferrer">src/xngine/xnginebsaformat.cpp</a> - BSA read/write, variant detection, unpack/pack pipeline</li>
+    <li><a href="https://github.com/LegendMaster03/modorganizer-game_xngine/blob/main/src/xngine/xngineexepatch.cpp" target="_blank" rel="noopener noreferrer">src/xngine/xngineexepatch.cpp</a> - patch ingestion, byte-patch validation, and xdelta-family orchestration</li>
+    <li><a href="https://github.com/LegendMaster03/modorganizer-game_xngine/blob/main/src/xngine/xnginemoddatachecker.h" target="_blank" rel="noopener noreferrer">src/xngine/xnginemoddatachecker.h</a> and <a href="https://github.com/LegendMaster03/modorganizer-game_xngine/blob/main/src/xngine/xnginemoddatacontent.h" target="_blank" rel="noopener noreferrer">src/xngine/xnginemoddatacontent.h</a> - baseline mod validation and content classification model</li>
+</ul>
+
+<h3 class="h6 mt-3">Game-Specific Technical References</h3>
+<ul>
+    <li><a href="https://github.com/LegendMaster03/modorganizer-game_xngine/blob/main/src/games/daggerfall/gamedaggerfall.cpp" target="_blank" rel="noopener noreferrer">src/games/daggerfall/gamedaggerfall.cpp</a> - Daggerfall game integration and patch pipeline wiring</li>
+    <li><a href="https://github.com/LegendMaster03/modorganizer-game_xngine/blob/main/src/games/daggerfall/daggerfallsmoddatacontent.cpp" target="_blank" rel="noopener noreferrer">src/games/daggerfall/daggerfallsmoddatacontent.cpp</a> - patch payload detection and compatibility gating</li>
+    <li><a href="https://github.com/LegendMaster03/modorganizer-game_xngine/blob/main/src/games/redguard/gameredguard.cpp" target="_blank" rel="noopener noreferrer">src/games/redguard/gameredguard.cpp</a> - Redguard executable/layout detection and profile integration</li>
+    <li><a href="https://github.com/LegendMaster03/modorganizer-game_xngine/blob/main/src/games/redguard/redguardsavegame.cpp" target="_blank" rel="noopener noreferrer">src/games/redguard/redguardsavegame.cpp</a> - low-level Redguard save parsing and validation rules</li>
+</ul>
 
 <h2 class="h5 mt-4">Repository</h2>
 <p class="mb-0">
