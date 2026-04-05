@@ -1,6 +1,6 @@
 @model dorks_and_dice_site.Models.Resume.ResumeDetailHeaderViewModel
 
-<div class="resume-detail-header d-flex justify-content-between align-items-stretch gap-3 mb-3 flex-wrap">
+<div class="resume-detail-header d-flex justify-content-between align-items-start gap-3 mb-3 flex-wrap flex-md-nowrap">
     <div class="resume-detail-heading">
         <h1 class="mb-1">@Model.Title</h1>
         @if (!string.IsNullOrWhiteSpace(Model.Subtitle))
