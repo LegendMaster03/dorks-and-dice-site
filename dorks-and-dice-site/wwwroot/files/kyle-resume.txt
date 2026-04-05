@@ -68,8 +68,8 @@ December 2021 - 2022
 Projects
 XnGine Framework
 Personal project: in-progress framework architecture and engineering documentation.
-Senior Project
-Year-long UNF capstone project for Safe Future Foundation, a Jacksonville nonprofit. Worked on a web-based inventory system with QR-based item labeling, CSV export, error handling, and iterative feature refinement driven by real client needs.
+Capstone Client Project: Safe Future Barcode for Good
+Year-long UNF capstone client project for Safe Future Foundation, a Jacksonville nonprofit. Worked on a web-based inventory system with QR-based item labeling, CSV export, error handling, and iterative feature refinement driven by real client needs.
 Directed Independent Study
 Completed directed independent study at UNF analyzing cybersecurity competition team readiness, workflow, leadership continuity, and training structure. Produced a current-state analysis, a future-state model with gap analysis and recommendations, and a penetration testing course proposal aligned to the study findings.
 Skyblivion Interiors
