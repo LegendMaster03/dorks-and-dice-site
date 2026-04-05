@@ -1,10 +1,61 @@
 @{
     ViewData["Title"] = "Skyblivion Interiors";
+    var header = new dorks_and_dice_site.Models.Resume.ResumeDetailHeaderViewModel
+    {
+        Title = "Skyblivion Interiors",
+        Subtitle = "Skyblivion Global Project",
+        MetaLine = "Interior Level Designer | March 2021 - August 2022 | Global remote collaboration",
+        LogoUrl = Url.Content("~/images/logos/skyblivion.png"),
+        LogoAltText = "Skyblivion logo",
+        LogoLinkUrl = "https://skyblivion.com/",
+        LogoAriaLabel = "Skyblivion website",
+        InfoItems = new Dictionary<string, string>
+        {
+            ["Project type"] = "Volunteer game development",
+            ["Role"] = "Interior Level Designer",
+            ["Team model"] = "Global distributed collaboration",
+            ["Scope delivered"] = "11 completed interior levels",
+            ["Timeline"] = "March 2021 - August 2022"
+        }
+    };
 }
 
-<h1 class="mb-3">Skyblivion Interiors</h1>
+@await Html.PartialAsync("_ResumeDetailHeader", header)
+
+<h2 class="h5 mt-4">Overview</h2>
 <p>
-    Selected interiors created for Skyblivion.
+    This page highlights my interior level design contributions to Skyblivion, a large-scale volunteer game development
+    project focused on recreating Oblivion in a modernized engine environment.
+</p>
+
+<h2 class="h5 mt-4">Role and Contribution Scope</h2>
+<p>
+    I worked on interior level production across multiple locations, with a focus on environment quality,
+    playable layout flow, and consistency with project standards.
+</p>
+<ul>
+    <li>Designed and completed 11 interior spaces delivered to project standards</li>
+    <li>Iterated layouts and scene composition based on team review feedback</li>
+    <li>Tested workflow changes during process transitions to improve team throughput</li>
+    <li>Mentored newer contributors to improve onboarding and early contribution quality</li>
+</ul>
+
+<h2 class="h5 mt-4">Results</h2>
+<ul>
+    <li>Completed and shipped a set of interior levels used by the project team</li>
+    <li>Contributed to team continuity through contributor support and knowledge transfer</li>
+    <li>Helped maintain quality and production momentum in a distributed collaboration model</li>
+</ul>
+
+<h2 class="h5 mt-4">Tools and Skills Applied</h2>
+<p>
+    Creation Kit, level design workflows, iterative environment polishing, collaborative review cycles,
+    and documentation-driven handoff practices.
+</p>
+
+<h2 class="h5 mt-4">Selected Interiors</h2>
+<p class="text-muted">
+    Gallery of completed interior spaces from my Skyblivion contribution window.
 </p>
 
 <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4 project-gallery">
