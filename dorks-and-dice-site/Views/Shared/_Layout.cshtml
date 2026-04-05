@@ -64,7 +64,7 @@
                         <li class="nav-item">
                             <a class="nav-link" asp-area="" asp-controller="Resume" asp-action="Index" asp-fragment="contact">Contact</a>
                         </li>
-                        @if (!(forceKyleBarnettBranding ?? false))
+                        @if (!forceKyleBarnettBranding)
                         {
                             // Place ribbon or extra navigation here for non-professional domains
                             <li class="nav-item">
