@@ -71,7 +71,7 @@ Personal project: in-progress framework architecture and engineering documentati
 Senior Project
 Year-long UNF capstone project for Safe Future Foundation, a Jacksonville nonprofit. Worked on a web-based inventory system with QR-based item labeling, CSV export, error handling, and iterative feature refinement driven by real client needs.
 Directed Independent Study
-Independent study at UNF analyzing cybersecurity competition team readiness, workflow, and continuity. Produced a current-state analysis and future-state recommendation model, with a third deliverable in progress focused on a possible penetration testing course outline.
+Completed directed independent study at UNF analyzing cybersecurity competition team readiness, workflow, leadership continuity, and training structure. Produced a current-state analysis, a future-state model with gap analysis and recommendations, and a penetration testing course proposal aligned to the study findings.
 Skyblivion Interiors
 Detailed interior design work and image gallery.
 Skywind Interiors
