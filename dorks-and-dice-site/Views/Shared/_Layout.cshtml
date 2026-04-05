@@ -64,6 +64,13 @@
                         <li class="nav-item">
                             <a class="nav-link" asp-area="" asp-controller="Resume" asp-action="Index" asp-fragment="contact">Contact</a>
                         </li>
+                        @if (!(forceKyleBarnettBranding ?? false))
+                        {
+                            // Place ribbon or extra navigation here for non-professional domains
+                            <li class="nav-item">
+                                <span class="nav-link text-danger">Ribbon/Extra Nav</span>
+                            </li>
+                        }
                     </ul>
                     <button id="themeToggle" class="btn btn-outline-secondary btn-sm ms-lg-3 mt-2 mt-lg-0" type="button" aria-label="Toggle dark mode">
                         Dark Mode
