@@ -8,6 +8,7 @@ public class ProjectItemViewModel
     public string Category { get; set; } = "professional";
     public string Action { get; set; } = string.Empty;
     public string LinkText { get; set; } = "Open Project";
+    public string? RepositoryUrl { get; set; }
     public bool Featured { get; set; }
     public List<string> Tags { get; set; } = [];
 }

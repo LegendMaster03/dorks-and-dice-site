@@ -341,7 +341,9 @@ body {
 }
 
 body.dark-mode {
-  background-color: #0f172a;
+  background-color: #1C2333;
+  background-image: linear-gradient(160deg, #1C2333 0%, #2A3550 40%, #1E2D45 70%, #2A2D35 100%);
+  background-attachment: fixed;
   color: #e2e8f0;
 }
 
@@ -495,7 +497,7 @@ body.dark-mode code {
 @media print {
   @page {
     size: Letter portrait;
-    margin: 0.08in;
+    margin: 0.45in;
   }
 
   .container,
@@ -508,20 +510,11 @@ body.dark-mode code {
 
   body {
     background: #fff !important;
-    color: #000;
-    font-size: 7.6pt;
-    line-height: 1;
-    font-family: "Times New Roman", Times, serif;
+    color: #0f172a !important;
+    font-size: 10pt;
+    line-height: 1.28;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
-    color: #000 !important;
-    zoom: 0.97;
-  }
-
-  * {
-    color: #000 !important;
-    opacity: 1 !important;
-    -webkit-text-fill-color: #000 !important;
   }
 
   .text-muted,
@@ -530,9 +523,9 @@ body.dark-mode code {
   .card-text,
   small,
   .small {
-    color: #000 !important;
+    color: #475569 !important;
     opacity: 1 !important;
-    -webkit-text-fill-color: #000 !important;
+    -webkit-text-fill-color: #475569 !important;
   }
 
   .navbar,
@@ -548,26 +541,26 @@ body.dark-mode code {
   }
 
   .profile-headshot {
-    display: none !important;
+    display: block !important;
+    width: 1.15in !important;
+    height: 1.15in !important;
+    border: 1px solid rgba(15, 23, 42, 0.12) !important;
   }
 
   .card,
-  .contact-card,
-  .contact-link {
-    border: 0 !important;
+  .contact-card {
     box-shadow: none !important;
-    background: #fff !important;
-    margin-bottom: 0.01in !important;
-    break-inside: auto !important;
-    page-break-inside: auto !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
   }
 
   .card-body {
-    padding: 0 !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
   }
 
   .mb-4 {
-    margin-bottom: 0.02in !important;
+    margin-bottom: 0.2in !important;
   }
 
   .mb-3,
@@ -576,42 +569,74 @@ body.dark-mode code {
   .mt-3,
   .mt-2,
   .mt-1 {
-    margin-bottom: 0.01in !important;
-    margin-top: 0.01in !important;
+    margin-bottom: 0.08in !important;
+    margin-top: 0.04in !important;
   }
 
   h2.h4 {
-    font-size: 10.4pt !important;
-    color: #fff !important;
-    -webkit-text-fill-color: #fff !important;
-    background: #0f3b86 !important;
-    text-transform: uppercase;
-    letter-spacing: 0.02em;
-    margin-top: 0.03in !important;
-    margin-bottom: 0.015in !important;
-    padding: 0.01in 0.06in;
-    border: 0 !important;
+    margin-top: 0 !important;
+    margin-bottom: 0.1in !important;
   }
 
   h3.h6 {
-    font-size: 8.8pt !important;
-    margin-bottom: 0.01in !important;
+    margin-bottom: 0.05in !important;
   }
 
   p,
   li {
-    margin-bottom: 0.006in !important;
+    margin-bottom: 0.04in !important;
   }
 
   ul {
-    margin-bottom: 0.008in !important;
-    padding-left: 0.1in !important;
+    margin-bottom: 0.06in !important;
+    padding-left: 0.18in !important;
+  }
+
+  .resume-hero-main {
+    box-shadow: none !important;
+  }
+
+  .resume-identity h1 {
+    margin-bottom: 0.03in !important;
+  }
+
+  .resume-identity p {
+    margin-bottom: 0.04in !important;
+  }
+
+  .contact-card {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  .contact-link {
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.12in !important;
+  }
+
+  .contact-icon {
+    display: block !important;
+  }
+
+  .resume-entry-meta,
+  .featured-project-meta,
+  .project-card-subtitle {
+    color: #475569 !important;
+  }
+
+  .featured-projects {
+    display: none !important;
+  }
+
+  #header-section .row {
+    align-items: stretch !important;
   }
 
   #projects-section .row.row-cols-1.row-cols-md-2.g-4.mt-1 {
     display: block !important;
     column-count: 2;
-    column-gap: 0.12in;
+    column-gap: 0.18in;
     margin-left: 0 !important;
     margin-right: 0 !important;
   }
@@ -621,7 +646,7 @@ body.dark-mode code {
     display: block !important;
     width: auto !important;
     padding: 0 !important;
-    margin: 0 0 0.006in 0 !important;
+    margin: 0 0 0.12in 0 !important;
     break-inside: avoid;
     page-break-inside: avoid;
   }
@@ -648,46 +673,33 @@ body.dark-mode code {
   }
 
   #projects-section .card-title {
-    font-size: 8pt !important;
-    line-height: 1.02 !important;
     margin: 0 !important;
   }
 
   #projects-section .card-text {
-    font-size: 7.3pt !important;
-    line-height: 1 !important;
-    margin: 0.002in 0 0 0 !important;
+    margin: 0.04in 0 0 0 !important;
   }
 
   #projects-section .badge {
-    font-size: 6.8pt !important;
-    padding: 0 !important;
     margin: 0 !important;
-    background: none !important;
-    border: 0 !important;
-    display: inline !important;
-    color: #000 !important;
   }
 
   #leadership-section .card:last-child p.mt-3 {
-    font-size: 7pt !important;
-    line-height: 0.97 !important;
-    margin-top: 0.002in !important;
+    margin-top: 0.04in !important;
     margin-bottom: 0 !important;
   }
 
   #leadership-section .card:last-child ul {
-    margin-bottom: 0.002in !important;
-    line-height: 0.98 !important;
+    margin-bottom: 0.04in !important;
   }
 
   #leadership-section .card:last-child p.text-muted {
-    margin-bottom: 0.002in !important;
+    margin-bottom: 0.04in !important;
   }
 
-  #header-section .small,
-  #header-section p.mb-0 {
-    display: none !important;
+  #header-section p.mb-0 a {
+    color: #1d4ed8 !important;
+    text-decoration: none !important;
   }
 
   #leadership-section .row,
@@ -698,34 +710,21 @@ body.dark-mode code {
 
   #contact {
     padding: 0 !important;
-    margin-top: 0.01in;
-  }
-
-  #contact h2,
-  .contact-icon {
-    display: none !important;
-  }
-
-  #contact .contact-link {
-    display: inline;
-    margin-right: 0.08in;
-    padding: 0;
+    margin-top: 0;
   }
 
   #contact .contact-link span {
-    font-size: 8.3pt;
+    font-size: 9pt;
   }
 
   a {
-    color: #000 !important;
+    color: #0f172a !important;
     text-decoration: none !important;
   }
 
-  /* Keep section titles readable on blue bars in print. */
-  h2.h4,
-  h2.h4 * {
-    color: #fff !important;
-    -webkit-text-fill-color: #fff !important;
-    opacity: 1 !important;
+  .resume-section,
+  .resume-section * {
+    break-inside: auto;
+    page-break-inside: auto;
   }
 }

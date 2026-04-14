@@ -36,9 +36,20 @@
                     }
                 </p>
             }
-            <a class="btn btn-sm btn-outline-primary" asp-controller="Resume" asp-action="@Model.Action">
-                @(string.IsNullOrWhiteSpace(Model.LinkText) ? "Open project" : Model.LinkText)
-            </a>
+            <div class="d-flex flex-wrap gap-2">
+                <a class="btn btn-sm btn-outline-primary" asp-controller="Resume" asp-action="@Model.Action">
+                    @(string.IsNullOrWhiteSpace(Model.LinkText) ? "Open project" : Model.LinkText)
+                </a>
+                @if (!string.IsNullOrWhiteSpace(Model.RepositoryUrl))
+                {
+                    <a class="btn btn-sm btn-outline-secondary"
+                       href="@Model.RepositoryUrl"
+                       target="_blank"
+                       rel="noopener noreferrer">
+                        View Git
+                    </a>
+                }
+            </div>
         </div>
     </div>
 </div>

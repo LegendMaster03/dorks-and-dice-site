@@ -223,6 +223,7 @@
       "summary": "Personal reverse-engineering and framework engineering project for classic Bethesda XnGine games (Arena, Battlespire, Daggerfall, and Redguard). Implements binary format parsing, BSA archive tooling, save integration, and safer runtime patch workflows for xdelta/IPS/BPS/UPS/PPF pipelines.",
       "category": "personal",
       "action": "XnGine",
+      "repositoryUrl": "https://github.com/LegendMaster03/modorganizer-game_xngine",
       "featured": true,
       "tags": [
         "framework",
@@ -235,6 +236,7 @@
       "summary": "Year-long professional full-stack client engagement for Safe Future Foundation, completed through UNF capstone work. Delivered a responsive inventory system with QR labeling and batch print workflows, Excel reporting, low-stock monitoring, an operations dashboard, security review, and stakeholder-ready documentation.",
       "category": "professional",
       "action": "SeniorProject",
+      "repositoryUrl": "https://github.com/eraser4521/SafeFutureInventorySystem",
       "featured": true,
       "tags": [
         "capstone"
