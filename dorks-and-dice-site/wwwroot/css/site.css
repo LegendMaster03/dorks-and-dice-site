@@ -342,7 +342,7 @@ body {
 
 body.dark-mode {
   background-color: #1C2333;
-  background-image: linear-gradient(160deg, #1C2333 0%, #2A3550 40%, #1E2D45 70%, #2A2D35 100%);
+  background-image: linear-gradient(160deg, #1C2333 0%, #1C2333 22%, #2A3550 45%, #1E2D45 72%, #2A2D35 100%);
   background-attachment: fixed;
   color: #e2e8f0;
 }
