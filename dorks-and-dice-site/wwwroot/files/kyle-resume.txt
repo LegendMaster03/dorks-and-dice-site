@@ -67,25 +67,24 @@ Skywind - Interior Level Designer
 December 2021 - 2022
 Projects
 XnGine Framework
-Personal project: in-progress framework architecture and engineering documentation.
+Personal reverse-engineering and framework engineering project for classic Bethesda XnGine games (Arena, Battlespire, Daggerfall, and Redguard). Implements binary format parsing, BSA archive tooling, save integration, and safer runtime patch workflows for xdelta/IPS/BPS/UPS/PPF pipelines.
 Capstone Client Project: Safe Future Barcode for Good
-Year-long UNF capstone client project for Safe Future Foundation, a Jacksonville nonprofit. Worked on a web-based inventory system with QR-based item labeling, CSV export, error handling, and iterative feature refinement driven by real client needs.
+Year-long professional full-stack client engagement for Safe Future Foundation, completed through UNF capstone work. Delivered a responsive inventory system with QR labeling and batch print workflows, Excel reporting, low-stock monitoring, an operations dashboard, security review, and stakeholder-ready documentation.
 Directed Independent Study
-Completed directed independent study at UNF analyzing cybersecurity competition team readiness, workflow, leadership continuity, and training structure. Produced a current-state analysis, a future-state model with gap analysis and recommendations, and a penetration testing course proposal aligned to the study findings.
+Directed independent study at UNF focused on cybersecurity team readiness, workflow gaps, leadership continuity, and training structure. Delivered current-state analysis, future-state recommendations, and a penetration testing course proposal.
 Skyblivion Interiors
-Detailed interior design work and image gallery.
+Interior level design contributions to the Skyblivion global project, including completed spaces, iterative polish passes, and collaborative review-driven refinements.
 Skywind Interiors
-Interior level design work completed for the Skywind project.
+Interior level design contributions for Skywind with a focus on layout readability, environment storytelling, and standards-aligned iterative refinement.
 Technology Services
-Client-focused upgrades, migrations, and network support work.
+Client-focused technology services including system upgrades, device migrations, network setup, and practical troubleshooting support.
 Weed Wacker
-Motion capture, asset support, and game demo creation.
+S.I.M. Lab expo prototype work spanning motion-capture support, asset pipeline coordination, and playable demo delivery.
 D&D Tooling and Campaign Systems
-Frameworks and tools for long-form collaborative campaigns.
+Design and tooling systems for long-form collaborative tabletop campaigns, including reusable frameworks, planning workflows, and session operations support.
 Leadership Experience
 Dungeons & Dragons Game Master
 2024 - Present
-Related project: D&D Tooling and Campaign Systems
 - Plans and facilitates recurring sessions, balancing long-term roadmap planning with weekly execution.
 - Leads live group communication and public-speaking-style facilitation for collaborative decision-making.
 - Resolves interpersonal conflicts and keeps teams aligned under changing priorities and constraints.
