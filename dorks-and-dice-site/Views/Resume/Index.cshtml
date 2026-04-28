@@ -71,9 +71,20 @@
                                 <p class="featured-project-subtitle text-muted mb-2">@project.Subtitle</p>
                             }
                             <p class="mb-3">@project.Summary</p>
-                            <a class="btn btn-sm btn-primary" asp-controller="Resume" asp-action="@project.Action">
-                                @(string.IsNullOrWhiteSpace(project.LinkText) ? "Open project" : project.LinkText)
-                            </a>
+                            <div class="d-flex flex-wrap gap-2">
+                                <a class="btn btn-sm btn-primary" asp-controller="Resume" asp-action="@project.Action">
+                                    @(string.IsNullOrWhiteSpace(project.LinkText) ? "Open project" : project.LinkText)
+                                </a>
+                                @if (!string.IsNullOrWhiteSpace(project.RepositoryUrl))
+                                {
+                                    <a class="btn btn-sm btn-outline-secondary"
+                                       href="@project.RepositoryUrl"
+                                       target="_blank"
+                                       rel="noopener noreferrer">
+                                        View Git
+                                    </a>
+                                }
+                            </div>
                         </article>
                     </div>
                 }
