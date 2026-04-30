@@ -52,7 +52,7 @@
           "cssClass": "mb-1"
         },
         {
-          "text": "August 2023 - Present | Expected Graduation: May 1, 2026 | Dean's List | Upsilon Pi Epsilon member",
+          "text": "August 2023 - Present | Expected Graduation: May 1, 2026 | Dean's List | Upsilon Pi Epsilon Honor Society",
           "cssClass": "mb-0",
           "isMuted": true
         }
@@ -92,10 +92,10 @@
   ],
   "awardEntries": [
     {
-      "title": "Upsilon Pi Epsilon (UPE), International Honor Society for the Computing and Information Disciplines.",
+      "title": "Upsilon Pi Epsilon (UPE), International Honor Society for the Computing and Information Disciplines",
       "cardCssClass": "card mb-2",
       "metaText": "Issued February 2026 by Upsilon Pi Epsilon | Associated with University of North Florida",
-      "summary": "International Honor Society for the Computing Sciences."
+      "summary": "Selected for membership in Upsilon Pi Epsilon, the international honor society recognizing academic excellence in the computing and information disciplines."
     },
     {
       "title": "Dean's List",
