@@ -5,4 +5,7 @@ public class EducationEntryViewModel
     public string Institution { get; set; } = string.Empty;
     public string CardCssClass { get; set; } = "card mb-2";
     public List<ResumeLineItemViewModel> Lines { get; set; } = [];
+    public string? EmbedUrl { get; set; }
+    public string? LocalBackupUrl { get; set; }
+    public string? OfficialUrl { get; set; }
 }

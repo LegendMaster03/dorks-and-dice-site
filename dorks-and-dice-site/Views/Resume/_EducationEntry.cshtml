@@ -8,5 +8,19 @@
             var textClass = line.IsMuted ? $"resume-entry-meta text-muted {line.CssClass}" : line.CssClass;
             <p class="@textClass">@line.Text</p>
         }
+        @* Compact controls for diploma/official links *@
+        @if (!string.IsNullOrWhiteSpace(Model.EmbedUrl) || !string.IsNullOrWhiteSpace(Model.OfficialUrl))
+        {
+            <div class="mt-2">
+                @if (!string.IsNullOrWhiteSpace(Model.EmbedUrl))
+                {
+                    <a class="btn btn-sm btn-outline-primary me-2" href="@Url.Content(Model.EmbedUrl)" target="_blank" rel="noopener noreferrer">View Diploma (PDF)</a>
+                }
+                @if (!string.IsNullOrWhiteSpace(Model.OfficialUrl))
+                {
+                    <a class="btn btn-sm btn-outline-secondary" href="@Model.OfficialUrl" target="_blank" rel="noopener noreferrer">View Official Record</a>
+                }
+            </div>
+        }
     </div>
 </div>

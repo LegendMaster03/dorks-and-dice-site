@@ -13,10 +13,10 @@
         }
         @if (!string.IsNullOrWhiteSpace(Model.EmbedUrl))
         {
-            <div class="ratio ratio-16x9 mt-3 mb-2">
-                <iframe src="@Url.Content(Model.EmbedUrl)" title="@Model.Title" loading="lazy" referrerpolicy="no-referrer"></iframe>
+            <div class="mt-3 mb-2">
+                <a class="btn btn-sm btn-outline-primary me-2" href="@Url.Content(Model.EmbedUrl)" target="_blank" rel="noopener noreferrer">View Certificate (PDF)</a>
+                <a class="btn btn-sm btn-outline-secondary" href="@Url.Content(Model.LocalBackupUrl ?? Model.EmbedUrl)" target="_blank" rel="noopener noreferrer">Download Backup</a>
             </div>
-            <p class="small mb-2">Open backup: <a href="@Url.Content(Model.LocalBackupUrl ?? Model.EmbedUrl)" target="_blank" rel="noopener noreferrer">Download PDF</a></p>
         }
         @if (Model.Highlights.Count > 0)
         {
