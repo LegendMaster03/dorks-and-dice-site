@@ -27,8 +27,6 @@ public static class ResumeContentValidator
             Require(item.Href, $"contactLinks[{i}].href", errors);
         }
 
-        // no separate credentialEntries validation — credentials are embedded in awards or education entries
-
         RequireList(model.EducationEntries, "educationEntries", errors);
         for (var i = 0; i < model.EducationEntries.Count; i++)
         {
