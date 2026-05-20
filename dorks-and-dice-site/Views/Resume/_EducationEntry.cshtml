@@ -1,20 +1,26 @@
 @model dorks_and_dice_site.Models.Resume.EducationEntryViewModel
 
-<div class="@Model.CardCssClass">
+<div class="@($"{Model.CardCssClass} position-relative")">
     <div class="card-body">
-        <h3 class="h6 mb-1">@Model.Institution</h3>
-        @foreach (var line in Model.Lines)
-        {
-            var textClass = line.IsMuted ? $"resume-entry-meta text-muted {line.CssClass}" : line.CssClass;
-            <p class="@textClass">@line.Text</p>
-        }
-        @* Compact controls for diploma/official links *@
-        @if (!string.IsNullOrWhiteSpace(Model.EmbedUrl) || !string.IsNullOrWhiteSpace(Model.OfficialUrl))
-        {
-            <div class="mt-2">
-                @if (!string.IsNullOrWhiteSpace(Model.EmbedUrl))
+        <div class="d-flex align-items-start">
+            <div class="me-3">
+                <h3 class="h6 mb-1">@Model.Institution</h3>
+                @foreach (var line in Model.Lines)
                 {
-                    <a class="btn btn-sm btn-outline-primary me-2" href="@Url.Content(Model.EmbedUrl)" target="_blank" rel="noopener noreferrer">View Diploma (PDF)</a>
+                    var textClass = line.IsMuted ? $"resume-entry-meta text-muted {line.CssClass}" : line.CssClass;
+                    <p class="@textClass">@line.Text</p>
+                }
+            </div>
+        </div>
+        @{
+            var embedUrl = string.IsNullOrWhiteSpace(Model.EmbedUrl) ? null : Url.Content(Model.EmbedUrl);
+        }
+        @if (embedUrl != null || !string.IsNullOrWhiteSpace(Model.OfficialUrl))
+        {
+            <div class="position-absolute top-0 end-0 m-3">
+                @if (embedUrl != null)
+                {
+                    <a class="btn btn-sm btn-outline-primary me-2" href="@embedUrl" target="_blank" rel="noopener noreferrer">View Diploma (PDF)</a>
                 }
                 @if (!string.IsNullOrWhiteSpace(Model.OfficialUrl))
                 {
