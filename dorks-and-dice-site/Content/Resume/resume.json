@@ -38,6 +38,34 @@
       "openInNewTab": true
     }
   ],
+  "credentialEntries": [
+    {
+      "title": "UNF Diploma",
+      "subtitle": "Official credential from Parchment",
+      "summary": "Official University of North Florida diploma embedded from the uploaded PDF, with the same PDF kept as the local backup.",
+      "embedUrl": "~/files/fc59cd40-548b-11f1-bb92-d362b13ee885.pdf",
+      "officialUrl": "https://www.parchment.com/lp/award/73f1209b-cca9-4688-b961-a3e8de5ff6f1",
+      "localBackupUrl": "~/files/fc59cd40-548b-11f1-bb92-d362b13ee885.pdf",
+      "institution": "University of North Florida, Jacksonville, FL",
+      "award": "Bachelor of Science",
+      "issuedTo": "Kyle Barnett",
+      "dateAcquired": "May 1, 2026",
+      "expires": "Does not expire"
+    },
+    {
+      "title": "Upsilon Pi Epsilon Honors Society",
+      "subtitle": "International Honor Society for the Computing Sciences",
+      "summary": "Honor society certificate with a rotated PDF backup for site embedding and archival access.",
+      "embedUrl": "~/files/Honors Society for Computing - Kyle.pdf",
+      "officialUrl": "https://upe.acm.org/",
+      "localBackupUrl": "~/files/Honors Society for Computing - Kyle.pdf",
+      "institution": "University of North Florida, Jacksonville, FL",
+      "award": "International Honor Society for the Computing Sciences",
+      "issuedTo": "Kyle Barnett",
+      "dateAcquired": "February 2026",
+      "expires": "Does not expire"
+    }
+  ],
   "educationEntries": [
     {
       "institution": "University of North Florida, Jacksonville, FL",

@@ -40,6 +40,7 @@
 <nav class="resume-section-nav mb-4" aria-label="Resume section navigation">
     <a href="#experience-section">Experience</a>
     <a href="#projects-section">Projects</a>
+    <a href="#credentials-section">Credentials</a>
     <a href="#skills-section">Skills</a>
     <a href="#education-section">Education</a>
     <a href="#honors-section">Honors</a>
@@ -108,6 +109,15 @@
             @await Html.PartialAsync("_ProjectCard", project)
         }
     </div>
+</section>
+
+<section class="resume-section mb-4" id="credentials-section">
+    <h2 class="h4 resume-section-title">Credentials</h2>
+    <p class="text-muted mb-3">Official credential embeds and local backup PDFs for diplomas and future awards.</p>
+    @foreach (var credentialEntry in Model.CredentialEntries)
+    {
+        @await Html.PartialAsync("_CredentialEntry", credentialEntry)
+    }
 </section>
 
 <section class="resume-section mb-4" id="education-section">
