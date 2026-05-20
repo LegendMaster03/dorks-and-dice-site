@@ -38,49 +38,24 @@
       "openInNewTab": true
     }
   ],
-  "credentialEntries": [
-    {
-      "title": "UNF Diploma",
-      "subtitle": "Official credential from Parchment",
-      "summary": "Official University of North Florida diploma embedded from the uploaded PDF, with the same PDF kept as the local backup.",
-      "embedUrl": "~/files/fc59cd40-548b-11f1-bb92-d362b13ee885.pdf",
-      "officialUrl": "https://www.parchment.com/lp/award/73f1209b-cca9-4688-b961-a3e8de5ff6f1",
-      "localBackupUrl": "~/files/fc59cd40-548b-11f1-bb92-d362b13ee885.pdf",
-      "institution": "University of North Florida, Jacksonville, FL",
-      "award": "Bachelor of Science",
-      "issuedTo": "Kyle Barnett",
-      "dateAcquired": "May 1, 2026",
-      "expires": "Does not expire"
-    },
-    {
-      "title": "Upsilon Pi Epsilon Honors Society",
-      "subtitle": "International Honor Society for the Computing Sciences",
-      "summary": "Honor society certificate with a rotated PDF backup for site embedding and archival access.",
-      "embedUrl": "~/files/Honors Society for Computing - Kyle.pdf",
-      "officialUrl": "https://upe.acm.org/",
-      "localBackupUrl": "~/files/Honors Society for Computing - Kyle.pdf",
-      "institution": "University of North Florida, Jacksonville, FL",
-      "award": "International Honor Society for the Computing Sciences",
-      "issuedTo": "Kyle Barnett",
-      "dateAcquired": "February 2026",
-      "expires": "Does not expire"
-    }
-  ],
+  
   "educationEntries": [
     {
       "institution": "University of North Florida, Jacksonville, FL",
       "cardCssClass": "card mb-2",
+      "embedUrl": "~/files/fc59cd40-548b-11f1-bb92-d362b13ee885.pdf",
+      "localBackupUrl": "~/files/fc59cd40-548b-11f1-bb92-d362b13ee885.pdf",
       "lines": [
         {
           "text": "Information Science (Bachelor's), Minor in Leadership",
           "cssClass": "mb-1"
         },
         {
-          "text": "Senior currently working toward a bachelor's degree in Information Science.",
+          "text": "Completed Bachelor's degree in Information Science.",
           "cssClass": "mb-1"
         },
         {
-          "text": "August 2023 - Present | Expected Graduation: May 1, 2026 | Dean's List | Upsilon Pi Epsilon Honor Society",
+          "text": "August 2023 - May 1, 2026 | Dean's List | Upsilon Pi Epsilon Honor Society",
           "cssClass": "mb-0",
           "isMuted": true
         }
@@ -123,7 +98,9 @@
       "title": "Upsilon Pi Epsilon (UPE), International Honor Society for the Computing and Information Disciplines",
       "cardCssClass": "card mb-2",
       "metaText": "Issued February 2026 by Upsilon Pi Epsilon | Associated with University of North Florida",
-      "summary": "Selected for membership in Upsilon Pi Epsilon, the international honor society recognizing academic excellence in the computing and information disciplines."
+      "summary": "Selected for membership in Upsilon Pi Epsilon, the international honor society recognizing academic excellence in the computing and information disciplines.",
+      "embedUrl": "~/files/Honors Society for Computing - Kyle.pdf",
+      "localBackupUrl": "~/files/Honors Society for Computing - Kyle.pdf"
     },
     {
       "title": "Dean's List",

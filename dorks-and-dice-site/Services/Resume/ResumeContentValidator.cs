@@ -27,20 +27,7 @@ public static class ResumeContentValidator
             Require(item.Href, $"contactLinks[{i}].href", errors);
         }
 
-        RequireList(model.CredentialEntries, "credentialEntries", errors);
-        for (var i = 0; i < model.CredentialEntries.Count; i++)
-        {
-            var item = model.CredentialEntries[i];
-            Require(item.Title, $"credentialEntries[{i}].title", errors);
-            Require(item.EmbedUrl, $"credentialEntries[{i}].embedUrl", errors);
-            Require(item.OfficialUrl, $"credentialEntries[{i}].officialUrl", errors);
-            Require(item.LocalBackupUrl, $"credentialEntries[{i}].localBackupUrl", errors);
-            Require(item.Institution, $"credentialEntries[{i}].institution", errors);
-            Require(item.Award, $"credentialEntries[{i}].award", errors);
-            Require(item.IssuedTo, $"credentialEntries[{i}].issuedTo", errors);
-            Require(item.DateAcquired, $"credentialEntries[{i}].dateAcquired", errors);
-            Require(item.Expires, $"credentialEntries[{i}].expires", errors);
-        }
+        // no separate credentialEntries validation — credentials are embedded in awards or education entries
 
         RequireList(model.EducationEntries, "educationEntries", errors);
         for (var i = 0; i < model.EducationEntries.Count; i++)

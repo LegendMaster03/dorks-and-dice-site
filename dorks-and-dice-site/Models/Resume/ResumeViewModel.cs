@@ -4,7 +4,6 @@ public class ResumeViewModel
 {
     public ResumeHeaderViewModel Header { get; set; } = new();
     public List<ContactLinkViewModel> ContactLinks { get; set; } = [];
-    public List<CredentialEntryViewModel> CredentialEntries { get; set; } = [];
     public List<EducationEntryViewModel> EducationEntries { get; set; } = [];
     public List<AwardEntryViewModel> AwardEntries { get; set; } = [];
     public List<SkillCategoryViewModel> SkillCategories { get; set; } = [];

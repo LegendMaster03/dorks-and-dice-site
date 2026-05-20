@@ -65,7 +65,6 @@ public static class ResumePageContentBuilder
     private static void NormalizeCollections(ResumeViewModel model)
     {
         model.ContactLinks ??= [];
-        model.CredentialEntries ??= [];
         model.EducationEntries ??= [];
         model.AwardEntries ??= [];
         model.SkillCategories ??= [];

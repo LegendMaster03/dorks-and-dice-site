@@ -11,6 +11,13 @@
         {
             <p class="mb-0">@Model.Summary</p>
         }
+        @if (!string.IsNullOrWhiteSpace(Model.EmbedUrl))
+        {
+            <div class="ratio ratio-16x9 mt-3 mb-2">
+                <iframe src="@Url.Content(Model.EmbedUrl)" title="@Model.Title" loading="lazy" referrerpolicy="no-referrer"></iframe>
+            </div>
+            <p class="small mb-2">Open backup: <a href="@Url.Content(Model.LocalBackupUrl ?? Model.EmbedUrl)" target="_blank" rel="noopener noreferrer">Download PDF</a></p>
+        }
         @if (Model.Highlights.Count > 0)
         {
             <ul class="mt-2 mb-0">
