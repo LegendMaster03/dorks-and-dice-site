@@ -12,4 +12,5 @@ public class AwardEntryViewModel
     public string? EmbedUrl { get; set; }
     // Local backup file (relative URL)
     public string? LocalBackupUrl { get; set; }
+    public string? OfficialUrl { get; set; }
 }

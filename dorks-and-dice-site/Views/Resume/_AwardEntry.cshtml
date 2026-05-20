@@ -11,11 +11,26 @@
         {
             <p class="mb-0">@Model.Summary</p>
         }
-        @if (!string.IsNullOrWhiteSpace(Model.EmbedUrl))
+        @{
+            var embedUrl = string.IsNullOrWhiteSpace(Model.EmbedUrl) ? null : Url.Content(Model.EmbedUrl);
+            var localUrl = string.IsNullOrWhiteSpace(Model.LocalBackupUrl) ? null : Url.Content(Model.LocalBackupUrl);
+        }
+        @if (embedUrl != null || !string.IsNullOrWhiteSpace(Model.OfficialUrl))
         {
             <div class="mt-3 mb-2">
-                <a class="btn btn-sm btn-outline-primary me-2" href="@Url.Content(Model.EmbedUrl)" target="_blank" rel="noopener noreferrer">View Certificate (PDF)</a>
-                <a class="btn btn-sm btn-outline-secondary" href="@Url.Content(Model.LocalBackupUrl ?? Model.EmbedUrl)" target="_blank" rel="noopener noreferrer">Download Backup</a>
+                @if (embedUrl != null)
+                {
+                    <a class="btn btn-sm btn-outline-primary me-2" href="@embedUrl" target="_blank" rel="noopener noreferrer">View Certificate (PDF)</a>
+                }
+                @if (!string.IsNullOrWhiteSpace(Model.OfficialUrl))
+                {
+                    <a class="btn btn-sm btn-outline-secondary me-2" href="@Model.OfficialUrl" target="_blank" rel="noopener noreferrer">View Official Record</a>
+                }
+                @* Show download only when a distinct local backup exists *@
+                @if (localUrl != null && (embedUrl == null || !string.Equals(localUrl, embedUrl, StringComparison.OrdinalIgnoreCase)))
+                {
+                    <a class="btn btn-sm btn-outline-dark" href="@localUrl" target="_blank" rel="noopener noreferrer">Download Backup</a>
+                }
             </div>
         }
         @if (Model.Highlights.Count > 0)
