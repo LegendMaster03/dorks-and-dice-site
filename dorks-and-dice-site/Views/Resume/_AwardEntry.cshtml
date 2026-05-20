@@ -1,26 +1,28 @@
 @model dorks_and_dice_site.Models.Resume.AwardEntryViewModel
 
-<div class="@($"{Model.CardCssClass} position-relative")">
+<div class="@Model.CardCssClass">
     <div class="card-body">
-        <div class="d-flex align-items-start">
-            <h3 class="h6 mb-1">@Model.Title</h3>
-        </div>
         @{
             var embedUrl = string.IsNullOrWhiteSpace(Model.EmbedUrl) ? null : Url.Content(Model.EmbedUrl);
         }
-        @if (embedUrl != null || !string.IsNullOrWhiteSpace(Model.OfficialUrl))
-        {
-            <div class="position-absolute top-0 end-0 m-3">
-                @if (embedUrl != null)
-                {
-                    <a class="btn btn-sm btn-outline-primary me-2" href="@embedUrl" target="_blank" rel="noopener noreferrer">View Certificate (PDF)</a>
-                }
-                @if (!string.IsNullOrWhiteSpace(Model.OfficialUrl))
-                {
-                    <a class="btn btn-sm btn-outline-secondary me-2" href="@Model.OfficialUrl" target="_blank" rel="noopener noreferrer">View Official Record</a>
-                }
+        <div class="resume-entry-header">
+            <div class="resume-entry-heading">
+                <h3 class="h6 mb-1">@Model.Title</h3>
             </div>
-        }
+            @if (embedUrl != null || !string.IsNullOrWhiteSpace(Model.OfficialUrl))
+            {
+                <div class="resume-entry-actions">
+                    @if (embedUrl != null)
+                    {
+                        <a class="btn btn-sm btn-outline-primary" href="@embedUrl" target="_blank" rel="noopener noreferrer">View Certificate (PDF)</a>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(Model.OfficialUrl))
+                    {
+                        <a class="btn btn-sm btn-outline-secondary" href="@Model.OfficialUrl" target="_blank" rel="noopener noreferrer">View Official Record</a>
+                    }
+                </div>
+            }
+        </div>
         @if (!string.IsNullOrWhiteSpace(Model.MetaText))
         {
             <p class="resume-entry-meta mb-1 text-muted">@Model.MetaText</p>

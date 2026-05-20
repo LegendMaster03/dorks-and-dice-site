@@ -2,8 +2,20 @@
 
 <div class="@Model.CardCssClass">
     <div class="card-body">
-        <h3 class="h6 mb-1">@Model.Title</h3>
-        <p class="resume-entry-meta text-muted mb-2">@Model.DateRange</p>
+        <div class="resume-entry-header">
+            <div class="resume-entry-heading">
+                <h3 class="h6 mb-1">@Model.Title</h3>
+                <p class="resume-entry-meta text-muted mb-2">@Model.DateRange</p>
+            </div>
+            @if (!string.IsNullOrWhiteSpace(Model.PrimaryAction))
+            {
+                <div class="resume-entry-actions">
+                    <a class="btn btn-sm btn-outline-primary resume-entry-action" asp-controller="Resume" asp-action="@Model.PrimaryAction">
+                        @(string.IsNullOrWhiteSpace(Model.PrimaryActionText) ? "Open project" : Model.PrimaryActionText)
+                    </a>
+                </div>
+            }
+        </div>
         @if (!string.IsNullOrWhiteSpace(Model.RelatedProjectAction) && !string.IsNullOrWhiteSpace(Model.RelatedProjectLabel))
         {
             <p class="mb-2 small text-muted">
@@ -19,14 +31,6 @@
                     <li>@highlight</li>
                 }
             </ul>
-        }
-        @if (!string.IsNullOrWhiteSpace(Model.PrimaryAction))
-        {
-            <p class="mt-2 mb-0">
-                <a class="btn btn-sm btn-outline-primary resume-entry-action" asp-controller="Resume" asp-action="@Model.PrimaryAction">
-                    @(string.IsNullOrWhiteSpace(Model.PrimaryActionText) ? "Open project" : Model.PrimaryActionText)
-                </a>
-            </p>
         }
     </div>
 </div>

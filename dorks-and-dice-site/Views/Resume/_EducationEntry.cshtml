@@ -1,9 +1,12 @@
 @model dorks_and_dice_site.Models.Resume.EducationEntryViewModel
 
-<div class="@($"{Model.CardCssClass} position-relative")">
+<div class="@Model.CardCssClass">
     <div class="card-body">
-        <div class="d-flex align-items-start">
-            <div class="me-3">
+        @{
+            var embedUrl = string.IsNullOrWhiteSpace(Model.EmbedUrl) ? null : Url.Content(Model.EmbedUrl);
+        }
+        <div class="resume-entry-header">
+            <div class="resume-entry-heading">
                 <h3 class="h6 mb-1">@Model.Institution</h3>
                 @foreach (var line in Model.Lines)
                 {
@@ -11,22 +14,19 @@
                     <p class="@textClass">@line.Text</p>
                 }
             </div>
+            @if (embedUrl != null || !string.IsNullOrWhiteSpace(Model.OfficialUrl))
+            {
+                <div class="resume-entry-actions">
+                    @if (embedUrl != null)
+                    {
+                        <a class="btn btn-sm btn-outline-primary" href="@embedUrl" target="_blank" rel="noopener noreferrer">View Diploma (PDF)</a>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(Model.OfficialUrl))
+                    {
+                        <a class="btn btn-sm btn-outline-secondary" href="@Model.OfficialUrl" target="_blank" rel="noopener noreferrer">View Official Record</a>
+                    }
+                </div>
+            }
         </div>
-        @{
-            var embedUrl = string.IsNullOrWhiteSpace(Model.EmbedUrl) ? null : Url.Content(Model.EmbedUrl);
-        }
-        @if (embedUrl != null || !string.IsNullOrWhiteSpace(Model.OfficialUrl))
-        {
-            <div class="position-absolute top-0 end-0 m-3">
-                @if (embedUrl != null)
-                {
-                    <a class="btn btn-sm btn-outline-primary me-2" href="@embedUrl" target="_blank" rel="noopener noreferrer">View Diploma (PDF)</a>
-                }
-                @if (!string.IsNullOrWhiteSpace(Model.OfficialUrl))
-                {
-                    <a class="btn btn-sm btn-outline-secondary" href="@Model.OfficialUrl" target="_blank" rel="noopener noreferrer">View Official Record</a>
-                }
-            </div>
-        }
     </div>
 </div>

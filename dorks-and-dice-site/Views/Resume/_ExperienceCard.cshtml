@@ -2,14 +2,26 @@
 
 <div class="@Model.CardCssClass" data-tags="@string.Join(' ', Model.Tags)">
     <div class="card-body">
-        <h3 class="h6 mb-1">@Model.Title</h3>
-        <p class="resume-entry-meta text-muted mb-2">
-            <span>@Model.DateRange</span>
-            @if (Model.Featured)
+        <div class="resume-entry-header">
+            <div class="resume-entry-heading">
+                <h3 class="h6 mb-1">@Model.Title</h3>
+                <p class="resume-entry-meta text-muted mb-2">
+                    <span>@Model.DateRange</span>
+                    @if (Model.Featured)
+                    {
+                        <span class="badge text-bg-primary">Featured</span>
+                    }
+                </p>
+            </div>
+            @if (!string.IsNullOrWhiteSpace(Model.DetailsAction))
             {
-                <span class="badge text-bg-primary">Featured</span>
+                <div class="resume-entry-actions">
+                    <a class="btn btn-sm btn-outline-primary resume-entry-action" asp-controller="Resume" asp-action="@Model.DetailsAction">
+                        @(string.IsNullOrWhiteSpace(Model.DetailsLinkText) ? "View details" : Model.DetailsLinkText)
+                    </a>
+                </div>
             }
-        </p>
+        </div>
         @if (Model.Highlights.Count > 0)
         {
             <ul class="mb-0">
@@ -18,14 +30,6 @@
                     <li>@highlight</li>
                 }
             </ul>
-        }
-        @if (!string.IsNullOrWhiteSpace(Model.DetailsAction))
-        {
-            <p class="mt-2 mb-0">
-                <a class="btn btn-sm btn-outline-primary resume-entry-action" asp-controller="Resume" asp-action="@Model.DetailsAction">
-                    @(string.IsNullOrWhiteSpace(Model.DetailsLinkText) ? "View details" : Model.DetailsLinkText)
-                </a>
-            </p>
         }
     </div>
 </div>
