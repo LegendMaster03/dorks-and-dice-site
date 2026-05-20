@@ -1,23 +1,16 @@
 @model dorks_and_dice_site.Models.Resume.AwardEntryViewModel
 
-<div class="@Model.CardCssClass">
+<div class="@($"{Model.CardCssClass} position-relative")">
     <div class="card-body">
-        <h3 class="h6 mb-1">@Model.Title</h3>
-        @if (!string.IsNullOrWhiteSpace(Model.MetaText))
-        {
-            <p class="resume-entry-meta mb-1 text-muted">@Model.MetaText</p>
-        }
-        @if (!string.IsNullOrWhiteSpace(Model.Summary))
-        {
-            <p class="mb-0">@Model.Summary</p>
-        }
+        <div class="d-flex align-items-start">
+            <h3 class="h6 mb-1">@Model.Title</h3>
+        </div>
         @{
             var embedUrl = string.IsNullOrWhiteSpace(Model.EmbedUrl) ? null : Url.Content(Model.EmbedUrl);
-            var localUrl = string.IsNullOrWhiteSpace(Model.LocalBackupUrl) ? null : Url.Content(Model.LocalBackupUrl);
         }
         @if (embedUrl != null || !string.IsNullOrWhiteSpace(Model.OfficialUrl))
         {
-            <div class="mt-3 mb-2">
+            <div class="position-absolute top-0 end-0 m-3">
                 @if (embedUrl != null)
                 {
                     <a class="btn btn-sm btn-outline-primary me-2" href="@embedUrl" target="_blank" rel="noopener noreferrer">View Certificate (PDF)</a>
@@ -26,12 +19,15 @@
                 {
                     <a class="btn btn-sm btn-outline-secondary me-2" href="@Model.OfficialUrl" target="_blank" rel="noopener noreferrer">View Official Record</a>
                 }
-                @* Show download only when a distinct local backup exists *@
-                @if (localUrl != null && (embedUrl == null || !string.Equals(localUrl, embedUrl, StringComparison.OrdinalIgnoreCase)))
-                {
-                    <a class="btn btn-sm btn-outline-dark" href="@localUrl" target="_blank" rel="noopener noreferrer">Download Backup</a>
-                }
             </div>
+        }
+        @if (!string.IsNullOrWhiteSpace(Model.MetaText))
+        {
+            <p class="resume-entry-meta mb-1 text-muted">@Model.MetaText</p>
+        }
+        @if (!string.IsNullOrWhiteSpace(Model.Summary))
+        {
+            <p class="mb-0">@Model.Summary</p>
         }
         @if (Model.Highlights.Count > 0)
         {
