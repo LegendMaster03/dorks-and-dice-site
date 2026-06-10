@@ -48,11 +48,11 @@
       "officialUrl": "https://www.parchment.com/lp/award/73f1209b-cca9-4688-b961-a3e8de5ff6f1",
       "lines": [
         {
-          "text": "Information Science (Bachelor's), Minor in Leadership",
+          "text": "Bachelor's degree in Information Science, Minor in Leadership",
           "cssClass": "mb-1"
         },
         {
-          "text": "Completed Bachelor's degree in Information Science.",
+          "text": "Cum Laude (GPA:3.54)",
           "cssClass": "mb-1"
         },
         {
@@ -67,7 +67,7 @@
       "cardCssClass": "card mb-2",
       "lines": [
         {
-          "text": "Associate of Arts completed",
+          "text": "Associate of Arts",
           "cssClass": "mb-1"
         },
         {
@@ -95,6 +95,12 @@
     }
   ],
   "awardEntries": [
+    {
+      "title": "Cum Laude",
+      "cardCssClass": "card mb-2",
+      "metaText": "Issued May 2025 by University of North Florida",
+      "summary": "Awarded for strong academic performance. GPA:3.54"
+    },
     {
       "title": "Upsilon Pi Epsilon (UPE), International Honor Society for the Computing and Information Disciplines",
       "cardCssClass": "card mb-2",
