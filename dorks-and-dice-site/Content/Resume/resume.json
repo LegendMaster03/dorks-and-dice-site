@@ -7,7 +7,7 @@
     "headshotAltText": "Headshot of Kyle Barnett",
     "resumePdfUrl": "~/files/kyle-resume.pdf",
     "resumePdfFileName": "kyle-resume.pdf",
-    "lastUpdatedText": "April 2026"
+    "lastUpdatedText": "August 2026"
   },
   "contactLinks": [
     {
@@ -332,6 +332,21 @@
       "tags": [
         "tooling",
         "leadership"
+      ]
+    },
+    {
+      "title": "ConsoleVariations Free the Bees Puzzle Solve",
+      "subtitle": "Technical puzzle walkthrough and web investigation",
+      "summary": "Long-form article documenting my third-place solve of ConsoleVariations' Free the Bees web puzzle, including the visible clue path, encoded password work, browser-state investigation, and final result.",
+      "category": "personal",
+      "detailsController": "Articles",
+      "action": "FreeingTheBeesConsoleVariationsPuzzle",
+      "linkText": "Read Article",
+      "listed": false,
+      "tags": [
+        "technical-investigation",
+        "puzzle",
+        "write-up"
       ]
     }
   ],

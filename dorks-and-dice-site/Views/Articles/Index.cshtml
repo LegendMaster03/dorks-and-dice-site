@@ -1,0 +1,53 @@
+@{
+    ViewData["Title"] = "Articles";
+    ViewData["MetaTitle"] = "Articles - Dorks & Dice";
+    ViewData["MetaDescription"] = "Long-form write-ups, technical investigations, and puzzle walkthroughs by Kyle Barnett.";
+    ViewData["MetaImage"] = Url.Content("~/images/articles/consolevariations-bee/ending.png");
+    var showUnlistedArticles = false;
+}
+
+<section class="resume-section mb-4">
+    <div class="d-flex flex-column gap-2 mb-4">
+        <p class="text-uppercase text-muted small mb-0">Articles</p>
+        <h1 class="mb-0">Long-Form Write-Ups</h1>
+        <p class="text-muted mb-0">
+            Technical investigations, puzzle walkthroughs, and narrative project notes.
+        </p>
+    </div>
+
+    @if (showUnlistedArticles)
+    {
+        <div class="row row-cols-1 row-cols-md-2 g-4">
+            <div class="col">
+                <article class="card h-100 project-card-inner">
+                    <img src="~/images/articles/consolevariations-bee/ending.png"
+                         class="card-img-top article-card-img"
+                         alt="Completed ConsoleVariations Queen's Chamber showing the Free the Bees ending screen"
+                         width="2041"
+                         height="1220" />
+                    <div class="card-body">
+                        <p class="featured-project-meta mb-2">Technical Investigation</p>
+                        <h2 class="h5 card-title">Freeing the Bees: Solving ConsoleVariations' Hidden Web Puzzle</h2>
+                        <p class="card-text">
+                            My third-place solve of ConsoleVariations' Free the Bees puzzle, including the visible clue path,
+                            encoded password work, browser-state investigation, and final result.
+                        </p>
+                        <a class="btn btn-sm btn-outline-primary"
+                           asp-controller="Articles"
+                           asp-action="FreeingTheBeesConsoleVariationsPuzzle">
+                            Read Article
+                        </a>
+                    </div>
+                </article>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="card">
+            <div class="card-body">
+                <p class="text-muted mb-0">No public articles are listed yet.</p>
+            </div>
+        </div>
+    }
+</section>

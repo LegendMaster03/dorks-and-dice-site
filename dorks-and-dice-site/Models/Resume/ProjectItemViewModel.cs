@@ -6,9 +6,11 @@ public class ProjectItemViewModel
     public string? Subtitle { get; set; }
     public string Summary { get; set; } = string.Empty;
     public string Category { get; set; } = "professional";
+    public string DetailsController { get; set; } = "Resume";
     public string Action { get; set; } = string.Empty;
     public string LinkText { get; set; } = "Open Project";
     public string? RepositoryUrl { get; set; }
     public bool Featured { get; set; }
+    public bool Listed { get; set; } = true;
     public List<string> Tags { get; set; } = [];
 }

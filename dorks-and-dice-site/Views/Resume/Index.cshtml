@@ -74,7 +74,7 @@
                                     }
                                 </div>
                                 <div class="project-card-actions">
-                                    <a class="btn btn-sm btn-primary" asp-controller="Resume" asp-action="@project.Action">
+                                    <a class="btn btn-sm btn-primary" asp-controller="@project.DetailsController" asp-action="@project.Action">
                                         @(string.IsNullOrWhiteSpace(project.LinkText) ? "Open project" : project.LinkText)
                                     </a>
                                     @if (!string.IsNullOrWhiteSpace(project.RepositoryUrl))

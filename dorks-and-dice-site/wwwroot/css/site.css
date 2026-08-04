@@ -51,6 +51,14 @@ body {
   cursor: zoom-in;
 }
 
+.article-card-img {
+  width: 100%;
+  height: 220px;
+  object-fit: cover;
+  object-position: center 32%;
+  background-color: #f1f5f9;
+}
+
 #projectFilters .btn.active {
   color: #fff;
 }

@@ -93,6 +93,10 @@ public static class ResumePageContentBuilder
             projectItem.Tags ??= [];
         }
 
+        model.ProjectItems = model.ProjectItems
+            .Where(projectItem => projectItem.Listed)
+            .ToList();
+
         foreach (var leadershipEntry in model.LeadershipEntries)
         {
             leadershipEntry.Highlights ??= [];

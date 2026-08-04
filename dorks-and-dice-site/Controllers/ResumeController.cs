@@ -19,22 +19,22 @@ namespace dorks_and_dice_site.Controllers
 
         public IActionResult XnGine()
         {
-            return View();
+            return View("Projects/XnGine");
         }
 
         public IActionResult SeniorProject()
         {
-            return View();
+            return View("Projects/SeniorProject");
         }
 
         public IActionResult PythonFinanceAnalytics()
         {
-            return View();
+            return View("Projects/PythonFinanceAnalytics");
         }
 
         public IActionResult DirectedIndependentStudy()
         {
-            return View();
+            return View("Projects/DirectedIndependentStudy");
         }
 
         public IActionResult CyberSecurityTeam()
@@ -44,52 +44,52 @@ namespace dorks_and_dice_site.Controllers
 
         public IActionResult Skyblivion()
         {
-            return View();
+            return View("Projects/Skyblivion");
         }
 
         public IActionResult Skywind()
         {
-            return View();
+            return View("Projects/Skywind");
         }
 
         public IActionResult TechnologyServices()
         {
-            return View();
+            return View("Projects/TechnologyServices");
         }
 
         public IActionResult SimLabExpo()
         {
-            return View();
+            return View("Projects/SimLabExpo");
         }
 
         public IActionResult WiredWorks()
         {
-            return View();
+            return View("Experience/WiredWorks");
         }
 
         public IActionResult DndTools()
         {
-            return View();
+            return View("Projects/DndTools");
         }
 
         public IActionResult ExperienceCyberSecurityTeam()
         {
-            return View();
+            return View("Experience/ExperienceCyberSecurityTeam");
         }
 
         public IActionResult ExperienceTechnologyServices()
         {
-            return View();
+            return View("Experience/ExperienceTechnologyServices");
         }
 
         public IActionResult ExperienceSimLab()
         {
-            return View();
+            return View("Experience/ExperienceSimLab");
         }
 
         public IActionResult ExperienceWiredWorks()
         {
-            return View();
+            return View("Experience/ExperienceWiredWorks");
         }
 
         public IActionResult ExperienceSkyblivion()
