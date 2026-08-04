@@ -243,6 +243,20 @@
       ]
     },
     {
+      "title": "Python Finance ML Analytics",
+      "subtitle": "Jupyter finance analytics and machine-learning notebook",
+      "summary": "Portfolio analytics project using Python, pandas, NumPy, Matplotlib, yfinance, FRED, SEC Company Facts, Stooq, pandas-datareader, and scikit-learn to compare Microsoft with peer technology stocks, analyze valuation and macroeconomic relationships, and evaluate regression and random forest models.",
+      "category": "personal",
+      "action": "PythonFinanceAnalytics",
+      "repositoryUrl": "https://github.com/LegendMaster03/python-finance-analytics",
+      "featured": true,
+      "tags": [
+        "data-science",
+        "machine-learning",
+        "finance"
+      ]
+    },
+    {
       "title": "Capstone Client Project: Safe Future Barcode for Good",
       "subtitle": "Safe Future Foundation | Nonprofit Inventory System",
       "summary": "Year-long professional full-stack client engagement for Safe Future Foundation, completed through UNF capstone work. Delivered a responsive inventory system with QR labeling and batch print workflows, Excel reporting, low-stock monitoring, an operations dashboard, security review, and stakeholder-ready documentation.",
