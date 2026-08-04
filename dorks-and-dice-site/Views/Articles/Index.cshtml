@@ -1,9 +1,9 @@
+@model dorks_and_dice_site.Models.Articles.ArticlesIndexViewModel
 @{
     ViewData["Title"] = "Articles";
     ViewData["MetaTitle"] = "Articles - Dorks & Dice";
     ViewData["MetaDescription"] = "Long-form write-ups, technical investigations, and puzzle walkthroughs by Kyle Barnett.";
     ViewData["MetaImage"] = Url.Content("~/images/articles/consolevariations-bee/ending.png");
-    var showUnlistedArticles = false;
 }
 
 <section class="resume-section mb-4">
@@ -15,30 +15,74 @@
         </p>
     </div>
 
-    @if (showUnlistedArticles)
+    @if (Model.ShouldShowSearchFilter || Model.ShouldShowCategoryFilter || Model.ShouldShowProfessionalFilter)
     {
-        <div class="row row-cols-1 row-cols-md-2 g-4">
-            <div class="col">
-                <article class="card h-100 project-card-inner">
-                    <img src="~/images/articles/consolevariations-bee/ending.png"
-                         class="card-img-top article-card-img"
-                         alt="Completed ConsoleVariations Queen's Chamber showing the Free the Bees ending screen"
-                         width="2041"
-                         height="1220" />
-                    <div class="card-body">
-                        <p class="featured-project-meta mb-2">Technical Investigation</p>
-                        <h2 class="h5 card-title">Freeing the Bees: Solving ConsoleVariations' Hidden Web Puzzle</h2>
-                        <p class="card-text">
-                            My third-place solve of ConsoleVariations' Free the Bees puzzle, including the visible clue path,
-                            encoded password work, browser-state investigation, and final result.
-                        </p>
-                        <a class="btn btn-sm btn-outline-primary"
-                           asp-controller="Articles"
-                           asp-action="FreeingTheBeesConsoleVariationsPuzzle">
-                            Read Article
-                        </a>
-                    </div>
-                </article>
+        <div id="articleFilters" class="article-filters mb-3" data-professional-filter="@(Model.ProfessionalFilterActive ? "true" : "false")">
+            @if (Model.ShouldShowSearchFilter)
+            {
+                <label class="form-label visually-hidden" for="articleSearch">Search articles</label>
+                <input id="articleSearch"
+                       type="search"
+                       class="form-control form-control-sm article-search"
+                       placeholder="Search articles"
+                       autocomplete="off" />
+            }
+            @if (Model.ShouldShowProfessionalFilter)
+            {
+                <div class="form-check form-switch mb-0">
+                    <input class="form-check-input" type="checkbox" role="switch" id="articleProfessionalOnly">
+                    <label class="form-check-label small" for="articleProfessionalOnly">Professional only</label>
+                </div>
+            }
+            @if (Model.ShouldShowCategoryFilter)
+            {
+                <div class="d-flex flex-wrap gap-2">
+                    <button type="button" class="btn btn-sm btn-outline-secondary active" data-article-category="all">All</button>
+                    @foreach (var category in Model.Categories)
+                    {
+                        <button type="button" class="btn btn-sm btn-outline-secondary" data-article-category="@category">@category</button>
+                    }
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+        <div id="articleFilters" class="d-none" data-professional-filter="@(Model.ProfessionalFilterActive ? "true" : "false")"></div>
+    }
+
+    @if (Model.Articles.Count > 0)
+    {
+        <div class="row row-cols-1 row-cols-md-2 g-4 article-list">
+            @foreach (var article in Model.Articles)
+            {
+                <div class="col article-card"
+                     data-article-category="@article.Category"
+                     data-article-professional="@(article.Professional ? "true" : "false")"
+                     data-article-search="@($"{article.Title} {article.Summary} {article.Category} {string.Join(' ', article.Tags)}").ToLowerInvariant()">
+                    <article class="card h-100 project-card-inner">
+                        <img src="@Url.Content(article.ImageUrl)"
+                             class="card-img-top article-card-img"
+                             alt="@article.ImageAltText"
+                             width="@article.ImageWidth"
+                             height="@article.ImageHeight" />
+                        <div class="card-body">
+                            <p class="featured-project-meta mb-2">@article.Category</p>
+                            <h2 class="h5 card-title">@article.Title</h2>
+                            <p class="card-text">@article.Summary</p>
+                            <a class="btn btn-sm btn-outline-primary"
+                               asp-controller="@article.Controller"
+                               asp-action="@article.Action">
+                                Read Article
+                            </a>
+                        </div>
+                    </article>
+                </div>
+            }
+        </div>
+        <div id="articleEmptyState" class="card d-none">
+            <div class="card-body">
+                <p class="text-muted mb-0">No articles match the selected filters.</p>
             </div>
         </div>
     }

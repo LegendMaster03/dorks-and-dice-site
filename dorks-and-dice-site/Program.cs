@@ -1,10 +1,12 @@
 using dorks_and_dice_site.Services.Resume;
+using dorks_and_dice_site.Services.Articles;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllersWithViews();
 builder.Services.AddSingleton<IResumeContentService, ResumeContentService>();
+builder.Services.AddSingleton<IArticleCatalogService, ArticleCatalogService>();
 
 var app = builder.Build();
 
@@ -32,6 +34,7 @@ app.Use(async (context, next) =>
     var path = context.Request.Path.ToString().ToLower();
     bool isProDomain = professionalDomains.Contains(host);
     bool isResumePath = path == "/resume" || path.StartsWith("/resume/");
+    bool isArticlesPath = path == "/articles" || path.StartsWith("/articles/");
     // Allow static asset paths
     bool isStaticAsset = path.StartsWith("/css/") || path.StartsWith("/js/") || path.StartsWith("/lib/") || path.StartsWith("/images/") || path.StartsWith("/files/") || path.StartsWith("/favicon") || path.StartsWith("/robots.txt");
 
@@ -41,7 +44,7 @@ app.Use(async (context, next) =>
     if (isProDomain)
     {
         // Restrict professional domains to /resume, its subpaths, or static assets
-        if (!isResumePath && !isStaticAsset)
+        if (!isResumePath && !isArticlesPath && !isStaticAsset)
         {
             context.Response.Redirect("/resume");
             return;

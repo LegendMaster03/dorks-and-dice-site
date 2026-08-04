@@ -114,3 +114,56 @@
         });
     });
 })();
+
+(() => {
+    const filterContainer = document.getElementById("articleFilters");
+    if (!filterContainer) {
+        return;
+    }
+
+    const searchInput = document.getElementById("articleSearch");
+    const professionalOnlyInput = document.getElementById("articleProfessionalOnly");
+    const filterButtons = filterContainer.querySelectorAll("[data-article-category]");
+    const articleCards = document.querySelectorAll(".article-card");
+    const emptyState = document.getElementById("articleEmptyState");
+    const forceProfessionalOnly = filterContainer.getAttribute("data-professional-filter") === "true";
+    let activeCategory = "all";
+
+    const applyFilters = () => {
+        const query = (searchInput?.value ?? "").trim().toLowerCase();
+        const professionalOnly = forceProfessionalOnly || Boolean(professionalOnlyInput?.checked);
+        let visibleCount = 0;
+
+        articleCards.forEach((card) => {
+            const category = card.getAttribute("data-article-category");
+            const isProfessional = card.getAttribute("data-article-professional") === "true";
+            const searchText = card.getAttribute("data-article-search") ?? "";
+            const categoryMatches = activeCategory === "all" || category === activeCategory;
+            const searchMatches = query.length === 0 || searchText.includes(query);
+            const professionalMatches = !professionalOnly || isProfessional;
+            const isVisible = categoryMatches && searchMatches && professionalMatches;
+
+            card.classList.toggle("d-none", !isVisible);
+            if (isVisible) {
+                visibleCount += 1;
+            }
+        });
+
+        filterButtons.forEach((button) => {
+            const isActive = button.getAttribute("data-article-category") === activeCategory;
+            button.classList.toggle("active", isActive);
+        });
+
+        emptyState?.classList.toggle("d-none", visibleCount > 0);
+    };
+
+    filterButtons.forEach((button) => {
+        button.addEventListener("click", () => {
+            activeCategory = button.getAttribute("data-article-category") ?? "all";
+            applyFilters();
+        });
+    });
+
+    searchInput?.addEventListener("input", applyFilters);
+    professionalOnlyInput?.addEventListener("change", applyFilters);
+})();
