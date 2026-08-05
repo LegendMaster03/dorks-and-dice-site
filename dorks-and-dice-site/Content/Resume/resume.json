@@ -65,6 +65,9 @@
     {
       "institution": "Florida State College at Jacksonville, Jacksonville, FL",
       "cardCssClass": "card mb-2",
+      "embedUrl": "~/site-modes/professional/files/f71495bc-911d-11f1-9d9c-97457dea8923.pdf",
+      "localBackupUrl": "~/site-modes/professional/files/f71495bc-911d-11f1-9d9c-97457dea8923.pdf",
+      "officialUrl": "https://www.parchment.com/lp/award/29c00ec1-f93f-4a4a-b5ca-4727b9986f8e",
       "lines": [
         {
           "text": "Associate of Arts",
@@ -211,7 +214,7 @@
         "Tested experimental workloads as the project transitioned to cloud workflows.",
         "Mentored new team members for faster onboarding success."
       ],
-      "detailsAction": "Skyblivion",
+      "detailsAction": "ExperienceSkyblivion",
       "tags": [
         "professional",
         "game-dev"
