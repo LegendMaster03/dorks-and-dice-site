@@ -5,6 +5,7 @@
         : string.Equals(Model.Category, "personal", StringComparison.OrdinalIgnoreCase)
             ? "Personal"
             : Model.Category;
+    var projectLinkText = string.IsNullOrWhiteSpace(Model.LinkText) ? "Open project" : Model.LinkText;
 }
 
 <div class="col project-card" data-category="@Model.Category" data-tags="@string.Join(' ', Model.Tags)">
@@ -30,15 +31,19 @@
                     }
                 </div>
                 <div class="project-card-actions">
-                    <a class="btn btn-sm btn-outline-primary" asp-controller="@Model.DetailsController" asp-action="@Model.Action">
-                        @(string.IsNullOrWhiteSpace(Model.LinkText) ? "Open project" : Model.LinkText)
+                    <a class="btn btn-sm btn-outline-primary"
+                       asp-controller="@Model.DetailsController"
+                       asp-action="@Model.Action"
+                       aria-label="@projectLinkText: @Model.Title">
+                        @projectLinkText
                     </a>
                     @if (!string.IsNullOrWhiteSpace(Model.RepositoryUrl))
                     {
                         <a class="btn btn-sm btn-outline-secondary"
                            href="@Model.RepositoryUrl"
                            target="_blank"
-                           rel="noopener noreferrer">
+                           rel="noopener noreferrer"
+                           aria-label="View Git repository for @Model.Title (opens in a new tab)">
                             View Git
                         </a>
                     }
