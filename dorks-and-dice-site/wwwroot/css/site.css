@@ -11,8 +11,8 @@ html {
 }
 
 body {
-  background-color: #fff;
-  color: #212529;
+  background-color: var(--bs-body-bg);
+  color: var(--bs-body-color);
 }
 
 .btn:focus,
