@@ -12,6 +12,10 @@
     var metaDescription = ViewData["MetaDescription"]?.ToString()
         ?? SiteModePresentationService.GetDefaultMetaDescription(siteModeContext.SiteMode);
     var robots = ViewData["Robots"]?.ToString();
+    var canonicalHost = siteModeContext.SiteMode == SiteMode.Professional
+        ? SiteModeOptions.CanonicalProfessionalHost
+        : Context.Request.Host.Value;
+    var canonicalUrl = $"{Context.Request.Scheme}://{canonicalHost}{Context.Request.PathBase}{Context.Request.Path}";
     var defaultMetaImagePath = siteModeContext.SiteMode == SiteMode.Professional
         ? Url.Content("~/site-modes/professional/images/profile/kyle-headshot.jpg")
         : null;
@@ -20,8 +24,7 @@
         ? metaImagePath
         : string.IsNullOrWhiteSpace(metaImagePath)
             ? null
-            : $"{Context.Request.Scheme}://{Context.Request.Host}{metaImagePath}";
-    var metaUrl = $"{Context.Request.Scheme}://{Context.Request.Host}{Context.Request.Path}{Context.Request.QueryString}";
+            : $"{Context.Request.Scheme}://{canonicalHost}{metaImagePath}";
     var returnQuery = string.Join("&", Context.Request.Query
         .Where(item => !string.Equals(item.Key, "includeUnlisted", StringComparison.OrdinalIgnoreCase))
         .SelectMany(item => item.Value.Select(value => $"{Uri.EscapeDataString(item.Key)}={Uri.EscapeDataString(value ?? string.Empty)}")));
@@ -57,6 +60,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@pageTitle</title>
     <meta name="description" content="@metaDescription" />
+    <link rel="canonical" href="@canonicalUrl" />
     @if (!string.IsNullOrWhiteSpace(robots))
     {
         <meta name="robots" content="@robots" />
@@ -64,7 +68,8 @@
     <meta property="og:type" content="website" />
     <meta property="og:title" content="@metaTitle" />
     <meta property="og:description" content="@metaDescription" />
-    <meta property="og:url" content="@metaUrl" />
+    <meta property="og:url" content="@canonicalUrl" />
+    <meta property="og:site_name" content="@siteSuffix" />
     @if (!string.IsNullOrWhiteSpace(metaImage))
     {
         <meta property="og:image" content="@metaImage" />
@@ -79,7 +84,7 @@
     <script type="importmap"></script>
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
-    <link rel="stylesheet" href="~/dorks_and_dice_site.styles.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/dorks-and-dice-site.styles.css" asp-append-version="true" />
 </head>
 <body>
     <header>

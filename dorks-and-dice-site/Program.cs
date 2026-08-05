@@ -2,6 +2,7 @@ using dorks_and_dice_site.Services.Resume;
 using dorks_and_dice_site.Services.Articles;
 using dorks_and_dice_site.Services.Site;
 using dorks_and_dice_site.Services.Site.ModePresentation;
+using Microsoft.AspNetCore.HttpOverrides;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,6 +17,14 @@ builder.Services.AddSingleton<ISiteModePresentationModule, DorksAndDicePresentat
 builder.Services.AddSingleton<ISiteModePresentationModule, ProfessionalPresentationModule>();
 builder.Services.AddSingleton<ISiteModePresentationModule, DevelopmentPresentationModule>();
 builder.Services.AddSingleton<ISiteModePresentationModule, UnassignedPresentationModule>();
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor
+        | ForwardedHeaders.XForwardedHost
+        | ForwardedHeaders.XForwardedProto;
+    options.KnownIPNetworks.Clear();
+    options.KnownProxies.Clear();
+});
 
 var app = builder.Build();
 
@@ -27,6 +36,22 @@ if (!app.Environment.IsDevelopment())
     app.UseHsts();
 }
 
+app.UseForwardedHeaders();
+app.Use(async (context, next) =>
+{
+    var requestedHost = context.Request.Host.Host.ToLowerInvariant();
+    var normalizedHost = NormalizeHost(requestedHost);
+    var options = context.RequestServices.GetRequiredService<SiteModeOptions>();
+    if (options.ProfessionalDomains.Contains(normalizedHost)
+        && !string.Equals(requestedHost, SiteModeOptions.CanonicalProfessionalHost, StringComparison.OrdinalIgnoreCase))
+    {
+        var target = $"https://{SiteModeOptions.CanonicalProfessionalHost}{context.Request.PathBase}{context.Request.Path}{context.Request.QueryString}";
+        context.Response.Redirect(target, permanent: true, preserveMethod: true);
+        return;
+    }
+
+    await next();
+});
 app.UseHttpsRedirection();
 app.UseMiddleware<SiteModeMiddleware>();
 app.UseRouting();
@@ -66,7 +91,7 @@ app.MapPost("/development-preview", async (HttpContext context) =>
     context.Response.Cookies.Append(SiteModeValues.IncludeUnlistedCookie, includeUnlisted ? "true" : "false", cookieOptions);
 
     var returnUrl = form["returnUrl"].FirstOrDefault();
-    if (string.IsNullOrWhiteSpace(returnUrl) || !returnUrl.StartsWith("/", StringComparison.Ordinal))
+    if (string.IsNullOrWhiteSpace(returnUrl) || !IsLocalUrl(returnUrl))
     {
         returnUrl = "/";
     }
@@ -86,3 +111,33 @@ app.MapControllerRoute(
 
 
 app.Run();
+
+static string NormalizeHost(string host)
+{
+    var normalizedHost = host.ToLowerInvariant();
+    return normalizedHost.StartsWith("www.", StringComparison.Ordinal)
+        ? normalizedHost[4..]
+        : normalizedHost;
+}
+
+static bool IsLocalUrl(string url)
+{
+    if (string.IsNullOrEmpty(url))
+    {
+        return false;
+    }
+
+    if (url[0] == '/')
+    {
+        return url.Length == 1 || (url[1] != '/' && url[1] != '\\');
+    }
+
+    return url.Length > 1
+        && url[0] == '~'
+        && url[1] == '/'
+        && (url.Length == 2 || (url[2] != '/' && url[2] != '\\'));
+}
+
+public partial class Program
+{
+}

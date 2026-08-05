@@ -58,6 +58,9 @@ public static class SiteRouteOwnership
             || path.StartsWith("/js/")
             || path.StartsWith("/lib/")
             || path.StartsWith("/shared/")
+            || path == "/dorks-and-dice-site.styles.css"
+            || (path.StartsWith("/dorks-and-dice-site.", StringComparison.Ordinal)
+                && path.EndsWith(".styles.css", StringComparison.Ordinal))
             || path.StartsWith("/favicon")
             || path.StartsWith("/robots.txt");
     }

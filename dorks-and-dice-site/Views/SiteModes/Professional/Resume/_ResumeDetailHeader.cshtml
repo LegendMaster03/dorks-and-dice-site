@@ -1,4 +1,17 @@
 @model dorks_and_dice_site.Models.Resume.ResumeDetailHeaderViewModel
+@{
+    var isExperienceDetail = Model.Title.StartsWith("Experience:", StringComparison.OrdinalIgnoreCase);
+    var backLinkText = isExperienceDetail ? "Back to experience" : "Back to projects";
+    var backLinkFragment = isExperienceDetail ? "experience-section" : "projects-section";
+}
+
+<nav class="resume-detail-back mb-3" aria-label="Detail navigation">
+    <a asp-controller="Resume"
+       asp-action="Index"
+       asp-fragment="@backLinkFragment">
+        @backLinkText
+    </a>
+</nav>
 
 <div class="resume-detail-header d-flex justify-content-between align-items-start gap-3 mb-3 flex-wrap flex-md-nowrap">
     <div class="resume-detail-heading">

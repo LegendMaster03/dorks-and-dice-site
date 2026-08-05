@@ -2,6 +2,8 @@ namespace dorks_and_dice_site.Services.Site;
 
 public sealed class SiteModeOptions
 {
+    public const string CanonicalProfessionalHost = "kylebarnett.com";
+
     public IReadOnlySet<string> ProfessionalDomains { get; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
     {
         "k-barnett.com",

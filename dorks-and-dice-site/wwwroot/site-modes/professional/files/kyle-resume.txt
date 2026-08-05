@@ -1,5 +1,5 @@
 Kyle W. Barnett
-Information Science Student | Cybersecurity and Software Development
+Information Science Graduate | Software Development, Cybersecurity, and Data Analytics
 Ponte Vedra Beach, FL
 Download PDF: kyle-resume.pdf (~/site-modes/professional/files/kyle-resume.pdf)
 Last updated: August 2026
@@ -21,7 +21,7 @@ August 2022 - December 2022
 Prior study at Florida State College at Jacksonville: August 2020 - July 2022
 Honors & Awards
 Cum Laude
-Issued May 2025 by University of North Florida
+Issued May 2026 by University of North Florida
 Awarded for strong academic performance. GPA:3.54
 Upsilon Pi Epsilon (UPE), International Honor Society for the Computing and Information Disciplines
 Issued February 2026 by Upsilon Pi Epsilon | Associated with University of North Florida
@@ -44,11 +44,11 @@ Interpersonal Skills
 Leadership, collaboration, mentoring, communication, conflict resolution, and instructional coaching through the EDGE method.
 Experience
 UNF Cyber Security Team - Web Specialist and Windows Specialist
-2024 - Present
-- Participates in a competitive travel team environment.
-- Attends daily practices to optimize methods for complex security use cases.
-- Attends lectures from global security experts.
-Technology Services (Personal Business) - Tech Enthusiast
+2024 - May 2026
+- Participated in a competitive travel team environment.
+- Attended daily practices to optimize methods for complex security use cases.
+- Attended lectures from global security experts.
+Technology Services (Personal Business) - Independent IT Support Technician
 2019 - Present
 - Performs computer migrations and software upgrades for local clients.
 - Assists with data-entry projects and network management tasks.

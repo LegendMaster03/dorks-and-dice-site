@@ -14,6 +14,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Run tests
+        run: dotnet test dorks-and-dice-site.slnx --configuration Release
+
       - name: Build image
         run: docker build -t dorks-and-dice-site:latest -f dorks-and-dice-site/Dockerfile dorks-and-dice-site
 

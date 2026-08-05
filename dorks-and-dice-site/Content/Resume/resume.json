@@ -1,7 +1,7 @@
 {
   "header": {
     "fullName": "Kyle W. Barnett",
-    "headline": "Information Science Student | Cybersecurity and Software Development",
+    "headline": "Information Science Graduate | Software Development, Cybersecurity, and Data Analytics",
     "location": "Ponte Vedra Beach, FL",
     "headshotImageUrl": "~/site-modes/professional/images/profile/kyle-headshot.jpg",
     "headshotAltText": "Headshot of Kyle Barnett",
@@ -98,7 +98,7 @@
     {
       "title": "Cum Laude",
       "cardCssClass": "card mb-2",
-      "metaText": "Issued May 2025 by University of North Florida",
+      "metaText": "Issued May 2026 by University of North Florida",
       "summary": "Awarded for strong academic performance. GPA:3.54"
     },
     {
@@ -144,12 +144,12 @@
   "experienceItems": [
     {
       "title": "UNF Cyber Security Team - Web Specialist and Windows Specialist",
-      "dateRange": "2024 - Present",
+      "dateRange": "2024 - May 2026",
       "cardCssClass": "card mb-2",
       "highlights": [
-        "Participates in a competitive travel team environment.",
-        "Attends daily practices to optimize methods for complex security use cases.",
-        "Attends lectures from global security experts."
+        "Participated in a competitive travel team environment.",
+        "Attended daily practices to optimize methods for complex security use cases.",
+        "Attended lectures from global security experts."
       ],
       "detailsAction": "ExperienceCyberSecurityTeam",
       "featured": true,
@@ -159,7 +159,7 @@
       ]
     },
     {
-      "title": "Technology Services (Personal Business) - Tech Enthusiast",
+      "title": "Technology Services (Personal Business) - Independent IT Support Technician",
       "dateRange": "2019 - Present",
       "cardCssClass": "card mb-2",
       "highlights": [
