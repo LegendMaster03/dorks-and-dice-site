@@ -30,7 +30,7 @@
         <div class="col-lg-4">
             <aside id="contact" class="contact-card p-3 rounded-3 border h-100">
                 <h2 class="h6 text-uppercase mb-3">Contact</h2>
-                @await Html.PartialAsync("_ContactLinks", Model.ContactLinks)
+                @await Html.PartialAsync("~/Views/SiteModes/Professional/Resume/_ContactLinks.cshtml", Model.ContactLinks)
             </aside>
         </div>
     </div>
@@ -109,7 +109,7 @@
     <div class="row row-cols-1 row-cols-md-2 g-4 mt-1">
         @foreach (var project in Model.ProjectItems)
         {
-            @await Html.PartialAsync("_ProjectCard", project)
+            @await Html.PartialAsync("~/Views/SiteModes/Professional/Resume/_ProjectCard.cshtml", project)
         }
     </div>
 </section>
@@ -120,7 +120,7 @@
     <h2 class="h4 resume-section-title">Education</h2>
     @foreach (var educationEntry in Model.EducationEntries)
     {
-        @await Html.PartialAsync("_EducationEntry", educationEntry)
+        @await Html.PartialAsync("~/Views/SiteModes/Professional/Resume/_EducationEntry.cshtml", educationEntry)
     }
 </section>
 
@@ -128,7 +128,7 @@
     <h2 class="h4 resume-section-title">Honors &amp; Awards</h2>
     @foreach (var awardEntry in Model.AwardEntries)
     {
-        @await Html.PartialAsync("_AwardEntry", awardEntry)
+        @await Html.PartialAsync("~/Views/SiteModes/Professional/Resume/_AwardEntry.cshtml", awardEntry)
     }
 </section>
 
@@ -136,7 +136,7 @@
     <h2 class="h4 resume-section-title">Skills</h2>
     <div class="card">
         <div class="card-body">
-            @await Html.PartialAsync("_SkillsSection", Model.SkillCategories)
+            @await Html.PartialAsync("~/Views/SiteModes/Professional/Resume/_SkillsSection.cshtml", Model.SkillCategories)
         </div>
     </div>
 </section>
@@ -145,7 +145,7 @@
     <h2 class="h4 resume-section-title">Experience</h2>
     @foreach (var experience in Model.ExperienceItems)
     {
-        @await Html.PartialAsync("_ExperienceCard", experience)
+        @await Html.PartialAsync("~/Views/SiteModes/Professional/Resume/_ExperienceCard.cshtml", experience)
     }
 </section>
 
@@ -153,6 +153,6 @@
     <h2 class="h4 resume-section-title">Leadership Experience</h2>
     @foreach (var leadershipEntry in Model.LeadershipEntries)
     {
-        @await Html.PartialAsync("_LeadershipEntry", leadershipEntry)
+        @await Html.PartialAsync("~/Views/SiteModes/Professional/Resume/_LeadershipEntry.cshtml", leadershipEntry)
     }
 </section>

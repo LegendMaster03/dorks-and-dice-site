@@ -35,6 +35,21 @@ body {
   letter-spacing: 0.02em;
 }
 
+.development-preview-toolbar {
+  background: #fff7e6;
+  color: #4d3800;
+}
+
+.development-preview-select {
+  max-width: 11rem;
+}
+
+.development-preview-warning {
+  border-left: 3px solid #b58100;
+  font-size: 0.875rem;
+  padding-left: 0.75rem;
+}
+
 .footer a {
   text-decoration: none;
 }

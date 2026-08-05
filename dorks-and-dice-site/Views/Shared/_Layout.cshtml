@@ -1,21 +1,25 @@
+@using dorks_and_dice_site.Services.Site
+@using dorks_and_dice_site.Models.Site
 @{
     var controller = ViewContext.RouteData.Values["controller"]?.ToString() ?? string.Empty;
     var action = ViewContext.RouteData.Values["action"]?.ToString() ?? string.Empty;
-    var isProfessionalDomain = Context.Items["ForceKyleBarnettBranding"] as bool? ?? false;
-    var isResumeContext = controller == "Resume"
-        || action == "Resume"
-        || action.StartsWith("Experience", StringComparison.Ordinal)
-        || action is "XnGine" or "SeniorProject" or "CyberSecurityTeam" or "DirectedIndependentStudy" or "Skyblivion" or "Skywind" or "TechnologyServices" or "SimLabExpo" or "WiredWorks" or "DndTools";
-    // Unified branding logic
-    var useKyleBarnettBranding = isProfessionalDomain || isResumeContext;
-    var siteSuffix = useKyleBarnettBranding ? "Kyle Barnett" : "Dorks & Dice";
-    var brandText = useKyleBarnettBranding ? "Kyle Barnett" : "Dorks & Dice";
-    var brandController = useKyleBarnettBranding ? "Resume" : "Home";
-    var footerText = useKyleBarnettBranding ? "Kyle Barnett" : "Dorks & Dice";
+    var siteModeContext = Context.GetSiteModeContext();
+    var isProfessionalPageMode = siteModeContext.PageMode == SiteMode.Professional;
+    var isDorksAndDiceMode = siteModeContext.SiteMode == SiteMode.DorksAndDice;
+    var isProfessionalSelectedMode = siteModeContext.SiteMode == SiteMode.Professional;
+    var isDevelopmentMode = siteModeContext.SiteMode == SiteMode.Development;
+    var isDevelopmentPreview = siteModeContext.IsDevelopmentPreview;
+    var includeUnlistedArticles = siteModeContext.IncludeUnlistedArticles;
+    var developmentPreviewRouteRestrictionMismatch = siteModeContext.DevelopmentPreviewRouteRestrictionMismatch;
+    var isUnassignedMode = siteModeContext.SiteMode == SiteMode.Unassigned;
+    var siteSuffix = isProfessionalPageMode ? "Kyle Barnett" : "Dorks & Dice";
+    var brandText = isUnassignedMode ? "Unassigned Site" : isProfessionalPageMode ? "Kyle Barnett" : "Dorks & Dice";
+    var brandController = "Home";
+    var footerText = isProfessionalPageMode ? "Kyle Barnett" : "Dorks & Dice";
     var pageTitle = $"{ViewData["Title"]} - {siteSuffix}";
     var metaTitle = ViewData["MetaTitle"]?.ToString() ?? pageTitle;
     var metaDescription = ViewData["MetaDescription"]?.ToString()
-        ?? (useKyleBarnettBranding
+        ?? (isProfessionalPageMode
             ? "Kyle Barnett's resume, experience, and selected projects."
             : "Dorks & Dice community front door for campaigns, tools, and updates.");
     var robots = ViewData["Robots"]?.ToString();
@@ -24,6 +28,12 @@
         ? metaImagePath
         : $"{Context.Request.Scheme}://{Context.Request.Host}{metaImagePath}";
     var metaUrl = $"{Context.Request.Scheme}://{Context.Request.Host}{Context.Request.Path}{Context.Request.QueryString}";
+    var returnQuery = string.Join("&", Context.Request.Query
+        .Where(item => !string.Equals(item.Key, "devRole", StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(item.Key, "includeUnlisted", StringComparison.OrdinalIgnoreCase))
+        .SelectMany(item => item.Value.Select(value => $"{Uri.EscapeDataString(item.Key)}={Uri.EscapeDataString(value ?? string.Empty)}")));
+    var currentDevelopmentPreviewReturnUrl = $"{Context.Request.Path}{(string.IsNullOrWhiteSpace(returnQuery) ? string.Empty : $"?{returnQuery}")}";
+    var developmentPreviewReturnUrl = ViewData["DevelopmentPreviewReturnUrl"]?.ToString() ?? currentDevelopmentPreviewReturnUrl;
 }
 <!DOCTYPE html>
 <html lang="en">
@@ -52,7 +62,15 @@
 </head>
 <body>
     <header>
-        @if (isProfessionalDomain)
+        @if (isUnassignedMode)
+        {
+            <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom shadow-sm">
+                <div class="container-fluid">
+                    <span class="navbar-brand fw-semibold">@brandText</span>
+                </div>
+            </nav>
+        }
+        else if (isProfessionalPageMode)
         {
             <!-- Professional Nav Bar -->
             <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom shadow-sm">
@@ -65,13 +83,13 @@
                     <div class="navbar-collapse collapse" id="siteNavbar">
                         <ul class="navbar-nav ms-auto">
                             <li class="nav-item">
-                                <a class="nav-link" asp-area="" asp-controller="Resume" asp-action="Index">Resume</a>
+                                <a class="nav-link" asp-area="" asp-controller="Home" asp-action="Index">Home</a>
                             </li>
                             <li class="nav-item">
                                 <a class="nav-link" asp-area="" asp-controller="Articles" asp-action="Index">Articles</a>
                             </li>
                             <li class="nav-item">
-                                <a class="nav-link" asp-area="" asp-controller="Resume" asp-action="Index" asp-fragment="contact">Contact</a>
+                                <a class="nav-link" asp-area="" asp-controller="Home" asp-action="Index" asp-fragment="contact">Contact</a>
                             </li>
                         </ul>
                         <button id="themeToggle" class="btn btn-outline-secondary btn-sm ms-lg-3 mt-2 mt-lg-0" type="button" aria-label="Toggle dark mode">
@@ -97,13 +115,7 @@
                                 <a class="nav-link" asp-area="" asp-controller="Home" asp-action="Index">Home</a>
                             </li>
                             <li class="nav-item">
-                                <a class="nav-link" asp-area="" asp-controller="Resume" asp-action="Index">Resume</a>
-                            </li>
-                            <li class="nav-item">
                                 <a class="nav-link" asp-area="" asp-controller="Articles" asp-action="Index">Articles</a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" asp-area="" asp-controller="Resume" asp-action="Index" asp-fragment="contact">Contact</a>
                             </li>
                         </ul>
                         <button id="themeToggle" class="btn btn-outline-secondary btn-sm ms-lg-3 mt-2 mt-lg-0" type="button" aria-label="Toggle dark mode">
@@ -112,6 +124,41 @@
                     </div>
                 </div>
             </nav>
+        }
+        @if (isDevelopmentPreview)
+        {
+            <div class="development-preview-toolbar border-bottom">
+                <div class="container-fluid py-2">
+                    <form class="d-flex flex-wrap align-items-center gap-2" method="post" action="/development-preview">
+                        <input type="hidden" name="returnUrl" value="@developmentPreviewReturnUrl" />
+                        <span class="small fw-semibold text-uppercase">Development Preview</span>
+                        <label class="small text-muted" for="siteMode">Mode</label>
+                        <select class="form-select form-select-sm development-preview-select" id="siteMode" name="siteMode">
+                            <option value="dorks-and-dice" selected="@isDorksAndDiceMode">Dorks &amp; Dice</option>
+                            <option value="professional" selected="@isProfessionalSelectedMode">Professional</option>
+                            <option value="development" selected="@isDevelopmentMode">Development</option>
+                        </select>
+                        <div class="form-check form-switch mb-0">
+                            <input class="form-check-input"
+                                   type="checkbox"
+                                   role="switch"
+                                   id="includeUnlisted"
+                                   name="includeUnlisted"
+                                   value="true"
+                                   checked="@includeUnlistedArticles">
+                            <label class="form-check-label small" for="includeUnlisted">Show unlisted articles</label>
+                        </div>
+                        <button class="btn btn-sm btn-outline-primary" type="submit">Apply</button>
+                    </form>
+                    @if (developmentPreviewRouteRestrictionMismatch)
+                    {
+                        <div class="development-preview-warning mt-2" role="alert">
+                            This page is not available in the selected site mode. A live request would redirect to
+                            <a asp-controller="Home" asp-action="Index">that mode's homepage</a>.
+                        </div>
+                    }
+                </div>
+            </div>
         }
     </header>
     <div class="container py-4">
@@ -124,11 +171,12 @@
         <div class="container">
             <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">
                 <span>&copy; @DateTime.UtcNow.Year @footerText</span>
-                <span>
-                    <a asp-area="" asp-controller="Resume" asp-action="Index">Resume</a>
-                    | 
-                    <a asp-area="" asp-controller="Resume" asp-action="Index" asp-fragment="contact">Contact</a>
-                </span>
+                @if (!isUnassignedMode)
+                {
+                    <span>
+                        <a asp-area="" asp-controller="Home" asp-action="Index" asp-fragment="contact">Contact</a>
+                    </span>
+                }
             </div>
         </div>
     </footer>

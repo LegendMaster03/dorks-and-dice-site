@@ -3,6 +3,8 @@
     ViewData["MetaTitle"] = "Freeing the Bees: Solving ConsoleVariations' Hidden Web Puzzle";
     ViewData["MetaDescription"] = "Kyle Barnett's third-place walkthrough and technical investigation of the ConsoleVariations Free the Bees web puzzle.";
     ViewData["MetaImage"] = Url.Content("~/images/articles/consolevariations-bee/ending.png");
+    var articleStatusLabel = ViewData["ArticleStatusLabel"]?.ToString() ?? "Status";
+    var articleStatusText = ViewData["ArticleStatusText"]?.ToString() ?? "Unlisted";
 
     var header = new dorks_and_dice_site.Models.Resume.ResumeDetailHeaderViewModel
     {
@@ -17,7 +19,7 @@
         {
             ["Organizer"] = "ConsoleVariations",
             ["Event"] = "Free the Bees",
-            ["Posted"] = "Draft",
+            [articleStatusLabel] = articleStatusText,
             ["Result"] = "Third-place winner",
             ["Date"] = "August 3, 2026",
             ["Puzzle format"] = "Site-wide scavenger hunt and browser-based ARG"
@@ -47,7 +49,7 @@
     }
 </style>
 
-@await Html.PartialAsync("~/Views/Resume/_ResumeDetailHeader.cshtml", header)
+@await Html.PartialAsync("~/Views/SiteModes/Professional/Resume/_ResumeDetailHeader.cshtml", header)
 
 <div class="alert alert-warning mt-4" role="alert">
     <strong>Full spoiler warning:</strong>

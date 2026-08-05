@@ -1,0 +1,15 @@
+@using dorks_and_dice_site.Services.Site
+@{
+    ViewData["Title"] = "Route Resolution";
+    var title = ViewData["RouteResolutionTitle"]?.ToString() ?? "Route cannot be resolved";
+    var message = ViewData["RouteResolutionMessage"]?.ToString()
+        ?? "The requested route cannot be resolved for the current site mode or domain.";
+}
+
+<section class="py-4">
+    <h1 class="mb-3">@title</h1>
+    <p class="mb-3">@message</p>
+    <div class="alert alert-warning" role="alert">
+        This page is shown when the site cannot safely choose a mode-owned implementation.
+    </div>
+</section>

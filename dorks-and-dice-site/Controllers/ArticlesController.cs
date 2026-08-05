@@ -1,5 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
 using dorks_and_dice_site.Services.Articles;
+using dorks_and_dice_site.Models.Articles;
+using dorks_and_dice_site.Models.Site;
+using dorks_and_dice_site.Services.Site;
 
 namespace dorks_and_dice_site.Controllers;
 
@@ -16,28 +19,45 @@ public class ArticlesController : Controller
     [HttpGet("")]
     public IActionResult Index()
     {
-        return View(_articleCatalogService.GetIndex(IsProfessionalDomain()));
+        return View(_articleCatalogService.GetIndex(
+            GetSiteMode(),
+            IncludeUnlistedArticles(),
+            IsDevelopmentPreview()));
     }
 
     [HttpGet("freeing-the-bees-consolevariations-puzzle")]
     public IActionResult FreeingTheBeesConsoleVariationsPuzzle()
     {
         var article = _articleCatalogService.GetByAction(nameof(FreeingTheBeesConsoleVariationsPuzzle));
-        if (IsProfessionalDomain() && article?.Professional != true)
+        if (article is null || !article.IsVisibleInMode(GetSiteMode()))
         {
             return NotFound();
         }
 
-        if (article?.Listed == false)
+        if (!article.Listed)
         {
             ViewData["Robots"] = "noindex, nofollow";
         }
 
+        ViewData["ArticleStatusLabel"] = article.Listed ? "Posted" : "Status";
+        ViewData["ArticleStatusText"] = article.ListingStatusText;
+
         return View();
     }
 
-    private bool IsProfessionalDomain()
+    private SiteMode GetSiteMode()
     {
-        return HttpContext.Items["ForceKyleBarnettBranding"] as bool? ?? false;
+        return HttpContext.GetSiteModeContext().SiteMode;
     }
+
+    private bool IncludeUnlistedArticles()
+    {
+        return HttpContext.GetSiteModeContext().IncludeUnlistedArticles;
+    }
+
+    private bool IsDevelopmentPreview()
+    {
+        return HttpContext.GetSiteModeContext().IsDevelopmentPreview;
+    }
+
 }

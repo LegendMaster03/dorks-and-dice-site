@@ -1,5 +1,6 @@
 using dorks_and_dice_site.Services.Resume;
 using dorks_and_dice_site.Services.Articles;
+using dorks_and_dice_site.Services.Site;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -7,6 +8,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllersWithViews();
 builder.Services.AddSingleton<IResumeContentService, ResumeContentService>();
 builder.Services.AddSingleton<IArticleCatalogService, ArticleCatalogService>();
+builder.Services.AddSingleton<SiteModeOptions>();
 
 var app = builder.Build();
 
@@ -19,39 +21,7 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-// List of professional domains
-var professionalDomains = new[] { "k-barnett.com", "kyle-barnett.com", "kylebarnett.com", "kylebarnett.net", "kylebarnett.org", "kylebarnett.dev" };
-
-// Restrict professional domains to /resume and its subpaths
-app.Use(async (context, next) =>
-{
-    var host = context.Request.Host.Host.ToLower();
-    // Normalize host by removing leading 'www.' if present
-    if (host.StartsWith("www."))
-    {
-        host = host.Substring(4);
-    }
-    var path = context.Request.Path.ToString().ToLower();
-    bool isProDomain = professionalDomains.Contains(host);
-    bool isResumePath = path == "/resume" || path.StartsWith("/resume/");
-    bool isArticlesPath = path == "/articles" || path.StartsWith("/articles/");
-    // Allow static asset paths
-    bool isStaticAsset = path.StartsWith("/css/") || path.StartsWith("/js/") || path.StartsWith("/lib/") || path.StartsWith("/images/") || path.StartsWith("/files/") || path.StartsWith("/favicon") || path.StartsWith("/robots.txt");
-
-    // Set a flag for professional domain branding
-    context.Items["ForceKyleBarnettBranding"] = isProDomain;
-
-    if (isProDomain)
-    {
-        // Restrict professional domains to /resume, its subpaths, or static assets
-        if (!isResumePath && !isArticlesPath && !isStaticAsset)
-        {
-            context.Response.Redirect("/resume");
-            return;
-        }
-    }
-    await next();
-});
+app.UseMiddleware<SiteModeMiddleware>();
 app.UseRouting();
 app.UseStatusCodePagesWithReExecute("/Home/NotFoundPage");
 
@@ -60,6 +30,42 @@ app.UseAuthorization();
 app.MapStaticAssets();
 
 app.MapGet("/health", () => Results.Text("OK", "text/plain"));
+
+app.MapPost("/development-preview", async (HttpContext context) =>
+{
+    var siteModeContext = context.GetSiteModeContext();
+    if (!siteModeContext.IsDevelopmentPreview)
+    {
+        return Results.NotFound();
+    }
+
+    var form = await context.Request.ReadFormAsync();
+    var requestedMode = form["siteMode"].FirstOrDefault();
+    if (requestedMode is not (SiteModeValues.DorksAndDiceModeValue
+        or SiteModeValues.ProfessionalModeValue
+        or SiteModeValues.DevelopmentModeValue))
+    {
+        requestedMode = SiteModeValues.DevelopmentModeValue;
+    }
+
+    var includeUnlisted = form.ContainsKey("includeUnlisted");
+    var cookieOptions = new CookieOptions
+    {
+        IsEssential = true,
+        SameSite = SameSiteMode.Lax
+    };
+
+    context.Response.Cookies.Append(SiteModeValues.DevelopmentSiteModeCookie, requestedMode, cookieOptions);
+    context.Response.Cookies.Append(SiteModeValues.IncludeUnlistedCookie, includeUnlisted ? "true" : "false", cookieOptions);
+
+    var returnUrl = form["returnUrl"].FirstOrDefault();
+    if (string.IsNullOrWhiteSpace(returnUrl) || !returnUrl.StartsWith("/", StringComparison.Ordinal))
+    {
+        returnUrl = "/";
+    }
+
+    return Results.Redirect(returnUrl);
+});
 
 app.MapControllerRoute(
     name: "resume",

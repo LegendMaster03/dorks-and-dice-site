@@ -1,3 +1,5 @@
+using dorks_and_dice_site.Models.Site;
+
 namespace dorks_and_dice_site.Models.Articles;
 
 public class ArticleItemViewModel
@@ -13,6 +15,9 @@ public class ArticleItemViewModel
     public int ImageWidth { get; set; }
     public int ImageHeight { get; set; }
     public bool Listed { get; set; } = true;
-    public bool Professional { get; set; }
+    public List<SiteMode> VisibleInModes { get; set; } = [];
     public List<string> Tags { get; set; } = [];
+
+    public string ListingStatusText => Listed ? PostedDateText : "Unlisted";
+    public bool IsVisibleInMode(SiteMode siteMode) => siteMode == SiteMode.Development || VisibleInModes.Contains(siteMode);
 }

@@ -14,27 +14,27 @@ namespace dorks_and_dice_site.Controllers
 
         public IActionResult Index()
         {
-            return View(_resumeContentService.GetResumePage());
+            return View("~/Views/SiteModes/Professional/Home.cshtml", _resumeContentService.GetResumePage());
         }
 
         public IActionResult XnGine()
         {
-            return View("Projects/XnGine");
+            return View("~/Views/SiteModes/Professional/Resume/Projects/XnGine.cshtml");
         }
 
         public IActionResult SeniorProject()
         {
-            return View("Projects/SeniorProject");
+            return View("~/Views/SiteModes/Professional/Resume/Projects/SeniorProject.cshtml");
         }
 
         public IActionResult PythonFinanceAnalytics()
         {
-            return View("Projects/PythonFinanceAnalytics");
+            return View("~/Views/SiteModes/Professional/Resume/Projects/PythonFinanceAnalytics.cshtml");
         }
 
         public IActionResult DirectedIndependentStudy()
         {
-            return View("Projects/DirectedIndependentStudy");
+            return View("~/Views/SiteModes/Professional/Resume/Projects/DirectedIndependentStudy.cshtml");
         }
 
         public IActionResult CyberSecurityTeam()
@@ -44,52 +44,52 @@ namespace dorks_and_dice_site.Controllers
 
         public IActionResult Skyblivion()
         {
-            return View("Projects/Skyblivion");
+            return View("~/Views/SiteModes/Professional/Resume/Projects/Skyblivion.cshtml");
         }
 
         public IActionResult Skywind()
         {
-            return View("Projects/Skywind");
+            return View("~/Views/SiteModes/Professional/Resume/Projects/Skywind.cshtml");
         }
 
         public IActionResult TechnologyServices()
         {
-            return View("Projects/TechnologyServices");
+            return View("~/Views/SiteModes/Professional/Resume/Projects/TechnologyServices.cshtml");
         }
 
         public IActionResult SimLabExpo()
         {
-            return View("Projects/SimLabExpo");
+            return View("~/Views/SiteModes/Professional/Resume/Projects/SimLabExpo.cshtml");
         }
 
         public IActionResult WiredWorks()
         {
-            return View("Experience/WiredWorks");
+            return View("~/Views/SiteModes/Professional/Resume/Experience/WiredWorks.cshtml");
         }
 
         public IActionResult DndTools()
         {
-            return View("Projects/DndTools");
+            return View("~/Views/SiteModes/Professional/Resume/Projects/DndTools.cshtml");
         }
 
         public IActionResult ExperienceCyberSecurityTeam()
         {
-            return View("Experience/ExperienceCyberSecurityTeam");
+            return View("~/Views/SiteModes/Professional/Resume/Experience/ExperienceCyberSecurityTeam.cshtml");
         }
 
         public IActionResult ExperienceTechnologyServices()
         {
-            return View("Experience/ExperienceTechnologyServices");
+            return View("~/Views/SiteModes/Professional/Resume/Experience/ExperienceTechnologyServices.cshtml");
         }
 
         public IActionResult ExperienceSimLab()
         {
-            return View("Experience/ExperienceSimLab");
+            return View("~/Views/SiteModes/Professional/Resume/Experience/ExperienceSimLab.cshtml");
         }
 
         public IActionResult ExperienceWiredWorks()
         {
-            return View("Experience/ExperienceWiredWorks");
+            return View("~/Views/SiteModes/Professional/Resume/Experience/ExperienceWiredWorks.cshtml");
         }
 
         public IActionResult ExperienceSkyblivion()

@@ -1,4 +1,5 @@
 @model dorks_and_dice_site.Models.Articles.ArticlesIndexViewModel
+@using dorks_and_dice_site.Models.Site
 @{
     ViewData["Title"] = "Articles";
     ViewData["MetaTitle"] = "Articles - Dorks & Dice";
@@ -56,10 +57,11 @@
         <div class="row row-cols-1 row-cols-md-2 g-4 article-list">
             @foreach (var article in Model.Articles)
             {
+                var articleSearchText = $"{article.Title} {article.Summary} {article.Category} {string.Join(' ', article.Tags)}".ToLowerInvariant();
                 <div class="col article-card"
                      data-article-category="@article.Category"
-                     data-article-professional="@(article.Professional ? "true" : "false")"
-                     data-article-search="@($"{article.Title} {article.Summary} {article.Category} {string.Join(' ', article.Tags)}").ToLowerInvariant()">
+                     data-article-professional="@(article.IsVisibleInMode(SiteMode.Professional) ? "true" : "false")"
+                     data-article-search="@articleSearchText">
                     <article class="card h-100 project-card-inner">
                         <img src="@Url.Content(article.ImageUrl)"
                              class="card-img-top article-card-img"
@@ -69,9 +71,13 @@
                         <div class="card-body">
                             <p class="featured-project-meta mb-2">@article.Category</p>
                             <h2 class="h5 card-title">@article.Title</h2>
-                            @if (!string.IsNullOrWhiteSpace(article.PostedDateText))
+                            @if (!string.IsNullOrWhiteSpace(article.ListingStatusText))
                             {
-                                <p class="small text-muted mb-2">Posted: @article.PostedDateText</p>
+                                <p class="small text-muted mb-2">@article.ListingStatusText</p>
+                            }
+                            @if (Model.IsDevelopmentPreview && !article.Listed)
+                            {
+                                <p class="small text-warning-emphasis mb-2">Development preview: unlisted article</p>
                             }
                             <p class="card-text">@article.Summary</p>
                             <a class="btn btn-sm btn-outline-primary"
@@ -94,7 +100,7 @@
     {
         <div class="card">
             <div class="card-body">
-                <p class="text-muted mb-0">No public articles are listed yet.</p>
+                <p class="text-muted mb-0">No listed articles are available for this site mode yet.</p>
             </div>
         </div>
     }

@@ -1,4 +1,5 @@
 using dorks_and_dice_site.Models.Articles;
+using dorks_and_dice_site.Models.Site;
 
 namespace dorks_and_dice_site.Services.Articles;
 
@@ -13,13 +14,16 @@ public class ArticleCatalogService : IArticleCatalogService
             Category = "Technical Investigation",
             Controller = "Articles",
             Action = "FreeingTheBeesConsoleVariationsPuzzle",
-            PostedDateText = "Draft",
+            PostedDateText = "August 2026",
             ImageUrl = "~/images/articles/consolevariations-bee/ending.png",
             ImageAltText = "Completed ConsoleVariations Queen's Chamber showing the Free the Bees ending screen",
             ImageWidth = 2041,
             ImageHeight = 1220,
             Listed = false,
-            Professional = true,
+            VisibleInModes =
+            [
+                SiteMode.Professional
+            ],
             Tags =
             [
                 "technical-investigation",
@@ -29,18 +33,20 @@ public class ArticleCatalogService : IArticleCatalogService
         }
     ];
 
-    public ArticlesIndexViewModel GetIndex(bool professionalOnly)
+    public ArticlesIndexViewModel GetIndex(SiteMode siteMode, bool includeUnlisted, bool isDevelopmentPreview)
     {
         var visibleArticles = Articles
-            .Where(article => article.Listed)
-            .Where(article => !professionalOnly || article.Professional)
+            .Where(article => includeUnlisted || article.Listed)
+            .Where(article => article.IsVisibleInMode(siteMode))
             .ToList();
 
         return new ArticlesIndexViewModel
         {
             Articles = visibleArticles,
-            ProfessionalFilterActive = professionalOnly,
-            IsProfessionalDomain = professionalOnly,
+            ProfessionalFilterActive = siteMode == SiteMode.Professional,
+            SiteMode = siteMode,
+            IsDevelopmentPreview = isDevelopmentPreview,
+            IncludeUnlistedActive = includeUnlisted,
             ShowSearchFilter = true,
             ShowSearchFilterOnProfessional = true,
             ShowCategoryFilter = true,
