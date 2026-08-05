@@ -6,10 +6,11 @@
 }
 
 <nav class="resume-detail-back mb-3" aria-label="Detail navigation">
-    <a asp-controller="Resume"
+    <a class="btn btn-sm btn-outline-primary"
+       asp-controller="Resume"
        asp-action="Index"
        asp-fragment="@backLinkFragment">
-        @backLinkText
+        &larr; @backLinkText
     </a>
 </nav>
 
