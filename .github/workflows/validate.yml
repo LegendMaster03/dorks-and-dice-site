@@ -1,0 +1,29 @@
+name: Validate dorks-and-dice-site
+
+on:
+  pull_request:
+    branches: [ "main" ]
+  push:
+    branches: [ "agent/**" ]
+
+concurrency:
+  group: validate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: [self-hosted, dorks-and-dice-site]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run tests
+        run: |
+          docker run --rm \
+            --user "$(id -u):$(id -g)" \
+            -e HOME=/tmp \
+            -e DOTNET_CLI_HOME=/tmp \
+            -e NUGET_PACKAGES=/tmp/.nuget/packages \
+            -v "$PWD:/src" \
+            -w /src \
+            mcr.microsoft.com/dotnet/sdk:10.0 \
+            dotnet test dorks-and-dice-site.slnx --configuration Release
