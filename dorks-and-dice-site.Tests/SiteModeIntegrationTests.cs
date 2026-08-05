@@ -15,9 +15,11 @@ public sealed class SiteModeIntegrationTests : IClassFixture<WebApplicationFacto
     [Theory]
     [InlineData("kylebarnett.com", "/", HttpStatusCode.OK)]
     [InlineData("kylebarnett.com", "/resume", HttpStatusCode.OK)]
+    [InlineData("kylebarnett.com", "/site-modes/professional/css/site.css", HttpStatusCode.OK)]
     [InlineData("kylebarnett.com", "/site-modes/dorks-and-dice/images/sample.png", HttpStatusCode.NotFound)]
     [InlineData("dorks-and-dice.com", "/", HttpStatusCode.OK)]
     [InlineData("dorks-and-dice.com", "/resume", HttpStatusCode.NotFound)]
+    [InlineData("dorks-and-dice.com", "/site-modes/dorks-and-dice/css/site.css", HttpStatusCode.OK)]
     [InlineData("dorks-and-dice.com", "/site-modes/professional/files/kyle-resume.pdf", HttpStatusCode.NotFound)]
     [InlineData("unassigned.example", "/", HttpStatusCode.OK)]
     [InlineData("unassigned.example", "/resume", HttpStatusCode.NotFound)]
@@ -36,6 +38,49 @@ public sealed class SiteModeIntegrationTests : IClassFixture<WebApplicationFacto
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Contains("text/css", response.Content.Headers.ContentType?.MediaType);
+    }
+
+    [Theory]
+    [InlineData("kylebarnett.com", "/site-modes/professional/css/site.css", "/site-modes/dorks-and-dice/css/site.css")]
+    [InlineData("dorks-and-dice.com", "/site-modes/dorks-and-dice/css/site.css", "/site-modes/professional/css/site.css")]
+    public async Task RealDomainsLoadOnlyTheirModeStylesheet(string host, string expectedStylesheet, string excludedStylesheet)
+    {
+        var response = await SendAsync(host, "/");
+        var html = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("/css/site.css", html);
+        Assert.Contains(expectedStylesheet, html);
+        Assert.DoesNotContain(excludedStylesheet, html);
+        Assert.DoesNotContain("/site-modes/development/css/site.css", html);
+    }
+
+    [Fact]
+    public async Task UnassignedModeLoadsOnlySharedStylesheet()
+    {
+        var response = await SendAsync("unassigned.example", "/");
+        var html = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("/css/site.css", html);
+        Assert.DoesNotContain("/site-modes/professional/css/site.css", html);
+        Assert.DoesNotContain("/site-modes/dorks-and-dice/css/site.css", html);
+        Assert.DoesNotContain("/site-modes/development/css/site.css", html);
+    }
+
+    [Fact]
+    public async Task DevelopmentPreviewLoadsSelectedModeAndDevelopmentToolsStylesheets()
+    {
+        using var request = CreateRequest("localhost", "/");
+        request.Headers.Add("Cookie", "DevelopmentPreviewSiteMode=dorks-and-dice");
+
+        var response = await SendAsync(request);
+        var html = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("/site-modes/dorks-and-dice/css/site.css", html);
+        Assert.Contains("/site-modes/development/css/site.css", html);
+        Assert.DoesNotContain("/site-modes/professional/css/site.css", html);
     }
 
     [Theory]
