@@ -18,6 +18,7 @@ builder.Services.AddSingleton<IResumeContentService, ResumeContentService>();
 builder.Services.AddSingleton<IArticleCatalogService, ArticleCatalogService>();
 builder.Services.AddSingleton<SiteModeOptions>();
 builder.Services.AddSingleton<ISiteModePartialResolver, SiteModePartialResolver>();
+builder.Services.AddSingleton<ISiteModeStylesheetResolver, SiteModeStylesheetResolver>();
 builder.Services.AddSingleton<ISiteModePresentationService, SiteModePresentationService>();
 builder.Services.AddSingleton<ISiteModePresentationModule, DorksAndDicePresentationModule>();
 builder.Services.AddSingleton<ISiteModePresentationModule, ProfessionalPresentationModule>();
