@@ -1,4 +1,4 @@
-@using dorks_and_dice_site.Models.GameServers
+@using dorks_and_dice_site.Models.GameServers.Minecraft
 @{
     ViewData["Title"] = "Home";
     ViewData["MetaTitle"] = "Dorks & Dice";
@@ -128,6 +128,7 @@
                                     <span class="badge text-bg-secondary">Unavailable</span>
                                 }
                             </div>
+                            <p class="text-muted small mb-2">Server launched October 17, 2025.</p>
                             @if (minecraftStatus?.IsOnline == true)
                             {
                                 @if (!string.IsNullOrWhiteSpace(minecraftStatus.Motd))
