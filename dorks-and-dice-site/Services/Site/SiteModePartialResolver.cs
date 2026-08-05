@@ -24,14 +24,14 @@ public sealed class SiteModePartialResolver : ISiteModePartialResolver
         return BuildPartialPath(UnassignedFolderName, partialName);
     }
 
-    public string GetBrandingModulePath(SiteMode siteMode)
+    public string GetBrandingPartialPath(SiteMode siteMode, SiteModeBrandingPart brandingPart)
     {
-        return GetPartialPath(siteMode, "_Branding");
-    }
+        if (!Enum.IsDefined(brandingPart))
+        {
+            throw new ArgumentOutOfRangeException(nameof(brandingPart), brandingPart, "Unknown branding part.");
+        }
 
-    public string GetUnassignedBrandingModulePath()
-    {
-        return BuildPartialPath(UnassignedFolderName, "_Branding");
+        return GetPartialPath(siteMode, $"Branding/_{brandingPart}");
     }
 
     private static string BuildPartialPath(string folderName, string partialName)
