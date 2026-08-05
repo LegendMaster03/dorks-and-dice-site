@@ -31,7 +31,7 @@ try
     var text = ConvertModelToPlainText(model);
 
     Directory.CreateDirectory(Path.GetDirectoryName(outputPath)!);
-    File.WriteAllText(outputPath, text + Environment.NewLine, new UTF8Encoding(false));
+    File.WriteAllText(outputPath, text + "\n", new UTF8Encoding(false));
 
     Console.WriteLine($"Generated: {outputPath}");
     return 0;
@@ -121,6 +121,6 @@ static string ConvertModelToPlainText(ResumeViewModel model)
     }
 
     return string.Join(
-        Environment.NewLine,
+        "\n",
         lines.Where(line => !string.IsNullOrWhiteSpace(line)).Select(line => line.Trim()));
 }

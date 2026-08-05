@@ -95,6 +95,17 @@
     <li>Per-game registration of features like <strong>XngineSaveGameInfo</strong>, local-save wiring, and unmanaged-mod handling</li>
 </ul>
 
+<h2 class="h5 mt-4">Shared Modularity Pattern</h2>
+<p>
+    XnGine is one of the projects that shaped how I think about modular systems. The framework separates common engine-era
+    behavior from per-game responsibilities so Arena, Battlespire, Daggerfall, and Redguard can share tooling without
+    pretending every game has identical file layouts, executable behavior, or save conventions.
+</p>
+<p>
+    I reused that same design instinct in this website's site mode architecture: shared infrastructure provides routing,
+    layout, and content services, while each mode owns its branding, homepage, access rules, and assets.
+</p>
+
 <h2 class="h5 mt-4">Patch Pipeline and Runtime Safety</h2>
 <p>
     Patching is implemented as controlled runtime staging. Instead of mutating the base install, patch outputs are

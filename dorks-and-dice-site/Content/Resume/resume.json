@@ -257,6 +257,20 @@
       ]
     },
     {
+      "title": "Personal Multi-Mode Website",
+      "subtitle": "One ASP.NET Core codebase serving multiple site identities",
+      "summary": "Custom ASP.NET Core MVC site architecture for serving separate Professional, Dorks & Dice, Development, and Unassigned experiences from one maintained codebase. Implements mode-aware routing, branding modules, view ownership, article visibility rules, static asset ownership, and local development preview tooling.",
+      "category": "professional",
+      "action": "PersonalMultiModeWebsite",
+      "repositoryUrl": "https://github.com/LegendMaster03/dorks-and-dice-site",
+      "featured": true,
+      "tags": [
+        "asp-net-core",
+        "architecture",
+        "web-development"
+      ]
+    },
+    {
       "title": "Capstone Client Project: Safe Future Barcode for Good",
       "subtitle": "Safe Future Foundation | Nonprofit Inventory System",
       "summary": "Year-long professional full-stack client engagement for Safe Future Foundation, completed through UNF capstone work. Delivered a responsive inventory system with QR labeling and batch print workflows, Excel reporting, low-stock monitoring, an operations dashboard, security review, and stakeholder-ready documentation.",

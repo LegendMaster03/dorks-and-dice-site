@@ -27,12 +27,15 @@ This repo contains:
 - `dorks-and-dice-site/Services/Resume/` - resume content loading, validation, and generated text resume support
 - `dorks-and-dice-site/Views/SiteModes/` - mode-owned homepage, resume, and mode-specific views
 - `dorks-and-dice-site/Views/Articles/` - article index and article detail views
+- `docs/site-mode-architecture.md` - detailed site mode architecture notes
 - `.github/workflows/deploy.yml` - CI/CD workflow
 - `dorks-and-dice-site.slnx` - solution file
 
 ## Site Modes
 
 The site uses explicit modes so one codebase can serve multiple domains while sharing content where appropriate.
+
+See `docs/site-mode-architecture.md` for the deeper implementation notes and future extraction path.
 
 - `Professional` mode serves Kyle Barnett professional domains.
 - `DorksAndDice` mode serves `dorks-and-dice.com`.

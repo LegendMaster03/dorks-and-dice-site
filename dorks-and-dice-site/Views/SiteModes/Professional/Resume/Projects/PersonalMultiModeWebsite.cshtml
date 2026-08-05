@@ -1,0 +1,186 @@
+@{
+    ViewData["Title"] = "Personal Multi-Mode Website";
+    var header = new dorks_and_dice_site.Models.Resume.ResumeDetailHeaderViewModel
+    {
+        Title = "Personal Multi-Mode Website",
+        Subtitle = "Custom ASP.NET Core MVC site mode architecture",
+        MetaLine = "Personal portfolio and community site platform | 2026",
+        InfoItems = new Dictionary<string, string>
+        {
+            ["Project type"] = "Personal web architecture project",
+            ["Primary stack"] = "ASP.NET Core MVC, Razor views, Bootstrap, C#",
+            ["Core feature"] = "Mode-aware routing, branding, content visibility, and static asset ownership",
+            ["Repository"] = "LegendMaster03/dorks-and-dice-site",
+            ["Professional site"] = "kylebarnett.com",
+            ["Dorks & Dice site"] = "dorks-and-dice.com"
+        },
+        InfoItemLinks = new Dictionary<string, string>
+        {
+            ["Repository"] = "https://github.com/LegendMaster03/dorks-and-dice-site",
+            ["Professional site"] = "https://kylebarnett.com/",
+            ["Dorks & Dice site"] = "https://dorks-and-dice.com/"
+        }
+    };
+}
+
+@await Html.PartialAsync("~/Views/SiteModes/Professional/Resume/_ResumeDetailHeader.cshtml", header)
+
+<h2 class="h5 mt-4">Overview</h2>
+<p>
+    This website is a custom multi-mode web application designed so one maintained ASP.NET Core codebase can serve
+    different site identities from different domains. The professional mode presents my resume, portfolio projects,
+    articles, and generated resume assets, while the Dorks &amp; Dice mode provides a separate community-facing front door.
+</p>
+<p>
+    The goal is to avoid maintaining separate websites when the infrastructure, deployment process, and some content can
+    overlap. Instead, the app determines the active site mode from the request host or local development tooling, then
+    uses that mode to control routing, branding, page availability, article visibility, and static asset access.
+</p>
+
+<h2 class="h5 mt-4">Problem Being Solved</h2>
+<p>
+    The site started as a portfolio/resume site, but it also needed to support group-facing Dorks &amp; Dice content and
+    long-form articles. Splitting that into separate applications would have created duplicated deployment work,
+    duplicated UI infrastructure, and extra maintenance for content that sometimes belongs in more than one context.
+</p>
+<p>
+    The current architecture treats the site as a small platform. Domains select a site mode, modes own their pages and
+    assets, and shared areas such as articles can apply mode-specific filtering without requiring separate codebases.
+</p>
+
+<h2 class="h5 mt-4">Mode Model</h2>
+<ul>
+    <li><strong>Professional:</strong> owns the resume, portfolio projects, professional articles, and professional media assets.</li>
+    <li><strong>Dorks &amp; Dice:</strong> owns the group-facing homepage and future campaign/community surfaces.</li>
+    <li><strong>Development:</strong> local-only preview mode for inspecting shared routes, unlisted articles, and mode behavior.</li>
+    <li><strong>Unassigned:</strong> bare-bones fallback mode for domains that are not explicitly mapped.</li>
+</ul>
+
+<h2 class="h5 mt-4">Request Flow</h2>
+<p>
+    A request first passes through custom middleware that normalizes the host, resolves the active site mode, checks
+    whether the path is allowed for that mode, and stores the resulting mode context for controllers and Razor views.
+    Real domains receive a normal 404 when they request a route outside their mode. Development hosts keep the request
+    visible and attach a warning to the development ribbon, which makes invalid route states easier to debug.
+</p>
+
+<h2 class="h5 mt-4">Architecture Highlights</h2>
+<ul>
+    <li>Mode-aware middleware maps domains to Professional, Dorks &amp; Dice, Development, or Unassigned behavior.</li>
+    <li>Route ownership rules prevent one mode from accessing pages owned by another mode unless explicitly allowed.</li>
+    <li>Per-mode branding modules keep header and footer behavior grouped by site identity with Unassigned fallback pieces.</li>
+    <li>Article metadata supports listing status, mode visibility, professional filtering, and noindex behavior for unlisted drafts.</li>
+    <li>Professional static assets are stored under mode-owned paths and blocked from unrelated domains.</li>
+    <li>Local development preview tools allow mode switching and unlisted article review without exposing those controls publicly.</li>
+</ul>
+
+<h2 class="h5 mt-4">Content And Asset Ownership</h2>
+<p>
+    Views are organized by mode under <code>Views/SiteModes</code>, and static files follow the same ownership model under
+    <code>wwwroot/site-modes</code>. Professional-only images, PDFs, article media, and generated resume files live under
+    the Professional asset path and are blocked from Dorks &amp; Dice and Unassigned domains.
+</p>
+<p>
+    Shared framework assets such as Bootstrap, site-wide CSS, JavaScript, favicons, and robots files remain in shared
+    root paths because every mode needs them. This keeps ownership explicit without creating unnecessary duplication.
+</p>
+
+<h2 class="h5 mt-4">Article System</h2>
+<p>
+    Articles are handled as mode-aware shared content. Each article can define whether it is listed, which modes may see
+    it, whether it should be treated as professional content, and what post date should appear in indexes. Unlisted
+    articles stay available by direct URL for eligible modes, render <code>noindex, nofollow</code>, and can be previewed
+    locally through the development ribbon.
+</p>
+<p>
+    This supports the workflow I wanted for technical write-ups: publishable articles can be proofread privately, then
+    listed later without changing the page route or duplicating content.
+</p>
+
+<h2 class="h5 mt-4">Development Preview Tools</h2>
+<p>
+    Local development hosts show a mode selector and an unlisted-article toggle. The selected mode is stored in a cookie
+    and remains independent of normal page navigation, so reloads and back-button behavior do not accidentally change the
+    preview context. The cookie endpoint is only honored on configured development hosts, preventing public users from
+    enabling development-only behavior with query strings or forged links.
+</p>
+
+<h2 class="h5 mt-4">Implementation Examples</h2>
+<ul>
+    <li><code>SiteModeMiddleware</code> resolves domains, development hosts, preview cookies, and route availability.</li>
+    <li><code>SiteRouteOwnership</code> defines shared paths, mode-owned routes, and mode-owned static asset paths.</li>
+    <li><code>SiteModePresentationService</code> provides per-mode title suffixes, default metadata, article copy, and filter policy.</li>
+    <li><code>_Branding.cshtml</code> modules group header and footer behavior by mode with Unassigned fallback for missing parts.</li>
+    <li><code>ResumeTxtGenerator</code> validates resume content and generates an ATS-friendly text resume during build.</li>
+</ul>
+
+<h2 class="h5 mt-4">Connection To XnGine Framework</h2>
+<p>
+    This project uses the same modular design habit that appears in my XnGine Framework work: shared infrastructure
+    handles common behavior, while mode-specific or game-specific modules own the details that should not leak across
+    boundaries. In XnGine, the split is shared engine tooling plus per-game modules. In this website, the split is shared
+    web infrastructure plus per-mode routing, branding, content, and assets.
+</p>
+<p>
+    The domains are different, but the engineering pattern is similar: define clear extension points, keep specialized
+    behavior close to the module that owns it, and make fallback behavior explicit instead of accidental.
+</p>
+
+<h2 class="h5 mt-4">Engineering Tradeoffs</h2>
+<p>
+    The architecture is intentionally explicit. A new mode requires adding domain mapping, branding, route ownership, and
+    presentation behavior instead of inheriting broad access automatically. That creates more up-front ceremony, but it
+    reduces accidental cross-domain exposure and makes each mode's responsibilities easier to audit.
+</p>
+<p>
+    Some shared systems, especially articles, are still deliberately centralized. That lets one article or piece of
+    infrastructure serve multiple modes when appropriate while still enforcing mode eligibility at the catalog and route
+    layers.
+</p>
+
+<h2 class="h5 mt-4">Future Extraction Path</h2>
+<p>
+    Keeping the modes in one codebase does not prevent a future split. Because pages, branding, content rules, and static
+    assets are already grouped by mode, a growing mode can be extracted into a separate application with clearer migration
+    boundaries than a fully blended site would provide.
+</p>
+<p>
+    In that sense, the architecture is a middle ground: it avoids premature separation while still preserving the option
+    to turn a mode into its own program later if traffic, deployment needs, or product direction justify it.
+</p>
+
+<h2 class="h5 mt-4">Outcome</h2>
+<p>
+    The result is a single deployable website that can behave like multiple related sites. The professional domain opens
+    directly into the resume and portfolio experience, the Dorks &amp; Dice domain uses its own homepage and branding, and
+    local development can preview both without changing code or deployment settings.
+</p>
+
+<h2 class="h5 mt-4">Professional Value</h2>
+<p>
+    The project demonstrates practical system design rather than only page construction. It includes request-level mode
+    resolution, content ownership rules, modular Razor structure, build-time resume text generation, and a development
+    workflow for previewing role-specific behavior before deployment.
+</p>
+
+<h2 class="h5 mt-4">Repository And Live Sites</h2>
+<p class="mb-0">
+    <a class="btn btn-sm btn-outline-primary"
+       href="https://github.com/LegendMaster03/dorks-and-dice-site"
+       target="_blank"
+       rel="noopener noreferrer">
+        View on GitHub
+    </a>
+    <a class="btn btn-sm btn-outline-secondary"
+       href="https://kylebarnett.com/"
+       target="_blank"
+       rel="noopener noreferrer">
+        Professional Site
+    </a>
+    <a class="btn btn-sm btn-outline-secondary"
+       href="https://dorks-and-dice.com/"
+       target="_blank"
+       rel="noopener noreferrer">
+        Dorks &amp; Dice
+    </a>
+</p>

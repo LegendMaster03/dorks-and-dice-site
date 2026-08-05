@@ -32,6 +32,11 @@ namespace dorks_and_dice_site.Controllers
             return View("~/Views/SiteModes/Professional/Resume/Projects/PythonFinanceAnalytics.cshtml");
         }
 
+        public IActionResult PersonalMultiModeWebsite()
+        {
+            return View("~/Views/SiteModes/Professional/Resume/Projects/PersonalMultiModeWebsite.cshtml");
+        }
+
         public IActionResult DirectedIndependentStudy()
         {
             return View("~/Views/SiteModes/Professional/Resume/Projects/DirectedIndependentStudy.cshtml");
