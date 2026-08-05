@@ -42,6 +42,8 @@ public static class SiteRouteOwnership
     private static bool IsSharedSystemPath(string path)
     {
         return path == "/health"
+            || path == "/robots.txt"
+            || path == "/sitemap.xml"
             || path == "/home/notfoundpage"
             || path == "/home/error"
             || path == "/home/routeresolutionissue";
@@ -61,8 +63,7 @@ public static class SiteRouteOwnership
             || path == "/dorks-and-dice-site.styles.css"
             || (path.StartsWith("/dorks-and-dice-site.", StringComparison.Ordinal)
                 && path.EndsWith(".styles.css", StringComparison.Ordinal))
-            || path.StartsWith("/favicon")
-            || path.StartsWith("/robots.txt");
+            || path.StartsWith("/favicon");
     }
 
     private static bool IsProfessionalAssetPath(string path)
