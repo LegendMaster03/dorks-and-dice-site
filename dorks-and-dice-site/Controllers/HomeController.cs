@@ -1,6 +1,6 @@
 using dorks_and_dice_site.Models;
 using dorks_and_dice_site.Models.Site;
-using dorks_and_dice_site.Services.GameServers;
+using dorks_and_dice_site.Services.GameServers.Minecraft;
 using dorks_and_dice_site.Services.Resume;
 using dorks_and_dice_site.Services.Site;
 using Microsoft.AspNetCore.Mvc;
