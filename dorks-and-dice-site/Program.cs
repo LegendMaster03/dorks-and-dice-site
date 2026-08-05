@@ -1,6 +1,7 @@
 using System.Net;
 using dorks_and_dice_site.Services.Resume;
 using dorks_and_dice_site.Services.Articles;
+using dorks_and_dice_site.Services.GameServers;
 using dorks_and_dice_site.Services.Site;
 using dorks_and_dice_site.Services.Site.ModePresentation;
 using Microsoft.AspNetCore.HttpOverrides;
@@ -9,6 +10,9 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllersWithViews();
+builder.Services.Configure<MinecraftServerOptions>(
+    builder.Configuration.GetSection(MinecraftServerOptions.SectionName));
+builder.Services.AddSingleton<IMinecraftServerStatusService, MinecraftServerStatusService>();
 builder.Services.AddSingleton<IResumeContentService, ResumeContentService>();
 builder.Services.AddSingleton<IArticleCatalogService, ArticleCatalogService>();
 builder.Services.AddSingleton<SiteModeOptions>();
