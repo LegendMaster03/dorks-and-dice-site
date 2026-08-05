@@ -1,5 +1,6 @@
 using dorks_and_dice_site.Models;
 using dorks_and_dice_site.Models.Site;
+using dorks_and_dice_site.Services.GameServers;
 using dorks_and_dice_site.Services.Resume;
 using dorks_and_dice_site.Services.Site;
 using Microsoft.AspNetCore.Mvc;
@@ -10,15 +11,20 @@ namespace dorks_and_dice_site.Controllers
     public class HomeController : Controller
     {
         private readonly IConfiguration _configuration;
+        private readonly IMinecraftServerStatusService _minecraftServerStatusService;
         private readonly IResumeContentService _resumeContentService;
 
-        public HomeController(IConfiguration configuration, IResumeContentService resumeContentService)
+        public HomeController(
+            IConfiguration configuration,
+            IMinecraftServerStatusService minecraftServerStatusService,
+            IResumeContentService resumeContentService)
         {
             _configuration = configuration;
+            _minecraftServerStatusService = minecraftServerStatusService;
             _resumeContentService = resumeContentService;
         }
 
-        public IActionResult Index()
+        public async Task<IActionResult> Index(CancellationToken cancellationToken)
         {
             switch (GetSiteMode())
             {
@@ -32,6 +38,7 @@ namespace dorks_and_dice_site.Controllers
                     return View("~/Views/SiteModes/Unassigned/Home.cshtml");
                 case SiteMode.DorksAndDice:
                     ViewData["DiscordWidgetUrl"] = _configuration["Discord:WidgetUrl"];
+                    ViewData["MinecraftServerStatus"] = await _minecraftServerStatusService.GetStatusAsync(cancellationToken);
                     return View("~/Views/SiteModes/DorksAndDice/Home.cshtml");
                 default:
                     throw new InvalidOperationException($"Unhandled site mode: {GetSiteMode()}");
