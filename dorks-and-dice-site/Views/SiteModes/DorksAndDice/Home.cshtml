@@ -104,7 +104,7 @@
 </section>
 
 <section class="mb-5">
-    <div class="row g-4">
+    <div class="row g-4 align-items-start">
         <div class="col-lg-7">
             <p class="text-uppercase fw-semibold text-primary small mb-1">Beyond the Table</p>
             <h2 class="h3 mb-3">Persistent Spaces for the Group</h2>
@@ -131,25 +131,22 @@
             </div>
         </div>
         <div class="col-lg-5">
-            <aside class="discord-panel p-3 rounded-3 border h-100">
-                <h2 class="h4 mb-3">Discord Community</h2>
-                @if (!string.IsNullOrWhiteSpace(discordWidgetUrl))
-                {
-                    <div class="discord-widget-wrapper">
-                        <iframe title="Dorks & Dice Discord Server"
-                                src="@discordWidgetUrl"
-                                width="350"
-                                height="500"
-                                allowtransparency="true"
-                                frameborder="0"
-                                sandbox="allow-popups allow-popups-to-escape-sandbox allow-same-origin allow-scripts"></iframe>
-                    </div>
-                }
-                else
-                {
-                    <div class="alert alert-warning mb-0" role="alert">Discord widget URL is not configured.</div>
-                }
-            </aside>
+            @if (!string.IsNullOrWhiteSpace(discordWidgetUrl))
+            {
+                <div class="discord-widget-wrapper justify-content-lg-end">
+                    <iframe title="Dorks & Dice Discord Server"
+                            src="@discordWidgetUrl"
+                            width="350"
+                            height="500"
+                            allowtransparency="true"
+                            frameborder="0"
+                            sandbox="allow-popups allow-popups-to-escape-sandbox allow-same-origin allow-scripts"></iframe>
+                </div>
+            }
+            else
+            {
+                <div class="alert alert-warning mb-0" role="alert">Discord widget URL is not configured.</div>
+            }
         </div>
     </div>
 </section>
