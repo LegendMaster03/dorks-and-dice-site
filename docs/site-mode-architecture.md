@@ -136,6 +136,53 @@ Professional examples:
 
 This means Dorks & Dice and Unassigned domains cannot directly load Professional-owned media or files.
 
+## Stylesheets
+
+The layout always loads the shared foundation first:
+
+```text
+wwwroot/css/site.css
+```
+
+Shared CSS contains only intentionally shared behavior and components, including accessibility focus states, base
+document behavior, shared article controls, and shared image-modal behavior. It must not define a site identity or contain
+Professional-only, Dorks & Dice-only, or Development-tool component rules.
+
+Mode-owned stylesheets are:
+
+```text
+wwwroot/site-modes/professional/css/site.css
+wwwroot/site-modes/dorks-and-dice/css/site.css
+wwwroot/site-modes/development/css/site.css
+```
+
+`ISiteModeStylesheetResolver` selects the stylesheet paths before Razor renders them:
+
+- `Professional` loads the Professional stylesheet after shared CSS.
+- `DorksAndDice` loads the Dorks & Dice stylesheet after shared CSS.
+- `Development` loads only the Development stylesheet after shared CSS.
+- `Unassigned` loads no mode stylesheet and depends only on shared CSS.
+
+The absence of an Unassigned stylesheet is intentional. Unassigned is the visual and structural fallback and must remain
+dependent only on shared infrastructure.
+
+On a development host, the selected preview mode stylesheet loads first and the Development stylesheet loads afterward
+for the preview toolbar and diagnostics. For example, Dorks & Dice preview loads:
+
+```text
+shared CSS
+Dorks & Dice CSS
+Development CSS
+```
+
+CSS ownership rules:
+
+- Professional resume, portfolio, contact, credential, project, dark-mode, responsive, and print rules belong to Professional.
+- Discord presentation, campaigns, game servers, and Dorks & Dice visual identity belong to Dorks & Dice.
+- Development ribbon and diagnostic-tool rules belong to Development.
+- Rules used intentionally across site identities belong to shared CSS.
+- Do not place mode-owned selectors in shared CSS merely because the shared layout loads it everywhere.
+
 ## Articles
 
 Article metadata currently lives in `ArticleCatalogService`.
@@ -169,15 +216,15 @@ The development ribbon:
 - stores mode and unlisted state in cookies
 - shows route mismatch warnings when the selected mode could not access the current route on a real domain
 
-The selected preview mode is the source of truth for branding, layout, navigation, and content filtering while on a
-development host.
+The selected preview mode is the source of truth for branding, layout, navigation, mode-owned CSS, and content filtering
+while on a development host. Development-tool CSS is added as an overlay after the selected mode stylesheet.
 
 ## Future Extraction Path
 
 This architecture intentionally avoids premature separation, but it does not block future separation.
 
-Because each mode already owns its pages, branding, asset paths, and access rules, a mode can later be extracted into a
-separate application with clearer boundaries than a fully blended site would provide.
+Because each mode already owns its pages, branding, asset paths, stylesheets, and access rules, a mode can later be
+extracted into a separate application with clearer boundaries than a fully blended site would provide.
 
 The current shape is therefore a middle ground:
 
@@ -196,7 +243,8 @@ To add a mode:
 6. Add separate branding component partials under `Views/SiteModes/{Mode}/Branding/`, or rely on the matching Unassigned component fallback.
 7. Add a presentation module under `Services/Site/ModePresentation`.
 8. Add mode-owned static assets under `wwwroot/site-modes/{mode}`.
-9. Update article metadata where articles should be eligible in the new mode.
+9. Add the mode stylesheet to `SiteModeStylesheetResolver` when the mode owns a visual identity or tooling overlay.
+10. Update article metadata where articles should be eligible in the new mode.
 
 ## Practical Rule
 
