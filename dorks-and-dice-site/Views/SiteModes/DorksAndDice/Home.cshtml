@@ -1,77 +1,167 @@
 @{
     ViewData["Title"] = "Home";
     ViewData["MetaTitle"] = "Dorks & Dice";
-    ViewData["MetaDescription"] = "Dorks & Dice community front door plus a direct path to Kyle Barnett's professional resume.";
+    ViewData["MetaDescription"] = "Dorks & Dice is a tabletop gaming community built around long-form campaigns, shared worlds, game servers, and collaborative play.";
     var discordWidgetUrl = ViewData["DiscordWidgetUrl"] as string;
 }
 
-<section class="p-4 p-md-5 mb-4 rounded-3 border bg-light-subtle">
-    <div class="container-fluid py-3 px-0">
-        <div class="row align-items-start g-4">
-            <div class="col-lg-8">
-                <h1 class="display-5 fw-bold mb-3">Dorks & Dice</h1>
-                <p class="fs-5 mb-4">
-                    Dorks & Dice is a community for tabletop gaming, collaborative worldbuilding,
-                    and practical tech-enabled campaign management.
-                </p>
-                <div class="d-flex gap-2 flex-wrap">
-                    <a class="btn btn-primary btn-lg" asp-controller="Articles" asp-action="Index">Articles</a>
+<section class="p-4 p-md-5 mb-5 rounded-3 border bg-light-subtle">
+    <div class="row align-items-center g-4 g-xl-5">
+        <div class="col-lg-7">
+            <p class="text-uppercase fw-semibold text-primary small mb-2">Tabletop campaigns, shared worlds, and community play</p>
+            <h1 class="display-4 fw-bold mb-3">Dorks &amp; Dice</h1>
+            <p class="fs-5 mb-4">
+                A gaming community built around ambitious campaigns, player-driven stories, and the spaces that keep the group connected between sessions.
+            </p>
+            <div class="d-flex flex-wrap gap-2">
+                <a class="btn btn-primary btn-lg" href="#community">Explore the Community</a>
+                <a class="btn btn-outline-primary btn-lg" asp-controller="Articles" asp-action="Index">Read Updates</a>
+            </div>
+        </div>
+        <div class="col-lg-5">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body p-4">
+                    <h2 class="h5 mb-3">At a Glance</h2>
+                    <dl class="row mb-0">
+                        <dt class="col-5">Founded</dt>
+                        <dd class="col-7">September 6, 2024</dd>
+
+                        <dt class="col-5">Home base</dt>
+                        <dd class="col-7">Discord and dorks-and-dice.com</dd>
+
+                        <dt class="col-5">Campaigns</dt>
+                        <dd class="col-7">Fool's Gold and Acquisitions Incorporated</dd>
+
+                        <dt class="col-5">Game servers</dt>
+                        <dd class="col-7 mb-0">Minecraft and Hytale</dd>
+                    </dl>
                 </div>
             </div>
-            <div class="col-lg-4">
-                <aside class="discord-panel p-3 rounded-3 border">
-                    @if (!string.IsNullOrWhiteSpace(discordWidgetUrl))
-                    {
-                        <div class="discord-widget-wrapper">
-                            <iframe title="Discord Server Widget"
-                                    src="@discordWidgetUrl"
-                                    width="350"
-                                    height="500"
-                                    allowtransparency="true"
-                                    frameborder="0"
-                                    sandbox="allow-popups allow-popups-to-escape-sandbox allow-same-origin allow-scripts"></iframe>
-                        </div>
-                    }
-                    else
-                    {
-                        <div class="alert alert-warning mb-0" role="alert">Discord widget URL is not configured.</div>
-                    }
-                </aside>
+        </div>
+    </div>
+</section>
+
+<section id="community" class="mb-5">
+    <div class="row g-4">
+        <div class="col-lg-7">
+            <h2 class="h3 mb-3">Built Around What Players Want to Do</h2>
+            <p>
+                Dorks &amp; Dice began as a Dungeons &amp; Dragons group and grew around a simple principle: the world should open up as the players engage with it.
+                Campaigns were designed to support meaningful choices, unexpected plans, custom systems, and long-term consequences rather than funneling the group toward one fixed solution.
+            </p>
+            <p class="mb-0">
+                That approach produced long-form stories, unusual encounters, player-created nations and technology, and a setting that expanded in response to the group rather than ahead of it.
+            </p>
+        </div>
+        <div class="col-lg-5">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h2 class="h5">What Lives Here</h2>
+                    <ul class="mb-0">
+                        <li>Campaign history and selected public material</li>
+                        <li>Community updates and project notes</li>
+                        <li>Information about hosted game servers</li>
+                        <li>Tools and resources developed for running games</li>
+                    </ul>
+                </div>
             </div>
         </div>
     </div>
 </section>
 
-<section class="row g-4">
-    <div class="col-md-6">
-        <h2 class="h4">About Dorks & Dice</h2>
-        <p>
-            Dorks & Dice is built around long-form campaigns, consistent session operations,
-            and collaborative storytelling. The goal is to make every game night organized, welcoming, and fun.
-        </p>
-        <p class="mb-0">
-            The group uses structured planning, digital tools, and play-tested systems to keep campaigns moving.
-        </p>
+<section class="mb-5">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-end gap-2 mb-3">
+        <div>
+            <p class="text-uppercase fw-semibold text-primary small mb-1">Campaign History</p>
+            <h2 class="h3 mb-0">Stories the Group Built Together</h2>
+        </div>
     </div>
-    <div class="col-md-6">
-        <h2 class="h4">What You Will Find Here</h2>
-        <ul>
-            <li>Discord-connected community coordination</li>
-            <li>Campaign framework and session operations</li>
-            <li>D&amp;D tooling and process design</li>
-            <li>Group-facing updates and shared resources as the site grows</li>
-        </ul>
+
+    <div class="row g-4">
+        <div class="col-md-6">
+            <article class="card h-100 shadow-sm">
+                <div class="card-body p-4">
+                    <p class="text-muted small mb-2">Principal campaign · 2024–2026</p>
+                    <h3 class="h4">Fool's Gold</h3>
+                    <p class="mb-0">
+                        A long-form campaign shaped by player ambition, extensive worldbuilding, and systems that expanded from grounded adventures into large-scale political, technological, and interstellar conflict.
+                    </p>
+                </div>
+            </article>
+        </div>
+        <div class="col-md-6">
+            <article class="card h-100 shadow-sm">
+                <div class="card-body p-4">
+                    <p class="text-muted small mb-2">Summer campaign · 2025</p>
+                    <h3 class="h4">Acquisitions Incorporated</h3>
+                    <p class="mb-0">
+                        A separate summer campaign that let available members continue playing while the main campaign paused for players who had returned home between semesters.
+                    </p>
+                </div>
+            </article>
+        </div>
     </div>
 </section>
 
-<section class="mt-4">
-    <div class="card">
-        <div class="card-body">
-            <h2 class="h4">Site Modes</h2>
-            <p class="mb-3">
-                Dorks &amp; Dice is the group-facing mode for this codebase. Kyle Barnett's professional site is
-                served separately from the professional domains.
+<section class="mb-5">
+    <div class="row g-4">
+        <div class="col-lg-7">
+            <p class="text-uppercase fw-semibold text-primary small mb-1">Beyond the Table</p>
+            <h2 class="h3 mb-3">Persistent Spaces for the Group</h2>
+            <p>
+                The community extends beyond scheduled tabletop sessions through Discord and privately operated game servers. These spaces provide somewhere to play, coordinate, share work, and keep the group connected when a full campaign is not running.
+            </p>
+            <div class="row g-3 mt-1">
+                <div class="col-sm-6">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <h3 class="h5">Minecraft</h3>
+                            <p class="text-muted small mb-0">Server launched October 17, 2025.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-sm-6">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <h3 class="h5">Hytale</h3>
+                            <p class="text-muted small mb-0">Server launched January 15, 2026.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-5">
+            <aside class="discord-panel p-3 rounded-3 border h-100">
+                <h2 class="h4 mb-3">Discord Community</h2>
+                @if (!string.IsNullOrWhiteSpace(discordWidgetUrl))
+                {
+                    <div class="discord-widget-wrapper">
+                        <iframe title="Dorks & Dice Discord Server"
+                                src="@discordWidgetUrl"
+                                width="350"
+                                height="500"
+                                allowtransparency="true"
+                                frameborder="0"
+                                sandbox="allow-popups allow-popups-to-escape-sandbox allow-same-origin allow-scripts"></iframe>
+                    </div>
+                }
+                else
+                {
+                    <div class="alert alert-warning mb-0" role="alert">Discord widget URL is not configured.</div>
+                }
+            </aside>
+        </div>
+    </div>
+</section>
+
+<section class="card border-primary-subtle">
+    <div class="card-body p-4 p-md-5 d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
+        <div>
+            <h2 class="h3 mb-2">Follow What Comes Next</h2>
+            <p class="mb-0">
+                Articles document community projects, campaign reflections, technical work, and additions to the site as they are ready to share.
             </p>
         </div>
+        <a class="btn btn-primary flex-shrink-0" asp-controller="Articles" asp-action="Index">Browse Articles</a>
     </div>
 </section>
