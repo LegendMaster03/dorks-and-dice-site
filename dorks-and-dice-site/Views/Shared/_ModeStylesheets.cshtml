@@ -1,0 +1,12 @@
+@using dorks_and_dice_site.Services.Site
+@inject ISiteModeStylesheetResolver SiteModeStylesheetResolver
+@{
+    var siteModeContext = Context.GetSiteModeContext();
+    var stylesheetPaths = SiteModeStylesheetResolver.GetStylesheetPaths(
+        siteModeContext.SiteMode,
+        siteModeContext.IsDevelopmentPreview);
+}
+@foreach (var stylesheetPath in stylesheetPaths)
+{
+    <link rel="stylesheet" href="@Url.Content(stylesheetPath)" asp-append-version="true" />
+}
