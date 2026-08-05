@@ -1,7 +1,7 @@
 using System.Net;
 using dorks_and_dice_site.Services.Resume;
 using dorks_and_dice_site.Services.Articles;
-using dorks_and_dice_site.Services.GameServers;
+using dorks_and_dice_site.Services.GameServers.Minecraft;
 using dorks_and_dice_site.Services.Site;
 using dorks_and_dice_site.Services.Site.ModePresentation;
 using Microsoft.AspNetCore.HttpOverrides;
