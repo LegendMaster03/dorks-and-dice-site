@@ -13,6 +13,7 @@ public class ArticleCatalogService : IArticleCatalogService
             Category = "Technical Investigation",
             Controller = "Articles",
             Action = "FreeingTheBeesConsoleVariationsPuzzle",
+            PostedDateText = "Draft",
             ImageUrl = "~/images/articles/consolevariations-bee/ending.png",
             ImageAltText = "Completed ConsoleVariations Queen's Chamber showing the Free the Bees ending screen",
             ImageWidth = 2041,

@@ -28,6 +28,11 @@ public class ArticlesController : Controller
             return NotFound();
         }
 
+        if (article?.Listed == false)
+        {
+            ViewData["Robots"] = "noindex, nofollow";
+        }
+
         return View();
     }
 
