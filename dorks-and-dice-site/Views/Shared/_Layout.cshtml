@@ -1,6 +1,7 @@
 @using dorks_and_dice_site.Services.Site
 @using dorks_and_dice_site.Models.Site
 @using Microsoft.AspNetCore.Html
+@using System.Text.Json
 @inject ISiteModePartialResolver SiteModePartialResolver
 @inject ISiteModePresentationService SiteModePresentationService
 @{
@@ -40,6 +41,26 @@
         RouteRestrictionMismatch = siteModeContext.DevelopmentPreviewRouteRestrictionMismatch,
         ReturnUrl = developmentPreviewReturnUrl
     };
+    var professionalProfileJson = siteModeContext.SiteMode == SiteMode.Professional
+        ? JsonSerializer.Serialize(new
+        {
+            @context = "https://schema.org",
+            @type = "ProfilePage",
+            mainEntity = new
+            {
+                @type = "Person",
+                name = "Kyle W. Barnett",
+                url = $"{Context.Request.Scheme}://{SiteModeOptions.CanonicalProfessionalHost}/",
+                image = $"{Context.Request.Scheme}://{SiteModeOptions.CanonicalProfessionalHost}/site-modes/professional/images/profile/kyle-headshot.jpg",
+                jobTitle = "Information Science Graduate",
+                sameAs = new[]
+                {
+                    "https://www.linkedin.com/in/kyle-barnett03/",
+                    "https://github.com/LegendMaster03"
+                }
+            }
+        })
+        : null;
 
     async Task<IHtmlContent> RenderBrandingPartAsync(SiteModeBrandingPart brandingPart)
     {
@@ -74,14 +95,17 @@
     {
         <meta property="og:image" content="@metaImage" />
     }
-    <meta property="twitter:card" content="summary_large_image" />
-    <meta property="twitter:title" content="@metaTitle" />
-    <meta property="twitter:description" content="@metaDescription" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="@metaTitle" />
+    <meta name="twitter:description" content="@metaDescription" />
     @if (!string.IsNullOrWhiteSpace(metaImage))
     {
-        <meta property="twitter:image" content="@metaImage" />
+        <meta name="twitter:image" content="@metaImage" />
     }
-    <script type="importmap"></script>
+    @if (!string.IsNullOrWhiteSpace(professionalProfileJson))
+    {
+        <script type="application/ld+json">@Html.Raw(professionalProfileJson)</script>
+    }
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/dorks-and-dice-site.styles.css" asp-append-version="true" />
@@ -103,7 +127,6 @@
     <footer class="border-top footer text-muted py-3 mt-4">
         @await RenderBrandingPartAsync(SiteModeBrandingPart.Footer)
     </footer>
-    <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
