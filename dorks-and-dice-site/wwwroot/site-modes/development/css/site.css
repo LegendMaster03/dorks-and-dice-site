@@ -3,6 +3,11 @@
   color: #4d3800;
 }
 
+[data-bs-theme="dark"] .development-preview-toolbar {
+  background: #332700;
+  color: #ffe69c;
+}
+
 .development-preview-select {
   max-width: 11rem;
 }
