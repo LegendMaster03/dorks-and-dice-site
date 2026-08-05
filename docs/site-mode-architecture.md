@@ -63,20 +63,34 @@ Examples:
 
 Shared article views remain under `Views/Articles` because articles are a shared surface with mode-aware eligibility.
 
-## Branding
+## Branding And Mode-Specific Components
 
-Each mode has one branding module:
+Each independently rendered mode-specific component has its own Razor partial. Branding currently uses:
 
 ```text
-Views/SiteModes/{Mode}/_Branding.cshtml
+Views/SiteModes/{Mode}/Branding/_Header.cshtml
+Views/SiteModes/{Mode}/Branding/_Footer.cshtml
 ```
 
-The layout calls that module for the header and footer using `SiteModeBrandingPart`.
+The shared layout asks `ISiteModePartialResolver` for the active mode's header and footer paths and renders those partials
+directly. The resolver checks whether the requested component exists for the active mode. When it does not, the resolver
+returns the matching component under `Views/SiteModes/Unassigned/` before Razor rendering begins.
 
-If a mode module is missing or throws `SiteModeBrandingPartUnavailableException` for a specific part, the layout falls
-back to the matching part in `Views/SiteModes/Unassigned/_Branding.cshtml`.
+Mode-specific Razor files must not act as dispatchers by branching over a component identifier. In particular, avoid a
+single partial with an `if`, `else if`, or `switch` that chooses between independently rendered components such as a
+header and footer. Component selection belongs in a resolver or service; the selected partial should contain only the
+markup for that component.
 
-This keeps branding modular by mode without creating separate files for every small branding function.
+Use C# presentation or branding objects for structured metadata and behavior such as site names, theme identifiers,
+logo paths, and default descriptions. Keep substantial HTML in Razor partials rather than constructing markup in C#.
+
+This standard provides:
+
+- one renderable responsibility per partial
+- mode selection before rendering
+- component-specific Unassigned fallback
+- independent testing and maintenance of each component
+- a direct extension path when another mode-specific component is added
 
 ## Presentation Modules
 
@@ -179,7 +193,7 @@ To add a mode:
 3. Update `SiteModeMiddleware.ResolveSiteMode`.
 4. Add route and static asset ownership rules in `SiteRouteOwnership`.
 5. Add mode-owned views under `Views/SiteModes/{Mode}`.
-6. Add a `_Branding.cshtml` module or rely on Unassigned fallback.
+6. Add separate branding component partials under `Views/SiteModes/{Mode}/Branding/`, or rely on the matching Unassigned component fallback.
 7. Add a presentation module under `Services/Site/ModePresentation`.
 8. Add mode-owned static assets under `wwwroot/site-modes/{mode}`.
 9. Update article metadata where articles should be eligible in the new mode.
