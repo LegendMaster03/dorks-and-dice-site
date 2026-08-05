@@ -1,4 +1,5 @@
 using System.Net;
+using System.Security;
 using dorks_and_dice_site.Services.Resume;
 using dorks_and_dice_site.Services.Articles;
 using dorks_and_dice_site.Services.Site;
@@ -65,6 +66,19 @@ if (!app.Environment.IsDevelopment())
 app.UseForwardedHeaders();
 app.Use(async (context, next) =>
 {
+    context.Response.OnStarting(() =>
+    {
+        context.Response.Headers.TryAdd("X-Content-Type-Options", "nosniff");
+        context.Response.Headers.TryAdd("Referrer-Policy", "strict-origin-when-cross-origin");
+        context.Response.Headers.TryAdd("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+        context.Response.Headers.TryAdd("X-Frame-Options", "SAMEORIGIN");
+        return Task.CompletedTask;
+    });
+
+    await next();
+});
+app.Use(async (context, next) =>
+{
     var requestedHost = context.Request.Host.Host.ToLowerInvariant();
     var normalizedHost = NormalizeHost(requestedHost);
     var options = context.RequestServices.GetRequiredService<SiteModeOptions>();
@@ -88,6 +102,28 @@ app.UseAuthorization();
 app.MapStaticAssets();
 
 app.MapGet("/health", () => Results.Text("OK", "text/plain"));
+
+app.MapGet("/robots.txt", (HttpContext context) =>
+{
+    var sitemapUrl = BuildAbsoluteUrl(context, "/sitemap.xml");
+    return Results.Text($"User-agent: *\nAllow: /\nSitemap: {sitemapUrl}\n", "text/plain");
+});
+
+app.MapGet("/sitemap.xml", (HttpContext context) =>
+{
+    var siteMode = context.GetSiteModeContext().SiteMode;
+    var paths = siteMode switch
+    {
+        dorks_and_dice_site.Models.Site.SiteMode.Professional => new[] { "/", "/resume", "/articles" },
+        dorks_and_dice_site.Models.Site.SiteMode.DorksAndDice => new[] { "/", "/articles" },
+        _ => new[] { "/" }
+    };
+
+    var urls = string.Join(string.Empty, paths.Select(path =>
+        $"<url><loc>{SecurityElement.Escape(BuildAbsoluteUrl(context, path))}</loc></url>"));
+    var xml = $"<?xml version=\"1.0\" encoding=\"UTF-8\"?><urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">{urls}</urlset>";
+    return Results.Text(xml, "application/xml");
+});
 
 app.MapPost("/development-preview", async (HttpContext context) =>
 {
@@ -137,6 +173,15 @@ app.MapControllerRoute(
 
 
 app.Run();
+
+static string BuildAbsoluteUrl(HttpContext context, string path)
+{
+    var siteMode = context.GetSiteModeContext().SiteMode;
+    var host = siteMode == dorks_and_dice_site.Models.Site.SiteMode.Professional
+        ? SiteModeOptions.CanonicalProfessionalHost
+        : context.Request.Host.Value;
+    return $"{context.Request.Scheme}://{host}{context.Request.PathBase}{path}";
+}
 
 static string NormalizeHost(string host)
 {
