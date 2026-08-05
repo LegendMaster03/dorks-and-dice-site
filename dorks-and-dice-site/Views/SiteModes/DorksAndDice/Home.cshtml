@@ -1,8 +1,10 @@
+@using dorks_and_dice_site.Models.GameServers
 @{
     ViewData["Title"] = "Home";
     ViewData["MetaTitle"] = "Dorks & Dice";
     ViewData["MetaDescription"] = "Dorks & Dice is a tabletop gaming community built around long-form campaigns, shared worlds, game servers, and collaborative play.";
     var discordWidgetUrl = ViewData["DiscordWidgetUrl"] as string;
+    var minecraftStatus = ViewData["MinecraftServerStatus"] as MinecraftServerStatus;
 }
 
 <section class="p-4 p-md-5 mb-5 rounded-3 border bg-light-subtle">
@@ -104,7 +106,7 @@
 </section>
 
 <section class="mb-5">
-    <div class="row g-4 align-items-start">
+    <div class="row g-4">
         <div class="col-lg-7">
             <p class="text-uppercase fw-semibold text-primary small mb-1">Beyond the Table</p>
             <h2 class="h3 mb-3">Persistent Spaces for the Group</h2>
@@ -115,8 +117,38 @@
                 <div class="col-sm-6">
                     <div class="card h-100">
                         <div class="card-body">
-                            <h3 class="h5">Minecraft</h3>
-                            <p class="text-muted small mb-0">Server launched October 17, 2025.</p>
+                            <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                                <h3 class="h5 mb-0">Minecraft</h3>
+                                @if (minecraftStatus?.IsOnline == true)
+                                {
+                                    <span class="badge text-bg-success">Online</span>
+                                }
+                                else
+                                {
+                                    <span class="badge text-bg-secondary">Unavailable</span>
+                                }
+                            </div>
+                            @if (minecraftStatus?.IsOnline == true)
+                            {
+                                @if (!string.IsNullOrWhiteSpace(minecraftStatus.Motd))
+                                {
+                                    <p class="mb-2">@minecraftStatus.Motd</p>
+                                }
+                                <p class="mb-1">
+                                    <strong>@(minecraftStatus.OnlinePlayers ?? 0)</strong>
+                                    of
+                                    <strong>@(minecraftStatus.MaximumPlayers?.ToString() ?? "?")</strong>
+                                    players online
+                                </p>
+                                @if (!string.IsNullOrWhiteSpace(minecraftStatus.Version))
+                                {
+                                    <p class="text-muted small mb-0">Version @minecraftStatus.Version</p>
+                                }
+                            }
+                            else
+                            {
+                                <p class="text-muted small mb-0">Live server status is temporarily unavailable.</p>
+                            }
                         </div>
                     </div>
                 </div>
@@ -133,7 +165,7 @@
         <div class="col-lg-5">
             @if (!string.IsNullOrWhiteSpace(discordWidgetUrl))
             {
-                <div class="discord-widget-wrapper justify-content-lg-end">
+                <div class="discord-widget-wrapper">
                     <iframe title="Dorks & Dice Discord Server"
                             src="@discordWidgetUrl"
                             width="350"
