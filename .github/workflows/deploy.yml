@@ -17,6 +17,10 @@ jobs:
       - name: Run tests
         run: |
           docker run --rm \
+            --user "$(id -u):$(id -g)" \
+            -e HOME=/tmp \
+            -e DOTNET_CLI_HOME=/tmp/dotnet \
+            -e NUGET_PACKAGES=/tmp/nuget \
             -v "$PWD:/src" \
             -w /src \
             mcr.microsoft.com/dotnet/sdk:10.0 \

@@ -1,3 +1,4 @@
+using System.Net;
 using dorks_and_dice_site.Services.Resume;
 using dorks_and_dice_site.Services.Articles;
 using dorks_and_dice_site.Services.Site;
@@ -17,13 +18,38 @@ builder.Services.AddSingleton<ISiteModePresentationModule, DorksAndDicePresentat
 builder.Services.AddSingleton<ISiteModePresentationModule, ProfessionalPresentationModule>();
 builder.Services.AddSingleton<ISiteModePresentationModule, DevelopmentPresentationModule>();
 builder.Services.AddSingleton<ISiteModePresentationModule, UnassignedPresentationModule>();
+
+var trustedProxyAddresses = builder.Configuration
+    .GetSection("ReverseProxy:KnownProxies")
+    .GetChildren()
+    .Select(entry => entry.Value)
+    .Where(value => !string.IsNullOrWhiteSpace(value))
+    .Select(value => IPAddress.Parse(value!))
+    .ToArray();
+var trustedProxyNetworks = builder.Configuration
+    .GetSection("ReverseProxy:KnownIPNetworks")
+    .GetChildren()
+    .Select(entry => entry.Value)
+    .Where(value => !string.IsNullOrWhiteSpace(value))
+    .Select(value => System.Net.IPNetwork.Parse(value!))
+    .ToArray();
+
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
     options.ForwardedHeaders = ForwardedHeaders.XForwardedFor
         | ForwardedHeaders.XForwardedHost
         | ForwardedHeaders.XForwardedProto;
-    options.KnownIPNetworks.Clear();
-    options.KnownProxies.Clear();
+    options.ForwardLimit = 1;
+
+    foreach (var address in trustedProxyAddresses)
+    {
+        options.KnownProxies.Add(address);
+    }
+
+    foreach (var network in trustedProxyNetworks)
+    {
+        options.KnownIPNetworks.Add(network);
+    }
 });
 
 var app = builder.Build();
