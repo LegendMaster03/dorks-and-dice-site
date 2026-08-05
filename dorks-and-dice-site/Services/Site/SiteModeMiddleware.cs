@@ -21,14 +21,12 @@ public sealed class SiteModeMiddleware
         var isDevelopmentHost = _options.DevelopmentHosts.Contains(host);
         var previewModeValue = GetDevelopmentPreviewModeValue(context);
         var includeUnlistedArticles = GetIncludeUnlistedArticles(context, isDevelopmentHost);
-        var siteMode = ResolveSiteMode(isProfessionalDomain, isDevelopmentHost, previewModeValue);
-        var pageMode = ResolvePageMode(context.Request.Path, siteMode);
+        var siteMode = ResolveSiteMode(isProfessionalDomain, isDorksAndDiceDomain, isDevelopmentHost, previewModeValue);
         var isAllowedInMode = SiteRouteOwnership.IsAllowedInMode(context.Request.Path, siteMode);
 
         context.Items[SiteModeContext.HttpContextItemKey] = new SiteModeContext
         {
             SiteMode = siteMode,
-            PageMode = pageMode,
             IsProfessionalDomain = isProfessionalDomain,
             IsDorksAndDiceDomain = isDorksAndDiceDomain,
             IsDevelopmentPreview = isDevelopmentHost,
@@ -54,29 +52,25 @@ public sealed class SiteModeMiddleware
             : normalizedHost;
     }
 
-    private static SiteMode ResolveSiteMode(bool isProfessionalDomain, bool isDevelopmentHost, string previewModeValue)
+    private static SiteMode ResolveSiteMode(bool isProfessionalDomain, bool isDorksAndDiceDomain, bool isDevelopmentHost, string previewModeValue)
     {
         if (isDevelopmentHost)
         {
             return previewModeValue switch
             {
+                SiteModeValues.DorksAndDiceModeValue => SiteMode.DorksAndDice,
                 SiteModeValues.ProfessionalModeValue => SiteMode.Professional,
                 SiteModeValues.DevelopmentModeValue => SiteMode.Development,
-                _ => SiteMode.DorksAndDice
+                _ => SiteMode.Development
             };
         }
 
-        return isProfessionalDomain ? SiteMode.Professional : SiteMode.Unassigned;
-    }
-
-    private static SiteMode ResolvePageMode(PathString path, SiteMode siteMode)
-    {
-        if (siteMode == SiteMode.Development)
+        if (isProfessionalDomain)
         {
-            return SiteRouteOwnership.GetSingleOwningMode(path) ?? SiteMode.Development;
+            return SiteMode.Professional;
         }
 
-        return siteMode;
+        return isDorksAndDiceDomain ? SiteMode.DorksAndDice : SiteMode.Unassigned;
     }
 
     private static string GetDevelopmentPreviewModeValue(HttpContext context)

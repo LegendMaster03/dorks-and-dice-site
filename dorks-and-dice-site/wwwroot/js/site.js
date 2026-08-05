@@ -26,6 +26,19 @@
 })();
 
 (() => {
+    const forms = document.querySelectorAll("[data-auto-submit='change']");
+    if (!forms.length) {
+        return;
+    }
+
+    forms.forEach((form) => {
+        form.addEventListener("change", () => {
+            form.requestSubmit();
+        });
+    });
+})();
+
+(() => {
     const galleries = document.querySelectorAll(".project-gallery");
     if (!galleries.length) {
         return;
@@ -122,7 +135,6 @@
     }
 
     const searchInput = document.getElementById("articleSearch");
-    const professionalOnlyInput = document.getElementById("articleProfessionalOnly");
     const filterButtons = filterContainer.querySelectorAll("[data-article-category]");
     const articleCards = document.querySelectorAll(".article-card");
     const emptyState = document.getElementById("articleEmptyState");
@@ -131,7 +143,7 @@
 
     const applyFilters = () => {
         const query = (searchInput?.value ?? "").trim().toLowerCase();
-        const professionalOnly = forceProfessionalOnly || Boolean(professionalOnlyInput?.checked);
+        const professionalOnly = forceProfessionalOnly;
         let visibleCount = 0;
 
         articleCards.forEach((card) => {
@@ -165,5 +177,4 @@
     });
 
     searchInput?.addEventListener("input", applyFilters);
-    professionalOnlyInput?.addEventListener("change", applyFilters);
 })();

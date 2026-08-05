@@ -9,37 +9,21 @@ public static class SiteRouteOwnership
         return IsModeAdaptivePath(path.ToString().ToLowerInvariant());
     }
 
-    public static bool HasExplicitDevelopmentHandling(PathString path)
-    {
-        var normalizedPath = path.ToString().ToLowerInvariant();
-        return normalizedPath == "/articles" || normalizedPath.StartsWith("/articles/");
-    }
-
-    public static SiteMode? GetSingleOwningMode(PathString path)
-    {
-        var normalizedPath = path.ToString().ToLowerInvariant();
-        if (IsProfessionalOwnedPath(normalizedPath))
-        {
-            return SiteMode.Professional;
-        }
-
-        return null;
-    }
-
     public static bool IsAllowedInMode(PathString path, SiteMode siteMode)
     {
         var normalizedPath = path.ToString().ToLowerInvariant();
         var isSharedPath = IsModeAdaptivePath(normalizedPath)
-            || IsStaticAssetPath(normalizedPath)
+            || IsSharedStaticAssetPath(normalizedPath)
             || IsSharedSystemPath(normalizedPath);
 
         return siteMode switch
         {
             SiteMode.Development => true,
-            SiteMode.Professional => isSharedPath || IsProfessionalOwnedPath(normalizedPath),
-            SiteMode.DorksAndDice => isSharedPath,
+            SiteMode.Professional => isSharedPath || IsProfessionalOwnedPath(normalizedPath) || IsProfessionalAssetPath(normalizedPath),
+            SiteMode.DorksAndDice => isSharedPath || IsDorksAndDiceAssetPath(normalizedPath),
             SiteMode.Unassigned => IsUnassignedModePath(normalizedPath)
-                || IsStaticAssetPath(normalizedPath)
+                || IsSharedStaticAssetPath(normalizedPath)
+                || IsUnassignedAssetPath(normalizedPath)
                 || IsSharedSystemPath(normalizedPath),
             _ => false
         };
@@ -68,19 +52,28 @@ public static class SiteRouteOwnership
         return path == "/";
     }
 
-    public static bool IsStaticAssetPath(PathString path)
-    {
-        return IsStaticAssetPath(path.ToString().ToLowerInvariant());
-    }
-
-    private static bool IsStaticAssetPath(string path)
+    private static bool IsSharedStaticAssetPath(string path)
     {
         return path.StartsWith("/css/")
             || path.StartsWith("/js/")
             || path.StartsWith("/lib/")
-            || path.StartsWith("/images/")
-            || path.StartsWith("/files/")
+            || path.StartsWith("/shared/")
             || path.StartsWith("/favicon")
             || path.StartsWith("/robots.txt");
+    }
+
+    private static bool IsProfessionalAssetPath(string path)
+    {
+        return path.StartsWith("/site-modes/professional/");
+    }
+
+    private static bool IsDorksAndDiceAssetPath(string path)
+    {
+        return path.StartsWith("/site-modes/dorks-and-dice/");
+    }
+
+    private static bool IsUnassignedAssetPath(string path)
+    {
+        return path.StartsWith("/site-modes/unassigned/");
     }
 }

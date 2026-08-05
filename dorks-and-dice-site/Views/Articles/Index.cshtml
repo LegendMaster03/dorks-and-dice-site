@@ -2,23 +2,21 @@
 @using dorks_and_dice_site.Models.Site
 @{
     ViewData["Title"] = "Articles";
-    ViewData["MetaTitle"] = "Articles - Dorks & Dice";
-    ViewData["MetaDescription"] = "Long-form write-ups, technical investigations, and puzzle walkthroughs by Kyle Barnett.";
-    ViewData["MetaImage"] = Url.Content("~/images/articles/consolevariations-bee/ending.png");
+    ViewData["MetaTitle"] = Model.Presentation.MetaTitle;
+    ViewData["MetaDescription"] = Model.Presentation.MetaDescription;
+    ViewData["MetaImage"] = Url.Content("~/site-modes/professional/images/articles/consolevariations-bee/ending.png");
 }
 
 <section class="resume-section mb-4">
     <div class="d-flex flex-column gap-2 mb-4">
-        <p class="text-uppercase text-muted small mb-0">Articles</p>
-        <h1 class="mb-0">Long-Form Write-Ups</h1>
-        <p class="text-muted mb-0">
-            Technical investigations, puzzle walkthroughs, and narrative project notes.
-        </p>
+        <p class="text-uppercase text-muted small mb-0">@Model.Presentation.Eyebrow</p>
+        <h1 class="mb-0">@Model.Presentation.Title</h1>
+        <p class="text-muted mb-0">@Model.Presentation.Description</p>
     </div>
 
-    @if (Model.ShouldShowSearchFilter || Model.ShouldShowCategoryFilter || Model.ShouldShowProfessionalFilter)
+    @if (Model.ShouldShowSearchFilter || Model.ShouldShowCategoryFilter)
     {
-        <div id="articleFilters" class="article-filters mb-3" data-professional-filter="@(Model.ProfessionalFilterActive ? "true" : "false")">
+        <div id="articleFilters" class="article-filters mb-3" data-professional-filter="@(Model.Presentation.ForceProfessionalFilter ? "true" : "false")">
             @if (Model.ShouldShowSearchFilter)
             {
                 <label class="form-label visually-hidden" for="articleSearch">Search articles</label>
@@ -27,13 +25,6 @@
                        class="form-control form-control-sm article-search"
                        placeholder="Search articles"
                        autocomplete="off" />
-            }
-            @if (Model.ShouldShowProfessionalFilter)
-            {
-                <div class="form-check form-switch mb-0">
-                    <input class="form-check-input" type="checkbox" role="switch" id="articleProfessionalOnly">
-                    <label class="form-check-label small" for="articleProfessionalOnly">Professional only</label>
-                </div>
             }
             @if (Model.ShouldShowCategoryFilter)
             {
@@ -49,7 +40,7 @@
     }
     else
     {
-        <div id="articleFilters" class="d-none" data-professional-filter="@(Model.ProfessionalFilterActive ? "true" : "false")"></div>
+        <div id="articleFilters" class="d-none" data-professional-filter="@(Model.Presentation.ForceProfessionalFilter ? "true" : "false")"></div>
     }
 
     @if (Model.Articles.Count > 0)
@@ -100,7 +91,7 @@
     {
         <div class="card">
             <div class="card-body">
-                <p class="text-muted mb-0">No listed articles are available for this site mode yet.</p>
+                <p class="text-muted mb-0">@Model.Presentation.EmptyStateText</p>
             </div>
         </div>
     }

@@ -1,6 +1,7 @@
 using dorks_and_dice_site.Services.Resume;
 using dorks_and_dice_site.Services.Articles;
 using dorks_and_dice_site.Services.Site;
+using dorks_and_dice_site.Services.Site.ModePresentation;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -9,6 +10,12 @@ builder.Services.AddControllersWithViews();
 builder.Services.AddSingleton<IResumeContentService, ResumeContentService>();
 builder.Services.AddSingleton<IArticleCatalogService, ArticleCatalogService>();
 builder.Services.AddSingleton<SiteModeOptions>();
+builder.Services.AddSingleton<ISiteModePartialResolver, SiteModePartialResolver>();
+builder.Services.AddSingleton<ISiteModePresentationService, SiteModePresentationService>();
+builder.Services.AddSingleton<ISiteModePresentationModule, DorksAndDicePresentationModule>();
+builder.Services.AddSingleton<ISiteModePresentationModule, ProfessionalPresentationModule>();
+builder.Services.AddSingleton<ISiteModePresentationModule, DevelopmentPresentationModule>();
+builder.Services.AddSingleton<ISiteModePresentationModule, UnassignedPresentationModule>();
 
 var app = builder.Build();
 

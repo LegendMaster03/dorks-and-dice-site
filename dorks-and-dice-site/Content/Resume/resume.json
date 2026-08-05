@@ -3,9 +3,9 @@
     "fullName": "Kyle W. Barnett",
     "headline": "Information Science Student | Cybersecurity and Software Development",
     "location": "Ponte Vedra Beach, FL",
-    "headshotImageUrl": "~/images/profile/kyle-headshot.jpg",
+    "headshotImageUrl": "~/site-modes/professional/images/profile/kyle-headshot.jpg",
     "headshotAltText": "Headshot of Kyle Barnett",
-    "resumePdfUrl": "~/files/kyle-resume.pdf",
+    "resumePdfUrl": "~/site-modes/professional/files/kyle-resume.pdf",
     "resumePdfFileName": "kyle-resume.pdf",
     "lastUpdatedText": "August 2026"
   },
@@ -13,26 +13,26 @@
     {
       "label": "kbarnett0306@gmail.com",
       "href": "mailto:kbarnett0306@gmail.com",
-      "iconUrl": "~/images/icons/gmail.svg",
+      "iconUrl": "~/site-modes/professional/images/icons/gmail.svg",
       "iconAltText": "Email icon"
     },
     {
       "label": "904-803-8980",
       "href": "tel:+19048038980",
-      "iconUrl": "~/images/icons/phone.svg",
+      "iconUrl": "~/site-modes/professional/images/icons/phone.svg",
       "iconAltText": "Phone icon"
     },
     {
       "label": "linkedin.com/in/kyle-barnett03",
       "href": "https://www.linkedin.com/in/kyle-barnett03/",
-      "iconUrl": "~/images/icons/linkedin.png",
+      "iconUrl": "~/site-modes/professional/images/icons/linkedin.png",
       "iconAltText": "LinkedIn icon",
       "openInNewTab": true
     },
     {
       "label": "github.com/LegendMaster03",
       "href": "https://github.com/LegendMaster03",
-      "iconUrl": "~/images/icons/github.svg",
+      "iconUrl": "~/site-modes/professional/images/icons/github.svg",
       "iconAltText": "GitHub icon",
       "iconCssClass": "github-icon",
       "openInNewTab": true
@@ -43,8 +43,8 @@
     {
       "institution": "University of North Florida, Jacksonville, FL",
       "cardCssClass": "card mb-2",
-      "embedUrl": "~/files/fc59cd40-548b-11f1-bb92-d362b13ee885.pdf",
-      "localBackupUrl": "~/files/fc59cd40-548b-11f1-bb92-d362b13ee885.pdf",
+      "embedUrl": "~/site-modes/professional/files/fc59cd40-548b-11f1-bb92-d362b13ee885.pdf",
+      "localBackupUrl": "~/site-modes/professional/files/fc59cd40-548b-11f1-bb92-d362b13ee885.pdf",
       "officialUrl": "https://www.parchment.com/lp/award/73f1209b-cca9-4688-b961-a3e8de5ff6f1",
       "lines": [
         {
@@ -106,8 +106,8 @@
       "cardCssClass": "card mb-2",
       "metaText": "Issued February 2026 by Upsilon Pi Epsilon | Associated with University of North Florida",
       "summary": "Selected for membership in Upsilon Pi Epsilon, the international honor society recognizing academic excellence in the computing and information disciplines.",
-      "embedUrl": "~/files/Honors Society for Computing - Kyle.pdf",
-      "localBackupUrl": "~/files/Honors Society for Computing - Kyle.pdf"
+      "embedUrl": "~/site-modes/professional/files/Honors Society for Computing - Kyle.pdf",
+      "localBackupUrl": "~/site-modes/professional/files/Honors Society for Computing - Kyle.pdf"
     },
     {
       "title": "Dean's List",

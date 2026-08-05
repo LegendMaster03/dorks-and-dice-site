@@ -71,6 +71,24 @@ Mode homepage views live under `Views/SiteModes/`:
 - `Views/SiteModes/Professional/Resume/` for professional resume partials, project details, and experience details
 - `Views/SiteModes/DorksAndDice/Home.cshtml`
 
+Mode branding modules also live under `Views/SiteModes/`:
+
+- `Views/SiteModes/{Mode}/_Branding.cshtml`
+
+`Views/Shared/_Layout.cshtml` calls the active mode's branding module once for the header and once for the footer. If a
+mode does not provide the branding module, or that module reports that a requested branding part is unavailable, the
+layout calls the same part from `Views/SiteModes/Unassigned/_Branding.cshtml`. This keeps one branding file per mode
+while allowing individual branding functions to fall through independently.
+
+Development preview tooling lives in `Views/SiteModes/Development/_DevelopmentTools.cshtml`. It is intentionally
+Development-owned and does not fall back through `Unassigned`.
+
+Mode presentation modules live under `Services/Site/ModePresentation/`. Each mode has one module for non-view
+presentation defaults such as title suffixes, default meta descriptions, article index copy, and article index filter
+visibility policy. The
+`SiteModePresentationService` calls the active mode module and falls back to the matching function on the Unassigned
+module when a mode module is missing or reports that a presentation part is unavailable.
+
 `/Resume` remains as an alias route for the professional homepage content, but it is not shown in the shared ribbon.
 
 ## Article Visibility
@@ -135,9 +153,10 @@ The root route has separate Dorks & Dice and professional homepage implementatio
 The route-resolution page keeps the unresolved URL as the development preview return target, so changing modes from
 the ribbon reloads the same path in the selected mode.
 
-When `Development` mode previews a route that belongs to exactly one mode, the page uses that owner for layout and
-branding. For example, `/resume` remains a professional page. Shared routes need explicit Development-mode handling;
-otherwise they should return 404 rather than falling through to one mode's implementation.
+In local development preview, the selected ribbon mode is the source of truth for layout, branding, navigation, and
+content filtering. `Development` mode can inspect routes across modes, but the chrome remains Development-mode chrome.
+Shared routes need explicit Development-mode handling; otherwise they should return 404 rather than falling through to
+one mode's implementation.
 
 Hosts that are not configured in `SiteModeOptions` use the bare-bones `Unassigned` mode. Its homepage explains that
 the domain is connected to the application but has not been assigned to a site mode.
@@ -184,8 +203,8 @@ On push to `main`, workflow:
 ## Resume and Profile Assets
 
 Key static assets:
-- PDF resume: `dorks-and-dice-site/wwwroot/files/kyle-resume.pdf`
-- ATS text resume: `dorks-and-dice-site/wwwroot/files/kyle-resume.txt`
+- PDF resume: `dorks-and-dice-site/wwwroot/site-modes/professional/files/kyle-resume.pdf`
+- ATS text resume: `dorks-and-dice-site/wwwroot/site-modes/professional/files/kyle-resume.txt`
 
 The text resume is auto-generated from `Content/Resume/resume.json` during build by:
 - `dorks-and-dice-site/tools/ResumeTxtGenerator/`

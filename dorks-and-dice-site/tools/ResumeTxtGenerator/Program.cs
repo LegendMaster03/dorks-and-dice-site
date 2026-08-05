@@ -27,7 +27,7 @@ try
         return 0;
     }
 
-    var outputPath = Path.Combine(projectDir, "wwwroot", "files", "kyle-resume.txt");
+    var outputPath = Path.Combine(projectDir, "wwwroot", "site-modes", "professional", "files", "kyle-resume.txt");
     var text = ConvertModelToPlainText(model);
 
     Directory.CreateDirectory(Path.GetDirectoryName(outputPath)!);

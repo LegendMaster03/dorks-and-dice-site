@@ -1,39 +1,54 @@
 @using dorks_and_dice_site.Services.Site
 @using dorks_and_dice_site.Models.Site
+@using Microsoft.AspNetCore.Html
+@inject ISiteModePartialResolver SiteModePartialResolver
+@inject ISiteModePresentationService SiteModePresentationService
 @{
-    var controller = ViewContext.RouteData.Values["controller"]?.ToString() ?? string.Empty;
-    var action = ViewContext.RouteData.Values["action"]?.ToString() ?? string.Empty;
     var siteModeContext = Context.GetSiteModeContext();
-    var isProfessionalPageMode = siteModeContext.PageMode == SiteMode.Professional;
-    var isDorksAndDiceMode = siteModeContext.SiteMode == SiteMode.DorksAndDice;
-    var isProfessionalSelectedMode = siteModeContext.SiteMode == SiteMode.Professional;
-    var isDevelopmentMode = siteModeContext.SiteMode == SiteMode.Development;
     var isDevelopmentPreview = siteModeContext.IsDevelopmentPreview;
-    var includeUnlistedArticles = siteModeContext.IncludeUnlistedArticles;
-    var developmentPreviewRouteRestrictionMismatch = siteModeContext.DevelopmentPreviewRouteRestrictionMismatch;
-    var isUnassignedMode = siteModeContext.SiteMode == SiteMode.Unassigned;
-    var siteSuffix = isProfessionalPageMode ? "Kyle Barnett" : "Dorks & Dice";
-    var brandText = isUnassignedMode ? "Unassigned Site" : isProfessionalPageMode ? "Kyle Barnett" : "Dorks & Dice";
-    var brandController = "Home";
-    var footerText = isProfessionalPageMode ? "Kyle Barnett" : "Dorks & Dice";
+    var siteSuffix = SiteModePresentationService.GetTitleSuffix(siteModeContext.SiteMode);
     var pageTitle = $"{ViewData["Title"]} - {siteSuffix}";
     var metaTitle = ViewData["MetaTitle"]?.ToString() ?? pageTitle;
     var metaDescription = ViewData["MetaDescription"]?.ToString()
-        ?? (isProfessionalPageMode
-            ? "Kyle Barnett's resume, experience, and selected projects."
-            : "Dorks & Dice community front door for campaigns, tools, and updates.");
+        ?? SiteModePresentationService.GetDefaultMetaDescription(siteModeContext.SiteMode);
     var robots = ViewData["Robots"]?.ToString();
-    var metaImagePath = ViewData["MetaImage"]?.ToString() ?? Url.Content("~/images/profile/kyle-headshot.jpg");
+    var defaultMetaImagePath = siteModeContext.SiteMode == SiteMode.Professional
+        ? Url.Content("~/site-modes/professional/images/profile/kyle-headshot.jpg")
+        : null;
+    var metaImagePath = ViewData["MetaImage"]?.ToString() ?? defaultMetaImagePath;
     var metaImage = metaImagePath?.StartsWith("http", StringComparison.OrdinalIgnoreCase) == true
         ? metaImagePath
-        : $"{Context.Request.Scheme}://{Context.Request.Host}{metaImagePath}";
+        : string.IsNullOrWhiteSpace(metaImagePath)
+            ? null
+            : $"{Context.Request.Scheme}://{Context.Request.Host}{metaImagePath}";
     var metaUrl = $"{Context.Request.Scheme}://{Context.Request.Host}{Context.Request.Path}{Context.Request.QueryString}";
     var returnQuery = string.Join("&", Context.Request.Query
-        .Where(item => !string.Equals(item.Key, "devRole", StringComparison.OrdinalIgnoreCase)
-            && !string.Equals(item.Key, "includeUnlisted", StringComparison.OrdinalIgnoreCase))
+        .Where(item => !string.Equals(item.Key, "includeUnlisted", StringComparison.OrdinalIgnoreCase))
         .SelectMany(item => item.Value.Select(value => $"{Uri.EscapeDataString(item.Key)}={Uri.EscapeDataString(value ?? string.Empty)}")));
     var currentDevelopmentPreviewReturnUrl = $"{Context.Request.Path}{(string.IsNullOrWhiteSpace(returnQuery) ? string.Empty : $"?{returnQuery}")}";
     var developmentPreviewReturnUrl = ViewData["DevelopmentPreviewReturnUrl"]?.ToString() ?? currentDevelopmentPreviewReturnUrl;
+    var brandingModulePath = SiteModePartialResolver.GetBrandingModulePath(siteModeContext.SiteMode);
+    var unassignedBrandingModulePath = SiteModePartialResolver.GetUnassignedBrandingModulePath();
+    var developmentToolsPartialPath = "~/Views/SiteModes/Development/_DevelopmentTools.cshtml";
+    var developmentTools = new DevelopmentPreviewToolbarViewModel
+    {
+        SelectedMode = siteModeContext.SiteMode,
+        IncludeUnlistedArticles = siteModeContext.IncludeUnlistedArticles,
+        RouteRestrictionMismatch = siteModeContext.DevelopmentPreviewRouteRestrictionMismatch,
+        ReturnUrl = developmentPreviewReturnUrl
+    };
+
+    async Task<IHtmlContent> RenderBrandingPartAsync(SiteModeBrandingPart brandingPart)
+    {
+        try
+        {
+            return await Html.PartialAsync(brandingModulePath, brandingPart);
+        }
+        catch (SiteModeBrandingPartUnavailableException) when (!string.Equals(brandingModulePath, unassignedBrandingModulePath, StringComparison.Ordinal))
+        {
+            return await Html.PartialAsync(unassignedBrandingModulePath, brandingPart);
+        }
+    }
 }
 <!DOCTYPE html>
 <html lang="en">
@@ -50,11 +65,17 @@
     <meta property="og:title" content="@metaTitle" />
     <meta property="og:description" content="@metaDescription" />
     <meta property="og:url" content="@metaUrl" />
-    <meta property="og:image" content="@metaImage" />
+    @if (!string.IsNullOrWhiteSpace(metaImage))
+    {
+        <meta property="og:image" content="@metaImage" />
+    }
     <meta property="twitter:card" content="summary_large_image" />
     <meta property="twitter:title" content="@metaTitle" />
     <meta property="twitter:description" content="@metaDescription" />
-    <meta property="twitter:image" content="@metaImage" />
+    @if (!string.IsNullOrWhiteSpace(metaImage))
+    {
+        <meta property="twitter:image" content="@metaImage" />
+    }
     <script type="importmap"></script>
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
@@ -62,103 +83,10 @@
 </head>
 <body>
     <header>
-        @if (isUnassignedMode)
-        {
-            <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom shadow-sm">
-                <div class="container-fluid">
-                    <span class="navbar-brand fw-semibold">@brandText</span>
-                </div>
-            </nav>
-        }
-        else if (isProfessionalPageMode)
-        {
-            <!-- Professional Nav Bar -->
-            <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom shadow-sm">
-                <div class="container-fluid">
-                    <a class="navbar-brand fw-semibold" asp-area="" asp-controller="@brandController" asp-action="Index">@brandText</a>
-                    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#siteNavbar" aria-controls="siteNavbar"
-                            aria-expanded="false" aria-label="Toggle navigation">
-                        <span class="navbar-toggler-icon"></span>
-                    </button>
-                    <div class="navbar-collapse collapse" id="siteNavbar">
-                        <ul class="navbar-nav ms-auto">
-                            <li class="nav-item">
-                                <a class="nav-link" asp-area="" asp-controller="Home" asp-action="Index">Home</a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" asp-area="" asp-controller="Articles" asp-action="Index">Articles</a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" asp-area="" asp-controller="Home" asp-action="Index" asp-fragment="contact">Contact</a>
-                            </li>
-                        </ul>
-                        <button id="themeToggle" class="btn btn-outline-secondary btn-sm ms-lg-3 mt-2 mt-lg-0" type="button" aria-label="Toggle dark mode">
-                            Dark Mode
-                        </button>
-                    </div>
-                </div>
-            </nav>
-        }
-        else
-        {
-            <!-- Main (Casual) Nav Bar -->
-            <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom shadow-sm">
-                <div class="container-fluid">
-                    <a class="navbar-brand fw-semibold" asp-area="" asp-controller="@brandController" asp-action="Index">@brandText</a>
-                    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#siteNavbar" aria-controls="siteNavbar"
-                            aria-expanded="false" aria-label="Toggle navigation">
-                        <span class="navbar-toggler-icon"></span>
-                    </button>
-                    <div class="navbar-collapse collapse" id="siteNavbar">
-                        <ul class="navbar-nav ms-auto">
-                            <li class="nav-item">
-                                <a class="nav-link" asp-area="" asp-controller="Home" asp-action="Index">Home</a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" asp-area="" asp-controller="Articles" asp-action="Index">Articles</a>
-                            </li>
-                        </ul>
-                        <button id="themeToggle" class="btn btn-outline-secondary btn-sm ms-lg-3 mt-2 mt-lg-0" type="button" aria-label="Toggle dark mode">
-                            Dark Mode
-                        </button>
-                    </div>
-                </div>
-            </nav>
-        }
+        @await RenderBrandingPartAsync(SiteModeBrandingPart.Header)
         @if (isDevelopmentPreview)
         {
-            <div class="development-preview-toolbar border-bottom">
-                <div class="container-fluid py-2">
-                    <form class="d-flex flex-wrap align-items-center gap-2" method="post" action="/development-preview">
-                        <input type="hidden" name="returnUrl" value="@developmentPreviewReturnUrl" />
-                        <span class="small fw-semibold text-uppercase">Development Preview</span>
-                        <label class="small text-muted" for="siteMode">Mode</label>
-                        <select class="form-select form-select-sm development-preview-select" id="siteMode" name="siteMode">
-                            <option value="dorks-and-dice" selected="@isDorksAndDiceMode">Dorks &amp; Dice</option>
-                            <option value="professional" selected="@isProfessionalSelectedMode">Professional</option>
-                            <option value="development" selected="@isDevelopmentMode">Development</option>
-                        </select>
-                        <div class="form-check form-switch mb-0">
-                            <input class="form-check-input"
-                                   type="checkbox"
-                                   role="switch"
-                                   id="includeUnlisted"
-                                   name="includeUnlisted"
-                                   value="true"
-                                   checked="@includeUnlistedArticles">
-                            <label class="form-check-label small" for="includeUnlisted">Show unlisted articles</label>
-                        </div>
-                        <button class="btn btn-sm btn-outline-primary" type="submit">Apply</button>
-                    </form>
-                    @if (developmentPreviewRouteRestrictionMismatch)
-                    {
-                        <div class="development-preview-warning mt-2" role="alert">
-                            This page is not available in the selected site mode. A live request would redirect to
-                            <a asp-controller="Home" asp-action="Index">that mode's homepage</a>.
-                        </div>
-                    }
-                </div>
-            </div>
+            @await Html.PartialAsync(developmentToolsPartialPath, developmentTools)
         }
     </header>
     <div class="container py-4">
@@ -168,17 +96,7 @@
     </div>
 
     <footer class="border-top footer text-muted py-3 mt-4">
-        <div class="container">
-            <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">
-                <span>&copy; @DateTime.UtcNow.Year @footerText</span>
-                @if (!isUnassignedMode)
-                {
-                    <span>
-                        <a asp-area="" asp-controller="Home" asp-action="Index" asp-fragment="contact">Contact</a>
-                    </span>
-                }
-            </div>
-        </div>
+        @await RenderBrandingPartAsync(SiteModeBrandingPart.Footer)
     </footer>
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>

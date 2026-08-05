@@ -9,7 +9,6 @@ public sealed class SiteModeContext
     public const string RouteResolutionMessageItemKey = "RouteResolutionMessage";
 
     public SiteMode SiteMode { get; init; } = SiteMode.Unassigned;
-    public SiteMode PageMode { get; init; } = SiteMode.Unassigned;
     public bool IsProfessionalDomain { get; init; }
     public bool IsDorksAndDiceDomain { get; init; }
     public bool IsAssignedDomain => IsProfessionalDomain || IsDorksAndDiceDomain || IsDevelopmentPreview;

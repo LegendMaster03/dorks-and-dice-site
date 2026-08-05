@@ -1,10 +1,18 @@
 using dorks_and_dice_site.Models.Articles;
 using dorks_and_dice_site.Models.Site;
+using dorks_and_dice_site.Services.Site;
 
 namespace dorks_and_dice_site.Services.Articles;
 
 public class ArticleCatalogService : IArticleCatalogService
 {
+    private readonly ISiteModePresentationService _siteModePresentationService;
+
+    public ArticleCatalogService(ISiteModePresentationService siteModePresentationService)
+    {
+        _siteModePresentationService = siteModePresentationService;
+    }
+
     private static readonly List<ArticleItemViewModel> Articles =
     [
         new()
@@ -15,7 +23,7 @@ public class ArticleCatalogService : IArticleCatalogService
             Controller = "Articles",
             Action = "FreeingTheBeesConsoleVariationsPuzzle",
             PostedDateText = "August 2026",
-            ImageUrl = "~/images/articles/consolevariations-bee/ending.png",
+            ImageUrl = "~/site-modes/professional/images/articles/consolevariations-bee/ending.png",
             ImageAltText = "Completed ConsoleVariations Queen's Chamber showing the Free the Bees ending screen",
             ImageWidth = 2041,
             ImageHeight = 1220,
@@ -43,16 +51,10 @@ public class ArticleCatalogService : IArticleCatalogService
         return new ArticlesIndexViewModel
         {
             Articles = visibleArticles,
-            ProfessionalFilterActive = siteMode == SiteMode.Professional,
+            Presentation = _siteModePresentationService.GetArticlesIndexPresentation(siteMode),
             SiteMode = siteMode,
             IsDevelopmentPreview = isDevelopmentPreview,
             IncludeUnlistedActive = includeUnlisted,
-            ShowSearchFilter = true,
-            ShowSearchFilterOnProfessional = true,
-            ShowCategoryFilter = true,
-            ShowCategoryFilterOnProfessional = true,
-            ShowProfessionalFilter = true,
-            ShowProfessionalFilterOnProfessional = false,
             Categories = visibleArticles
                 .Select(article => article.Category)
                 .Where(category => !string.IsNullOrWhiteSpace(category))
