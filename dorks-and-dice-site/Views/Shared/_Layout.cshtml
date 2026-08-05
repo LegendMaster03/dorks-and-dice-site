@@ -1,6 +1,5 @@
 @using dorks_and_dice_site.Services.Site
 @using dorks_and_dice_site.Models.Site
-@using Microsoft.AspNetCore.Html
 @using System.Text.Json
 @inject ISiteModePartialResolver SiteModePartialResolver
 @inject ISiteModePresentationService SiteModePresentationService
@@ -31,8 +30,12 @@
         .SelectMany(item => item.Value.Select(value => $"{Uri.EscapeDataString(item.Key)}={Uri.EscapeDataString(value ?? string.Empty)}")));
     var currentDevelopmentPreviewReturnUrl = $"{Context.Request.Path}{(string.IsNullOrWhiteSpace(returnQuery) ? string.Empty : $"?{returnQuery}")}";
     var developmentPreviewReturnUrl = ViewData["DevelopmentPreviewReturnUrl"]?.ToString() ?? currentDevelopmentPreviewReturnUrl;
-    var brandingModulePath = SiteModePartialResolver.GetBrandingModulePath(siteModeContext.SiteMode);
-    var unassignedBrandingModulePath = SiteModePartialResolver.GetUnassignedBrandingModulePath();
+    var brandingHeaderPartialPath = SiteModePartialResolver.GetBrandingPartialPath(
+        siteModeContext.SiteMode,
+        SiteModeBrandingPart.Header);
+    var brandingFooterPartialPath = SiteModePartialResolver.GetBrandingPartialPath(
+        siteModeContext.SiteMode,
+        SiteModeBrandingPart.Footer);
     var developmentToolsPartialPath = "~/Views/SiteModes/Development/_DevelopmentTools.cshtml";
     var developmentTools = new DevelopmentPreviewToolbarViewModel
     {
@@ -61,18 +64,6 @@
             }
         })
         : null;
-
-    async Task<IHtmlContent> RenderBrandingPartAsync(SiteModeBrandingPart brandingPart)
-    {
-        try
-        {
-            return await Html.PartialAsync(brandingModulePath, brandingPart);
-        }
-        catch (SiteModeBrandingPartUnavailableException) when (!string.Equals(brandingModulePath, unassignedBrandingModulePath, StringComparison.Ordinal))
-        {
-            return await Html.PartialAsync(unassignedBrandingModulePath, brandingPart);
-        }
-    }
 }
 <!DOCTYPE html>
 <html lang="en">
@@ -112,7 +103,7 @@
 </head>
 <body>
     <header>
-        @await RenderBrandingPartAsync(SiteModeBrandingPart.Header)
+        @await Html.PartialAsync(brandingHeaderPartialPath)
         @if (isDevelopmentPreview)
         {
             @await Html.PartialAsync(developmentToolsPartialPath, developmentTools)
@@ -125,7 +116,7 @@
     </div>
 
     <footer class="border-top footer text-muted py-3 mt-4">
-        @await RenderBrandingPartAsync(SiteModeBrandingPart.Footer)
+        @await Html.PartialAsync(brandingFooterPartialPath)
     </footer>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
