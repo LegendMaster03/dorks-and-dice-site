@@ -1,61 +1,180 @@
 @{
-    ViewData["Title"] = "D&D Tools";
+    ViewData["Title"] = "Dorks & Dice: Campaign Systems and Technical Operations";
     var header = new dorks_and_dice_site.Models.Resume.ResumeDetailHeaderViewModel
     {
-        Title = "D&D Tooling and Campaign Systems",
-        Subtitle = "Leadership and systems-design project",
-        MetaLine = "Game Master | 2024 - Present | Jacksonville, FL"
+        Title = "Dorks & Dice: Campaign Systems and Technical Operations",
+        Subtitle = "Player-centered experience design, community leadership, and software tooling",
+        MetaLine = "Founder and Game Master | September 2024 - Present | Jacksonville, FL",
+        InfoItems = new Dictionary<string, string>
+        {
+            ["Founded"] = "September 6, 2024",
+            ["Role"] = "Founder, Game Master, systems designer, and technical operator",
+            ["Campaigns"] = "Fool's Gold and Acquisitions Incorporated",
+            ["Session scale"] = "Up to 12-hour sessions with 24+ hours of weekly preparation",
+            ["Live services"] = "Minecraft and Hytale servers",
+            ["Current software focus"] = "Initiative and complex boss-encounter tracking"
+        }
     };
 }
 
 @await Html.PartialAsync("~/Views/SiteModes/Professional/Resume/_ResumeDetailHeader.cshtml", header)
+
+<h2 class="h5 mt-4">Overview</h2>
 <p>
-    A leadership and systems-design project built through long-form campaign operations.
-    This work demonstrates planning, facilitation, communication, and process design that
-    map directly to IT, business, and game development environments.
+    Dorks &amp; Dice is a long-term gaming project I founded to support collaborative tabletop campaigns,
+    persistent game servers, and the technical systems behind them. What began as a Dungeons &amp; Dragons group
+    developed into a connected project involving campaign operations, participant-centered experience design,
+    extensive documentation, community coordination, self-hosted infrastructure, and purpose-built web tooling.
+</p>
+<p>
+    The professional value of the project comes from its scale and continuity. I was not only preparing individual
+    game sessions. I was designing and operating an adaptable environment in which participants could make meaningful
+    choices, pursue unexpected goals, and remain connected across changing schedules, locations, and technical needs.
 </p>
 
-<h2 class="h5 mt-4">Scope and Outcomes</h2>
+<h2 class="h5 mt-4">Project History And Scope</h2>
+<p>
+    I founded Dorks &amp; Dice on September 6, 2024. Fool's Gold became the group's principal long-running campaign
+    and concluded in late April 2026, shortly before my graduation. During summer 2025, I ran an Acquisitions Incorporated
+    campaign so members remaining for the summer semester could continue playing without advancing Fool's Gold while
+    other players were away.
+</p>
+<p>
+    The project later expanded beyond scheduled tabletop sessions. I launched a Minecraft server on October 17, 2025,
+    followed by a Hytale server on January 15, 2026. Those services, the group's Discord presence, and the Dorks &amp; Dice
+    website extended the project into community coordination, Linux server administration, networking, deployment,
+    troubleshooting, and ongoing service ownership.
+</p>
+
+<h2 class="h5 mt-4">Scale Of Campaign Operations</h2>
+<p>
+    Fool's Gold sessions regularly lasted up to 12 hours, including lunch and dinner breaks. I typically invested at least
+    two dozen additional hours each week preparing scenarios, encounters, characters, locations, rules interactions,
+    continuity details, and contingencies.
+</p>
+<p>
+    That preparation was intentionally broader than a fixed story outline. I did not want my own lack of preparation to
+    become an artificial limit on what the players could attempt. For almost anything they wanted to do, my goal was to
+    work with them to determine how it could happen, what resources or risks it involved, and how the world would respond.
+</p>
 <ul>
-    <li>Designed and ran multi-session initiatives with clear objectives, dependencies, and continuity tracking.</li>
-    <li>Facilitated live team sessions where rapid decisions, risk tradeoffs, and stakeholder alignment were required.</li>
-    <li>Created structured documentation for world systems, timelines, and session records to support consistency.</li>
-    <li>Managed conflict resolution and expectation-setting to maintain momentum and team cohesion.</li>
-    <li>Adapted plans in real time when requirements changed, while preserving overall delivery goals.</li>
+    <li>Prepared multiple viable paths rather than requiring predetermined solutions</li>
+    <li>Adapted plans in real time while preserving long-term continuity and meaningful consequences</li>
+    <li>Facilitated extended live sessions requiring sustained communication, judgment, and rapid decision-making</li>
+    <li>Managed scheduling, expectations, and significant interpersonal conflict while keeping the project moving</li>
+    <li>Maintained detailed records across interconnected characters, locations, factions, mechanics, and unresolved events</li>
 </ul>
 
-<h2 class="h5 mt-4">Professional Competencies Demonstrated</h2>
+<h2 class="h5 mt-4">Research-Driven, Player-Centered Design</h2>
+<p>
+    I expanded the setting in response to the interests and capabilities of the players rather than treating its original
+    scope as a permanent boundary. When one player built a paladin around blacksmithing and item invention, I studied basic
+    blacksmithing and metallurgy so materials, repairs, crafting decisions, and custom equipment could have greater depth
+    and internal consistency.
+</p>
+<p>
+    I applied the same approach to the wider rules ecosystem. Because I maintain a zero-tolerance policy toward piracy,
+    I collected lawful access to the fifth-edition books needed to support unexpected directions. Naval play could lead to
+    vehicle design; vehicle design could lead to flight; and sufficiently developed flight and magic could eventually lead
+    to interstellar conflict. I prepared across those systems so player ambition could expand the campaign rather than be
+    rejected because the relevant material was unavailable.
+</p>
+<p>
+    This required learning unfamiliar domains, identifying the intent behind a participant's request, and integrating new
+    systems into an existing world without breaking its established rules or continuity. The result was a campaign that
+    became deeper through interaction instead of merely becoming larger through added content.
+</p>
+
+<h2 class="h5 mt-4">Case Study: The Fool's Gold Finale</h2>
+<p>
+    The final conflict demonstrates how those systems converged. The campaign did not begin with plans for interstellar
+    travel, but by the time the players had developed the means to pursue it, I was prepared to support it using the world's
+    existing history and metaphysics.
+</p>
+<p>
+    The party opened a portal roughly the size of a city into another solar system. The portal consumed approximately
+    one quarter of the stored power previously extracted from a star, with stars functioning as gods within the setting.
+    That earlier extraction had been performed by the Forclaimers, whose current emperor, Godric III, became the campaign's
+    final opponent.
+</p>
+<p>
+    The finale was structured as a multi-hour, multi-theater operation rather than a conventional single-target encounter:
+</p>
 <ul>
-    <li>Planning and prioritization</li>
-    <li>Public speaking and facilitation</li>
-    <li>Leadership and accountability</li>
-    <li>Conflict resolution and team communication</li>
-    <li>Flexibility under changing constraints</li>
-    <li>Work ethic and long-term execution discipline</li>
+    <li>Half of the party fought Godric III directly</li>
+    <li>The remaining party members piloted their mech dragon against Godric's mech dragon in the sky above the primary fight</li>
+    <li>Spelljammer mechanics supported operation of the player-controlled mech dragon</li>
+    <li>Allied forces broke into the sun extractor to destroy it</li>
+    <li>The army of the country founded by the player characters fought Godric's forces with assistance from rebel allies</li>
+    <li>Xanu, an artificial god of souls allied with the party, controlled soul-powered mechanical dinosaurs</li>
+</ul>
+<p>
+    The encounter remained challenging for hours even though the final blow against Godric III dealt 1,372 damage. That
+    outcome was possible because the fight did not depend on a single standard health bar. It depended on parallel objectives,
+    accumulated alliances, specialized equipment, encounter mechanics, and consequences developed across the campaign.
+</p>
+
+<h2 class="h5 mt-4">Encounter Systems And Software Direction</h2>
+<p>
+    Loot Tavern's crafting systems gave players meaningful control over their equipment, but the resulting power scaling
+    made conventional single-target bosses easy to eliminate before they could meaningfully participate. Rather than remove
+    player choices or invalidate the equipment they had created, I adapted the kaiju encounter mechanics from
+    <em>Ryoko's Guide to the Yokai Realms</em> for bosses that were not physically kaiju-sized.
+</p>
+<p>
+    These encounters can involve separate weak-point health pools, rage, active mechanics, evolving states, and standard
+    initiative at the same time. They produced more interesting and durable boss fights, but they also created a significant
+    tracking burden during live play.
+</p>
+<p>
+    My first planned Dorks &amp; Dice web tool is a personal-use initiative and encounter tracker designed around that problem.
+    The initial version will manage standard initiative alongside weak points, rage, encounter mechanics, and boss state.
+    It is intended to turn a proven manual workflow into a clearer and more reliable software-supported process.
+</p>
+
+<h2 class="h5 mt-4">Technical Operations</h2>
+<p>
+    Dorks &amp; Dice also became a practical infrastructure project. The Minecraft and Hytale servers required hardware
+    planning, Linux and container administration, networking, remote access, service configuration, deployment,
+    troubleshooting, and long-term maintenance. The website provides a durable public home for the group and a future
+    delivery platform for the DM tools developed from these campaign requirements.
+</p>
+<p>
+    This work connects software development with real operational ownership. The systems are not isolated demonstrations;
+    they exist to support an actual group, persistent services, and workflows developed through sustained use.
+</p>
+
+<h2 class="h5 mt-4">What This Shows About Me</h2>
+<p>
+    Dorks &amp; Dice is one of the clearest examples of how I approach complex projects. I begin with the people using the
+    system, learn what they are trying to accomplish, research unfamiliar domains when necessary, and build flexible
+    structures that support meaningful choices without abandoning consistency or maintainability.
+</p>
+<ul>
+    <li>Long-term project ownership and execution</li>
+    <li>Participant-centered requirements discovery and experience design</li>
+    <li>Systems thinking across creative, organizational, and technical domains</li>
+    <li>Leadership, facilitation, expectation-setting, and conflict resolution</li>
+    <li>Research and rapid domain learning</li>
+    <li>Complex state, dependency, and continuity management</li>
+    <li>Linux server, networking, web development, and deployment experience</li>
+    <li>Identification of real workflow problems that can be converted into software products</li>
 </ul>
 
-    <h2 class="h5 mt-4">Written Content and Design Work</h2>
-    <p>
-        This project also includes substantial writing and design content: system rules, encounter and scenario structure,
-        campaign documentation, and reusable templates. These artifacts show communication quality, design clarity,
-        and the ability to translate complex ideas into usable team-facing documents.
-    </p>
+<h2 class="h5 mt-4">Current Status</h2>
+<p>
+    Fool's Gold and the summer 2025 Acquisitions Incorporated campaign are complete. The Minecraft and Hytale servers,
+    Dorks &amp; Dice website, and broader project identity preserve the foundation for future activity. My immediate software
+    direction is the initiative and complex encounter tracker, followed by additional Game Master tools based on workflows
+    I experienced directly while running the campaigns.
+</p>
 
-    <h2 class="h5 mt-4">Related Site</h2>
-    <p>
-        Dorks &amp; Dice also has a dedicated site mode in my personal website codebase for group-facing coordination
-        and future campaign resources.
-    </p>
-    <p>
-        <a class="btn btn-sm btn-outline-primary"
-           href="https://dorks-and-dice.com/"
-           target="_blank"
-           rel="noopener noreferrer">
-            Visit Dorks &amp; Dice
-        </a>
-    </p>
-
-    <h2 class="h5 mt-4">Relevant Skill Areas</h2>
+<h2 class="h5 mt-4">Related Site</h2>
 <p class="mb-0">
-    Leadership, Technical Communication, Game Design, Systems Thinking, Front-End Development, Back-End Web Development.
+    <a class="btn btn-sm btn-outline-primary"
+       href="https://dorks-and-dice.com/"
+       target="_blank"
+       rel="noopener noreferrer">
+        Visit Dorks &amp; Dice
+    </a>
 </p>
