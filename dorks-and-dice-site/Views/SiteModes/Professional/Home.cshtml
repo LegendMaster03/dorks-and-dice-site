@@ -36,6 +36,19 @@
     </div>
 </section>
 
+<section class="resume-section mb-4" id="summary-section">
+    <div class="card">
+        <div class="card-body">
+            <h2 class="h5 resume-section-title">Professional Summary</h2>
+            <p class="mb-0">
+                Software developer and technology generalist with experience delivering client applications,
+                managing small-business technology, competing in cybersecurity, and building tools for games
+                and legacy software. I work across software, systems, and client needs, translating technical
+                problems into practical solutions.
+            </p>
+        </div>
+    </div>
+</section>
 
 <nav class="resume-section-nav mb-4" aria-label="Resume section navigation">
     <a href="#experience-section">Experience</a>
@@ -45,6 +58,14 @@
     <a href="#honors-section">Honors</a>
     <a href="#leadership-section">Leadership</a>
 </nav>
+
+<section class="resume-section mb-4" id="experience-section">
+    <h2 class="h4 resume-section-title">Experience</h2>
+    @foreach (var experience in Model.ExperienceItems)
+    {
+        @await Html.PartialAsync("~/Views/SiteModes/Professional/Resume/_ExperienceCard.cshtml", experience)
+    }
+</section>
 
 <section class="resume-section mb-4" id="projects-section">
     <h2 class="h4 resume-section-title" id="projects">Projects</h2>
@@ -114,6 +135,15 @@
     </div>
 </section>
 
+<section class="resume-section mb-4" id="skills-section">
+    <h2 class="h4 resume-section-title">Skills</h2>
+    <div class="card">
+        <div class="card-body">
+            @await Html.PartialAsync("~/Views/SiteModes/Professional/Resume/_SkillsSection.cshtml", Model.SkillCategories)
+        </div>
+    </div>
+</section>
+
 <!-- Credentials are embedded inline inside relevant Education / Honors entries -->
 
 <section class="resume-section mb-4" id="education-section">
@@ -129,23 +159,6 @@
     @foreach (var awardEntry in Model.AwardEntries)
     {
         @await Html.PartialAsync("~/Views/SiteModes/Professional/Resume/_AwardEntry.cshtml", awardEntry)
-    }
-</section>
-
-<section class="resume-section mb-4" id="skills-section">
-    <h2 class="h4 resume-section-title">Skills</h2>
-    <div class="card">
-        <div class="card-body">
-            @await Html.PartialAsync("~/Views/SiteModes/Professional/Resume/_SkillsSection.cshtml", Model.SkillCategories)
-        </div>
-    </div>
-</section>
-
-<section class="resume-section mb-4" id="experience-section">
-    <h2 class="h4 resume-section-title">Experience</h2>
-    @foreach (var experience in Model.ExperienceItems)
-    {
-        @await Html.PartialAsync("~/Views/SiteModes/Professional/Resume/_ExperienceCard.cshtml", experience)
     }
 </section>
 
