@@ -1,7 +1,7 @@
 {
   "header": {
     "fullName": "Kyle W. Barnett",
-    "headline": "Information Science Graduate | Software Development, Cybersecurity, and Data Analytics",
+    "headline": "Software Development | Cybersecurity | Technology Operations",
     "location": "Ponte Vedra Beach, FL",
     "headshotImageUrl": "~/site-modes/professional/images/profile/kyle-headshot.jpg",
     "headshotAltText": "Headshot of Kyle Barnett",
@@ -38,7 +38,6 @@
       "openInNewTab": true
     }
   ],
-  
   "educationEntries": [
     {
       "institution": "University of North Florida, Jacksonville, FL",
@@ -146,6 +145,53 @@
   ],
   "experienceItems": [
     {
+      "title": "Safe Future Foundation - Full-Stack Developer",
+      "dateRange": "2025 - 2026",
+      "cardCssClass": "card mb-2",
+      "highlights": [
+        "Delivered and refined an ASP.NET Core MVC inventory system during a year-long nonprofit client engagement.",
+        "Implemented QR item tracking, reporting exports, validation improvements, operational views, and stakeholder-driven revisions.",
+        "Translated day-to-day operational needs into software features and workflow improvements."
+      ],
+      "detailsAction": "SeniorProject",
+      "featured": true,
+      "tags": [
+        "professional",
+        "web-development"
+      ]
+    },
+    {
+      "title": "Casp Enterprises - IT Manager",
+      "dateRange": "2021 - Present",
+      "cardCssClass": "card mb-2",
+      "highlights": [
+        "Serve as the primary technology support and advisory resource for an Apple-centered small-business environment.",
+        "Support devices, accounts, iCloud collaboration, upgrades, troubleshooting, purchasing, and vendor coordination.",
+        "Evaluate storage, backup, security, and workflow alternatives and explain technical tradeoffs to company leadership."
+      ],
+      "detailsAction": "ExperienceCaspEnterprises",
+      "featured": true,
+      "tags": [
+        "professional",
+        "it-support",
+        "apple"
+      ]
+    },
+    {
+      "title": "Independent Technology Consultant",
+      "dateRange": "2019 - Present",
+      "cardCssClass": "card mb-2",
+      "highlights": [
+        "Provide recurring technology consulting and support to long-term private clients, supplemented by one-time engagements and referrals.",
+        "Handle device migrations, upgrades, troubleshooting, account and data organization, purchasing guidance, workflow improvements, and small-network support."
+      ],
+      "detailsAction": "ExperienceTechnologyServices",
+      "tags": [
+        "professional",
+        "it-support"
+      ]
+    },
+    {
       "title": "UNF Cyber Security Team - Web Specialist and Windows Specialist",
       "dateRange": "2024 - May 2026",
       "cardCssClass": "card mb-2",
@@ -159,21 +205,6 @@
       "tags": [
         "cybersecurity",
         "professional"
-      ]
-    },
-    {
-      "title": "Technology Services (Personal Business) - Independent IT Support Technician",
-      "dateRange": "2019 - Present",
-      "cardCssClass": "card mb-2",
-      "highlights": [
-        "Performs computer migrations and software upgrades for local clients.",
-        "Assists with data-entry projects and network management tasks."
-      ],
-      "detailsAction": "ExperienceTechnologyServices",
-      "featured": true,
-      "tags": [
-        "professional",
-        "it-support"
       ]
     },
     {
@@ -318,16 +349,6 @@
       "tags": [
         "game-dev",
         "level-design"
-      ]
-    },
-    {
-      "title": "Technology Services",
-      "subtitle": "Personal Business",
-      "summary": "Client-focused technology services including system upgrades, device migrations, network setup, and practical troubleshooting support.",
-      "category": "professional",
-      "action": "TechnologyServices",
-      "tags": [
-        "it-support"
       ]
     },
     {
