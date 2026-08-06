@@ -3,6 +3,7 @@ name: Deploy dorks-and-dice-site
 on:
   push:
     branches: [ "main" ]
+  workflow_dispatch:
 
 concurrency:
   group: dorks-and-dice-site
