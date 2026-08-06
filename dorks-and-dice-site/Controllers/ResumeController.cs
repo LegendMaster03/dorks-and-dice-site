@@ -57,11 +57,6 @@ namespace dorks_and_dice_site.Controllers
             return View("~/Views/SiteModes/Professional/Resume/Projects/Skywind.cshtml");
         }
 
-        public IActionResult TechnologyServices()
-        {
-            return View("~/Views/SiteModes/Professional/Resume/Projects/TechnologyServices.cshtml");
-        }
-
         public IActionResult SimLabExpo()
         {
             return View("~/Views/SiteModes/Professional/Resume/Projects/SimLabExpo.cshtml");
@@ -80,6 +75,11 @@ namespace dorks_and_dice_site.Controllers
         public IActionResult ExperienceCyberSecurityTeam()
         {
             return View("~/Views/SiteModes/Professional/Resume/Experience/ExperienceCyberSecurityTeam.cshtml");
+        }
+
+        public IActionResult ExperienceCaspEnterprises()
+        {
+            return View("~/Views/SiteModes/Professional/Resume/Experience/ExperienceCaspEnterprises.cshtml");
         }
 
         public IActionResult ExperienceTechnologyServices()
