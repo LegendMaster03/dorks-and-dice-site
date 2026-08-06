@@ -82,7 +82,7 @@ namespace dorks_and_dice_site.Controllers
 
         public IActionResult TechnologyServices()
         {
-            return RedirectToAction(nameof(ResumeController.TechnologyServices), "Resume");
+            return RedirectToAction(nameof(ResumeController.ExperienceTechnologyServices), "Resume");
         }
 
         public IActionResult SimLabExpo()
