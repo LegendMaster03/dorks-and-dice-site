@@ -1,0 +1,46 @@
+@{
+    ViewData["Title"] = "Experience: Casp Enterprises";
+    var header = new dorks_and_dice_site.Models.Resume.ResumeDetailHeaderViewModel
+    {
+        Title = "IT Manager",
+        Subtitle = "Casp Enterprises",
+        MetaLine = "2021 - Present | Ponte Vedra Beach, FL"
+    };
+}
+
+@await Html.PartialAsync("~/Views/SiteModes/Professional/Resume/_ResumeDetailHeader.cshtml", header)
+
+<p>
+    I serve as the primary technology support and advisory resource for Casp Enterprises.
+    Most of the work involves resolving day-to-day issues, maintaining an Apple-centered
+    device and account environment, supporting iCloud-based file collaboration, and helping
+    company leadership make practical technology decisions.
+</p>
+
+<section class="mt-4">
+    <h2 class="h5">Responsibilities</h2>
+    <ul>
+        <li>Configure, maintain, and troubleshoot Apple devices and related services.</li>
+        <li>Support account access, shared iCloud folders, software updates, migrations, and device replacement.</li>
+        <li>Resolve day-to-day user issues and coordinate with service providers when necessary.</li>
+        <li>Evaluate storage, backup, security, and workflow alternatives.</li>
+        <li>Explain technical tradeoffs and implement the approach selected by company leadership.</li>
+    </ul>
+</section>
+
+<section class="mt-4">
+    <h2 class="h5">Role Scope</h2>
+    <p>
+        The environment is small, so the role is hands-on rather than departmental. Its value comes
+        from long-term ownership, continuity, and being the single accountable point for the company's
+        technology needs.
+    </p>
+</section>
+
+<section class="mt-4">
+    <h2 class="h5">Platforms and Technologies</h2>
+    <p class="mb-0">
+        macOS, iOS, iCloud Drive and shared folders, account administration, device migrations,
+        software updates, purchasing guidance, troubleshooting, and vendor coordination.
+    </p>
+</section>
