@@ -6,9 +6,15 @@
             ? "Personal"
             : Model.Category;
     var projectLinkText = string.IsNullOrWhiteSpace(Model.LinkText) ? "Open project" : Model.LinkText;
+    var projectSearchText = $"{Model.Title} {Model.Subtitle} {Model.Summary} {string.Join(' ', Model.Tags)}".ToLowerInvariant();
 }
 
-<div class="col project-card" data-category="@Model.Category" data-tags="@string.Join(' ', Model.Tags)">
+<div class="col project-card"
+     data-category="@Model.Category"
+     data-featured="@(Model.Featured ? "true" : "false")"
+     data-tags="@string.Join(' ', Model.Tags)"
+     data-title="@Model.Title.ToLowerInvariant()"
+     data-search="@projectSearchText">
     <div class="card h-100 project-card-inner @(Model.Featured ? "project-card-featured" : string.Empty)">
         <div class="card-body">
             <div class="project-card-header">
@@ -20,10 +26,6 @@
                             <span class="badge featured-badge">Featured</span>
                         }
                     </div>
-                    @if (Model.Featured)
-                    {
-                        <p class="small text-muted project-featured-note mb-2">Also shown above in Featured Projects.</p>
-                    }
                     <h2 class="h5 card-title">@Model.Title</h2>
                     @if (!string.IsNullOrWhiteSpace(Model.Subtitle))
                     {

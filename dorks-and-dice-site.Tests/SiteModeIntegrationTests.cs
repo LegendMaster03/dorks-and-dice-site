@@ -119,6 +119,81 @@ public sealed class SiteModeIntegrationTests : IClassFixture<WebApplicationFacto
     }
 
     [Fact]
+    public async Task FilterableIndexesExposeLiveStatusRegions()
+    {
+        var resumeResponse = await SendAsync("kylebarnett.com", "/resume");
+        var resumeHtml = await resumeResponse.Content.ReadAsStringAsync();
+        var articlesResponse = await SendAsync("kylebarnett.com", "/articles");
+        var articlesHtml = await articlesResponse.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, resumeResponse.StatusCode);
+        Assert.Contains("id=\"projectFilterStatus\"", resumeHtml);
+        Assert.Equal(HttpStatusCode.OK, articlesResponse.StatusCode);
+        Assert.Contains("id=\"articleFilterStatus\"", articlesHtml);
+    }
+
+    [Fact]
+    public async Task ProfessionalProjectsExposeUserConfigurableTagFilters()
+    {
+        var response = await SendAsync("kylebarnett.com", "/resume");
+        var html = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("data-filter-tag=\"all\"", html);
+        Assert.Contains("data-filter-tag=\"architecture\"", html);
+        Assert.Contains("data-filter-tag=\"web-development\"", html);
+        Assert.Contains("list=\"projectTagSuggestions\"", html);
+        Assert.Contains("<option value=\"architecture\">", html);
+        Assert.Contains("id=\"projectList\"", html);
+        Assert.Contains("data-featured=\"true\"", html);
+        Assert.Contains("data-search=\"", html);
+        Assert.Contains("data-title=\"personal multi-mode website\"", html);
+        Assert.DoesNotContain("data-filter=\"professional\"", html);
+    }
+
+    [Fact]
+    public async Task ArticleIndexExposesUserConfigurableTagFiltersInDevelopmentPreview()
+    {
+        using var request = CreateRequest("localhost", "/articles");
+        request.Headers.Add("Cookie", "DevelopmentPreviewSiteMode=development; DevelopmentIncludeUnlistedArticles=true");
+
+        var response = await SendAsync(request);
+        var html = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("data-article-tag=\"all\"", html);
+        Assert.Contains("data-article-tag=\"technical-investigation\"", html);
+        Assert.Contains("data-article-tags=\"technical-investigation puzzle write-up\"", html);
+        Assert.Contains("list=\"articleTagSuggestions\"", html);
+        Assert.Contains("<option value=\"technical-investigation\">", html);
+        Assert.Contains("id=\"articleList\"", html);
+        Assert.Contains("data-article-listed=\"false\"", html);
+        Assert.Contains("data-article-date=\"august 2026\"", html);
+        Assert.Contains("data-article-title=\"freeing the bees: solving consolevariations&#x27; hidden web puzzle\"", html);
+    }
+
+    [Fact]
+    public async Task ProfessionalProjectsRenderAsOneFilterableList()
+    {
+        var response = await SendAsync("kylebarnett.com", "/resume");
+        var html = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.DoesNotContain("Featured projects are repeated here intentionally", html);
+        Assert.DoesNotContain("Also shown above in Featured Projects", html);
+    }
+
+    [Fact]
+    public async Task SkyblivionPageUsesSharedImageModal()
+    {
+        var response = await SendAsync("kylebarnett.com", "/resume/skyblivion");
+        var html = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.DoesNotContain("id=\"imageModal\"", html);
+    }
+
+    [Fact]
     public async Task ProfessionalDirectArticleAccessReturnsNoindex()
     {
         var response = await SendAsync("kylebarnett.com", "/articles/freeing-the-bees-consolevariations-puzzle");

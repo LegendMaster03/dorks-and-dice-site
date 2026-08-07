@@ -10,7 +10,9 @@ public class ArticlesIndexViewModel
     public bool IsDevelopmentPreview { get; set; }
     public bool IncludeUnlistedActive { get; set; }
     public List<string> Categories { get; set; } = [];
+    public List<string> Tags { get; set; } = [];
 
     public bool ShouldShowSearchFilter => Presentation.ShowSearchFilter;
     public bool ShouldShowCategoryFilter => Presentation.ShowCategoryFilter;
+    public bool ShouldShowTagFilter => Tags.Count > 0;
 }

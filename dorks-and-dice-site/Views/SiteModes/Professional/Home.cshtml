@@ -4,7 +4,19 @@
     ViewData["MetaTitle"] = "Kyle Barnett Resume";
     ViewData["MetaDescription"] = "Professional resume for Kyle Barnett: experience, education, and selected projects.";
     ViewData["MetaImage"] = Url.Content(Model.Header.HeadshotImageUrl);
-    var featuredProjects = Model.ProjectItems.FindAll(project => project.Featured);
+    var orderedProjects = Model.ProjectItems
+        .Select((project, index) => new { Project = project, Index = index })
+        .OrderByDescending(item => item.Project.Featured)
+        .ThenBy(item => item.Index)
+        .Select(item => item.Project)
+        .ToList();
+    var projectTags = orderedProjects
+        .SelectMany(project => project.Tags)
+        .Where(tag => !string.IsNullOrWhiteSpace(tag))
+        .Distinct(StringComparer.OrdinalIgnoreCase)
+        .Order(StringComparer.OrdinalIgnoreCase)
+        .ToList();
+    Func<string, string> formatTagLabel = tag => System.Globalization.CultureInfo.CurrentCulture.TextInfo.ToTitleCase(tag.Replace("-", " "));
 }
 
 <section class="resume-section mb-4" id="header-section">
@@ -69,66 +81,34 @@
 
 <section class="resume-section mb-4" id="projects-section">
     <h2 class="h4 resume-section-title" id="projects">Projects</h2>
-    <p class="text-muted mb-3">These are selected highlights from my portfolio. For a complete list, see the "All Projects" section below.</p>
+    <p class="text-muted mb-3">Selected portfolio work, with featured projects shown first.</p>
 
-    @if (featuredProjects.Count > 0)
-    {
-        <div class="featured-projects mb-4">
-            <h3 class="h6 text-uppercase mb-3">Featured Projects</h3>
-            <div class="row row-cols-1 row-cols-lg-2 g-3">
-                @foreach (var project in featuredProjects)
-                {
-                    var categoryLabel = string.Equals(project.Category, "professional", StringComparison.OrdinalIgnoreCase)
-                        ? "Professional"
-                        : string.Equals(project.Category, "personal", StringComparison.OrdinalIgnoreCase)
-                            ? "Personal"
-                            : project.Category;
-                    <div class="col">
-                        <article class="featured-project-tile h-100">
-                            <div class="project-card-header">
-                                <div class="project-card-heading">
-                                    <p class="featured-project-meta mb-2">@categoryLabel</p>
-                                    <h4 class="h5 mb-2">@project.Title</h4>
-                                    @if (!string.IsNullOrWhiteSpace(project.Subtitle))
-                                    {
-                                        <p class="featured-project-subtitle text-muted mb-2">@project.Subtitle</p>
-                                    }
-                                </div>
-                                <div class="project-card-actions">
-                                    <a class="btn btn-sm btn-primary" asp-controller="@project.DetailsController" asp-action="@project.Action">
-                                        @(string.IsNullOrWhiteSpace(project.LinkText) ? "Open project" : project.LinkText)
-                                    </a>
-                                    @if (!string.IsNullOrWhiteSpace(project.RepositoryUrl))
-                                    {
-                                        <a class="btn btn-sm btn-outline-secondary"
-                                           href="@project.RepositoryUrl"
-                                           target="_blank"
-                                           rel="noopener noreferrer">
-                                            View Git
-                                        </a>
-                                    }
-                                </div>
-                            </div>
-                            <p class="mb-0">@project.Summary</p>
-                        </article>
-                    </div>
-                }
-            </div>
+    <div id="projectFilters" class="article-filters mb-3">
+        <label class="form-label visually-hidden" for="projectSearch">Search projects</label>
+        <input id="projectSearch"
+               type="search"
+               class="form-control form-control-sm article-search"
+               placeholder="Search projects or tags"
+               autocomplete="off"
+               list="projectTagSuggestions" />
+        <datalist id="projectTagSuggestions">
+            @foreach (var tag in projectTags)
+            {
+                <option value="@tag">@formatTagLabel(tag)</option>
+            }
+        </datalist>
+        <div class="d-flex flex-wrap gap-2" aria-label="Project tags">
+            <button type="button" class="btn btn-sm btn-outline-secondary active" data-filter-tag="all">All</button>
+            @foreach (var tag in projectTags)
+            {
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-filter-tag="@tag">@formatTagLabel(tag)</button>
+            }
         </div>
-    }
-
-    <div id="projectFilters" class="d-flex flex-wrap gap-2 mb-3">
-        <button type="button" class="btn btn-sm btn-outline-secondary active" data-filter="all">All</button>
-        <button type="button" class="btn btn-sm btn-outline-secondary" data-filter="professional">Professional</button>
-        <button type="button" class="btn btn-sm btn-outline-secondary" data-filter="personal">Personal</button>
     </div>
+    <p id="projectFilterStatus" class="visually-hidden" role="status" aria-live="polite"></p>
 
-    <div class="projects-transition mb-3">
-        <h3 class="h6 text-uppercase text-muted mb-1">All Projects</h3>
-        <p class="small text-muted mb-0">Featured projects are repeated here intentionally so category filters operate across the complete set.</p>
-    </div>
-    <div class="row row-cols-1 row-cols-md-2 g-4 mt-1">
-        @foreach (var project in Model.ProjectItems)
+    <div id="projectList" class="row row-cols-1 row-cols-md-2 g-4 mt-1">
+        @foreach (var project in orderedProjects)
         {
             @await Html.PartialAsync("~/Views/SiteModes/Professional/Resume/_ProjectCard.cshtml", project)
         }

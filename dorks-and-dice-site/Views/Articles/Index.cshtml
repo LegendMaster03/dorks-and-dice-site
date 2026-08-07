@@ -5,6 +5,7 @@
     ViewData["MetaTitle"] = Model.Presentation.MetaTitle;
     ViewData["MetaDescription"] = Model.Presentation.MetaDescription;
     ViewData["MetaImage"] = Url.Content("~/site-modes/professional/images/articles/consolevariations-bee/ending.png");
+    Func<string, string> formatTagLabel = tag => System.Globalization.CultureInfo.CurrentCulture.TextInfo.ToTitleCase(tag.Replace("-", " "));
 }
 
 <section class="resume-section mb-4">
@@ -23,16 +24,33 @@
                 <input id="articleSearch"
                        type="search"
                        class="form-control form-control-sm article-search"
-                       placeholder="Search articles"
-                       autocomplete="off" />
+                       placeholder="Search articles or tags"
+                       autocomplete="off"
+                       list="articleTagSuggestions" />
+                <datalist id="articleTagSuggestions">
+                    @foreach (var tag in Model.Tags)
+                    {
+                        <option value="@tag">@formatTagLabel(tag)</option>
+                    }
+                </datalist>
             }
             @if (Model.ShouldShowCategoryFilter)
             {
-                <div class="d-flex flex-wrap gap-2">
+                <div class="d-flex flex-wrap gap-2" aria-label="Article categories">
                     <button type="button" class="btn btn-sm btn-outline-secondary active" data-article-category="all">All</button>
                     @foreach (var category in Model.Categories)
                     {
                         <button type="button" class="btn btn-sm btn-outline-secondary" data-article-category="@category">@category</button>
+                    }
+                </div>
+            }
+            @if (Model.ShouldShowTagFilter)
+            {
+                <div class="d-flex flex-wrap gap-2" aria-label="Article tags">
+                    <button type="button" class="btn btn-sm btn-outline-secondary active" data-article-tag="all">All Tags</button>
+                    @foreach (var tag in Model.Tags)
+                    {
+                        <button type="button" class="btn btn-sm btn-outline-secondary" data-article-tag="@tag">@formatTagLabel(tag)</button>
                     }
                 </div>
             }
@@ -42,16 +60,21 @@
     {
         <div id="articleFilters" class="d-none" data-professional-filter="@(Model.Presentation.ForceProfessionalFilter ? "true" : "false")"></div>
     }
+    <p id="articleFilterStatus" class="visually-hidden" role="status" aria-live="polite"></p>
 
     @if (Model.Articles.Count > 0)
     {
-        <div class="row row-cols-1 row-cols-md-2 g-4 article-list">
+        <div id="articleList" class="row row-cols-1 row-cols-md-2 g-4 article-list">
             @foreach (var article in Model.Articles)
             {
                 var articleSearchText = $"{article.Title} {article.Summary} {article.Category} {string.Join(' ', article.Tags)}".ToLowerInvariant();
                 <div class="col article-card"
                      data-article-category="@article.Category"
                      data-article-professional="@(article.IsVisibleInMode(SiteMode.Professional) ? "true" : "false")"
+                     data-article-listed="@(article.Listed ? "true" : "false")"
+                     data-article-date="@article.PostedDateText.ToLowerInvariant()"
+                     data-article-tags="@string.Join(' ', article.Tags)"
+                     data-article-title="@article.Title.ToLowerInvariant()"
                      data-article-search="@articleSearchText">
                     <article class="card h-100 project-card-inner">
                         <img src="@Url.Content(article.ImageUrl)"

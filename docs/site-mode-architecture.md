@@ -187,6 +187,19 @@ CSS ownership rules:
 
 Article metadata currently lives in `ArticleCatalogService`.
 
+Articles are currently hand-authored Razor pages. There is not yet a CMS, admin editor, or database-backed publishing
+workflow, so each article currently needs explicit source changes to add the page, metadata, route, and supporting
+assets. A better article creation workflow is a future goal, but the current implementation should stay simple until the
+site has enough article volume to justify that work.
+
+The likely future direction is a lightweight wiki-style authoring system inspired by MediaWiki workflows. That would let
+articles be written as structured content instead of full Razor pages while preserving the application's existing
+article metadata, mode visibility, listing, noindex, routing, and asset ownership rules.
+
+The Dorks & Dice mode may eventually use the same content foundation for campaign knowledge management. That direction
+would likely combine wiki-style pages with selected ideas from campaign planning tools and local linked-note workflows:
+characters, locations, factions, session notes, timelines, cross-links, and private/public visibility boundaries.
+
 Important flags:
 
 - `Listed`: controls whether an article appears in normal indexes.
@@ -202,6 +215,41 @@ Unlisted articles:
 
 `Development` mode ignores `VisibleInModes` for local inspection, but it does not automatically include unlisted
 articles. The separate unlisted toggle controls that.
+
+Mode eligibility is an internal content gate, not a user-facing filter. After the current mode has determined which
+articles are eligible, the article index can expose normal user filters such as search, category, and tags.
+
+## User-Facing Filters
+
+User-facing filters operate only on content that has already passed the active mode's ownership and visibility rules.
+They are a convenience layer for small curated indexes, not a replacement for mode access control or a full content
+management system.
+
+Current user-facing filters include:
+
+- project tags on the Professional resume project list
+- article search
+- article categories
+- article tags
+
+These filters are intentionally separate from mode eligibility. A visitor can narrow visible content, but cannot use a
+filter control to reveal content that is not available to the current mode.
+
+Search inputs can suggest known tags through the browser's datalist behavior. Search terms follow a small advanced
+tag-query subset adapted to this site's content model:
+
+- `architecture web-development` requires both terms.
+- `architecture -game-dev` requires `architecture` and excludes `game-dev`.
+- `~architecture ~data-science` matches either term.
+- `web-*` matches tags or text that begin with `web-`.
+- `tag:architecture`, `category:"Technical Investigation"`, `title:website`, and `text:client` search specific fields.
+- `order:title`, `order:date`, `order:tagcount`, and `order:featured` sort supported lists.
+
+The search syntax operates only after route ownership and mode visibility have already limited the available content.
+
+This implementation should stay intentionally modest until the content volume justifies more. Do not add taxonomy
+management, article editing tools, or exhaustive parser behavior simply because the syntax could support it later. For
+now, tags should be added only when they make an existing project or article easier to find.
 
 ## Local Development Preview
 

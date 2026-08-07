@@ -60,6 +60,12 @@ public class ArticleCatalogService : IArticleCatalogService
                 .Where(category => !string.IsNullOrWhiteSpace(category))
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .Order(StringComparer.OrdinalIgnoreCase)
+                .ToList(),
+            Tags = visibleArticles
+                .SelectMany(article => article.Tags)
+                .Where(tag => !string.IsNullOrWhiteSpace(tag))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Order(StringComparer.OrdinalIgnoreCase)
                 .ToList()
         };
     }
