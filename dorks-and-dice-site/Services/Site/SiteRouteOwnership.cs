@@ -20,7 +20,10 @@ public static class SiteRouteOwnership
         return siteMode switch
         {
             SiteMode.Development => true,
-            SiteMode.Professional => isSharedPath || IsProfessionalOwnedPath(normalizedPath) || IsProfessionalAssetPath(normalizedPath),
+            SiteMode.Professional => isSharedPath
+                || IsProfessionalOwnedPath(normalizedPath)
+                || IsProfessionalAssetPath(normalizedPath)
+                || IsAssetException(SiteMode.Professional, normalizedPath),
             SiteMode.DorksAndDice => isSharedPath || IsDorksAndDiceAssetPath(normalizedPath),
             SiteMode.Unassigned => IsUnassignedModePath(normalizedPath)
                 || IsSharedStaticAssetPath(normalizedPath)
@@ -75,6 +78,15 @@ public static class SiteRouteOwnership
     private static bool IsDorksAndDiceAssetPath(string path)
     {
         return path.StartsWith("/site-modes/dorks-and-dice/");
+    }
+
+    private static bool IsAssetException(SiteMode siteMode, string path)
+    {
+        return siteMode switch
+        {
+            SiteMode.Professional => path == "/site-modes/dorks-and-dice/images/favicon.svg",
+            _ => false
+        };
     }
 
     private static bool IsUnassignedAssetPath(string path)

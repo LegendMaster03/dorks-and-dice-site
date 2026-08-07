@@ -1,3 +1,6 @@
+@using dorks_and_dice_site.Models.Site
+@using dorks_and_dice_site.Services.Site
+@inject ISiteModePresentationService SiteModePresentationService
 @{
     ViewData["Title"] = "Dorks & Dice: Leadership and Systems Design";
     var header = new dorks_and_dice_site.Models.Resume.ResumeDetailHeaderViewModel
@@ -5,6 +8,10 @@
         Title = "Dorks & Dice: Leadership and Systems Design",
         Subtitle = "Long-form facilitation, participant-centered planning, research, and complexity management",
         MetaLine = "Founder | September 2024 - Present | Game Master through April 2026 | Jacksonville, FL",
+        LogoUrl = Url.Content(SiteModePresentationService.GetFaviconPath(SiteMode.DorksAndDice)),
+        LogoAltText = "Dorks & Dice logo",
+        LogoLinkUrl = "https://dorks-and-dice.com/",
+        LogoAriaLabel = "Dorks & Dice website",
         InfoItems = new Dictionary<string, string>
         {
             ["Role"] = "Founder, Game Master, and systems designer",

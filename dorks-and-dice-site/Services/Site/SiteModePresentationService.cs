@@ -7,11 +7,13 @@ public sealed class SiteModePresentationService : ISiteModePresentationService
 {
     private readonly IReadOnlyDictionary<SiteMode, ISiteModePresentationModule> _modules;
     private readonly ISiteModePresentationModule _unassignedModule;
+    private readonly IWebHostEnvironment _environment;
 
-    public SiteModePresentationService(IEnumerable<ISiteModePresentationModule> modules)
+    public SiteModePresentationService(IEnumerable<ISiteModePresentationModule> modules, IWebHostEnvironment environment)
     {
         _modules = modules.ToDictionary(module => module.SiteMode);
         _unassignedModule = _modules[SiteMode.Unassigned];
+        _environment = environment;
     }
 
     public string GetTitleSuffix(SiteMode siteMode)
@@ -26,7 +28,13 @@ public sealed class SiteModePresentationService : ISiteModePresentationService
 
     public string GetFaviconPath(SiteMode siteMode)
     {
-        return Resolve(siteMode, SiteModePresentationPart.Favicon, module => module.GetFaviconPath());
+        var faviconPath = Resolve(siteMode, SiteModePresentationPart.Favicon, module => module.GetFaviconPath());
+        if (AssetExists(faviconPath))
+        {
+            return faviconPath;
+        }
+
+        return _unassignedModule.GetFaviconPath();
     }
 
     public ArticlesIndexPresentationViewModel GetArticlesIndexPresentation(SiteMode siteMode)
@@ -45,5 +53,19 @@ public sealed class SiteModePresentationService : ISiteModePresentationService
         {
             return resolve(_unassignedModule);
         }
+    }
+
+    private bool AssetExists(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path) || path.StartsWith("http", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        var relativePath = path.StartsWith("~/", StringComparison.Ordinal)
+            ? path[2..]
+            : path.TrimStart('/');
+
+        return _environment.WebRootFileProvider.GetFileInfo(relativePath).Exists;
     }
 }

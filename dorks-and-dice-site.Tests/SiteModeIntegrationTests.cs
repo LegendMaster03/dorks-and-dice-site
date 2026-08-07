@@ -24,7 +24,7 @@ public sealed class SiteModeIntegrationTests : IClassFixture<WebApplicationFacto
     [InlineData("dorks-and-dice.com", "/", HttpStatusCode.OK)]
     [InlineData("dorks-and-dice.com", "/resume", HttpStatusCode.NotFound)]
     [InlineData("dorks-and-dice.com", "/site-modes/dorks-and-dice/css/site.css", HttpStatusCode.OK)]
-    [InlineData("dorks-and-dice.com", "/site-modes/dorks-and-dice/images/favicon.svg", HttpStatusCode.OK)]
+    [InlineData("dorks-and-dice.com", "/site-modes/dorks-and-dice/images/favicon.svg", HttpStatusCode.NotFound)]
     [InlineData("dorks-and-dice.com", "/site-modes/professional/files/kyle-resume.pdf", HttpStatusCode.NotFound)]
     [InlineData("dorks-and-dice.com", "/site-modes/professional/images/favicon.svg", HttpStatusCode.NotFound)]
     [InlineData("unassigned.example", "/", HttpStatusCode.OK)]
@@ -46,6 +46,13 @@ public sealed class SiteModeIntegrationTests : IClassFixture<WebApplicationFacto
     public void UnassignedAssetsAreSharedFallbackAssets(SiteMode siteMode)
     {
         Assert.True(SiteRouteOwnership.IsAllowedInMode("/site-modes/unassigned/images/fallback.svg", siteMode));
+    }
+
+    [Fact]
+    public void ProfessionalModeHasExplicitExceptionForFutureDorksFavicon()
+    {
+        Assert.True(SiteRouteOwnership.IsAllowedInMode("/site-modes/dorks-and-dice/images/favicon.svg", SiteMode.Professional));
+        Assert.False(SiteRouteOwnership.IsAllowedInMode("/site-modes/dorks-and-dice/images/sample.png", SiteMode.Professional));
     }
 
     [Fact]
@@ -74,7 +81,7 @@ public sealed class SiteModeIntegrationTests : IClassFixture<WebApplicationFacto
 
     [Theory]
     [InlineData("kylebarnett.com", "/site-modes/professional/images/favicon.svg", "/site-modes/dorks-and-dice/images/favicon.svg")]
-    [InlineData("dorks-and-dice.com", "/site-modes/dorks-and-dice/images/favicon.svg", "/site-modes/professional/images/favicon.svg")]
+    [InlineData("dorks-and-dice.com", "/favicon.ico", "/site-modes/professional/images/favicon.svg")]
     [InlineData("unassigned.example", "/favicon.ico", "/site-modes/professional/images/favicon.svg")]
     public async Task RealDomainsLoadTheirModeFavicon(string host, string expectedFavicon, string excludedFavicon)
     {
@@ -110,7 +117,7 @@ public sealed class SiteModeIntegrationTests : IClassFixture<WebApplicationFacto
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Contains("/site-modes/dorks-and-dice/css/site.css", html);
-        Assert.Contains("/site-modes/dorks-and-dice/images/favicon.svg", html);
+        Assert.Contains("/favicon.ico", html);
         Assert.Contains("/site-modes/development/css/site.css", html);
         Assert.DoesNotContain("/site-modes/professional/css/site.css", html);
     }
@@ -223,6 +230,35 @@ public sealed class SiteModeIntegrationTests : IClassFixture<WebApplicationFacto
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.DoesNotContain("id=\"imageModal\"", html);
+    }
+
+    [Fact]
+    public async Task PythonFinanceAnalyticsLinksToHostedNotebook()
+    {
+        var response = await SendAsync("kylebarnett.com", "/resume/pythonfinanceanalytics");
+        var html = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("View Notebook on GitHub", html);
+        Assert.Contains("https://github.com/LegendMaster03/python-finance-analytics/blob/main/finance-analysis.ipynb", html);
+        Assert.Contains("View Repository", html);
+    }
+
+    [Fact]
+    public async Task SelectedProfessionalProjectPagesUseModeFaviconsAsLogos()
+    {
+        var multiModeResponse = await SendAsync("kylebarnett.com", "/resume/personalmultimodewebsite");
+        var multiModeHtml = await multiModeResponse.Content.ReadAsStringAsync();
+        var dndResponse = await SendAsync("kylebarnett.com", "/resume/dndtools");
+        var dndHtml = await dndResponse.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, multiModeResponse.StatusCode);
+        Assert.Contains("src=\"/site-modes/professional/images/favicon.svg\"", multiModeHtml);
+        Assert.Contains("Kyle Barnett favicon", multiModeHtml);
+
+        Assert.Equal(HttpStatusCode.OK, dndResponse.StatusCode);
+        Assert.Contains("src=\"/favicon.ico\"", dndHtml);
+        Assert.Contains("Dorks &amp; Dice logo", dndHtml);
     }
 
     [Fact]
