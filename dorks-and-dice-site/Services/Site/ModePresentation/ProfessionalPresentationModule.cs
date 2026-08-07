@@ -17,6 +17,11 @@ public sealed class ProfessionalPresentationModule : ISiteModePresentationModule
         return "Kyle Barnett's resume, experience, and selected projects.";
     }
 
+    public string GetFaviconPath()
+    {
+        return "~/site-modes/professional/images/favicon.svg";
+    }
+
     public ArticlesIndexPresentationViewModel GetArticlesIndexPresentation()
     {
         return new ArticlesIndexPresentationViewModel

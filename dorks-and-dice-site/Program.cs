@@ -20,6 +20,7 @@ builder.Services.AddSingleton<SiteModeOptions>();
 builder.Services.AddSingleton<ISiteModePartialResolver, SiteModePartialResolver>();
 builder.Services.AddSingleton<ISiteModeStylesheetResolver, SiteModeStylesheetResolver>();
 builder.Services.AddSingleton<ISiteModePresentationService, SiteModePresentationService>();
+builder.Services.AddSingleton<ISiteModeArchitectureSummaryService, SiteModeArchitectureSummaryService>();
 builder.Services.AddSingleton<ISiteModePresentationModule, DorksAndDicePresentationModule>();
 builder.Services.AddSingleton<ISiteModePresentationModule, ProfessionalPresentationModule>();
 builder.Services.AddSingleton<ISiteModePresentationModule, DevelopmentPresentationModule>();

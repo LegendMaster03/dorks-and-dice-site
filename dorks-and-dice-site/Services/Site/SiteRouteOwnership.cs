@@ -14,6 +14,7 @@ public static class SiteRouteOwnership
         var normalizedPath = path.ToString().ToLowerInvariant();
         var isSharedPath = IsModeAdaptivePath(normalizedPath)
             || IsSharedStaticAssetPath(normalizedPath)
+            || IsUnassignedAssetPath(normalizedPath)
             || IsSharedSystemPath(normalizedPath);
 
         return siteMode switch

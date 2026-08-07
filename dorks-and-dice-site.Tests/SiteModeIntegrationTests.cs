@@ -1,4 +1,6 @@
 using System.Net;
+using dorks_and_dice_site.Models.Site;
+using dorks_and_dice_site.Services.Site;
 using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace dorks_and_dice_site.Tests;
@@ -16,12 +18,17 @@ public sealed class SiteModeIntegrationTests : IClassFixture<WebApplicationFacto
     [InlineData("kylebarnett.com", "/", HttpStatusCode.OK)]
     [InlineData("kylebarnett.com", "/resume", HttpStatusCode.OK)]
     [InlineData("kylebarnett.com", "/site-modes/professional/css/site.css", HttpStatusCode.OK)]
+    [InlineData("kylebarnett.com", "/site-modes/professional/images/favicon.svg", HttpStatusCode.OK)]
     [InlineData("kylebarnett.com", "/site-modes/dorks-and-dice/images/sample.png", HttpStatusCode.NotFound)]
+    [InlineData("kylebarnett.com", "/site-modes/dorks-and-dice/images/favicon.svg", HttpStatusCode.NotFound)]
     [InlineData("dorks-and-dice.com", "/", HttpStatusCode.OK)]
     [InlineData("dorks-and-dice.com", "/resume", HttpStatusCode.NotFound)]
     [InlineData("dorks-and-dice.com", "/site-modes/dorks-and-dice/css/site.css", HttpStatusCode.OK)]
+    [InlineData("dorks-and-dice.com", "/site-modes/dorks-and-dice/images/favicon.svg", HttpStatusCode.OK)]
     [InlineData("dorks-and-dice.com", "/site-modes/professional/files/kyle-resume.pdf", HttpStatusCode.NotFound)]
+    [InlineData("dorks-and-dice.com", "/site-modes/professional/images/favicon.svg", HttpStatusCode.NotFound)]
     [InlineData("unassigned.example", "/", HttpStatusCode.OK)]
+    [InlineData("unassigned.example", "/favicon.ico", HttpStatusCode.OK)]
     [InlineData("unassigned.example", "/resume", HttpStatusCode.NotFound)]
     [InlineData("unassigned.example", "/site-modes/professional/images/profile/kyle-headshot.jpg", HttpStatusCode.NotFound)]
     public async Task HostModeRouteMatrixReturnsExpectedStatus(string host, string path, HttpStatusCode expectedStatusCode)
@@ -29,6 +36,16 @@ public sealed class SiteModeIntegrationTests : IClassFixture<WebApplicationFacto
         var response = await SendAsync(host, path);
 
         Assert.Equal(expectedStatusCode, response.StatusCode);
+    }
+
+    [Theory]
+    [InlineData(SiteMode.Professional)]
+    [InlineData(SiteMode.DorksAndDice)]
+    [InlineData(SiteMode.Development)]
+    [InlineData(SiteMode.Unassigned)]
+    public void UnassignedAssetsAreSharedFallbackAssets(SiteMode siteMode)
+    {
+        Assert.True(SiteRouteOwnership.IsAllowedInMode("/site-modes/unassigned/images/fallback.svg", siteMode));
     }
 
     [Fact]
@@ -55,6 +72,20 @@ public sealed class SiteModeIntegrationTests : IClassFixture<WebApplicationFacto
         Assert.DoesNotContain("/site-modes/development/css/site.css", html);
     }
 
+    [Theory]
+    [InlineData("kylebarnett.com", "/site-modes/professional/images/favicon.svg", "/site-modes/dorks-and-dice/images/favicon.svg")]
+    [InlineData("dorks-and-dice.com", "/site-modes/dorks-and-dice/images/favicon.svg", "/site-modes/professional/images/favicon.svg")]
+    [InlineData("unassigned.example", "/favicon.ico", "/site-modes/professional/images/favicon.svg")]
+    public async Task RealDomainsLoadTheirModeFavicon(string host, string expectedFavicon, string excludedFavicon)
+    {
+        var response = await SendAsync(host, "/");
+        var html = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains($"""<link rel="icon" href="{expectedFavicon}""", html);
+        Assert.DoesNotContain(excludedFavicon, html);
+    }
+
     [Fact]
     public async Task UnassignedModeLoadsOnlySharedStylesheet()
     {
@@ -79,6 +110,7 @@ public sealed class SiteModeIntegrationTests : IClassFixture<WebApplicationFacto
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Contains("/site-modes/dorks-and-dice/css/site.css", html);
+        Assert.Contains("/site-modes/dorks-and-dice/images/favicon.svg", html);
         Assert.Contains("/site-modes/development/css/site.css", html);
         Assert.DoesNotContain("/site-modes/professional/css/site.css", html);
     }
@@ -191,6 +223,35 @@ public sealed class SiteModeIntegrationTests : IClassFixture<WebApplicationFacto
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.DoesNotContain("id=\"imageModal\"", html);
+    }
+
+    [Fact]
+    public async Task PersonalMultiModeWebsiteShowsLiveArchitectureMatrix()
+    {
+        var response = await SendAsync("kylebarnett.com", "/resume/personalmultimodewebsite");
+        var html = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("Architecture Flow", html);
+        Assert.Contains("Resolve Mode", html);
+        Assert.Contains("Check Access", html);
+        Assert.Contains("Fallback Piece", html);
+        Assert.Contains("Live Mode Matrix", html);
+        Assert.Contains("Representative Access Rules", html);
+        Assert.Contains("Resume, portfolio, and professional article identity", html);
+        Assert.Contains("Community-facing identity", html);
+        Assert.Contains("<th scope=\"row\">Professional</th>", html);
+        Assert.Contains("<th scope=\"row\">Community</th>", html);
+        Assert.Contains("<th scope=\"row\">Development</th>", html);
+        Assert.Contains("<th scope=\"row\">Unassigned</th>", html);
+        Assert.Contains("professional resume surface", html);
+        Assert.Contains("professional-owned asset", html);
+        Assert.Contains("Allowed", html);
+        Assert.Contains("Blocked", html);
+        Assert.DoesNotContain("~/Views/SiteModes/Professional/Branding/_Header.cshtml", html);
+        Assert.DoesNotContain("~/site-modes/professional/css/site.css", html);
+        Assert.DoesNotContain("<code>/resume</code>", html);
+        Assert.DoesNotContain("10.0.0.7", html);
     }
 
     [Fact]

@@ -4,5 +4,6 @@ public enum SiteModePresentationPart
 {
     TitleSuffix,
     DefaultMetaDescription,
-    ArticlesIndex
+    ArticlesIndex,
+    Favicon
 }

@@ -7,5 +7,6 @@ public interface ISiteModePresentationService
 {
     string GetTitleSuffix(SiteMode siteMode);
     string GetDefaultMetaDescription(SiteMode siteMode);
+    string GetFaviconPath(SiteMode siteMode);
     ArticlesIndexPresentationViewModel GetArticlesIndexPresentation(SiteMode siteMode);
 }

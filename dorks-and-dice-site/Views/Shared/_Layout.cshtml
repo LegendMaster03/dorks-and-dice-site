@@ -7,6 +7,7 @@
     var siteModeContext = Context.GetSiteModeContext();
     var isDevelopmentPreview = siteModeContext.IsDevelopmentPreview;
     var siteSuffix = SiteModePresentationService.GetTitleSuffix(siteModeContext.SiteMode);
+    var faviconPath = Url.Content(SiteModePresentationService.GetFaviconPath(siteModeContext.SiteMode));
     var pageTitle = $"{ViewData["Title"]} - {siteSuffix}";
     var metaTitle = ViewData["MetaTitle"]?.ToString() ?? pageTitle;
     var metaDescription = ViewData["MetaDescription"]?.ToString()
@@ -71,6 +72,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@pageTitle</title>
+    <link rel="icon" href="@faviconPath" asp-append-version="true" />
     <meta name="description" content="@metaDescription" />
     <link rel="canonical" href="@canonicalUrl" />
     @if (!string.IsNullOrWhiteSpace(robots))

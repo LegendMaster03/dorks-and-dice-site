@@ -17,6 +17,11 @@ public sealed class DevelopmentPresentationModule : ISiteModePresentationModule
         return "Local development preview for mode-aware site content.";
     }
 
+    public string GetFaviconPath()
+    {
+        return "~/site-modes/development/images/favicon.svg";
+    }
+
     public ArticlesIndexPresentationViewModel GetArticlesIndexPresentation()
     {
         return new ArticlesIndexPresentationViewModel

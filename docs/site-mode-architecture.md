@@ -44,7 +44,7 @@ Current rules:
 - `/health`, static framework assets, and shared error routes are shared exceptions.
 - `/site-modes/professional/...` is Professional-owned.
 - `/site-modes/dorks-and-dice/...` is Dorks & Dice-owned.
-- `/site-modes/unassigned/...` is Unassigned-owned.
+- `/site-modes/unassigned/...` is shared fallback asset space.
 
 `Development` mode can inspect all routes locally, but shared routes still need explicit Development handling when more
 than one mode could reasonably own the route.
@@ -76,6 +76,10 @@ The shared layout asks `ISiteModePartialResolver` for the active mode's header a
 directly. The resolver checks whether the requested component exists for the active mode. When it does not, the resolver
 returns the matching component under `Views/SiteModes/Unassigned/` before Razor rendering begins.
 
+Unassigned components and Unassigned-owned static assets are the known fallback pieces. Any mode may load those fallback
+assets when a resolved fallback component needs them. This is separate from the Unassigned fallback page itself, which is
+the home page for unmapped hosts.
+
 Mode-specific Razor files must not act as dispatchers by branching over a component identifier. In particular, avoid a
 single partial with an `if`, `else if`, or `switch` that chooses between independently rendered components such as a
 header and footer. Component selection belongs in a resolver or service; the selected partial should contain only the
@@ -104,6 +108,7 @@ Each mode can define:
 
 - title suffixes
 - default meta descriptions
+- favicon paths
 - article index copy
 - article filter visibility policy
 
@@ -117,8 +122,10 @@ Shared framework assets remain at root paths:
 - `wwwroot/css`
 - `wwwroot/js`
 - `wwwroot/lib`
-- `wwwroot/favicon.ico`
 - `wwwroot/robots.txt`
+
+`wwwroot/favicon.ico` remains the Unassigned fallback favicon. Mode-specific favicons live with other mode-owned assets
+and are emitted by the shared layout through `ISiteModePresentationService`.
 
 Mode-owned assets live under:
 

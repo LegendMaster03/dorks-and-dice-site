@@ -8,5 +8,6 @@ public interface ISiteModePresentationModule
     SiteMode SiteMode { get; }
     string GetTitleSuffix();
     string GetDefaultMetaDescription();
+    string GetFaviconPath();
     ArticlesIndexPresentationViewModel GetArticlesIndexPresentation();
 }

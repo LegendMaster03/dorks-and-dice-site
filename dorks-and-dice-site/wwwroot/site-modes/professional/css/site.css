@@ -215,6 +215,63 @@ body {
   line-height: 1.25;
 }
 
+.architecture-flow {
+  padding: 1rem;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 0.75rem;
+  background: #fff;
+}
+
+.architecture-flow-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.85rem;
+}
+
+.architecture-flow-step {
+  position: relative;
+}
+
+.architecture-flow-step:not(:last-child)::after {
+  content: "";
+  display: block;
+  width: 2px;
+  height: 0.85rem;
+  margin: 0 auto -0.85rem;
+  background: rgba(37, 99, 235, 0.28);
+}
+
+.architecture-flow-node {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-height: 5.2rem;
+  padding: 0.85rem;
+  border: 1px solid rgba(37, 99, 235, 0.18);
+  border-radius: 0.6rem;
+  background: #f8fbff;
+}
+
+.architecture-flow-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #1d4ed8;
+}
+
+.architecture-flow-detail {
+  color: #475569;
+  font-size: 0.9rem;
+  line-height: 1.35;
+}
+
+.architecture-flow-options {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.7rem;
+}
+
 .resume-entry-meta {
   font-size: 0.88rem;
 }
@@ -268,6 +325,32 @@ body {
     max-height: 290px;
     aspect-ratio: 1 / 1;
   }
+
+  .architecture-flow-main {
+    grid-template-columns: 1fr 1fr 1fr minmax(220px, 1.45fr) 1fr;
+    align-items: center;
+  }
+
+  .architecture-flow-step:not(:last-child)::after {
+    position: absolute;
+    top: 50%;
+    right: -0.85rem;
+    width: 0.85rem;
+    height: 2px;
+    margin: 0;
+    transform: translateY(-50%);
+  }
+
+  .architecture-flow-branch::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: -0.85rem;
+    width: 0.85rem;
+    height: 2px;
+    background: rgba(37, 99, 235, 0.28);
+    transform: translateY(-50%);
+  }
 }
 
 body.dark-mode {
@@ -296,6 +379,34 @@ body.dark-mode .contact-card {
   background: #111827;
   color: #e5e7eb;
   border-color: #1f2937 !important;
+}
+
+body.dark-mode .table {
+  --bs-table-bg: transparent;
+  --bs-table-color: #e5e7eb;
+  --bs-table-border-color: rgba(148, 163, 184, 0.25);
+  --bs-table-striped-bg: rgba(15, 23, 42, 0.35);
+  --bs-table-striped-color: #e5e7eb;
+  --bs-table-hover-bg: rgba(37, 99, 235, 0.14);
+  --bs-table-hover-color: #f8fafc;
+  color: #e5e7eb;
+}
+
+body.dark-mode .table thead,
+body.dark-mode .table tbody,
+body.dark-mode .table tr,
+body.dark-mode .table th,
+body.dark-mode .table td {
+  border-color: rgba(148, 163, 184, 0.25);
+  color: inherit;
+}
+
+body.dark-mode .table thead th {
+  color: #f8fafc;
+}
+
+body.dark-mode .table-responsive {
+  border-color: rgba(148, 163, 184, 0.2);
 }
 
 body.dark-mode .text-muted {
@@ -362,6 +473,29 @@ body.dark-mode .project-card-featured {
   box-shadow: 0 8px 16px rgba(30, 64, 175, 0.18);
 }
 
+body.dark-mode .architecture-flow {
+  background: #111827;
+  border-color: #1f2937;
+}
+
+body.dark-mode .architecture-flow-step:not(:last-child)::after,
+body.dark-mode .architecture-flow-branch::before {
+  background: rgba(147, 197, 253, 0.35);
+}
+
+body.dark-mode .architecture-flow-node {
+  background: #0f172a;
+  border-color: rgba(147, 197, 253, 0.28);
+}
+
+body.dark-mode .architecture-flow-label {
+  color: #93c5fd;
+}
+
+body.dark-mode .architecture-flow-detail {
+  color: #cbd5e1;
+}
+
 body.dark-mode .project-gallery .card-img-top {
   background-color: #0b1220;
 }
@@ -370,6 +504,11 @@ body.dark-mode .project-card-meta .badge.text-bg-light {
   background-color: #1f2937 !important;
   color: #cbd5e1 !important;
   border-color: #334155 !important;
+}
+
+body.dark-mode .badge.text-bg-secondary {
+  background-color: #334155 !important;
+  color: #e2e8f0 !important;
 }
 
 body.dark-mode .featured-badge {

@@ -24,6 +24,11 @@ public sealed class SiteModePresentationService : ISiteModePresentationService
         return Resolve(siteMode, SiteModePresentationPart.DefaultMetaDescription, module => module.GetDefaultMetaDescription());
     }
 
+    public string GetFaviconPath(SiteMode siteMode)
+    {
+        return Resolve(siteMode, SiteModePresentationPart.Favicon, module => module.GetFaviconPath());
+    }
+
     public ArticlesIndexPresentationViewModel GetArticlesIndexPresentation(SiteMode siteMode)
     {
         return Resolve(siteMode, SiteModePresentationPart.ArticlesIndex, module => module.GetArticlesIndexPresentation());

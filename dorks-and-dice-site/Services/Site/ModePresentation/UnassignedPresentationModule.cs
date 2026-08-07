@@ -17,6 +17,11 @@ public sealed class UnassignedPresentationModule : ISiteModePresentationModule
         return "This domain has not been assigned to a site mode.";
     }
 
+    public string GetFaviconPath()
+    {
+        return "~/favicon.ico";
+    }
+
     public ArticlesIndexPresentationViewModel GetArticlesIndexPresentation()
     {
         return new ArticlesIndexPresentationViewModel

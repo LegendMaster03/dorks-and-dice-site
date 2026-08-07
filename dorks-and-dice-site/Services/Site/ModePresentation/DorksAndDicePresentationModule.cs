@@ -17,6 +17,11 @@ public sealed class DorksAndDicePresentationModule : ISiteModePresentationModule
         return "Dorks & Dice community front door for campaigns, tools, and updates.";
     }
 
+    public string GetFaviconPath()
+    {
+        return "~/site-modes/dorks-and-dice/images/favicon.svg";
+    }
+
     public ArticlesIndexPresentationViewModel GetArticlesIndexPresentation()
     {
         return new ArticlesIndexPresentationViewModel
