@@ -22,12 +22,12 @@ public class ArticleCatalogService : IArticleCatalogService
             Category = "Technical Investigation",
             Controller = "Articles",
             Action = "FreeingTheBeesConsoleVariationsPuzzle",
-            PostedDateText = "August 2026",
+            PostedDateText = "August 12, 2026",
             ImageUrl = "~/site-modes/professional/images/articles/consolevariations-bee/ending.png",
             ImageAltText = "Completed ConsoleVariations Queen's Chamber showing the Free the Bees ending screen",
             ImageWidth = 2041,
             ImageHeight = 1220,
-            Listed = false,
+            Listed = true,
             VisibleInModes =
             [
                 SiteMode.Professional
