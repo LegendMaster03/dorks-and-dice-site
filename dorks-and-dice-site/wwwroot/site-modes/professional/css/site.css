@@ -33,6 +33,10 @@ body {
   object-fit: contain;
 }
 
+.resume-detail-header {
+  flex-wrap: nowrap;
+}
+
 .resume-detail-heading {
   display: flex;
   flex-direction: column;
@@ -47,16 +51,17 @@ body {
 
 .resume-detail-logo-link {
   display: flex;
+  justify-content: flex-end;
   align-items: flex-start;
-  flex: 0 0 auto;
+  flex: 0 1 20%;
+  min-width: 0;
 }
 
 .resume-detail-logo {
   display: block;
   width: auto;
+  max-width: 100%;
   height: auto;
-  max-height: 116px;
-  min-height: 88px;
   object-fit: contain;
 }
 
@@ -541,16 +546,6 @@ body.dark-mode code {
   .project-card-actions,
   .resume-entry-actions {
     justify-content: flex-start;
-  }
-
-  .resume-detail-header {
-    align-items: flex-start !important;
-  }
-
-  .resume-detail-logo {
-    height: auto;
-    max-height: 72px;
-    min-height: 0;
   }
 
   .resume-section-nav {
