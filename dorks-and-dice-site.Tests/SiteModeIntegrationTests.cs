@@ -148,13 +148,14 @@ public sealed class SiteModeIntegrationTests : IClassFixture<WebApplicationFacto
     }
 
     [Fact]
-    public async Task ProfessionalArticlesIndexDoesNotListUnlistedArticle()
+    public async Task ProfessionalArticlesIndexListsPublishedArticle()
     {
         var response = await SendAsync("kylebarnett.com", "/articles");
         var html = await response.Content.ReadAsStringAsync();
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.DoesNotContain("Freeing the Bees: Solving ConsoleVariations", html);
+        Assert.Contains("Freeing the Bees: Solving ConsoleVariations", html);
+        Assert.Contains("August 12, 2026", html);
     }
 
     [Fact]
@@ -206,8 +207,8 @@ public sealed class SiteModeIntegrationTests : IClassFixture<WebApplicationFacto
         Assert.Contains("list=\"articleTagSuggestions\"", html);
         Assert.Contains("<option value=\"technical-investigation\">", html);
         Assert.Contains("id=\"articleList\"", html);
-        Assert.Contains("data-article-listed=\"false\"", html);
-        Assert.Contains("data-article-date=\"august 2026\"", html);
+        Assert.Contains("data-article-listed=\"true\"", html);
+        Assert.Contains("data-article-date=\"august 12, 2026\"", html);
         Assert.Contains("data-article-title=\"freeing the bees: solving consolevariations&#x27; hidden web puzzle\"", html);
     }
 
@@ -291,13 +292,13 @@ public sealed class SiteModeIntegrationTests : IClassFixture<WebApplicationFacto
     }
 
     [Fact]
-    public async Task ProfessionalDirectArticleAccessReturnsNoindex()
+    public async Task ProfessionalDirectArticleAccessIsIndexable()
     {
         var response = await SendAsync("kylebarnett.com", "/articles/freeing-the-bees-consolevariations-puzzle");
         var html = await response.Content.ReadAsStringAsync();
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.Contains("""<meta name="robots" content="noindex, nofollow" />""", html);
+        Assert.DoesNotContain("""<meta name="robots" content="noindex, nofollow" />""", html);
     }
 
     [Theory]
@@ -336,7 +337,7 @@ public sealed class SiteModeIntegrationTests : IClassFixture<WebApplicationFacto
     }
 
     [Fact]
-    public async Task DevelopmentPreviewCanListUnlistedArticles()
+    public async Task DevelopmentPreviewListsPublishedArticle()
     {
         using var request = CreateRequest("localhost", "/articles");
         request.Headers.Add("Cookie", "DevelopmentPreviewSiteMode=development; DevelopmentIncludeUnlistedArticles=true");
@@ -346,7 +347,7 @@ public sealed class SiteModeIntegrationTests : IClassFixture<WebApplicationFacto
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Contains("Freeing the Bees: Solving ConsoleVariations", html);
-        Assert.Contains("Unlisted", html);
+        Assert.Contains("August 12, 2026", html);
     }
 
     private async Task<HttpResponseMessage> SendAsync(string host, string path)
