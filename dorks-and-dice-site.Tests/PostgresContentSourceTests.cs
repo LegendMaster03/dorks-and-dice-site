@@ -14,12 +14,12 @@ public sealed class PostgresContentSourceTests
             Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "dorks-and-dice-site"));
         var project = System.Xml.Linq.XDocument.Load(
             Path.Combine(projectDirectory, "dorks-and-dice-site.csproj"));
-        var databaseContent = Assert.Single(project
-            .Descendants("Content")
-            .Where(element => string.Equals(
+        var databaseContent = Assert.Single(
+            project.Descendants("Content"),
+            element => string.Equals(
                 element.Attribute("Update")?.Value,
                 @"Content\**\*.db",
-                StringComparison.Ordinal)));
+                StringComparison.Ordinal));
 
         Assert.Equal("PreserveNewest", databaseContent.Element("CopyToOutputDirectory")?.Value);
         Assert.Equal("Never", databaseContent.Element("CopyToPublishDirectory")?.Value);
