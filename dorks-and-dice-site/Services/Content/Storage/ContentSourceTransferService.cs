@@ -42,7 +42,7 @@ public sealed class ContentSourceTransferService : IContentSourceTransferService
             ?? throw new InvalidOperationException(
                 $"Content page '{slug}' was not found in source '{source.Key}'.");
 
-        EnsureNoConflict(targetContext, sourcePage);
+        await EnsureNoConflictAsync(targetContext, sourcePage, cancellationToken);
         await using var transaction = await targetContext.Database.BeginTransactionAsync(cancellationToken);
         await CopyPageAsync(targetContext, sourcePage, cancellationToken);
         await transaction.CommitAsync(cancellationToken);
@@ -79,6 +79,19 @@ public sealed class ContentSourceTransferService : IContentSourceTransferService
                 $"The target source already contains content with stable ID '{conflictingPage.ContentKey}' or slug '{conflictingPage.Slug}'. Copy all only runs against a non-conflicting target.");
         }
 
+        var sourceAssetKeys = sourcePages
+            .SelectMany(page => page.Assets)
+            .Select(asset => asset.AssetKey)
+            .ToList();
+        if (sourceAssetKeys.Count > 0
+            && await targetContext.Assets.AsNoTracking().AnyAsync(
+                asset => sourceAssetKeys.Contains(asset.AssetKey),
+                cancellationToken))
+        {
+            throw new InvalidOperationException(
+                "The target source already contains a content media key used by the source. Copy all only runs against a non-conflicting target.");
+        }
+
         await using var transaction = await targetContext.Database.BeginTransactionAsync(cancellationToken);
         foreach (var sourcePage in sourcePages.OrderBy(page => page.Id))
         {
@@ -101,6 +114,24 @@ public sealed class ContentSourceTransferService : IContentSourceTransferService
         };
         targetContext.Pages.Add(targetPage);
         await targetContext.SaveChangesAsync(cancellationToken);
+
+        if (sourcePage.Assets.Count > 0)
+        {
+            targetContext.Assets.AddRange(sourcePage.Assets
+                .OrderBy(asset => asset.Id)
+                .Select(asset => new ContentAssetRecord
+                {
+                    AssetKey = asset.AssetKey,
+                    PageId = targetPage.Id,
+                    FileName = asset.FileName,
+                    MediaType = asset.MediaType,
+                    Length = asset.Length,
+                    Sha256 = asset.Sha256,
+                    CreatedUtc = NormalizeUtc(asset.CreatedUtc),
+                    Data = asset.Data.ToArray()
+                }));
+            await targetContext.SaveChangesAsync(cancellationToken);
+        }
 
         var revisionIdMap = new Dictionary<long, long>();
         var pending = sourcePage.Revisions
@@ -165,13 +196,25 @@ public sealed class ContentSourceTransferService : IContentSourceTransferService
         }
     }
 
-    private static void EnsureNoConflict(ContentDbContext targetContext, ContentPageRecord sourcePage)
+    private static async Task EnsureNoConflictAsync(
+        ContentDbContext targetContext,
+        ContentPageRecord sourcePage,
+        CancellationToken cancellationToken)
     {
-        if (targetContext.Pages.Any(page =>
-                page.ContentKey == sourcePage.ContentKey || page.Slug == sourcePage.Slug))
+        if (await targetContext.Pages.AnyAsync(page =>
+                page.ContentKey == sourcePage.ContentKey || page.Slug == sourcePage.Slug,
+                cancellationToken))
         {
             throw new InvalidOperationException(
                 "The target source already contains a page with that stable ID or slug.");
+        }
+
+        var assetKeys = sourcePage.Assets.Select(asset => asset.AssetKey).ToList();
+        if (assetKeys.Count > 0
+            && await targetContext.Assets.AnyAsync(asset => assetKeys.Contains(asset.AssetKey), cancellationToken))
+        {
+            throw new InvalidOperationException(
+                "The target source already contains a content media key used by this page.");
         }
     }
 
@@ -180,6 +223,7 @@ public sealed class ContentSourceTransferService : IContentSourceTransferService
         string slug,
         CancellationToken cancellationToken) => await context.Pages
         .AsNoTracking()
+        .Include(page => page.Assets)
         .Include(page => page.Revisions)
             .ThenInclude(revision => revision.Tags)
         .Include(page => page.Revisions)
@@ -190,6 +234,7 @@ public sealed class ContentSourceTransferService : IContentSourceTransferService
         ContentDbContext context,
         CancellationToken cancellationToken) => await context.Pages
         .AsNoTracking()
+        .Include(page => page.Assets)
         .Include(page => page.Revisions)
             .ThenInclude(revision => revision.Tags)
         .Include(page => page.Revisions)
