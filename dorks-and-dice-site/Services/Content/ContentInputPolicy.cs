@@ -21,4 +21,6 @@ public static class ContentInputPolicy
     public const int MaxHighlightLength = 4_096;
     public const int MaxInfoItems = 64;
     public const int MaxAuthoringRequestBytes = 524_288;
+    public const int MaxAssetUploadBytes = 12 * 1024 * 1024;
+    public const int MaxAssetFileNameLength = 160;
 }
