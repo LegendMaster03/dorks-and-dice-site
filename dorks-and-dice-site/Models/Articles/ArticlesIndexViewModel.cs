@@ -1,10 +1,11 @@
+using dorks_and_dice_site.Models.Content;
 using dorks_and_dice_site.Models.Site;
 
 namespace dorks_and_dice_site.Models.Articles;
 
 public class ArticlesIndexViewModel
 {
-    public List<ArticleItemViewModel> Articles { get; set; } = [];
+    public List<ContentItem> Articles { get; set; } = [];
     public ArticlesIndexPresentationViewModel Presentation { get; set; } = new();
     public SiteMode SiteMode { get; set; } = SiteMode.DorksAndDice;
     public bool IsDevelopmentPreview { get; set; }

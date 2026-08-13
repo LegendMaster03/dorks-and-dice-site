@@ -38,8 +38,7 @@ public static class ResumeContentValidator
         RequireList(model.AwardEntries, "awardEntries", errors);
         for (var i = 0; i < model.AwardEntries.Count; i++)
         {
-            var item = model.AwardEntries[i];
-            Require(item.Title, $"awardEntries[{i}].title", errors);
+            Require(model.AwardEntries[i].Title, $"awardEntries[{i}].title", errors);
         }
 
         RequireList(model.SkillCategories, "skillCategories", errors);
@@ -48,24 +47,6 @@ public static class ResumeContentValidator
             var item = model.SkillCategories[i];
             Require(item.Name, $"skillCategories[{i}].name", errors);
             Require(item.Description, $"skillCategories[{i}].description", errors);
-        }
-
-        RequireList(model.ExperienceItems, "experienceItems", errors);
-        for (var i = 0; i < model.ExperienceItems.Count; i++)
-        {
-            var item = model.ExperienceItems[i];
-            Require(item.Title, $"experienceItems[{i}].title", errors);
-            Require(item.DateRange, $"experienceItems[{i}].dateRange", errors);
-        }
-
-        RequireList(model.ProjectItems, "projectItems", errors);
-        for (var i = 0; i < model.ProjectItems.Count; i++)
-        {
-            var item = model.ProjectItems[i];
-            Require(item.Title, $"projectItems[{i}].title", errors);
-            Require(item.Summary, $"projectItems[{i}].summary", errors);
-            Require(item.Category, $"projectItems[{i}].category", errors);
-            Require(item.Action, $"projectItems[{i}].action", errors);
         }
 
         RequireList(model.LeadershipEntries, "leadershipEntries", errors);

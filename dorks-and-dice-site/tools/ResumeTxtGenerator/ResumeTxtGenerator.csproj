@@ -6,6 +6,11 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="..\..\Models\Content\ContentItem.cs" Link="Shared\Models\Content\ContentItem.cs" />
+    <Compile Include="..\..\Models\Site\SiteMode.cs" Link="Shared\Models\Site\SiteMode.cs" />
     <Compile Include="..\..\Models\Resume\*.cs" Link="Shared\Models\Resume\%(Filename)%(Extension)" />
     <Compile Include="..\..\Services\Resume\ResumePageContentBuilder.cs" Link="Shared\Services\Resume\ResumePageContentBuilder.cs" />
     <Compile Include="..\..\Services\Resume\ResumeContentValidator.cs" Link="Shared\Services\Resume\ResumeContentValidator.cs" />

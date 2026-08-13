@@ -4,5 +4,5 @@ namespace dorks_and_dice_site.Services.Resume;
 
 public interface IResumeContentService
 {
-    ResumeViewModel GetResumePage();
+    Task<ResumeViewModel> GetResumePageAsync(CancellationToken cancellationToken = default);
 }

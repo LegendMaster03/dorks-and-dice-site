@@ -1,4 +1,5 @@
 @model dorks_and_dice_site.Models.Resume.ResumeViewModel
+@using dorks_and_dice_site.Models.Content
 @{
     ViewData["Title"] = "Resume";
     ViewData["MetaTitle"] = "Kyle Barnett Resume";
@@ -6,12 +7,12 @@
     ViewData["MetaImage"] = Url.Content(Model.Header.HeadshotImageUrl);
     var orderedProjects = Model.ProjectItems
         .Select((project, index) => new { Project = project, Index = index })
-        .OrderByDescending(item => item.Project.Featured)
+        .OrderByDescending(item => item.Project.IsFeatured(ContentTags.Project))
         .ThenBy(item => item.Index)
         .Select(item => item.Project)
         .ToList();
     var projectTags = orderedProjects
-        .SelectMany(project => project.Tags)
+        .SelectMany(project => project.PublicTags)
         .Where(tag => !string.IsNullOrWhiteSpace(tag))
         .Distinct(StringComparer.OrdinalIgnoreCase)
         .Order(StringComparer.OrdinalIgnoreCase)

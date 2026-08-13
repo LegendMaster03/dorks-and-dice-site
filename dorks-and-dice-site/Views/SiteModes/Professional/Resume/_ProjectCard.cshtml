@@ -1,42 +1,48 @@
-@model dorks_and_dice_site.Models.Resume.ProjectItemViewModel
+@model dorks_and_dice_site.Models.Content.ContentItem
+@using dorks_and_dice_site.Models.Content
 @{
-    var categoryLabel = string.Equals(Model.Category, "professional", StringComparison.OrdinalIgnoreCase)
+    var title = Model.GetTitle(ContentTags.Project);
+    var subtitle = Model.GetSubtitle(ContentTags.Project);
+    var summary = Model.GetSummary(ContentTags.Project);
+    var category = Model.GetCategory(ContentTags.Project) ?? string.Empty;
+    var featured = Model.IsFeatured(ContentTags.Project);
+    var publicTags = Model.PublicTags;
+    var categoryLabel = string.Equals(category, "professional", StringComparison.OrdinalIgnoreCase)
         ? "Professional"
-        : string.Equals(Model.Category, "personal", StringComparison.OrdinalIgnoreCase)
+        : string.Equals(category, "personal", StringComparison.OrdinalIgnoreCase)
             ? "Personal"
-            : Model.Category;
-    var projectLinkText = string.IsNullOrWhiteSpace(Model.LinkText) ? "Open project" : Model.LinkText;
-    var projectSearchText = $"{Model.Title} {Model.Subtitle} {Model.Summary} {string.Join(' ', Model.Tags)}".ToLowerInvariant();
+            : category;
+    var projectLinkText = Model.GetLinkText(ContentTags.Project);
+    var projectSearchText = $"{title} {subtitle} {summary} {string.Join(' ', publicTags)}".ToLowerInvariant();
 }
 
 <div class="col project-card"
-     data-category="@Model.Category"
-     data-featured="@(Model.Featured ? "true" : "false")"
-     data-tags="@string.Join(' ', Model.Tags)"
-     data-title="@Model.Title.ToLowerInvariant()"
+     data-category="@category"
+     data-featured="@(featured ? "true" : "false")"
+     data-tags="@string.Join(' ', publicTags)"
+     data-title="@title.ToLowerInvariant()"
      data-search="@projectSearchText">
-    <div class="card h-100 project-card-inner @(Model.Featured ? "project-card-featured" : string.Empty)">
+    <div class="card h-100 project-card-inner @(featured ? "project-card-featured" : string.Empty)">
         <div class="card-body">
             <div class="project-card-header">
                 <div class="project-card-heading">
                     <div class="project-card-meta mb-2">
                         <span class="badge text-bg-light border">@categoryLabel</span>
-                        @if (Model.Featured)
+                        @if (featured)
                         {
                             <span class="badge featured-badge">Featured</span>
                         }
                     </div>
-                    <h2 class="h5 card-title">@Model.Title</h2>
-                    @if (!string.IsNullOrWhiteSpace(Model.Subtitle))
+                    <h2 class="h5 card-title">@title</h2>
+                    @if (!string.IsNullOrWhiteSpace(subtitle))
                     {
-                        <p class="project-card-subtitle text-muted mb-2">@Model.Subtitle</p>
+                        <p class="project-card-subtitle text-muted mb-2">@subtitle</p>
                     }
                 </div>
                 <div class="project-card-actions">
                     <a class="btn btn-sm btn-outline-primary"
-                       asp-controller="@Model.DetailsController"
-                       asp-action="@Model.Action"
-                       aria-label="@projectLinkText: @Model.Title">
+                       href="/resume/@Model.Slug"
+                       aria-label="@projectLinkText: @title">
                         @projectLinkText
                     </a>
                     @if (!string.IsNullOrWhiteSpace(Model.RepositoryUrl))
@@ -45,19 +51,19 @@
                            href="@Model.RepositoryUrl"
                            target="_blank"
                            rel="noopener noreferrer"
-                           aria-label="View Git repository for @Model.Title (opens in a new tab)">
+                           aria-label="View Git repository for @title (opens in a new tab)">
                             View Git
                         </a>
                     }
                 </div>
             </div>
-            <p class="card-text">@Model.Summary</p>
-            @if (Model.Tags.Count > 0)
+            <p class="card-text">@summary</p>
+            @if (publicTags.Count > 0)
             {
                 <p class="project-card-tags mb-3">
-                    @for (var i = 0; i < Model.Tags.Count; i++)
+                    @foreach (var tag in publicTags)
                     {
-                        <span class="badge rounded-pill text-bg-secondary-subtle text-secondary-emphasis">@Model.Tags[i]</span>
+                        <span class="badge rounded-pill text-bg-secondary-subtle text-secondary-emphasis">@tag</span>
                     }
                 </p>
             }

@@ -1,10 +1,15 @@
 @model dorks_and_dice_site.Models.Articles.ArticlesIndexViewModel
+@using dorks_and_dice_site.Models.Content
 @using dorks_and_dice_site.Models.Site
 @{
     ViewData["Title"] = "Articles";
     ViewData["MetaTitle"] = Model.Presentation.MetaTitle;
     ViewData["MetaDescription"] = Model.Presentation.MetaDescription;
-    ViewData["MetaImage"] = Url.Content("~/site-modes/professional/images/articles/consolevariations-bee/ending.png");
+    var firstMetaImage = Model.Articles.Select(article => article.MetaImage ?? article.ListingImage?.Url).FirstOrDefault(image => !string.IsNullOrWhiteSpace(image));
+    if (!string.IsNullOrWhiteSpace(firstMetaImage))
+    {
+        ViewData["MetaImage"] = firstMetaImage;
+    }
     Func<string, string> formatTagLabel = tag => System.Globalization.CultureInfo.CurrentCulture.TextInfo.ToTitleCase(tag.Replace("-", " "));
 }
 
@@ -67,39 +72,47 @@
         <div id="articleList" class="row row-cols-1 row-cols-md-2 g-4 article-list">
             @foreach (var article in Model.Articles)
             {
-                var articleSearchText = $"{article.Title} {article.Summary} {article.Category} {string.Join(' ', article.Tags)}".ToLowerInvariant();
+                var title = article.GetTitle(ContentTags.Article);
+                var summary = article.GetSummary(ContentTags.Article);
+                var category = article.GetCategory(ContentTags.Article) ?? string.Empty;
+                var dateText = article.GetDateText(ContentTags.Article) ?? string.Empty;
+                var publicTags = article.PublicTags;
+                var listingStatusText = article.IsListed ? dateText : "Unlisted";
+                var articleSearchText = $"{title} {summary} {category} {string.Join(' ', publicTags)}".ToLowerInvariant();
                 <div class="col article-card"
-                     data-article-category="@article.Category"
+                     data-article-category="@category"
                      data-article-professional="@(article.IsVisibleInMode(SiteMode.Professional) ? "true" : "false")"
-                     data-article-listed="@(article.Listed ? "true" : "false")"
-                     data-article-date="@article.PostedDateText.ToLowerInvariant()"
-                     data-article-tags="@string.Join(' ', article.Tags)"
-                     data-article-title="@article.Title.ToLowerInvariant()"
+                     data-article-listed="@(article.IsListed ? "true" : "false")"
+                     data-article-date="@dateText.ToLowerInvariant()"
+                     data-article-tags="@string.Join(' ', publicTags)"
+                     data-article-title="@title.ToLowerInvariant()"
                      data-article-search="@articleSearchText">
                     <article class="card h-100 project-card-inner">
-                        <img src="@Url.Content(article.ImageUrl)"
-                             class="card-img-top article-card-img"
-                             alt="@article.ImageAltText"
-                             width="@article.ImageWidth"
-                             height="@article.ImageHeight" />
+                        @if (article.ListingImage is not null)
+                        {
+                            <img src="@article.ListingImage.Url"
+                                 class="card-img-top article-card-img"
+                                 alt="@article.ListingImage.AltText"
+                                 width="@article.ListingImage.Width"
+                                 height="@article.ListingImage.Height" />
+                        }
                         <div class="card-body">
-                            <p class="featured-project-meta mb-2">@article.Category</p>
+                            <p class="featured-project-meta mb-2">@category</p>
                             <h2 class="h5 card-title">
                                 <a class="stretched-link text-reset text-decoration-none"
-                                   asp-controller="@article.Controller"
-                                   asp-action="@article.Action">
-                                    @article.Title
+                                   href="/articles/@article.Slug">
+                                    @title
                                 </a>
                             </h2>
-                            @if (!string.IsNullOrWhiteSpace(article.ListingStatusText))
+                            @if (!string.IsNullOrWhiteSpace(listingStatusText))
                             {
-                                <p class="small text-muted mb-2">@article.ListingStatusText</p>
+                                <p class="small text-muted mb-2">@listingStatusText</p>
                             }
-                            @if (Model.IsDevelopmentPreview && !article.Listed)
+                            @if (Model.IsDevelopmentPreview && !article.IsListed)
                             {
                                 <p class="small text-warning-emphasis mb-2">Development preview: unlisted article</p>
                             }
-                            <p class="card-text">@article.Summary</p>
+                            <p class="card-text">@summary</p>
                         </div>
                     </article>
                 </div>

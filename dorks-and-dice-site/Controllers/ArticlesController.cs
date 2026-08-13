@@ -1,63 +1,57 @@
-using Microsoft.AspNetCore.Mvc;
-using dorks_and_dice_site.Services.Articles;
 using dorks_and_dice_site.Models.Articles;
-using dorks_and_dice_site.Models.Site;
+using dorks_and_dice_site.Models.Content;
+using dorks_and_dice_site.Services.Content;
 using dorks_and_dice_site.Services.Site;
+using Microsoft.AspNetCore.Mvc;
 
 namespace dorks_and_dice_site.Controllers;
 
 [Route("articles")]
 public class ArticlesController : Controller
 {
-    private readonly IArticleCatalogService _articleCatalogService;
+    private readonly IContentCatalogService _contentCatalogService;
+    private readonly ISiteModePresentationService _siteModePresentationService;
 
-    public ArticlesController(IArticleCatalogService articleCatalogService)
+    public ArticlesController(
+        IContentCatalogService contentCatalogService,
+        ISiteModePresentationService siteModePresentationService)
     {
-        _articleCatalogService = articleCatalogService;
+        _contentCatalogService = contentCatalogService;
+        _siteModePresentationService = siteModePresentationService;
     }
 
     [HttpGet("")]
-    public IActionResult Index()
+    public async Task<IActionResult> Index(CancellationToken cancellationToken)
     {
-        return View(_articleCatalogService.GetIndex(
-            GetSiteMode(),
-            IncludeUnlistedArticles(),
-            IsDevelopmentPreview()));
-    }
+        var modeContext = HttpContext.GetSiteModeContext();
+        var articles = (await _contentCatalogService.GetByContextAsync(
+            ContentTags.Article,
+            modeContext.SiteMode,
+            modeContext.IncludeUnlistedArticles,
+            cancellationToken)).ToList();
 
-    [HttpGet("freeing-the-bees-consolevariations-puzzle")]
-    public IActionResult FreeingTheBeesConsoleVariationsPuzzle()
-    {
-        var article = _articleCatalogService.GetByAction(nameof(FreeingTheBeesConsoleVariationsPuzzle));
-        if (article is null || !article.IsVisibleInMode(GetSiteMode()))
+        var model = new ArticlesIndexViewModel
         {
-            return NotFound();
-        }
+            Articles = articles,
+            Presentation = _siteModePresentationService.GetArticlesIndexPresentation(modeContext.SiteMode),
+            SiteMode = modeContext.SiteMode,
+            IsDevelopmentPreview = modeContext.IsDevelopmentPreview,
+            IncludeUnlistedActive = modeContext.IncludeUnlistedArticles,
+            Categories = articles
+                .Select(article => article.GetCategory(ContentTags.Article))
+                .Where(category => !string.IsNullOrWhiteSpace(category))
+                .Select(category => category!)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Order(StringComparer.OrdinalIgnoreCase)
+                .ToList(),
+            Tags = articles
+                .SelectMany(article => article.PublicTags)
+                .Where(tag => !string.IsNullOrWhiteSpace(tag))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Order(StringComparer.OrdinalIgnoreCase)
+                .ToList()
+        };
 
-        if (!article.Listed)
-        {
-            ViewData["Robots"] = "noindex, nofollow";
-        }
-
-        ViewData["ArticleStatusLabel"] = article.Listed ? "Posted" : "Status";
-        ViewData["ArticleStatusText"] = article.ListingStatusText;
-
-        return View();
+        return View(model);
     }
-
-    private SiteMode GetSiteMode()
-    {
-        return HttpContext.GetSiteModeContext().SiteMode;
-    }
-
-    private bool IncludeUnlistedArticles()
-    {
-        return HttpContext.GetSiteModeContext().IncludeUnlistedArticles;
-    }
-
-    private bool IsDevelopmentPreview()
-    {
-        return HttpContext.GetSiteModeContext().IsDevelopmentPreview;
-    }
-
 }

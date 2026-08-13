@@ -1,0 +1,17 @@
+@model dorks_and_dice_site.Models.Content.ContentDetailViewModel
+@{
+    ViewData["Title"] = Model.Item.Title;
+}
+
+@if (Model.IsDevelopmentVisibilityOverride)
+{
+    <div class="alert alert-warning" role="alert">
+        This content is not available in the selected site mode. It is visible because development preview is active.
+    </div>
+}
+
+@await Html.PartialAsync("~/Views/Content/_ContentDetailHeader.cshtml", Model)
+
+<div class="content-detail-body">
+    @Html.Raw(Model.RenderedBodyHtml)
+</div>

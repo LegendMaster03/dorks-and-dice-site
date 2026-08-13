@@ -10,7 +10,7 @@
             @if (!string.IsNullOrWhiteSpace(Model.PrimaryAction))
             {
                 <div class="resume-entry-actions">
-                    <a class="btn btn-sm btn-outline-primary resume-entry-action" asp-controller="Resume" asp-action="@Model.PrimaryAction">
+                    <a class="btn btn-sm btn-outline-primary resume-entry-action" href="/resume/@Model.PrimaryAction.ToLowerInvariant()">
                         @(string.IsNullOrWhiteSpace(Model.PrimaryActionText) ? "Open project" : Model.PrimaryActionText)
                     </a>
                 </div>
@@ -20,7 +20,7 @@
         {
             <p class="mb-2 small text-muted">
                 Related project:
-                <a class="fw-semibold" asp-controller="Resume" asp-action="@Model.RelatedProjectAction">@Model.RelatedProjectLabel</a>
+                <a class="fw-semibold" href="/resume/@Model.RelatedProjectAction.ToLowerInvariant()">@Model.RelatedProjectLabel</a>
             </p>
         }
         @if (Model.Highlights.Count > 0)

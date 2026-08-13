@@ -1,31 +1,36 @@
-@model dorks_and_dice_site.Models.Resume.ExperienceItemViewModel
+@model dorks_and_dice_site.Models.Content.ContentItem
+@using dorks_and_dice_site.Models.Content
+@{
+    var title = Model.GetTitle(ContentTags.Experience);
+    var dateText = Model.GetDateText(ContentTags.Experience) ?? string.Empty;
+    var highlights = Model.GetHighlights(ContentTags.Experience);
+    var featured = Model.IsFeatured(ContentTags.Experience);
+    var linkText = Model.GetLinkText(ContentTags.Experience);
+}
 
-<div class="@Model.CardCssClass" data-tags="@string.Join(' ', Model.Tags)">
+<div class="card mb-2" data-tags="@string.Join(' ', Model.PublicTags)">
     <div class="card-body">
         <div class="resume-entry-header">
             <div class="resume-entry-heading">
-                <h3 class="h6 mb-1">@Model.Title</h3>
+                <h3 class="h6 mb-1">@title</h3>
                 <p class="resume-entry-meta text-muted mb-2">
-                    <span>@Model.DateRange</span>
-                    @if (Model.Featured)
+                    <span>@dateText</span>
+                    @if (featured)
                     {
                         <span class="badge text-bg-primary">Featured</span>
                     }
                 </p>
             </div>
-            @if (!string.IsNullOrWhiteSpace(Model.DetailsAction))
-            {
-                <div class="resume-entry-actions">
-                    <a class="btn btn-sm btn-outline-primary resume-entry-action" asp-controller="Resume" asp-action="@Model.DetailsAction">
-                        @(string.IsNullOrWhiteSpace(Model.DetailsLinkText) ? "View details" : Model.DetailsLinkText)
-                    </a>
-                </div>
-            }
+            <div class="resume-entry-actions">
+                <a class="btn btn-sm btn-outline-primary resume-entry-action" href="/resume/@Model.Slug">
+                    @linkText
+                </a>
+            </div>
         </div>
-        @if (Model.Highlights.Count > 0)
+        @if (highlights.Count > 0)
         {
             <ul class="mb-0">
-                @foreach (var highlight in Model.Highlights)
+                @foreach (var highlight in highlights)
                 {
                     <li>@highlight</li>
                 }

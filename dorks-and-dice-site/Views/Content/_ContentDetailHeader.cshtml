@@ -1,0 +1,128 @@
+@model dorks_and_dice_site.Models.Content.ContentDetailViewModel
+@using dorks_and_dice_site.Models.Content
+@{
+    var item = Model.Item;
+    var informationTitle = Model.ContextTag switch
+    {
+        ContentTags.Article => "Article Information",
+        ContentTags.Experience => "Experience Information",
+        _ => "Project Information"
+    };
+}
+
+<nav class="resume-detail-back mb-3 d-flex flex-wrap gap-2" aria-label="Detail navigation">
+    @foreach (var link in Model.BackLinks)
+    {
+        <a class="btn btn-sm btn-outline-primary" href="@link.Href">&larr; @link.Text</a>
+    }
+</nav>
+
+<style>
+    .content-detail-header {
+        display: block;
+    }
+
+    .content-detail-heading {
+        --detail-logo-share: 20%;
+        position: relative;
+        box-sizing: border-box;
+        min-width: 0;
+        padding-right: calc(var(--detail-logo-share) + 1rem);
+    }
+
+    .content-detail-heading h1 {
+        overflow-wrap: anywhere;
+    }
+
+    .content-detail-heading .content-detail-logo-link {
+        position: absolute;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        width: var(--detail-logo-share);
+        min-width: 0;
+        display: flex;
+        align-items: flex-start;
+        justify-content: flex-end;
+        container-type: size;
+    }
+
+    .content-detail-heading .content-detail-logo {
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        object-position: top right;
+    }
+
+    .content-detail-header.consolevariations-bee .content-detail-logo {
+        width: 100cqmin;
+        height: 100cqmin;
+        aspect-ratio: 1 / 1;
+        object-fit: contain;
+        object-position: center;
+        border-radius: 50%;
+        border: 3px solid #e6b800;
+        background: #0e0f12;
+        padding: 7px;
+        box-sizing: border-box;
+        box-shadow: 0 0 26px rgba(230, 184, 0, .35);
+    }
+
+    @@media (max-width: 575.98px) {
+        .content-detail-heading {
+            --detail-logo-share: 15%;
+        }
+    }
+</style>
+
+<div class="content-detail-header @item.Header.CssClass mb-3">
+    <div class="content-detail-heading">
+        <h1 class="mb-1">@item.Title</h1>
+        @if (!string.IsNullOrWhiteSpace(item.Subtitle))
+        {
+            <p class="text-muted mb-1">@item.Subtitle</p>
+        }
+        @if (!string.IsNullOrWhiteSpace(item.Header.MetaLine))
+        {
+            <p class="resume-detail-meta text-muted mb-0">@item.Header.MetaLine</p>
+        }
+        @if (!string.IsNullOrWhiteSpace(item.Header.LogoUrl) && !string.IsNullOrWhiteSpace(item.Header.LogoLinkUrl))
+        {
+            <a href="@item.Header.LogoLinkUrl"
+               class="content-detail-logo-link"
+               target="_blank"
+               rel="noopener noreferrer"
+               aria-label="@(string.IsNullOrWhiteSpace(item.Header.LogoAriaLabel) ? "Organization website" : item.Header.LogoAriaLabel)">
+                <img src="@item.Header.LogoUrl"
+                     class="experience-logo content-detail-logo"
+                     alt="@(string.IsNullOrWhiteSpace(item.Header.LogoAltText) ? "Organization logo" : item.Header.LogoAltText)" />
+            </a>
+        }
+    </div>
+</div>
+
+@if (item.Header.InfoItems.Count > 0)
+{
+    <section class="card mb-4">
+        <div class="card-body">
+            <h2 class="h6 text-uppercase mb-3">@informationTitle</h2>
+            <dl class="row mb-0">
+                @foreach (var info in item.Header.InfoItems)
+                {
+                    <dt class="col-sm-3">@info.Key</dt>
+                    <dd class="col-sm-9">
+                        @if (item.Header.InfoItemLinks.TryGetValue(info.Key, out var itemLink) && !string.IsNullOrWhiteSpace(itemLink))
+                        {
+                            <a href="@itemLink" target="_blank" rel="noopener noreferrer">@info.Value</a>
+                        }
+                        else
+                        {
+                            @info.Value
+                        }
+                    </dd>
+                }
+            </dl>
+        </div>
+    </section>
+}

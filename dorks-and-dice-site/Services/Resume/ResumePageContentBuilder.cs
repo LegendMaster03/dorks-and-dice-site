@@ -68,9 +68,11 @@ public static class ResumePageContentBuilder
         model.EducationEntries ??= [];
         model.AwardEntries ??= [];
         model.SkillCategories ??= [];
-        model.ExperienceItems ??= [];
-        model.ProjectItems ??= [];
         model.LeadershipEntries ??= [];
+
+        // Projects and experience are loaded from the unified content catalog.
+        model.ExperienceItems = [];
+        model.ProjectItems = [];
 
         foreach (var educationEntry in model.EducationEntries)
         {
@@ -81,21 +83,6 @@ public static class ResumePageContentBuilder
         {
             awardEntry.Highlights ??= [];
         }
-
-        foreach (var experienceItem in model.ExperienceItems)
-        {
-            experienceItem.Highlights ??= [];
-            experienceItem.Tags ??= [];
-        }
-
-        foreach (var projectItem in model.ProjectItems)
-        {
-            projectItem.Tags ??= [];
-        }
-
-        model.ProjectItems = model.ProjectItems
-            .Where(projectItem => projectItem.Listed)
-            .ToList();
 
         foreach (var leadershipEntry in model.LeadershipEntries)
         {

@@ -1,12 +1,12 @@
 using System.Net;
 using System.Security;
 using dorks_and_dice_site.Services.Resume;
-using dorks_and_dice_site.Services.Articles;
 using dorks_and_dice_site.Services.Content.Storage;
 using dorks_and_dice_site.Services.GameServers.Minecraft;
 using dorks_and_dice_site.Services.Site;
 using dorks_and_dice_site.Services.Site.ModePresentation;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -15,9 +15,8 @@ builder.Services.AddControllersWithViews();
 builder.Services.Configure<MinecraftServerOptions>(
     builder.Configuration.GetSection(MinecraftServerOptions.SectionName));
 builder.Services.AddSingleton<IMinecraftServerStatusService, MinecraftServerStatusService>();
-builder.Services.AddSingleton<IResumeContentService, ResumeContentService>();
-builder.Services.AddSingleton<IArticleCatalogService, ArticleCatalogService>();
 builder.Services.AddContentStorage(builder.Configuration);
+builder.Services.AddScoped<IResumeContentService, ResumeContentService>();
 builder.Services.AddSingleton<SiteModeOptions>();
 builder.Services.AddSingleton<ISiteModePartialResolver, SiteModePartialResolver>();
 builder.Services.AddSingleton<ISiteModeStylesheetResolver, SiteModeStylesheetResolver>();
