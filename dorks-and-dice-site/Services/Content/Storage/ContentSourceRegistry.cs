@@ -1,6 +1,7 @@
 using dorks_and_dice_site.Models.Site;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace dorks_and_dice_site.Services.Content.Storage;
 
@@ -132,21 +133,15 @@ public sealed class ContentSourceRegistry : IContentSourceRegistry
             var key = sourceSection.Key;
             var provider = sourceSection["Provider"]
                 ?? throw new InvalidOperationException($"Content source '{key}' does not define a provider.");
-            var connectionStringName = sourceSection["ConnectionString"]
-                ?? throw new InvalidOperationException($"Content source '{key}' does not define a connection string name.");
-            var connectionString = _configuration.GetConnectionString(connectionStringName)
-                ?? throw new InvalidOperationException(
-                    $"Connection string '{connectionStringName}' was not found for content source '{key}'.");
 
-            if (string.Equals(provider, "sqlite", StringComparison.OrdinalIgnoreCase))
+            var connectionString = provider.ToLowerInvariant() switch
             {
-                var sqlite = new SqliteConnectionStringBuilder(connectionString);
-                if (!Path.IsPathRooted(sqlite.DataSource))
-                {
-                    sqlite.DataSource = Path.GetFullPath(Path.Combine(_contentRootPath, sqlite.DataSource));
-                }
-                connectionString = sqlite.ConnectionString;
-            }
+                "sqlite" => ResolveSqliteConnectionString(sourceSection, key),
+                "postgres" or "postgresql" when !string.IsNullOrWhiteSpace(sourceSection["Host"])
+                    => BuildPostgresConnectionString(sourceSection, key),
+                "postgres" or "postgresql" => ResolveNamedConnectionString(sourceSection, key),
+                _ => ResolveNamedConnectionString(sourceSection, key)
+            };
 
             result[key] = new ContentSourceDefinition(
                 key,
@@ -161,6 +156,95 @@ public sealed class ContentSourceRegistry : IContentSourceRegistry
         }
 
         return result;
+    }
+
+    private string ResolveSqliteConnectionString(IConfigurationSection sourceSection, string sourceKey)
+    {
+        var connectionString = ResolveNamedConnectionString(sourceSection, sourceKey);
+        var sqlite = new SqliteConnectionStringBuilder(connectionString);
+        if (!Path.IsPathRooted(sqlite.DataSource))
+        {
+            sqlite.DataSource = Path.GetFullPath(Path.Combine(_contentRootPath, sqlite.DataSource));
+        }
+
+        return sqlite.ConnectionString;
+    }
+
+    private string ResolveNamedConnectionString(IConfigurationSection sourceSection, string sourceKey)
+    {
+        var connectionStringName = sourceSection["ConnectionString"]
+            ?? throw new InvalidOperationException($"Content source '{sourceKey}' does not define a connection string name.");
+        return _configuration.GetConnectionString(connectionStringName)
+            ?? throw new InvalidOperationException(
+                $"Connection string '{connectionStringName}' was not found for content source '{sourceKey}'.");
+    }
+
+    private static string BuildPostgresConnectionString(IConfigurationSection sourceSection, string sourceKey)
+    {
+        var host = RequireSetting(sourceSection, sourceKey, "Host");
+        var database = RequireSetting(sourceSection, sourceKey, "Database");
+        var username = RequireSetting(sourceSection, sourceKey, "Username");
+
+        var port = 5432;
+        if (!string.IsNullOrWhiteSpace(sourceSection["Port"])
+            && (!int.TryParse(sourceSection["Port"], out port) || port is < 1 or > 65535))
+        {
+            throw new InvalidOperationException($"Content source '{sourceKey}' has an invalid PostgreSQL port.");
+        }
+
+        var passwordFile = sourceSection["PasswordFile"];
+        string password;
+        if (!string.IsNullOrWhiteSpace(passwordFile))
+        {
+            if (!Path.IsPathRooted(passwordFile))
+            {
+                throw new InvalidOperationException(
+                    $"Content source '{sourceKey}' PostgreSQL password file must use an absolute path.");
+            }
+
+            try
+            {
+                password = File.ReadAllText(passwordFile).TrimEnd('\r', '\n');
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                throw new InvalidOperationException(
+                    $"Content source '{sourceKey}' PostgreSQL password file could not be read.", ex);
+            }
+        }
+        else
+        {
+            password = sourceSection["Password"] ?? string.Empty;
+        }
+
+        if (string.IsNullOrEmpty(password) || password.IndexOfAny(['\r', '\n', '\0']) >= 0)
+        {
+            throw new InvalidOperationException(
+                $"Content source '{sourceKey}' requires a non-empty PostgreSQL password without control delimiters.");
+        }
+
+        var builder = new NpgsqlConnectionStringBuilder
+        {
+            Host = host,
+            Port = port,
+            Database = database,
+            Username = username,
+            Password = password,
+            Pooling = true
+        };
+        return builder.ConnectionString;
+    }
+
+    private static string RequireSetting(IConfigurationSection sourceSection, string sourceKey, string setting)
+    {
+        var value = sourceSection[setting];
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            throw new InvalidOperationException(
+                $"Content source '{sourceKey}' does not define PostgreSQL setting '{setting}'.");
+        }
+
+        return value;
     }
 
     private void ValidateSourceKeys(IEnumerable<string> keys, string settingName)
