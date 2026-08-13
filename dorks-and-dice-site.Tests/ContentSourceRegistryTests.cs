@@ -53,7 +53,7 @@ public sealed class ContentSourceRegistryTests
     }
 
     [Fact]
-    public void ManualDevelopmentSelectionCanUseAnyConfiguredSourceSet()
+    public void ManualDevelopmentSelectionCanUseAnyConfiguredSourceSetInRequestedOrder()
     {
         var settings = new Dictionary<string, string?>
         {
@@ -72,11 +72,9 @@ public sealed class ContentSourceRegistryTests
             .Build();
         var registry = new ContentSourceRegistry(configuration, Path.GetTempPath());
 
-        var selected = registry.GetSourcesByKeys(["First", "Second"]);
+        var selected = registry.GetSourcesByKeys(["Second", "First", "Second"]);
 
-        Assert.Equal(2, selected.Count);
-        Assert.Contains(selected, source => source.Key == "First");
-        Assert.Contains(selected, source => source.Key == "Second");
+        Assert.Equal(["Second", "First"], selected.Select(source => source.Key));
         Assert.Empty(registry.GetSourcesByKeys([]));
     }
 }

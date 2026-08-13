@@ -60,12 +60,14 @@ public sealed class ContentSourceRegistry : IContentSourceRegistry
 
     public IReadOnlyList<ContentSourceDefinition> GetSourcesByKeys(IEnumerable<string> keys)
     {
-        var requested = new HashSet<string>(keys, StringComparer.OrdinalIgnoreCase);
-        ValidateSourceKeys(requested, "content source selection");
-        return _sourceOrder
-            .Where(requested.Contains)
-            .Select(GetSource)
-            .ToList();
+        var orderedKeys = new List<string>();
+        foreach (var key in keys)
+        {
+            AddDistinct(orderedKeys, key);
+        }
+
+        ValidateSourceKeys(orderedKeys, "content source selection");
+        return orderedKeys.Select(GetSource).ToList();
     }
 
     public IReadOnlyList<ContentSourceDefinition> GetAllSources() =>
