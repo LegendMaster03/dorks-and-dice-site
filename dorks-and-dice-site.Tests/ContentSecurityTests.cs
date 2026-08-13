@@ -18,8 +18,8 @@ public sealed class ContentSecurityTests
 
         Assert.Contains("<strong>safe</strong>", html);
         Assert.False(html.Contains("<script", StringComparison.OrdinalIgnoreCase));
+        Assert.False(html.Contains("<img", StringComparison.OrdinalIgnoreCase));
         Assert.False(html.Contains("javascript:", StringComparison.OrdinalIgnoreCase));
-        Assert.False(html.Contains("onerror", StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]
