@@ -1,5 +1,6 @@
 using dorks_and_dice_site.Services.Content;
 using dorks_and_dice_site.Services.Content.Storage;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 
 namespace dorks_and_dice_site.Tests;
@@ -7,11 +8,12 @@ namespace dorks_and_dice_site.Tests;
 public sealed class ContentSourceTransferServiceTests
 {
     [Fact]
-    public async Task CopyAllPreservesSourceAndRevisionHistory()
+    public async Task CopyAllPreservesSourceRevisionHistoryAndMedia()
     {
         using var fixture = new TransferFixture();
         var authoring = new ContentAuthoringService(fixture.Registry);
         var transfer = new ContentSourceTransferService(fixture.Registry);
+        var assets = new ContentAssetService(fixture.Registry, new HttpContextAccessor(), null!);
 
         var model = authoring.GetNew("Source");
         model.Document.Id = "copy-history-test";
@@ -22,6 +24,16 @@ public sealed class ContentSourceTransferServiceTests
         Assert.NotNull(edit);
         edit.Document.Body += "\n\nSecond revision.";
         await authoring.SaveRevisionAsync(edit.Document);
+
+        var pngSignature = new byte[] { 0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a };
+        await using var imageStream = new MemoryStream(pngSignature);
+        var sourceAsset = await assets.UploadAsync(
+            "Source",
+            "copy-history-test",
+            "diagram.png",
+            "image/png",
+            imageStream,
+            pngSignature.Length);
 
         var copiedCount = await transfer.CopyAllAsync("Source", "Target");
 
@@ -36,6 +48,12 @@ public sealed class ContentSourceTransferServiceTests
         Assert.Contains("Second revision.", targetCopy.Document.Body);
         Assert.Equal(sourceCopy.Document.Id, targetCopy.Document.Id);
         Assert.Equal(sourceCopy.Document.Slug, targetCopy.Document.Slug);
+
+        var targetAssets = await assets.GetForPageAsync("Target", "copy-history-test");
+        var targetAsset = Assert.Single(targetAssets);
+        Assert.Equal(sourceAsset.AssetKey, targetAsset.AssetKey);
+        Assert.Equal(sourceAsset.Sha256, targetAsset.Sha256);
+        Assert.Equal(sourceAsset.Url, targetAsset.Url);
     }
 
     [Fact]
