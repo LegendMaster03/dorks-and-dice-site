@@ -7,15 +7,16 @@ The current modes are:
 
 - `Professional`: Kyle Barnett professional resume, portfolio, articles, and professional-owned assets.
 - `DorksAndDice`: group-facing Dorks & Dice site experience.
-- `Development`: local-only preview mode used for testing shared routes, mode switching, and unlisted content.
+- `Development`: local-only preview mode used for testing shared routes, mode switching, content sources, and unlisted content.
 - `Unassigned`: bare-bones fallback for domains that are connected to the app but not mapped to a mode.
 
 ## Goals
 
 - Keep one deployable codebase while the site identities are still closely related.
 - Make ownership explicit so professional pages, Dorks & Dice pages, and shared pages do not blend accidentally.
-- Allow shared infrastructure for layout, routing, article handling, static files, and deployment.
+- Allow shared infrastructure for layout, routing, content handling, static files, and deployment.
 - Preserve a future path to split one mode into a separate app if it grows enough to justify that.
+- Keep content storage replaceable and composable so the site can add databases or move a database off-host without changing the content model.
 
 ## Request Flow
 
@@ -24,7 +25,7 @@ The current modes are:
 1. Normalize the request host.
 2. Check the host against configured professional, Dorks & Dice, and development host lists.
 3. On development hosts, read the selected preview mode from `DevelopmentPreviewSiteMode`.
-4. Read the unlisted article preview flag from `DevelopmentIncludeUnlistedArticles` on development hosts only.
+4. On development hosts, read the unlisted-content flag and any explicit content-source selection.
 5. Store the resulting `SiteModeContext` in `HttpContext.Items`.
 6. Check the requested path through `SiteRouteOwnership`.
 7. For real domains, re-execute blocked routes as a normal 404.
@@ -41,6 +42,7 @@ Current rules:
 - `/` is mode-adaptive.
 - `/articles` and `/articles/...` are mode-adaptive.
 - `/resume` and `/resume/...` are Professional-owned.
+- `/development/content` is development-host-only authoring infrastructure.
 - `/health`, static framework assets, and shared error routes are shared exceptions.
 - `/site-modes/professional/...` is Professional-owned.
 - `/site-modes/dorks-and-dice/...` is Dorks & Dice-owned.
@@ -61,7 +63,8 @@ Examples:
 - `Views/SiteModes/Development/_DevelopmentTools.cshtml`
 - `Views/SiteModes/Unassigned/Home.cshtml`
 
-Shared article views remain under `Views/Articles` because articles are a shared surface with mode-aware eligibility.
+Unified content detail rendering lives under `Views/Content/`. The article index remains under `Views/Articles/`, but
+individual Project, Experience, and Article detail pages no longer require one Razor file per page.
 
 ## Branding And Mode-Specific Components
 
@@ -171,7 +174,7 @@ wwwroot/site-modes/development/css/site.css
 - `Unassigned` loads no mode stylesheet and depends only on shared CSS.
 
 The absence of an Unassigned stylesheet is intentional. Unassigned is the visual and structural fallback and must remain
-dependent only on shared infrastructure.
+independent only on shared infrastructure.
 
 On a development host, the selected preview mode stylesheet loads first and the Development stylesheet loads afterward
 for the preview toolbar and diagnostics. For example, Dorks & Dice preview loads:
@@ -190,47 +193,148 @@ CSS ownership rules:
 - Rules used intentionally across site identities belong to shared CSS.
 - Do not place mode-owned selectors in shared CSS merely because the shared layout loads it everywhere.
 
-## Articles
+## Unified Content System
 
-Article metadata currently lives in `ArticleCatalogService`.
+Projects, Experience entries with detail pages, and Articles use one content model. Their distinction is the context in
+which a page is listed, not a separate storage or controller type.
 
-Articles are currently hand-authored Razor pages. There is not yet a CMS, admin editor, or database-backed publishing
-workflow, so each article currently needs explicit source changes to add the page, metadata, route, and supporting
-assets. A better article creation workflow is a future goal, but the current implementation should stay simple until the
-site has enough article volume to justify that work.
+`ContentItem` provides the shared fields needed by those contexts, including:
 
-The likely future direction is a lightweight wiki-style authoring system inspired by MediaWiki workflows. That would let
-articles be written as structured content instead of full Razor pages while preserving the application's existing
-article metadata, mode visibility, listing, noindex, routing, and asset ownership rules.
+- stable `Id`
+- public `Slug`
+- title, subtitle, summary, dates, images, links, and detail-header metadata
+- optional context-specific presentations
+- `VisibleInModes`
+- tags
+- revision ID, body format, and body
+
+Context is many-to-many and is represented by the existing tag system:
+
+```text
+project
+experience
+article
+```
+
+A single page can therefore be both a Project and Experience entry without duplicating its detail page or stable
+identity. Skyblivion, Skywind, and Safe Future are examples of content that can be presented in more than one context.
+
+Context tags and internal tags are not exposed as normal user-facing tags. `_internal:unlisted` is the current internal
+listing-state tag. Listed is the default state, so there is no positive `listed` flag that every normal page must carry.
+
+`VisibleInModes` remains typed data rather than a free-form tag because it is an access/identity rule. Development detail
+preview may inspect content that is not eligible for the selected real mode, but real domains still enforce mode
+eligibility before rendering.
+
+### Revision Storage
+
+The content database uses a revision-oriented schema inspired by MediaWiki's separation of page identity from page
+revision history:
+
+```text
+content_page
+content_revision
+content_revision_tag
+content_revision_mode
+```
+
+`content_page` owns the stable content key, current slug, and pointer to the current revision. `content_revision` stores
+immutable revision content and an optional parent revision. Tags and visible modes are attached to each revision so an
+old revision remains a complete historical snapshot.
+
+The current page is therefore selected through `page_current_revision_id`; saving does not overwrite the previous
+revision.
+
+The body format is currently `markdown`. `ContentBodyRenderer` uses Markdig and supports registered `{{directive}}`
+blocks for application-owned dynamic sections. This keeps ordinary authoring content out of Razor while preserving a
+controlled extension point for pages that need live application data.
+
+The Professional resume still uses `Content/Resume/resume.json` for resume-only structures that are not navigable detail
+content, such as contact links, education, awards, skills, and leadership. Project and Experience detail records are no
+longer stored there.
+
+### Database Sources
+
+Content storage is configured as named database sources under `ContentStorage:Sources`. A source owns:
+
+- a stable source key
+- a display name
+- a provider name
+- a named connection string
+
+The repository can read more than one source during the same request. Source order matters: sources are composed from
+base to override, and a later source replaces an earlier page with the same stable content ID. If two different stable
+IDs claim the same slug, the later source owns that slug in the composed catalog.
+
+`ContentStorage:GlobalSources` is the ordered global source list.
+
+Only real site identities receive per-mode source-list differences:
+
+- `Professional` starts from the global list unless `InheritGlobal` is disabled, then applies its configured `Remove` and `Add` entries.
+- `DorksAndDice` follows the same rule.
+- `Unassigned` does not have a mode-specific source layer. It uses the global list exactly.
+- `Development` does not inherit the global list and does not have a configured mode-specific list. Its source set is selected manually in the development UI.
+
+This separation is intentional. Unassigned is a fall-through identity and should represent the global default directly.
+Development is a diagnostic environment and should not accidentally imply a production content-source policy.
+
+The current `Local` and `External` source definitions intentionally point to the same SQLite database. That is redundant
+now, but it preserves the connection boundary: the External connection can later be moved to another database without
+changing the content catalog, controllers, routes, or views. SQLite is the only configured provider in the current
+build; adding another provider is a storage-adapter concern rather than a content-model change.
+
+The local authoring database is selected separately through `ContentStorage:AuthoringSource`. The development editor
+writes revisions only to that source instead of writing through the composed read catalog.
+
+### Authoring Workflow
+
+Development hosts expose a lightweight wiki-style authoring surface at `/development/content`.
+
+It can:
+
+- list locally authored content
+- create a new stable page
+- edit structured revision metadata
+- edit Markdown body content
+- preview rendered body content
+- save a new revision without destroying the previous revision
+- show revision history
+- reject a stale save when the current revision changed after the editor was opened
+
+The editor is development-host-only. It is not a public CMS and is not exposed on production domains.
+
+The current editor deliberately exposes structured metadata as JSON rather than building a large administrative UI too
+early. A richer editor can later sit on the same revision model without changing stored content.
+
+The design takes MediaWiki as reference and inspiration rather than attempting to duplicate MediaWiki wholesale. The
+important ideas retained here are stable page identity, separate revisions, a current-revision pointer, linkable page
+content, and an authoring path that does not require application source changes for every new page.
 
 The Dorks & Dice mode may eventually use the same content foundation for campaign knowledge management. That direction
-would likely combine wiki-style pages with selected ideas from campaign planning tools and local linked-note workflows:
-characters, locations, factions, session notes, timelines, cross-links, and private/public visibility boundaries.
+can combine wiki-style pages with selected campaign-planning and linked-note ideas such as characters, locations,
+factions, session notes, timelines, cross-links, and private/public visibility boundaries.
 
-Important flags:
+### Listing And Eligibility
 
-- `Listed`: controls whether an article appears in normal indexes.
-- `VisibleInModes`: allow-list of modes where the article is eligible.
-- `PostedDateText`: displayed post date for listed article cards.
+Unlisted content:
 
-Unlisted articles:
+- is identified by `_internal:unlisted`
+- is hidden from normal indexes
+- remains accessible by direct URL when eligible for the current mode
+- renders `noindex, nofollow`
+- can be exposed in development preview through the unlisted-content toggle
 
-- are hidden from normal article indexes
-- remain accessible by direct URL when eligible for the current mode
-- render `noindex, nofollow`
-- show as `Unlisted` in development preview
+`Development` mode ignores `VisibleInModes` for local inspection, but Development has no automatic content database
+selection. The developer must select the database source or sources to inspect.
 
-`Development` mode ignores `VisibleInModes` for local inspection, but it does not automatically include unlisted
-articles. The separate unlisted toggle controls that.
-
-Mode eligibility is an internal content gate, not a user-facing filter. After the current mode has determined which
-articles are eligible, the article index can expose normal user filters such as search, category, and tags.
+Mode eligibility is an internal content gate, not a user-facing filter. After the current mode and source composition have
+determined which content is eligible, indexes can expose normal user filters such as search, category, and tags.
 
 ## User-Facing Filters
 
-User-facing filters operate only on content that has already passed the active mode's ownership and visibility rules.
-They are a convenience layer for small curated indexes, not a replacement for mode access control or a full content
-management system.
+User-facing filters operate only on content that has already passed source composition, the active mode's ownership, and
+visibility rules. They are a convenience layer for small curated indexes, not a replacement for mode access control or
+content storage.
 
 Current user-facing filters include:
 
@@ -238,6 +342,10 @@ Current user-facing filters include:
 - article search
 - article categories
 - article tags
+
+Projects and Articles now use the same generic `data-content-*` JavaScript binding. Context-specific Razor markup decides
+which controls and fields are present, while one filter implementation handles search, tags, categories, status counts,
+and supported ordering behavior.
 
 These filters are intentionally separate from mode eligibility. A visitor can narrow visible content, but cannot use a
 filter control to reveal content that is not available to the current mode.
@@ -252,11 +360,11 @@ tag-query subset adapted to this site's content model:
 - `tag:architecture`, `category:"Technical Investigation"`, `title:website`, and `text:client` search specific fields.
 - `order:title`, `order:date`, `order:tagcount`, and `order:featured` sort supported lists.
 
-The search syntax operates only after route ownership and mode visibility have already limited the available content.
+The search syntax operates only after source selection, route ownership, and mode visibility have already limited the
+available content.
 
-This implementation should stay intentionally modest until the content volume justifies more. Do not add taxonomy
-management, article editing tools, or exhaustive parser behavior simply because the syntax could support it later. For
-now, tags should be added only when they make an existing project or article easier to find.
+Taxonomy should remain intentional. New tags should be added when they improve an existing listing, query, or future
+content relationship rather than merely because the tag system can represent them.
 
 ## Local Development Preview
 
@@ -266,29 +374,40 @@ The development ribbon:
 
 - shows the selected preview mode
 - allows switching between Dorks & Dice, Professional, and Development
-- allows showing unlisted articles
+- has an Articles submenu
+- moves the unlisted-content toggle into the Articles submenu
+- links to the development content editor from the Articles submenu
+- lists every configured content database source and allows each one to be enabled or disabled independently
 - applies changes immediately without an apply button
-- stores mode and unlisted state in cookies
+- stores preview mode, unlisted state, and explicit source selection in cookies
 - shows route mismatch warnings when the selected mode could not access the current route on a real domain
 
-The selected preview mode is the source of truth for branding, layout, navigation, mode-owned CSS, and content filtering
-while on a development host. Development-tool CSS is added as an overlay after the selected mode stylesheet.
+When a development host previews Professional or Dorks & Dice and no explicit source selection has been made, the
+selected real mode's configured source list is used. Once the developer changes a source toggle, that explicit source set
+becomes the development selection. Selecting Development itself starts with no inherited database sources; its sources
+must be chosen manually.
+
+The selected preview mode is the source of truth for branding, layout, navigation, mode-owned CSS, and mode visibility
+while on a development host. Development-tool CSS is added as an overlay after the selected mode stylesheet. Content
+source selection is deliberately a separate development control so storage composition can be tested independently from
+visual/site-mode selection.
 
 ## Future Extraction Path
 
 This architecture intentionally avoids premature separation, but it does not block future separation.
 
-Because each mode already owns its pages, branding, asset paths, stylesheets, and access rules, a mode can later be
-extracted into a separate application with clearer boundaries than a fully blended site would provide.
+Because each mode already owns its pages, branding, asset paths, stylesheets, access rules, and content-source policy, a
+mode can later be extracted into a separate application with clearer boundaries than a fully blended site would provide.
 
 The current shape is therefore a middle ground:
 
 - One deployment and one codebase while the domains share infrastructure.
 - Explicit module boundaries if one site identity becomes large enough to split.
+- Database/source boundaries that can move independently from the web application.
 
 ## Adding A New Mode
 
-To add a mode:
+To add a real site mode:
 
 1. Add the mode value to `SiteMode`.
 2. Add host/domain mapping in `SiteModeOptions`.
@@ -299,9 +418,15 @@ To add a mode:
 7. Add a presentation module under `Services/Site/ModePresentation`.
 8. Add mode-owned static assets under `wwwroot/site-modes/{mode}`.
 9. Add the mode stylesheet to `SiteModeStylesheetResolver` when the mode owns a visual identity or tooling overlay.
-10. Update article metadata where articles should be eligible in the new mode.
+10. Add `VisibleInModes` eligibility to content that belongs in the new mode.
+11. Add a `ContentStorage:Modes:{Mode}` source override only when the new real site identity needs to differ from the global source list.
+
+Do not add source override layers for Development or Unassigned. Development is manually selected; Unassigned is the
+global fall-through.
 
 ## Practical Rule
 
-If content is only for one site identity, put it under that mode. If content is intentionally shared, keep it in a shared
-surface and make the mode filtering explicit.
+If content is only for one site identity, make its mode eligibility explicit. If one content page belongs in multiple
+listing contexts, give the same stable page multiple context tags rather than duplicating it. If a database source should
+apply everywhere, put it in the ordered global list; use per-mode source differences only for real site identities that
+actually need them.
