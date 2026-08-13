@@ -6,9 +6,6 @@ on:
   push:
     branches: [ "agent/**" ]
 
-permissions:
-  contents: write
-
 concurrency:
   group: validate-${{ github.ref }}
   cancel-in-progress: true
@@ -30,27 +27,3 @@ jobs:
             -w /src \
             mcr.microsoft.com/dotnet/sdk:10.0 \
             dotnet test dorks-and-dice-site.slnx --configuration Release
-
-      - name: Upload migrated content database
-        uses: actions/upload-artifact@v4
-        with:
-          name: content-database
-          path: dorks-and-dice-site/Content/content.db
-          if-no-files-found: error
-
-      - name: Commit migrated content database
-        if: github.event_name == 'push' && github.ref == 'refs/heads/agent/article-content-overhaul'
-        run: |
-          if [ "${{ github.event.head_commit.message }}" = "Add migrated content database" ]; then
-            exit 0
-          fi
-
-          git add dorks-and-dice-site/Content/content.db
-          if git diff --cached --quiet; then
-            exit 0
-          fi
-
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -m "Add migrated content database"
-          git push origin HEAD:agent/article-content-overhaul
