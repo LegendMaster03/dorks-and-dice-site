@@ -205,12 +205,24 @@ public sealed class ContentAuthoringService : IContentAuthoringService
         var sourceRepository = new DatabaseContentRepository(sourceContext);
         var item = await sourceRepository.GetBySlugAsync(slug, cancellationToken)
             ?? throw new InvalidOperationException($"Content page '{slug}' was not found in source '{sourceKey}'.");
+        var sourcePage = await sourceContext.Pages
+            .Include(page => page.Assets)
+            .SingleAsync(page => page.ContentKey == item.Id, cancellationToken);
 
         if (await targetContext.Pages.AnyAsync(
                 page => page.ContentKey == item.Id || page.Slug == item.Slug,
                 cancellationToken))
         {
             throw new InvalidOperationException("The target source already contains a page with that stable ID or slug.");
+        }
+
+        var sourceAssetKeys = sourcePage.Assets.Select(asset => asset.AssetKey).ToList();
+        if (sourceAssetKeys.Count > 0
+            && await targetContext.Assets.AnyAsync(
+                asset => sourceAssetKeys.Contains(asset.AssetKey),
+                cancellationToken))
+        {
+            throw new InvalidOperationException("The target source already contains a content media key used by this page.");
         }
 
         await using var targetTransaction = await targetContext.Database.BeginTransactionAsync(cancellationToken);
@@ -222,6 +234,22 @@ public sealed class ContentAuthoringService : IContentAuthoringService
         targetContext.Pages.Add(targetPage);
         await targetContext.SaveChangesAsync(cancellationToken);
 
+        if (sourcePage.Assets.Count > 0)
+        {
+            targetContext.Assets.AddRange(sourcePage.Assets.Select(asset => new ContentAssetRecord
+            {
+                AssetKey = asset.AssetKey,
+                PageId = targetPage.Id,
+                FileName = asset.FileName,
+                MediaType = asset.MediaType,
+                Length = asset.Length,
+                Sha256 = asset.Sha256,
+                CreatedUtc = NormalizeUtc(asset.CreatedUtc),
+                Data = asset.Data.ToArray()
+            }));
+            await targetContext.SaveChangesAsync(cancellationToken);
+        }
+
         var revision = CreateRevision(targetPage.Id, parentRevisionId: null, item);
         targetContext.Revisions.Add(revision);
         await targetContext.SaveChangesAsync(cancellationToken);
@@ -230,8 +258,6 @@ public sealed class ContentAuthoringService : IContentAuthoringService
         await targetContext.SaveChangesAsync(cancellationToken);
         await targetTransaction.CommitAsync(cancellationToken);
 
-        var sourcePage = await sourceContext.Pages
-            .SingleAsync(page => page.ContentKey == item.Id, cancellationToken);
         sourceContext.Pages.Remove(sourcePage);
         await sourceContext.SaveChangesAsync(cancellationToken);
     }
@@ -407,4 +433,11 @@ public sealed class ContentAuthoringService : IContentAuthoringService
         options.Converters.Add(new JsonStringEnumConverter());
         return options;
     }
+
+    private static DateTime NormalizeUtc(DateTime value) => value.Kind switch
+    {
+        DateTimeKind.Utc => value,
+        DateTimeKind.Local => value.ToUniversalTime(),
+        _ => DateTime.SpecifyKind(value, DateTimeKind.Utc)
+    };
 }
