@@ -21,6 +21,7 @@ public static class ContentStorageServiceCollectionExtensions
         services.AddScoped<IContentCatalogService, ContentCatalogService>();
         services.AddScoped<IContentAuthoringService, ContentAuthoringService>();
         services.AddScoped<IContentSourceTransferService, ContentSourceTransferService>();
+        services.AddScoped<IContentAssetService, ContentAssetService>();
         services.AddSingleton<IContentDirectiveRenderer, SiteModeArchitectureDirectiveRenderer>();
         services.AddSingleton<IContentBodyRenderer, ContentBodyRenderer>();
 
