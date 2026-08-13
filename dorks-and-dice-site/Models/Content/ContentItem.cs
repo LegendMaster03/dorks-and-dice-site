@@ -36,6 +36,7 @@ public sealed class ContentItem
     public string? MetaTitle { get; set; }
     public string? MetaDescription { get; set; }
     public string? MetaImage { get; set; }
+    public ContentImage? ListingImage { get; set; }
     public ContentDetailHeader Header { get; set; } = new();
     public List<string> Highlights { get; set; } = [];
     public Dictionary<string, ContentPresentation> Presentations { get; set; } = new(StringComparer.OrdinalIgnoreCase);
@@ -95,6 +96,14 @@ public sealed class ContentPresentation
     public List<string>? Highlights { get; set; }
 }
 
+public sealed class ContentImage
+{
+    public string Url { get; set; } = string.Empty;
+    public string AltText { get; set; } = string.Empty;
+    public int Width { get; set; }
+    public int Height { get; set; }
+}
+
 public sealed class ContentDetailHeader
 {
     public string? MetaLine { get; set; }
@@ -102,6 +111,7 @@ public sealed class ContentDetailHeader
     public string? LogoAltText { get; set; }
     public string? LogoLinkUrl { get; set; }
     public string? LogoAriaLabel { get; set; }
+    public string? CssClass { get; set; }
     public Dictionary<string, string> InfoItems { get; set; } = [];
     public Dictionary<string, string> InfoItemLinks { get; set; } = [];
 }

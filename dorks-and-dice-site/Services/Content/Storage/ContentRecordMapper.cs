@@ -41,6 +41,7 @@ internal static class ContentRecordMapper
             MetaTitle = metadata.MetaTitle,
             MetaDescription = metadata.MetaDescription,
             MetaImage = metadata.MetaImage,
+            ListingImage = metadata.ListingImage,
             Header = metadata.Header ?? new ContentDetailHeader(),
             Highlights = metadata.Highlights ?? [],
             Presentations = metadata.Presentations ?? new Dictionary<string, ContentPresentation>(StringComparer.OrdinalIgnoreCase),
@@ -66,6 +67,7 @@ internal static class ContentRecordMapper
             MetaTitle = item.MetaTitle,
             MetaDescription = item.MetaDescription,
             MetaImage = item.MetaImage,
+            ListingImage = item.ListingImage,
             Header = item.Header,
             Highlights = item.Highlights,
             Presentations = item.Presentations
@@ -87,6 +89,7 @@ internal static class ContentRecordMapper
         public string? MetaTitle { get; set; }
         public string? MetaDescription { get; set; }
         public string? MetaImage { get; set; }
+        public ContentImage? ListingImage { get; set; }
         public ContentDetailHeader? Header { get; set; }
         public List<string>? Highlights { get; set; }
         public Dictionary<string, ContentPresentation>? Presentations { get; set; }
