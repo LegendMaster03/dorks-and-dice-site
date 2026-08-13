@@ -226,6 +226,22 @@ public sealed class ContentSourceTransferService : IContentSourceTransferService
     {
         targetPage.CurrentRevisionId = null;
         await targetContext.SaveChangesAsync(cancellationToken);
+
+        var revisionIds = await targetContext.Revisions
+            .Where(revision => revision.PageId == targetPage.Id)
+            .OrderByDescending(revision => revision.Id)
+            .Select(revision => revision.Id)
+            .ToListAsync(cancellationToken);
+        foreach (var revisionId in revisionIds)
+        {
+            await targetContext.Revisions
+                .Where(revision => revision.Id == revisionId)
+                .ExecuteDeleteAsync(cancellationToken);
+        }
+
+        await targetContext.Assets
+            .Where(asset => asset.PageId == targetPage.Id)
+            .ExecuteDeleteAsync(cancellationToken);
         targetContext.Pages.Remove(targetPage);
         await targetContext.SaveChangesAsync(cancellationToken);
     }

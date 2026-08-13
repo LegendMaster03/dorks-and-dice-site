@@ -54,7 +54,7 @@ public sealed class InitialContentMarkdownIntegrationTests : IClassFixture<WebAp
             var destinations = Regex.Matches(body, @"!\[[^\]]*\]\((?<url>[^\s)]+)");
             imageCount += destinations.Count;
             Assert.All(destinations, match =>
-                Assert.True(match.Groups["url"].Value.StartsWith("/content/media/", StringComparison.Ordinal)));
+                Assert.StartsWith("/content/media/", match.Groups["url"].Value, StringComparison.Ordinal));
         }
 
         Assert.Equal(13, imageCount);
