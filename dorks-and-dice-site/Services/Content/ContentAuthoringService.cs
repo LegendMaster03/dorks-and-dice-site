@@ -26,7 +26,7 @@ public sealed class ContentAuthoringService : IContentAuthoringService
     {
         var selectedSourceKey = ResolveSourceKey(sourceKey);
         await using var context = CreateContext(selectedSourceKey);
-        await context.Database.EnsureCreatedAsync(cancellationToken);
+        await ContentStorageSchema.EnsureCurrentAsync(context, cancellationToken);
         var repository = new DatabaseContentRepository(context);
         var items = await repository.GetAllAsync(cancellationToken);
         return new ContentAuthoringIndexViewModel
@@ -48,7 +48,7 @@ public sealed class ContentAuthoringService : IContentAuthoringService
         sourceKey = ResolveSourceKey(sourceKey);
         ContentInputValidator.ValidateKey("Slug", slug);
         await using var context = CreateContext(sourceKey);
-        await context.Database.EnsureCreatedAsync(cancellationToken);
+        await ContentStorageSchema.EnsureCurrentAsync(context, cancellationToken);
         var repository = new DatabaseContentRepository(context);
         var item = await repository.GetBySlugAsync(slug, cancellationToken);
         if (item is null)
@@ -106,7 +106,7 @@ public sealed class ContentAuthoringService : IContentAuthoringService
     {
         document.SourceKey = ResolveSourceKey(document.SourceKey);
         await using var context = CreateContext(document.SourceKey);
-        await context.Database.EnsureCreatedAsync(cancellationToken);
+        await ContentStorageSchema.EnsureCurrentAsync(context, cancellationToken);
         var item = ParseAndValidate(document, requireExistingRevision: false);
         await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
 
@@ -143,7 +143,7 @@ public sealed class ContentAuthoringService : IContentAuthoringService
     {
         document.SourceKey = ResolveSourceKey(document.SourceKey);
         await using var context = CreateContext(document.SourceKey);
-        await context.Database.EnsureCreatedAsync(cancellationToken);
+        await ContentStorageSchema.EnsureCurrentAsync(context, cancellationToken);
         var item = ParseAndValidate(document, requireExistingRevision: true);
         await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
 
@@ -199,8 +199,8 @@ public sealed class ContentAuthoringService : IContentAuthoringService
 
         await using var sourceContext = CreateContext(sourceKey);
         await using var targetContext = CreateContext(targetSourceKey);
-        await sourceContext.Database.EnsureCreatedAsync(cancellationToken);
-        await targetContext.Database.EnsureCreatedAsync(cancellationToken);
+        await ContentStorageSchema.EnsureCurrentAsync(sourceContext, cancellationToken);
+        await ContentStorageSchema.EnsureCurrentAsync(targetContext, cancellationToken);
 
         var sourceRepository = new DatabaseContentRepository(sourceContext);
         var item = await sourceRepository.GetBySlugAsync(slug, cancellationToken)

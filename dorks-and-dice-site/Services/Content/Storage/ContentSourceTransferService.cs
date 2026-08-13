@@ -35,15 +35,19 @@ public sealed class ContentSourceTransferService : IContentSourceTransferService
         var (source, target) = ResolveDistinctSources(sourceKey, targetSourceKey);
         await using var sourceContext = CreateContext(source.Key);
         await using var targetContext = CreateContext(target.Key);
-        await sourceContext.Database.EnsureCreatedAsync(cancellationToken);
-        await targetContext.Database.EnsureCreatedAsync(cancellationToken);
+        await ContentStorageSchema.EnsureCurrentAsync(sourceContext, cancellationToken);
+        await ContentStorageSchema.EnsureCurrentAsync(targetContext, cancellationToken);
 
         var sourcePage = await LoadPageAsync(sourceContext, slug, cancellationToken)
             ?? throw new InvalidOperationException(
                 $"Content page '{slug}' was not found in source '{source.Key}'.");
 
-        await EnsureNoConflictAsync(targetContext, sourcePage, cancellationToken);
+        var targetPage = await GetReplaceableTargetPageAsync(targetContext, sourcePage, cancellationToken);
         await using var transaction = await targetContext.Database.BeginTransactionAsync(cancellationToken);
+        if (targetPage is not null)
+        {
+            await DeleteTargetPageAsync(targetContext, targetPage, cancellationToken);
+        }
         await CopyPageAsync(targetContext, sourcePage, cancellationToken);
         await transaction.CommitAsync(cancellationToken);
     }
@@ -56,8 +60,8 @@ public sealed class ContentSourceTransferService : IContentSourceTransferService
         var (source, target) = ResolveDistinctSources(sourceKey, targetSourceKey);
         await using var sourceContext = CreateContext(source.Key);
         await using var targetContext = CreateContext(target.Key);
-        await sourceContext.Database.EnsureCreatedAsync(cancellationToken);
-        await targetContext.Database.EnsureCreatedAsync(cancellationToken);
+        await ContentStorageSchema.EnsureCurrentAsync(sourceContext, cancellationToken);
+        await ContentStorageSchema.EnsureCurrentAsync(targetContext, cancellationToken);
 
         var sourcePages = await LoadAllPagesAsync(sourceContext, cancellationToken);
         if (sourcePages.Count == 0)
@@ -65,36 +69,22 @@ public sealed class ContentSourceTransferService : IContentSourceTransferService
             return 0;
         }
 
-        var sourceKeys = sourcePages.Select(page => page.ContentKey).ToList();
-        var sourceSlugs = sourcePages.Select(page => page.Slug).ToList();
-        var conflictingPage = await targetContext.Pages
-            .AsNoTracking()
-            .Where(page => sourceKeys.Contains(page.ContentKey) || sourceSlugs.Contains(page.Slug))
-            .Select(page => new { page.ContentKey, page.Slug })
-            .FirstOrDefaultAsync(cancellationToken);
-
-        if (conflictingPage is not null)
+        var targetPages = new Dictionary<string, ContentPageRecord?>(StringComparer.OrdinalIgnoreCase);
+        foreach (var sourcePage in sourcePages)
         {
-            throw new InvalidOperationException(
-                $"The target source already contains content with stable ID '{conflictingPage.ContentKey}' or slug '{conflictingPage.Slug}'. Copy all only runs against a non-conflicting target.");
-        }
-
-        var sourceAssetKeys = sourcePages
-            .SelectMany(page => page.Assets)
-            .Select(asset => asset.AssetKey)
-            .ToList();
-        if (sourceAssetKeys.Count > 0
-            && await targetContext.Assets.AsNoTracking().AnyAsync(
-                asset => sourceAssetKeys.Contains(asset.AssetKey),
-                cancellationToken))
-        {
-            throw new InvalidOperationException(
-                "The target source already contains a content media key used by the source. Copy all only runs against a non-conflicting target.");
+            targetPages[sourcePage.ContentKey] = await GetReplaceableTargetPageAsync(
+                targetContext,
+                sourcePage,
+                cancellationToken);
         }
 
         await using var transaction = await targetContext.Database.BeginTransactionAsync(cancellationToken);
         foreach (var sourcePage in sourcePages.OrderBy(page => page.Id))
         {
+            if (targetPages[sourcePage.ContentKey] is { } targetPage)
+            {
+                await DeleteTargetPageAsync(targetContext, targetPage, cancellationToken);
+            }
             await CopyPageAsync(targetContext, sourcePage, cancellationToken);
         }
         await transaction.CommitAsync(cancellationToken);
@@ -196,26 +186,48 @@ public sealed class ContentSourceTransferService : IContentSourceTransferService
         }
     }
 
-    private static async Task EnsureNoConflictAsync(
+    private static async Task<ContentPageRecord?> GetReplaceableTargetPageAsync(
         ContentDbContext targetContext,
         ContentPageRecord sourcePage,
         CancellationToken cancellationToken)
     {
-        if (await targetContext.Pages.AnyAsync(page =>
-                page.ContentKey == sourcePage.ContentKey || page.Slug == sourcePage.Slug,
+        var matches = await targetContext.Pages
+            .Where(page => page.ContentKey == sourcePage.ContentKey || page.Slug == sourcePage.Slug)
+            .ToListAsync(cancellationToken);
+
+        if (matches.Count > 1
+            || matches.Count == 1
+                && (!string.Equals(matches[0].ContentKey, sourcePage.ContentKey, StringComparison.OrdinalIgnoreCase)
+                    || !string.Equals(matches[0].Slug, sourcePage.Slug, StringComparison.OrdinalIgnoreCase)))
+        {
+            throw new InvalidOperationException(
+                $"The target source contains a different page using stable ID '{sourcePage.ContentKey}' or slug '{sourcePage.Slug}'.");
+        }
+
+        var targetPage = matches.SingleOrDefault();
+        var assetKeys = sourcePage.Assets.Select(asset => asset.AssetKey).ToList();
+        if (assetKeys.Count > 0
+            && await targetContext.Assets.AnyAsync(
+                asset => assetKeys.Contains(asset.AssetKey)
+                    && (targetPage == null || asset.PageId != targetPage.Id),
                 cancellationToken))
         {
             throw new InvalidOperationException(
-                "The target source already contains a page with that stable ID or slug.");
+                "The target source contains another page using a content media key from this page.");
         }
 
-        var assetKeys = sourcePage.Assets.Select(asset => asset.AssetKey).ToList();
-        if (assetKeys.Count > 0
-            && await targetContext.Assets.AnyAsync(asset => assetKeys.Contains(asset.AssetKey), cancellationToken))
-        {
-            throw new InvalidOperationException(
-                "The target source already contains a content media key used by this page.");
-        }
+        return targetPage;
+    }
+
+    private static async Task DeleteTargetPageAsync(
+        ContentDbContext targetContext,
+        ContentPageRecord targetPage,
+        CancellationToken cancellationToken)
+    {
+        targetPage.CurrentRevisionId = null;
+        await targetContext.SaveChangesAsync(cancellationToken);
+        targetContext.Pages.Remove(targetPage);
+        await targetContext.SaveChangesAsync(cancellationToken);
     }
 
     private static async Task<ContentPageRecord?> LoadPageAsync(

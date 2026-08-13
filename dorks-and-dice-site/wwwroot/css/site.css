@@ -156,10 +156,88 @@ body.dark-mode .image-modal-content img {
   background-color: #0f172a;
 }
 
-/* Authored Markdown images should remain inside the readable content column. */
+.content-detail-body h2 {
+  margin-top: 1.5rem;
+  font-size: 1.25rem;
+}
+
+.content-detail-body h3 {
+  margin-top: 1rem;
+  font-size: 1rem;
+}
+
+.content-detail-body pre {
+  overflow: auto;
+  padding: 1rem;
+  border: 1px solid var(--bs-border-color);
+  border-radius: var(--bs-border-radius);
+}
+
+.content-detail-body blockquote {
+  padding-left: 1rem;
+  border-left: 4px solid var(--bs-border-color);
+}
+
+.content-detail-body .content-note blockquote {
+  margin-bottom: 0;
+  padding-left: 0;
+  border-left: 0;
+}
+
+.content-detail-body .alert > :last-child {
+  margin-bottom: 0;
+}
+
+.content-detail-body figure {
+  margin: 0 0 1rem;
+}
+
+.content-detail-body figure > p {
+  margin-bottom: 0;
+}
+
+.content-detail-body figcaption {
+  margin-top: 0.5rem;
+  color: var(--bs-secondary-color);
+}
+
+.content-detail-body table {
+  width: 100%;
+  margin-bottom: 1rem;
+  vertical-align: middle;
+  border-color: var(--bs-border-color);
+  caption-side: bottom;
+  border-collapse: collapse;
+}
+
+.content-detail-body table > :not(caption) > * > * {
+  padding: 0.5rem;
+  border: 1px solid var(--bs-border-color);
+}
+
+.content-detail-body details > summary {
+  cursor: pointer;
+}
+
+.content-detail-body details[open] > summary {
+  margin-bottom: 1rem;
+}
+
+.content-detail-body .content-downloads > p {
+  display: contents;
+}
+
+/* Authored Markdown images should retain their intrinsic ratio inside the readable column. */
 .content-detail-body img {
   max-width: 100%;
   height: auto;
+}
+
+@media (max-width: 767.98px) {
+  .content-detail-body table {
+    display: block;
+    overflow-x: auto;
+  }
 }
 
 .content-media-preview {

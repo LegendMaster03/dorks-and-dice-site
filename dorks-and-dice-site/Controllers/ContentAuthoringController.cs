@@ -158,7 +158,7 @@ public sealed class ContentAuthoringController : Controller
         try
         {
             await _transferService.CopyAsync(source, targetSource, slug, cancellationToken);
-            TempData["ContentAuthoringSuccess"] = $"Copied '{slug}' from {source} to {targetSource}.";
+            TempData["ContentAuthoringSuccess"] = $"Synchronized '{slug}' from {source} to {targetSource}.";
             return RedirectToAction(nameof(Index), new { source });
         }
         catch (InvalidOperationException ex)
@@ -183,7 +183,7 @@ public sealed class ContentAuthoringController : Controller
         try
         {
             var copiedCount = await _transferService.CopyAllAsync(source, targetSource, cancellationToken);
-            TempData["ContentAuthoringSuccess"] = $"Copied {copiedCount} content page(s) from {source} to {targetSource}.";
+            TempData["ContentAuthoringSuccess"] = $"Synchronized {copiedCount} content page(s) from {source} to {targetSource}.";
             return RedirectToAction(nameof(Index), new { source = targetSource });
         }
         catch (InvalidOperationException ex)

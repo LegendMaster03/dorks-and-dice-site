@@ -68,7 +68,7 @@ public sealed class ContentAssetService : IContentAssetService
         ContentInputValidator.ValidateKey("Slug", slug);
         var source = _sourceRegistry.GetSource(sourceKey);
         await using var context = CreateContext(source.Key);
-        await context.Database.EnsureCreatedAsync(cancellationToken);
+        await ContentStorageSchema.EnsureCurrentAsync(context, cancellationToken);
 
         var pageId = await context.Pages
             .Where(page => page.Slug == slug)
@@ -139,7 +139,7 @@ public sealed class ContentAssetService : IContentAssetService
         var source = _sourceRegistry.GetSource(sourceKey);
 
         await using var context = CreateContext(source.Key);
-        await context.Database.EnsureCreatedAsync(cancellationToken);
+        await ContentStorageSchema.EnsureCurrentAsync(context, cancellationToken);
         var page = await context.Pages
             .SingleOrDefaultAsync(candidate => candidate.Slug == slug, cancellationToken)
             ?? throw new InvalidOperationException($"Content page '{slug}' was not found in source '{source.Key}'.");

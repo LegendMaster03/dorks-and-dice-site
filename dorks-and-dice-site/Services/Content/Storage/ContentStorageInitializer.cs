@@ -23,7 +23,7 @@ public sealed class ContentStorageInitializer : IContentStorageInitializer
             var options = new DbContextOptionsBuilder<ContentDbContext>();
             _sourceRegistry.ConfigureDbContext(options, source.Key);
             await using var context = new ContentDbContext(options.Options);
-            await context.Database.EnsureCreatedAsync(cancellationToken);
+            await ContentStorageSchema.EnsureCurrentAsync(context, cancellationToken);
         }
     }
 }

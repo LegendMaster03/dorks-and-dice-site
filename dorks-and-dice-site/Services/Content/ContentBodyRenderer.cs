@@ -88,10 +88,11 @@ public sealed class ContentBodyRenderer : IContentBodyRenderer
         sanitizer.AllowedTags.Clear();
         foreach (var tag in new[]
         {
-            "a", "blockquote", "br", "code", "del", "div", "em",
-            "h1", "h2", "h3", "h4", "h5", "h6", "hr", "img",
-            "li", "ol", "p", "pre", "span", "strong", "table",
-            "tbody", "td", "th", "thead", "tr", "ul"
+            "a", "aside", "blockquote", "br", "code", "del", "details",
+            "div", "em", "figcaption", "figure", "h1", "h2", "h3",
+            "h4", "h5", "h6", "hr", "img", "li", "ol", "p", "pre",
+            "span", "strong", "summary", "table", "tbody", "td", "th",
+            "thead", "tr", "ul"
         })
         {
             sanitizer.AllowedTags.Add(tag);
@@ -101,7 +102,7 @@ public sealed class ContentBodyRenderer : IContentBodyRenderer
         foreach (var attribute in new[]
         {
             "alt", "class", "colspan", "height", "href", "rel",
-            "rowspan", "scope", "src", "title", "width"
+            "role", "rowspan", "scope", "src", "target", "title", "width"
         })
         {
             sanitizer.AllowedAttributes.Add(attribute);

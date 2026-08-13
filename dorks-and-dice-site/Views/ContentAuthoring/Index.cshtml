@@ -49,7 +49,7 @@
                 @Html.AntiForgeryToken()
                 <input type="hidden" name="source" value="@Model.SelectedSourceKey" />
                 <div class="flex-grow-1">
-                    <label class="form-label" for="copy-all-target">Copy all pages to</label>
+                    <label class="form-label" for="copy-all-target">Synchronize all pages to</label>
                     <select class="form-select" id="copy-all-target" name="targetSource">
                         @foreach (var target in Model.MoveTargets)
                         {
@@ -57,7 +57,7 @@
                         }
                     </select>
                 </div>
-                <button class="btn btn-outline-primary" type="submit">Copy all</button>
+                <button class="btn btn-outline-primary" type="submit">Synchronize all</button>
             </form>
         </div>
     }
@@ -93,13 +93,13 @@
                                 <form class="d-flex gap-2" method="post" action="/development/content/@item.Slug/copy">
                                     @Html.AntiForgeryToken()
                                     <input type="hidden" name="source" value="@Model.SelectedSourceKey" />
-                                    <select class="form-select form-select-sm" name="targetSource" aria-label="Copy target for @item.Title">
+                                    <select class="form-select form-select-sm" name="targetSource" aria-label="Synchronization target for @item.Title">
                                         @foreach (var target in Model.MoveTargets)
                                         {
                                             <option value="@target.Key">@target.DisplayName</option>
                                         }
                                     </select>
-                                    <button class="btn btn-sm btn-outline-primary" type="submit">Copy</button>
+                                    <button class="btn btn-sm btn-outline-primary" type="submit">Synchronize</button>
                                 </form>
                                 <form class="d-flex gap-2" method="post" action="/development/content/@item.Slug/move">
                                     @Html.AntiForgeryToken()
