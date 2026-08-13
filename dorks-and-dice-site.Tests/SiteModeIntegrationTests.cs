@@ -329,12 +329,18 @@ public sealed class SiteModeIntegrationTests : IClassFixture<WebApplicationFacto
         var resumeHtml = await resumeResponse.Content.ReadAsStringAsync();
         var detailResponse = await SendAsync("kylebarnett.com", "/resume/seniorproject");
         var detailHtml = await detailResponse.Content.ReadAsStringAsync();
+        var experienceDetailResponse = await SendAsync("kylebarnett.com", "/resume/seniorproject?context=experience");
+        var experienceDetailHtml = await experienceDetailResponse.Content.ReadAsStringAsync();
 
         Assert.Equal(HttpStatusCode.OK, resumeResponse.StatusCode);
-        Assert.True(CountOccurrences(resumeHtml, "href=\"/resume/seniorproject\"") >= 2);
+        Assert.Contains("href=\"/resume/seniorproject\"", resumeHtml);
+        Assert.Contains("href=\"/resume/seniorproject?context=experience\"", resumeHtml);
         Assert.Equal(HttpStatusCode.OK, detailResponse.StatusCode);
         Assert.Contains("Back to projects", detailHtml);
         Assert.Contains("Back to experience", detailHtml);
+        Assert.Equal(HttpStatusCode.OK, experienceDetailResponse.StatusCode);
+        Assert.Contains("Experience Information", experienceDetailHtml);
+        Assert.Contains("Safe Future Foundation - Full-Stack Developer", experienceDetailHtml);
     }
 
     [Fact]
@@ -357,6 +363,9 @@ public sealed class SiteModeIntegrationTests : IClassFixture<WebApplicationFacto
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Contains("This content is not available in the selected site mode.", html);
         Assert.Contains("Freeing the Bees: Solving ConsoleVariations", html);
+        Assert.Contains("Development preview", html);
+        Assert.Contains("Edit content", html);
+        Assert.Contains("/development/content/freeing-the-bees-consolevariations-puzzle/edit?source=", html);
     }
 
     [Fact]

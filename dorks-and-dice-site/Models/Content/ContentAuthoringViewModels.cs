@@ -3,9 +3,11 @@ namespace dorks_and_dice_site.Models.Content;
 public sealed class ContentAuthoringDocument
 {
     public bool IsNew { get; set; }
+    public string SourceKey { get; set; } = string.Empty;
     public string Id { get; set; } = string.Empty;
     public string Slug { get; set; } = string.Empty;
     public long ExpectedRevisionId { get; set; }
+    public bool IsListed { get; set; } = true;
     public string MetadataJson { get; set; } = string.Empty;
     public string TagsText { get; set; } = string.Empty;
     public string VisibleModesText { get; set; } = string.Empty;
@@ -16,6 +18,7 @@ public sealed class ContentAuthoringDocument
 public sealed class ContentAuthoringEditViewModel
 {
     public ContentAuthoringDocument Document { get; set; } = new();
+    public List<ContentAuthoringSourceOption> Sources { get; set; } = [];
     public string? RenderedPreviewHtml { get; set; }
     public List<ContentRevisionSummary> History { get; set; } = [];
 }
@@ -30,4 +33,13 @@ public sealed class ContentRevisionSummary
 public sealed class ContentAuthoringIndexViewModel
 {
     public List<ContentItem> Items { get; init; } = [];
+    public string SelectedSourceKey { get; init; } = string.Empty;
+    public List<ContentAuthoringSourceOption> Sources { get; init; } = [];
+    public List<ContentAuthoringSourceOption> MoveTargets { get; init; } = [];
+}
+
+public sealed class ContentAuthoringSourceOption
+{
+    public string Key { get; init; } = string.Empty;
+    public string DisplayName { get; init; } = string.Empty;
 }

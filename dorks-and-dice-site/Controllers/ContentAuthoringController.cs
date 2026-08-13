@@ -27,7 +27,8 @@ public sealed class ContentAuthoringController : Controller
             return NotFound();
         }
 
-        return View(await _authoringService.GetIndexAsync(cancellationToken));
+        var sourceKey = Request.Query["source"].FirstOrDefault();
+        return View(await _authoringService.GetIndexAsync(sourceKey, cancellationToken));
     }
 
     [HttpGet("new")]
@@ -38,7 +39,8 @@ public sealed class ContentAuthoringController : Controller
             return NotFound();
         }
 
-        return View("Edit", _authoringService.GetNew());
+        var sourceKey = Request.Query["source"].FirstOrDefault();
+        return View("Edit", _authoringService.GetNew(sourceKey));
     }
 
     [HttpPost("new")]
@@ -52,15 +54,16 @@ public sealed class ContentAuthoringController : Controller
             return NotFound();
         }
 
-        model.Document.IsNew = true;
-        try
-        {
-            var created = await _authoringService.CreateAsync(model.Document, cancellationToken);
-            return RedirectToAction(nameof(Edit), new { slug = created.Slug });
-        }
+            model.Document.IsNew = true;
+            try
+            {
+                var created = await _authoringService.CreateAsync(model.Document, cancellationToken);
+                return RedirectToAction(nameof(Edit), new { slug = created.Slug, source = model.Document.SourceKey });
+            }
         catch (InvalidOperationException ex)
         {
             ModelState.AddModelError(string.Empty, ex.Message);
+            _authoringService.PopulateOptions(model);
             return View("Edit", model);
         }
     }
@@ -73,7 +76,8 @@ public sealed class ContentAuthoringController : Controller
             return NotFound();
         }
 
-        var model = await _authoringService.GetEditAsync(slug, cancellationToken);
+        var sourceKey = Request.Query["source"].FirstOrDefault() ?? _authoringService.DefaultSourceKey;
+        var model = await _authoringService.GetEditAsync(sourceKey, slug, cancellationToken);
         return model is null ? NotFound() : View(model);
     }
 
@@ -89,15 +93,16 @@ public sealed class ContentAuthoringController : Controller
             return NotFound();
         }
 
-        model.Document.IsNew = false;
-        try
-        {
-            var saved = await _authoringService.SaveRevisionAsync(model.Document, cancellationToken);
-            return RedirectToAction(nameof(Edit), new { slug = saved.Slug });
-        }
+            model.Document.IsNew = false;
+            try
+            {
+                var saved = await _authoringService.SaveRevisionAsync(model.Document, cancellationToken);
+                return RedirectToAction(nameof(Edit), new { slug = saved.Slug, source = model.Document.SourceKey });
+            }
         catch (InvalidOperationException ex)
         {
             ModelState.AddModelError(string.Empty, ex.Message);
+            _authoringService.PopulateOptions(model);
             return View(model);
         }
     }
@@ -120,7 +125,33 @@ public sealed class ContentAuthoringController : Controller
             ModelState.AddModelError(string.Empty, ex.Message);
         }
 
+        _authoringService.PopulateOptions(model);
         return View("Edit", model);
+    }
+
+    [HttpPost("{slug}/move")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Move(
+        string slug,
+        string source,
+        string targetSource,
+        CancellationToken cancellationToken)
+    {
+        if (!IsDevelopmentPreview())
+        {
+            return NotFound();
+        }
+
+        try
+        {
+            await _authoringService.MoveAsync(source, targetSource, slug, cancellationToken);
+            return RedirectToAction(nameof(Index), new { source = targetSource });
+        }
+        catch (InvalidOperationException ex)
+        {
+            TempData["ContentAuthoringError"] = ex.Message;
+            return RedirectToAction(nameof(Index), new { source });
+        }
     }
 
     private bool IsDevelopmentPreview() => HttpContext.GetSiteModeContext().IsDevelopmentPreview;

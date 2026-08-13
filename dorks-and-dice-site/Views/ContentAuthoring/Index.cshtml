@@ -10,12 +10,31 @@
         <p class="text-uppercase text-muted small mb-1">Development only</p>
         <h1 class="h3 mb-0">Content Authoring</h1>
     </div>
-    <a class="btn btn-primary" href="/development/content/new">New content page</a>
+    <a class="btn btn-primary" href="/development/content/new?source=@Model.SelectedSourceKey">New content page</a>
 </div>
 
 <p class="text-muted">
     Content is stored in the configured database. Saving an existing page creates a new revision and moves the page's current-revision pointer.
 </p>
+
+@if (TempData["ContentAuthoringError"] is string errorMessage)
+{
+    <div class="alert alert-warning" role="alert">@errorMessage</div>
+}
+
+<form class="row g-2 align-items-end mb-4" method="get" action="/development/content" data-auto-submit="change">
+    <div class="col-sm-6 col-md-4">
+        <label class="form-label" for="source">Editing source</label>
+        <select class="form-select" id="source" name="source">
+            @foreach (var source in Model.Sources)
+            {
+                <option value="@source.Key" selected="@(string.Equals(source.Key, Model.SelectedSourceKey, StringComparison.OrdinalIgnoreCase))">
+                    @source.DisplayName
+                </option>
+            }
+        </select>
+    </div>
+</form>
 
 <div class="table-responsive">
     <table class="table align-middle">
@@ -25,6 +44,8 @@
                 <th scope="col">Contexts</th>
                 <th scope="col">Slug</th>
                 <th scope="col">Revision</th>
+                <th scope="col">Listing</th>
+                <th scope="col">Move</th>
                 <th scope="col"></th>
             </tr>
         </thead>
@@ -37,8 +58,29 @@
                     <td>@string.Join(", ", contexts)</td>
                     <td><code>@item.Slug</code></td>
                     <td>@item.RevisionId</td>
+                    <td>@(item.IsListed ? "Listed" : "Unlisted")</td>
+                    <td>
+                        @if (Model.MoveTargets.Count > 0)
+                        {
+                            <form class="d-flex gap-2" method="post" action="/development/content/@item.Slug/move">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="source" value="@Model.SelectedSourceKey" />
+                                <select class="form-select form-select-sm" name="targetSource" aria-label="Move target for @item.Title">
+                                    @foreach (var target in Model.MoveTargets)
+                                    {
+                                        <option value="@target.Key">@target.DisplayName</option>
+                                    }
+                                </select>
+                                <button class="btn btn-sm btn-outline-secondary" type="submit">Move</button>
+                            </form>
+                        }
+                        else
+                        {
+                            <span class="text-muted small">No distinct target</span>
+                        }
+                    </td>
                     <td class="text-end">
-                        <a class="btn btn-sm btn-outline-primary" href="/development/content/@item.Slug/edit">Edit</a>
+                        <a class="btn btn-sm btn-outline-primary" href="/development/content/@item.Slug/edit?source=@Model.SelectedSourceKey">Edit</a>
                     </td>
                 </tr>
             }

@@ -10,6 +10,17 @@
     </div>
 }
 
+@if (Model.IsDevelopmentPreview && !string.IsNullOrWhiteSpace(Model.EditHref))
+{
+    <div class="alert alert-info d-flex flex-wrap align-items-center justify-content-between gap-2" role="region" aria-label="Development content tools">
+        <div>
+            <strong>Development preview</strong>
+            <span class="ms-1">This page can be edited from the content authoring tools.</span>
+        </div>
+        <a class="btn btn-sm btn-outline-primary" href="@Model.EditHref">Edit content</a>
+    </div>
+}
+
 @await Html.PartialAsync("~/Views/Content/_ContentDetailHeader.cshtml", Model)
 
 <div class="content-detail-body">

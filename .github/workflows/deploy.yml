@@ -31,6 +31,11 @@ jobs:
       - name: Build image
         run: docker build -t dorks-and-dice-site:latest -f dorks-and-dice-site/Dockerfile dorks-and-dice-site
 
+      - name: Verify local content database is not deployed
+        run: |
+          docker run --rm --entrypoint /bin/sh dorks-and-dice-site:latest \
+            -c 'test ! -e /app/Content/content.db'
+
       - name: Smoke test container health endpoint
         run: |
           docker rm -f dorks-and-dice-site-smoketest 2>/dev/null || true

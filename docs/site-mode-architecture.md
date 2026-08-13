@@ -249,6 +249,10 @@ The body format is currently `markdown`. `ContentBodyRenderer` uses Markdig and 
 blocks for application-owned dynamic sections. This keeps ordinary authoring content out of Razor while preserving a
 controlled extension point for pages that need live application data.
 
+Rendered content is treated as trusted site-authored content. Markdown output is emitted as HTML so existing rich HTML
+and application-owned directives can render correctly. Do not connect an untrusted external authoring source to the
+published catalog without adding sanitization or a stricter Markdown pipeline first.
+
 The Professional resume still uses `Content/Resume/resume.json` for resume-only structures that are not navigable detail
 content, such as contact links, education, awards, skills, and leadership. Project and Experience detail records are no
 longer stored there.
@@ -279,9 +283,10 @@ This separation is intentional. Unassigned is a fall-through identity and should
 Development is a diagnostic environment and should not accidentally imply a production content-source policy.
 
 The current `Local` and `External` source definitions intentionally point to the same SQLite database. That is redundant
-now, but it preserves the connection boundary: the External connection can later be moved to another database without
-changing the content catalog, controllers, routes, or views. SQLite is the only configured provider in the current
-build; adding another provider is a storage-adapter concern rather than a content-model change.
+now, but it preserves the connection boundary. In production, `External` should become the real published content
+database and remain the global source. `Local` is for localhost authoring and test content; once the external database
+is active, deploy should stop publishing the local authoring database to the server. SQLite is the only configured
+provider in the current build; adding another provider is a storage-adapter concern rather than a content-model change.
 
 The local authoring database is selected separately through `ContentStorage:AuthoringSource`. The development editor
 writes revisions only to that source instead of writing through the composed read catalog.

@@ -7,4 +7,6 @@ public sealed class ContentDetailViewModel
     public required string RenderedBodyHtml { get; init; }
     public List<ContentNavigationLink> BackLinks { get; init; } = [];
     public bool IsDevelopmentVisibilityOverride { get; init; }
+    public bool IsDevelopmentPreview { get; init; }
+    public string? EditHref { get; init; }
 }

@@ -46,6 +46,27 @@ body {
   text-decoration: underline;
 }
 
+.disclosure-toggle {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  text-align: left;
+}
+
+.disclosure-toggle::after {
+  content: "^";
+  display: inline-block;
+  font-weight: 700;
+  line-height: 1;
+  margin-left: 0.75rem;
+  transform: rotate(180deg);
+  transition: transform 0.15s ease-in-out;
+}
+
+.disclosure-toggle[aria-expanded="true"]::after {
+  transform: rotate(0deg);
+}
+
 .article-card-img {
   width: 100%;
   height: 220px;

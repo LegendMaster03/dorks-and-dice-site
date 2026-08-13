@@ -1,7 +1,8 @@
+using dorks_and_dice_site.Models.Content;
 using dorks_and_dice_site.Services.Content;
 using dorks_and_dice_site.Services.Content.Storage;
-using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 
 namespace dorks_and_dice_site.Tests;
 
@@ -10,23 +11,14 @@ public sealed class ContentAuthoringServiceTests
     [Fact]
     public async Task SavingCreatesRevisionAndPreservesStablePageIdentity()
     {
-        await using var connection = new SqliteConnection("Data Source=:memory:");
-        await connection.OpenAsync();
-
-        var options = new DbContextOptionsBuilder<ContentDbContext>()
-            .UseSqlite(connection)
-            .Options;
-        await using var context = new ContentDbContext(options);
-        await context.Database.EnsureCreatedAsync();
-
-        var repository = new DatabaseContentRepository(context);
-        var service = new ContentAuthoringService(context);
-        var newModel = service.GetNew();
+        using var fixture = new AuthoringSourceFixture();
+        var service = new ContentAuthoringService(fixture.Registry);
+        var newModel = service.GetNew("Test");
         newModel.Document.Id = "authoring-test";
         newModel.Document.Slug = "authoring-test";
 
         var created = await service.CreateAsync(newModel.Document);
-        var editModel = await service.GetEditAsync(created.Slug);
+        var editModel = await service.GetEditAsync("Test", created.Slug);
 
         Assert.NotNull(editModel);
         Assert.Equal("authoring-test", editModel.Document.Id);
@@ -41,35 +33,27 @@ public sealed class ContentAuthoringServiceTests
         Assert.Equal("authoring-test-moved", saved.Slug);
         Assert.NotEqual(firstRevisionId, saved.RevisionId);
 
-        var reloaded = await service.GetEditAsync("authoring-test-moved");
+        var reloaded = await service.GetEditAsync("Test", "authoring-test-moved");
         Assert.NotNull(reloaded);
         Assert.Equal(saved.RevisionId, reloaded.Document.ExpectedRevisionId);
         Assert.Equal(2, reloaded.History.Count);
         Assert.Equal(firstRevisionId, reloaded.History[0].ParentRevisionId);
         Assert.Contains("Second revision.", reloaded.Document.Body);
-        Assert.Null(await repository.GetBySlugAsync("authoring-test"));
+        Assert.Null(await fixture.GetBySlugAsync("authoring-test"));
     }
 
     [Fact]
     public async Task StaleEditorCanNotOverwriteNewerRevision()
     {
-        await using var connection = new SqliteConnection("Data Source=:memory:");
-        await connection.OpenAsync();
-
-        var options = new DbContextOptionsBuilder<ContentDbContext>()
-            .UseSqlite(connection)
-            .Options;
-        await using var context = new ContentDbContext(options);
-        await context.Database.EnsureCreatedAsync();
-
-        var service = new ContentAuthoringService(context);
-        var newModel = service.GetNew();
+        using var fixture = new AuthoringSourceFixture();
+        var service = new ContentAuthoringService(fixture.Registry);
+        var newModel = service.GetNew("Test");
         newModel.Document.Id = "conflict-test";
         newModel.Document.Slug = "conflict-test";
         await service.CreateAsync(newModel.Document);
 
-        var staleEditor = await service.GetEditAsync("conflict-test");
-        var currentEditor = await service.GetEditAsync("conflict-test");
+        var staleEditor = await service.GetEditAsync("Test", "conflict-test");
+        var currentEditor = await service.GetEditAsync("Test", "conflict-test");
         Assert.NotNull(staleEditor);
         Assert.NotNull(currentEditor);
 
@@ -79,5 +63,54 @@ public sealed class ContentAuthoringServiceTests
         staleEditor.Document.Body += "\n\nStale edit.";
         await Assert.ThrowsAsync<ContentAuthoringConflictException>(
             () => service.SaveRevisionAsync(staleEditor.Document));
+    }
+
+    private sealed class AuthoringSourceFixture : IDisposable
+    {
+        private readonly string _directory;
+
+        public AuthoringSourceFixture()
+        {
+            _directory = Path.Combine(Path.GetTempPath(), $"content-authoring-{Guid.NewGuid():N}");
+            Directory.CreateDirectory(_directory);
+            var settings = new Dictionary<string, string?>
+            {
+                ["ConnectionStrings:TestDb"] = "Data Source=test-content.db",
+                ["ContentStorage:AuthoringSource"] = "Test",
+                ["ContentStorage:Sources:Test:Provider"] = "Sqlite",
+                ["ContentStorage:Sources:Test:ConnectionString"] = "TestDb"
+            };
+
+            var configuration = new ConfigurationBuilder()
+                .AddInMemoryCollection(settings)
+                .Build();
+            Registry = new ContentSourceRegistry(configuration, _directory);
+        }
+
+        public ContentSourceRegistry Registry { get; }
+
+        public async Task<ContentItem?> GetBySlugAsync(string slug)
+        {
+            var options = new DbContextOptionsBuilder<ContentDbContext>();
+            Registry.ConfigureDbContext(options, "Test");
+            await using var context = new ContentDbContext(options.Options);
+            var repository = new DatabaseContentRepository(context);
+            return await repository.GetBySlugAsync(slug);
+        }
+
+        public void Dispose()
+        {
+            try
+            {
+                if (Directory.Exists(_directory))
+                {
+                    Directory.Delete(_directory, recursive: true);
+                }
+            }
+            catch (IOException)
+            {
+                // SQLite can briefly hold a file handle on Windows after a context is disposed.
+            }
+        }
     }
 }

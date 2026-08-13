@@ -45,6 +45,8 @@ public sealed class ContentAuthoringIntegrationTests : IClassFixture<WebApplicat
         Assert.Contains("Revision metadata", html);
         Assert.Contains("technical-investigation", html);
         Assert.Contains("Revision history", html);
+        Assert.Contains("View page", html);
+        Assert.Contains("/articles/freeing-the-bees-consolevariations-puzzle", html);
     }
 
     private async Task<HttpResponseMessage> SendAsync(string host, string path)

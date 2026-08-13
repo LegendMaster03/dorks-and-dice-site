@@ -2,6 +2,8 @@
 @using dorks_and_dice_site.Models.Content
 @{
     var item = Model.Item;
+    var title = item.GetTitle(Model.ContextTag);
+    var subtitle = item.GetSubtitle(Model.ContextTag);
     var informationTitle = Model.ContextTag switch
     {
         ContentTags.Article => "Article Information",
@@ -55,20 +57,6 @@
         object-position: top right;
     }
 
-    .content-detail-header.consolevariations-bee .content-detail-logo {
-        width: 100cqmin;
-        height: 100cqmin;
-        aspect-ratio: 1 / 1;
-        object-fit: contain;
-        object-position: center;
-        border-radius: 50%;
-        border: 3px solid #e6b800;
-        background: #0e0f12;
-        padding: 7px;
-        box-sizing: border-box;
-        box-shadow: 0 0 26px rgba(230, 184, 0, .35);
-    }
-
     @@media (max-width: 575.98px) {
         .content-detail-heading {
             --detail-logo-share: 15%;
@@ -78,10 +66,10 @@
 
 <div class="content-detail-header @item.Header.CssClass mb-3">
     <div class="content-detail-heading">
-        <h1 class="mb-1">@item.Title</h1>
-        @if (!string.IsNullOrWhiteSpace(item.Subtitle))
+        <h1 class="mb-1">@title</h1>
+        @if (!string.IsNullOrWhiteSpace(subtitle))
         {
-            <p class="text-muted mb-1">@item.Subtitle</p>
+            <p class="text-muted mb-1">@subtitle</p>
         }
         @if (!string.IsNullOrWhiteSpace(item.Header.MetaLine))
         {

@@ -7,6 +7,31 @@ namespace dorks_and_dice_site.Services.Resume;
 
 public class ResumeContentService : IResumeContentService
 {
+    private static readonly string[] ExperienceOrder =
+    [
+        "seniorproject",
+        "experiencecaspenterprises",
+        "experiencetechnologyservices",
+        "experiencecybersecurityteam",
+        "experiencesimlab",
+        "experiencewiredworks",
+        "skyblivion",
+        "skywind"
+    ];
+
+    private static readonly string[] ProjectOrder =
+    [
+        "xngine",
+        "pythonfinanceanalytics",
+        "personalmultimodewebsite",
+        "seniorproject",
+        "directedindependentstudy",
+        "skyblivion",
+        "skywind",
+        "simlabexpo",
+        "dndtools"
+    ];
+
     private readonly IContentCatalogService _contentCatalogService;
 
     public ResumeContentService(IContentCatalogService contentCatalogService)
@@ -17,16 +42,37 @@ public class ResumeContentService : IResumeContentService
     public async Task<ResumeViewModel> GetResumePageAsync(CancellationToken cancellationToken = default)
     {
         var model = ResumePageContentBuilder.Build();
-        model.ExperienceItems = (await _contentCatalogService.GetByContextAsync(
+        model.ExperienceItems = SortBySlugOrder(
+            await _contentCatalogService.GetByContextAsync(
             ContentTags.Experience,
             SiteMode.Professional,
             includeUnlisted: false,
-            cancellationToken)).ToList();
-        model.ProjectItems = (await _contentCatalogService.GetByContextAsync(
+            cancellationToken),
+            ExperienceOrder,
+            ContentTags.Experience);
+        model.ProjectItems = SortBySlugOrder(
+            await _contentCatalogService.GetByContextAsync(
             ContentTags.Project,
             SiteMode.Professional,
             includeUnlisted: false,
-            cancellationToken)).ToList();
+            cancellationToken),
+            ProjectOrder,
+            ContentTags.Project);
         return model;
+    }
+
+    private static List<ContentItem> SortBySlugOrder(
+        IReadOnlyList<ContentItem> items,
+        IReadOnlyList<string> slugOrder,
+        string contextTag)
+    {
+        var order = slugOrder
+            .Select((slug, index) => new { slug, index })
+            .ToDictionary(item => item.slug, item => item.index, StringComparer.OrdinalIgnoreCase);
+
+        return items
+            .OrderBy(item => order.TryGetValue(item.Slug, out var index) ? index : int.MaxValue)
+            .ThenBy(item => item.GetTitle(contextTag), StringComparer.OrdinalIgnoreCase)
+            .ToList();
     }
 }

@@ -6,6 +6,16 @@
     var saveAction = document.IsNew
         ? "/development/content/new"
         : $"/development/content/{document.Slug}/edit";
+    var tagValues = document.TagsText
+        .Split([',', '\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+    var hasArticleTag = tagValues.Any(tag => string.Equals(tag, dorks_and_dice_site.Models.Content.ContentTags.Article, StringComparison.OrdinalIgnoreCase));
+    var hasProjectTag = tagValues.Any(tag => string.Equals(tag, dorks_and_dice_site.Models.Content.ContentTags.Project, StringComparison.OrdinalIgnoreCase));
+    var hasExperienceTag = tagValues.Any(tag => string.Equals(tag, dorks_and_dice_site.Models.Content.ContentTags.Experience, StringComparison.OrdinalIgnoreCase));
+    var detailHref = hasArticleTag
+        ? $"/articles/{document.Slug}"
+        : hasExperienceTag && !hasProjectTag
+            ? $"/resume/{document.Slug}?context=experience"
+            : $"/resume/{document.Slug}";
 }
 
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
@@ -13,7 +23,13 @@
         <p class="text-uppercase text-muted small mb-1">Development only</p>
         <h1 class="h3 mb-0">@(document.IsNew ? "New content page" : $"Edit {document.Id}")</h1>
     </div>
-    <a class="btn btn-outline-secondary" href="/development/content">Back to content</a>
+    <div class="d-flex flex-wrap gap-2">
+        @if (!document.IsNew)
+        {
+            <a class="btn btn-outline-primary" href="@detailHref">View page</a>
+        }
+        <a class="btn btn-outline-secondary" href="/development/content?source=@document.SourceKey">Back to content</a>
+    </div>
 </div>
 
 <div asp-validation-summary="All" class="text-danger mb-3"></div>
@@ -21,7 +37,30 @@
 <form method="post" action="@saveAction">
     @Html.AntiForgeryToken()
     <input asp-for="Document.IsNew" type="hidden" />
+    <input asp-for="Document.SourceKey" type="hidden" />
     <input asp-for="Document.ExpectedRevisionId" type="hidden" />
+
+    <div class="row g-3 mb-3">
+        <div class="col-md-6">
+            <label class="form-label" for="displaySourceKey">Editing source</label>
+            <select id="displaySourceKey" class="form-select" disabled>
+                @foreach (var source in Model.Sources)
+                {
+                    <option value="@source.Key" selected="@(string.Equals(source.Key, document.SourceKey, StringComparison.OrdinalIgnoreCase))">
+                        @source.DisplayName
+                    </option>
+                }
+            </select>
+            <div class="form-text">Change the source from the content list before opening a page.</div>
+        </div>
+        <div class="col-md-6 d-flex align-items-end">
+            <div class="form-check form-switch mb-2">
+                <input asp-for="Document.IsListed" class="form-check-input" type="checkbox" role="switch" />
+                <label asp-for="Document.IsListed" class="form-check-label">Listed</label>
+                <div class="form-text">Unlisted content is hidden from indexes and renders noindex.</div>
+            </div>
+        </div>
+    </div>
 
     <div class="row g-3 mb-3">
         <div class="col-md-6">
@@ -40,7 +79,7 @@
         <div class="col-lg-6">
             <label asp-for="Document.TagsText" class="form-label">Tags</label>
             <textarea asp-for="Document.TagsText" class="form-control font-monospace" rows="7"></textarea>
-            <div class="form-text">One per line or comma-separated. Include one or more context tags: project, experience, article.</div>
+            <div class="form-text">One per line or comma-separated. Include context tags here; use the Listed toggle instead of _internal:unlisted.</div>
         </div>
         <div class="col-lg-6">
             <label asp-for="Document.VisibleModesText" class="form-label">Visible site modes</label>

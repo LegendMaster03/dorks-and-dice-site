@@ -17,8 +17,17 @@ public sealed class ContentController : Controller
     }
 
     [HttpGet("/resume/{slug}")]
-    public Task<IActionResult> ResumeDetail(string slug, CancellationToken cancellationToken) =>
-        RenderDetailAsync(slug, ContentTags.Project, allowExperienceFallback: true, cancellationToken);
+    public Task<IActionResult> ResumeDetail(string slug, CancellationToken cancellationToken)
+    {
+        var requestedContext = string.Equals(
+            Request.Query["context"].FirstOrDefault(),
+            ContentTags.Experience,
+            StringComparison.OrdinalIgnoreCase)
+            ? ContentTags.Experience
+            : ContentTags.Project;
+
+        return RenderDetailAsync(slug, requestedContext, allowExperienceFallback: true, cancellationToken);
+    }
 
     [HttpGet("/articles/{slug}")]
     public Task<IActionResult> ArticleDetail(string slug, CancellationToken cancellationToken) =>
@@ -60,8 +69,8 @@ public sealed class ContentController : Controller
             ViewData["Robots"] = "noindex, nofollow";
         }
 
-        ViewData["MetaTitle"] = item.MetaTitle ?? item.Title;
-        ViewData["MetaDescription"] = item.MetaDescription ?? item.Summary;
+        ViewData["MetaTitle"] = item.MetaTitle ?? item.GetTitle(contextTag);
+        ViewData["MetaDescription"] = item.MetaDescription ?? item.GetSummary(contextTag);
         if (!string.IsNullOrWhiteSpace(item.MetaImage))
         {
             ViewData["MetaImage"] = item.MetaImage;
@@ -75,7 +84,11 @@ public sealed class ContentController : Controller
             RenderedBodyHtml = _bodyRenderer.Render(item.BodyFormat, item.Body),
             BackLinks = backLinks,
             IsDevelopmentVisibilityOverride = modeContext.IsDevelopmentPreview
-                && !item.IsVisibleInMode(modeContext.SiteMode)
+                && !item.IsVisibleInMode(modeContext.SiteMode),
+            IsDevelopmentPreview = modeContext.IsDevelopmentPreview,
+            EditHref = modeContext.IsDevelopmentPreview
+                ? $"/development/content/{item.Slug}/edit?source={Uri.EscapeDataString(item.SourceKey)}"
+                : null
         };
 
         return View("~/Views/Content/Details.cshtml", viewModel);
