@@ -31,6 +31,7 @@ public sealed class ContentSourceTransferService : IContentSourceTransferService
         string slug,
         CancellationToken cancellationToken = default)
     {
+        ContentInputValidator.ValidateKey("Slug", slug);
         var (source, target) = ResolveDistinctSources(sourceKey, targetSourceKey);
         await using var sourceContext = CreateContext(source.Key);
         await using var targetContext = CreateContext(target.Key);
@@ -42,9 +43,9 @@ public sealed class ContentSourceTransferService : IContentSourceTransferService
                 $"Content page '{slug}' was not found in source '{source.Key}'.");
 
         EnsureNoConflict(targetContext, sourcePage);
-        await targetContext.Database.BeginTransactionAsync(cancellationToken);
+        await using var transaction = await targetContext.Database.BeginTransactionAsync(cancellationToken);
         await CopyPageAsync(targetContext, sourcePage, cancellationToken);
-        await targetContext.Database.CommitTransactionAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
     }
 
     public async Task<int> CopyAllAsync(
