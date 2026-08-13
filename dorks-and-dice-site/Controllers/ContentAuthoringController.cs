@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace dorks_and_dice_site.Controllers;
 
 [Route("development/content")]
+[RequestSizeLimit(ContentInputPolicy.MaxAuthoringRequestBytes)]
 public sealed class ContentAuthoringController : Controller
 {
     private readonly IContentAuthoringService _authoringService;
@@ -81,8 +82,15 @@ public sealed class ContentAuthoringController : Controller
         }
 
         var sourceKey = Request.Query["source"].FirstOrDefault() ?? _authoringService.DefaultSourceKey;
-        var model = await _authoringService.GetEditAsync(sourceKey, slug, cancellationToken);
-        return model is null ? NotFound() : View(model);
+        try
+        {
+            var model = await _authoringService.GetEditAsync(sourceKey, slug, cancellationToken);
+            return model is null ? NotFound() : View(model);
+        }
+        catch (InvalidOperationException)
+        {
+            return BadRequest();
+        }
     }
 
     [HttpPost("{slug}/edit")]
@@ -97,9 +105,10 @@ public sealed class ContentAuthoringController : Controller
             return NotFound();
         }
 
-        model.Document.IsNew = false;
         try
         {
+            ContentInputValidator.ValidateKey("Route slug", slug);
+            model.Document.IsNew = false;
             var saved = await _authoringService.SaveRevisionAsync(model.Document, cancellationToken);
             return RedirectToAction(nameof(Edit), new { slug = saved.Slug, source = model.Document.SourceKey });
         }
