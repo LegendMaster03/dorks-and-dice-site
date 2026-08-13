@@ -18,7 +18,7 @@ public interface IContentSourceRegistry
     IReadOnlyList<ContentSourceDefinition> GetAllSources();
     ContentSourceDefinition GetSource(string key);
     IReadOnlySet<string> GetKnownSourceKeys();
-    void ConfigureDbContext(DbContextOptionsBuilder<ContentDbContext> options, string sourceKey);
+    void ConfigureDbContext(DbContextOptionsBuilder options, string sourceKey);
 }
 
 public sealed class ContentSourceRegistry : IContentSourceRegistry
@@ -28,7 +28,6 @@ public sealed class ContentSourceRegistry : IContentSourceRegistry
     private readonly Dictionary<string, ContentSourceDefinition> _sources;
     private readonly List<string> _sourceOrder;
     private readonly List<string> _globalSources;
-    private readonly List<string> _developmentDefaultSources;
 
     public ContentSourceRegistry(IConfiguration configuration, string contentRootPath)
     {
@@ -37,12 +36,10 @@ public sealed class ContentSourceRegistry : IContentSourceRegistry
         _sources = LoadSources();
         _sourceOrder = _sources.Keys.ToList();
         _globalSources = ReadStringList(configuration.GetSection("ContentStorage:GlobalSources"));
-        _developmentDefaultSources = ReadStringList(configuration.GetSection("ContentStorage:DevelopmentDefaultSources"));
         AuthoringSourceKey = configuration["ContentStorage:AuthoringSource"] ?? "Local";
 
         _ = GetSource(AuthoringSourceKey);
         ValidateSourceKeys(_globalSources, "ContentStorage:GlobalSources");
-        ValidateSourceKeys(_developmentDefaultSources, "ContentStorage:DevelopmentDefaultSources");
     }
 
     public string AuthoringSourceKey { get; }
@@ -53,7 +50,7 @@ public sealed class ContentSourceRegistry : IContentSourceRegistry
         {
             SiteMode.Professional => GetModeSources(SiteMode.Professional),
             SiteMode.DorksAndDice => GetModeSources(SiteMode.DorksAndDice),
-            SiteMode.Development => new List<string>(_developmentDefaultSources),
+            SiteMode.Development => [],
             SiteMode.Unassigned => new List<string>(_globalSources),
             _ => new List<string>(_globalSources)
         };
@@ -86,7 +83,7 @@ public sealed class ContentSourceRegistry : IContentSourceRegistry
 
     public IReadOnlySet<string> GetKnownSourceKeys() => new HashSet<string>(_sources.Keys, StringComparer.OrdinalIgnoreCase);
 
-    public void ConfigureDbContext(DbContextOptionsBuilder<ContentDbContext> options, string sourceKey)
+    public void ConfigureDbContext(DbContextOptionsBuilder options, string sourceKey)
     {
         var source = GetSource(sourceKey);
         switch (source.Provider.ToLowerInvariant())

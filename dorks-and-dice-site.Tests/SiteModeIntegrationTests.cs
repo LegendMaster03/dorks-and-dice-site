@@ -198,7 +198,7 @@ public sealed class SiteModeIntegrationTests : IClassFixture<WebApplicationFacto
     public async Task ArticleIndexExposesUserConfigurableTagFiltersInDevelopmentPreview()
     {
         using var request = CreateRequest("localhost", "/articles");
-        request.Headers.Add("Cookie", "DevelopmentPreviewSiteMode=development; DevelopmentIncludeUnlistedArticles=true");
+        request.Headers.Add("Cookie", "DevelopmentPreviewSiteMode=development; DevelopmentIncludeUnlistedArticles=true; DevelopmentEnabledContentSources=Local");
 
         var response = await SendAsync(request);
         var html = await response.Content.ReadAsStringAsync();
@@ -376,7 +376,7 @@ public sealed class SiteModeIntegrationTests : IClassFixture<WebApplicationFacto
     public async Task DevelopmentPreviewListsPublishedArticle()
     {
         using var request = CreateRequest("localhost", "/articles");
-        request.Headers.Add("Cookie", "DevelopmentPreviewSiteMode=development; DevelopmentIncludeUnlistedArticles=true");
+        request.Headers.Add("Cookie", "DevelopmentPreviewSiteMode=development; DevelopmentIncludeUnlistedArticles=true; DevelopmentEnabledContentSources=Local");
 
         var response = await SendAsync(request);
         var html = await response.Content.ReadAsStringAsync();

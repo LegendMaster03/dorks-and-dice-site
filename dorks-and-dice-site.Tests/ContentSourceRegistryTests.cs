@@ -25,13 +25,12 @@ public sealed class ContentSourceRegistryTests
             ["ContentStorage:Sources:CommunityOnly:Provider"] = "Sqlite",
             ["ContentStorage:Sources:CommunityOnly:ConnectionString"] = "CommunityDb",
             ["ContentStorage:GlobalSources:0"] = "Global",
-            ["ContentStorage:DevelopmentDefaultSources:0"] = "Local",
             ["ContentStorage:Modes:Professional:InheritGlobal"] = "true",
             ["ContentStorage:Modes:Professional:Add:0"] = "ProfessionalOnly",
             ["ContentStorage:Modes:DorksAndDice:InheritGlobal"] = "true",
             ["ContentStorage:Modes:DorksAndDice:Remove:0"] = "Global",
             ["ContentStorage:Modes:DorksAndDice:Add:0"] = "CommunityOnly",
-            // These settings must be ignored by design.
+            // Development and fall-through mode settings must be ignored by design.
             ["ContentStorage:Modes:Development:Add:0"] = "ProfessionalOnly",
             ["ContentStorage:Modes:Unassigned:Add:0"] = "CommunityOnly"
         };
@@ -47,9 +46,7 @@ public sealed class ContentSourceRegistryTests
         Assert.Equal(
             ["CommunityOnly"],
             registry.GetDefaultSources(SiteMode.DorksAndDice).Select(source => source.Key));
-        Assert.Equal(
-            ["Local"],
-            registry.GetDefaultSources(SiteMode.Development).Select(source => source.Key));
+        Assert.Empty(registry.GetDefaultSources(SiteMode.Development));
         Assert.Equal(
             ["Global"],
             registry.GetDefaultSources(SiteMode.Unassigned).Select(source => source.Key));
@@ -67,8 +64,7 @@ public sealed class ContentSourceRegistryTests
             ["ContentStorage:Sources:First:ConnectionString"] = "FirstDb",
             ["ContentStorage:Sources:Second:Provider"] = "Sqlite",
             ["ContentStorage:Sources:Second:ConnectionString"] = "SecondDb",
-            ["ContentStorage:GlobalSources:0"] = "First",
-            ["ContentStorage:DevelopmentDefaultSources:0"] = "First"
+            ["ContentStorage:GlobalSources:0"] = "First"
         };
 
         var configuration = new ConfigurationBuilder()
