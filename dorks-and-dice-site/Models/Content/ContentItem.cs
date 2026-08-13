@@ -23,7 +23,6 @@ public static class ContentTags
 
 public sealed class ContentItem
 {
-    public int SchemaVersion { get; set; } = 1;
     public string Id { get; set; } = string.Empty;
     public string Slug { get; set; } = string.Empty;
     public string Title { get; set; } = string.Empty;
@@ -44,7 +43,13 @@ public sealed class ContentItem
     public List<string> Tags { get; set; } = [];
 
     [JsonIgnore]
-    public string BodyMarkdown { get; set; } = string.Empty;
+    public long RevisionId { get; set; }
+
+    [JsonIgnore]
+    public string BodyFormat { get; set; } = "markdown";
+
+    [JsonIgnore]
+    public string Body { get; set; } = string.Empty;
 
     [JsonIgnore]
     public bool IsListed => !Tags.Any(tag => string.Equals(tag, ContentTags.Unlisted, StringComparison.OrdinalIgnoreCase));
