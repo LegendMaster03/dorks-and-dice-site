@@ -2,13 +2,11 @@ using System.Net;
 using System.Security;
 using dorks_and_dice_site.Services.Resume;
 using dorks_and_dice_site.Services.Articles;
-using dorks_and_dice_site.Services.Content;
 using dorks_and_dice_site.Services.Content.Storage;
 using dorks_and_dice_site.Services.GameServers.Minecraft;
 using dorks_and_dice_site.Services.Site;
 using dorks_and_dice_site.Services.Site.ModePresentation;
 using Microsoft.AspNetCore.HttpOverrides;
-using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -19,14 +17,7 @@ builder.Services.Configure<MinecraftServerOptions>(
 builder.Services.AddSingleton<IMinecraftServerStatusService, MinecraftServerStatusService>();
 builder.Services.AddSingleton<IResumeContentService, ResumeContentService>();
 builder.Services.AddSingleton<IArticleCatalogService, ArticleCatalogService>();
-
-var contentConnectionString = builder.Configuration.GetConnectionString("ContentDatabase")
-    ?? "Data Source=Content/content.db";
-builder.Services.AddDbContext<ContentDbContext>(options => options.UseSqlite(contentConnectionString));
-builder.Services.AddScoped<IContentRepository, DatabaseContentRepository>();
-builder.Services.AddScoped<IContentCatalogService, ContentCatalogService>();
-builder.Services.AddSingleton<IContentBodyRenderer, ContentBodyRenderer>();
-
+builder.Services.AddContentStorage(builder.Configuration);
 builder.Services.AddSingleton<SiteModeOptions>();
 builder.Services.AddSingleton<ISiteModePartialResolver, SiteModePartialResolver>();
 builder.Services.AddSingleton<ISiteModeStylesheetResolver, SiteModeStylesheetResolver>();
