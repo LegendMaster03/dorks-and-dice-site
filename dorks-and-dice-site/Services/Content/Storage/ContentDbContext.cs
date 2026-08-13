@@ -13,6 +13,7 @@ public sealed class ContentDbContext : DbContext
     internal DbSet<ContentRevisionRecord> Revisions => Set<ContentRevisionRecord>();
     internal DbSet<ContentRevisionTagRecord> RevisionTags => Set<ContentRevisionTagRecord>();
     internal DbSet<ContentRevisionModeRecord> RevisionModes => Set<ContentRevisionModeRecord>();
+    internal DbSet<ContentAssetRecord> Assets => Set<ContentAssetRecord>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -81,6 +82,27 @@ public sealed class ContentDbContext : DbContext
                 .OnDelete(DeleteBehavior.Cascade);
             entity.HasIndex(mode => mode.SiteMode);
         });
+
+        modelBuilder.Entity<ContentAssetRecord>(entity =>
+        {
+            entity.ToTable("content_asset");
+            entity.HasKey(asset => asset.Id);
+            entity.Property(asset => asset.Id).HasColumnName("asset_id");
+            entity.Property(asset => asset.AssetKey).HasColumnName("asset_key").IsRequired();
+            entity.Property(asset => asset.PageId).HasColumnName("asset_page_id");
+            entity.Property(asset => asset.FileName).HasColumnName("asset_file_name").IsRequired();
+            entity.Property(asset => asset.MediaType).HasColumnName("asset_media_type").IsRequired();
+            entity.Property(asset => asset.Length).HasColumnName("asset_length").IsRequired();
+            entity.Property(asset => asset.Sha256).HasColumnName("asset_sha256").IsRequired();
+            entity.Property(asset => asset.CreatedUtc).HasColumnName("asset_created_utc").IsRequired();
+            entity.Property(asset => asset.Data).HasColumnName("asset_data").IsRequired();
+            entity.HasOne(asset => asset.Page)
+                .WithMany(page => page.Assets)
+                .HasForeignKey(asset => asset.PageId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasIndex(asset => asset.AssetKey).IsUnique();
+            entity.HasIndex(asset => new { asset.PageId, asset.Sha256 }).IsUnique();
+        });
     }
 }
 
@@ -92,6 +114,7 @@ internal sealed class ContentPageRecord
     public long? CurrentRevisionId { get; set; }
     public ContentRevisionRecord? CurrentRevision { get; set; }
     public List<ContentRevisionRecord> Revisions { get; set; } = [];
+    public List<ContentAssetRecord> Assets { get; set; } = [];
 }
 
 internal sealed class ContentRevisionRecord
@@ -121,4 +144,18 @@ internal sealed class ContentRevisionModeRecord
     public long RevisionId { get; set; }
     public string SiteMode { get; set; } = string.Empty;
     public ContentRevisionRecord? Revision { get; set; }
+}
+
+internal sealed class ContentAssetRecord
+{
+    public long Id { get; set; }
+    public string AssetKey { get; set; } = string.Empty;
+    public long PageId { get; set; }
+    public string FileName { get; set; } = string.Empty;
+    public string MediaType { get; set; } = string.Empty;
+    public long Length { get; set; }
+    public string Sha256 { get; set; } = string.Empty;
+    public DateTime CreatedUtc { get; set; }
+    public byte[] Data { get; set; } = [];
+    public ContentPageRecord? Page { get; set; }
 }
