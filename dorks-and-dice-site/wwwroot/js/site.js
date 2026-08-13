@@ -378,164 +378,103 @@ const siteSearch = (() => {
 })();
 
 (() => {
-    const filterContainer = document.getElementById("projectFilters");
-    if (!filterContainer) {
-        return;
-    }
+    const filterContainers = document.querySelectorAll("[data-content-filter]");
 
-    const searchInput = document.getElementById("projectSearch");
-    const projectList = document.getElementById("projectList");
-    const filterButtons = filterContainer.querySelectorAll("[data-filter-tag]");
-    const projectCards = document.querySelectorAll(".project-card");
-    const status = document.getElementById("projectFilterStatus");
-    let activeTag = "all";
-
-    projectCards.forEach((card, index) => {
-        card.dataset.defaultIndex = index.toString();
-    });
-
-    const applyFilters = () => {
-        const parsedQuery = siteSearch.parseSearchQuery(searchInput?.value ?? "");
-        const normalizedActiveTags = siteSearch.activeTagTerms(parsedQuery);
-        let visibleCount = 0;
-        projectCards.forEach((card) => {
-            const tags = (card.getAttribute("data-tags") ?? "").split(/\s+/).filter(Boolean);
-            const cardData = {
-                category: card.getAttribute("data-category") ?? "",
-                date: "",
-                featured: card.getAttribute("data-featured") ?? "",
-                listed: "",
-                searchText: card.getAttribute("data-search") ?? "",
-                tags,
-                title: card.getAttribute("data-title") ?? ""
-            };
-            const isVisible = (activeTag === "all" || tags.includes(activeTag))
-                && siteSearch.cardMatchesParsedQuery(parsedQuery, cardData);
-            card.classList.toggle("d-none", !isVisible);
-            if (isVisible) {
-                visibleCount += 1;
-            }
-        });
-
-        siteSearch.sortCards(projectList, projectCards, parsedQuery.order, (card) => ({
-            dateValue: 0,
-            defaultIndex: Number(card.dataset.defaultIndex ?? "0"),
-            featured: card.getAttribute("data-featured") === "true",
-            tagCount: (card.getAttribute("data-tags") ?? "").split(/\s+/).filter(Boolean).length,
-            title: card.getAttribute("data-title") ?? ""
-        }));
-
-        filterButtons.forEach((button) => {
-            const buttonTag = button.getAttribute("data-filter-tag") ?? "all";
-            const isActive = buttonTag === activeTag || normalizedActiveTags.includes(buttonTag);
-            button.classList.toggle("active", isActive);
-            button.setAttribute("aria-pressed", isActive ? "true" : "false");
-        });
-
-        if (status) {
-            status.textContent = `${visibleCount} project${visibleCount === 1 ? "" : "s"} shown.`;
+    filterContainers.forEach((filterContainer) => {
+        const searchInput = document.getElementById(filterContainer.dataset.contentSearch ?? "");
+        const list = document.getElementById(filterContainer.dataset.contentList ?? "");
+        if (!list) {
+            return;
         }
-    };
 
-    filterButtons.forEach((button) => {
-        button.addEventListener("click", () => {
-            activeTag = button.getAttribute("data-filter-tag") ?? "all";
-            applyFilters();
+        const cards = list.querySelectorAll("[data-content-card]");
+        const tagButtons = filterContainer.querySelectorAll("[data-content-tag]");
+        const categoryButtons = filterContainer.querySelectorAll("[data-content-category]");
+        const status = document.getElementById(filterContainer.dataset.contentStatus ?? "");
+        const emptyState = document.getElementById(filterContainer.dataset.contentEmpty ?? "");
+        const forceProfessionalOnly = filterContainer.dataset.contentProfessionalOnly === "true";
+        const itemLabel = filterContainer.dataset.contentLabel ?? "item";
+        let activeCategory = "all";
+        let activeTag = "all";
+
+        cards.forEach((card, index) => {
+            card.dataset.defaultIndex = index.toString();
         });
-    });
 
-    searchInput?.addEventListener("input", applyFilters);
-    applyFilters();
-})();
+        const readCardData = (card) => ({
+            category: card.dataset.contentCategory ?? "",
+            date: card.dataset.contentDate ?? "",
+            featured: card.dataset.contentFeatured ?? "",
+            listed: card.dataset.contentListed ?? "",
+            searchText: card.dataset.contentSearch ?? "",
+            tags: (card.dataset.contentTags ?? "").split(/\s+/).filter(Boolean),
+            title: card.dataset.contentTitle ?? ""
+        });
 
-(() => {
-    const filterContainer = document.getElementById("articleFilters");
-    if (!filterContainer) {
-        return;
-    }
+        const applyFilters = () => {
+            const parsedQuery = siteSearch.parseSearchQuery(searchInput?.value ?? "");
+            const normalizedActiveTags = siteSearch.activeTagTerms(parsedQuery);
+            let visibleCount = 0;
 
-    const searchInput = document.getElementById("articleSearch");
-    const articleList = document.getElementById("articleList");
-    const categoryButtons = filterContainer.querySelectorAll("[data-article-category]");
-    const tagButtons = filterContainer.querySelectorAll("[data-article-tag]");
-    const articleCards = document.querySelectorAll(".article-card");
-    const emptyState = document.getElementById("articleEmptyState");
-    const status = document.getElementById("articleFilterStatus");
-    const forceProfessionalOnly = filterContainer.getAttribute("data-professional-filter") === "true";
-    let activeCategory = "all";
-    let activeTag = "all";
+            cards.forEach((card) => {
+                const cardData = readCardData(card);
+                const isProfessional = card.dataset.contentProfessional === "true";
+                const isVisible = (activeCategory === "all" || cardData.category === activeCategory)
+                    && (activeTag === "all" || cardData.tags.includes(activeTag))
+                    && siteSearch.cardMatchesParsedQuery(parsedQuery, cardData)
+                    && (!forceProfessionalOnly || isProfessional);
 
-    articleCards.forEach((card, index) => {
-        card.dataset.defaultIndex = index.toString();
-    });
+                card.classList.toggle("d-none", !isVisible);
+                if (isVisible) {
+                    visibleCount += 1;
+                }
+            });
 
-    const applyFilters = () => {
-        const parsedQuery = siteSearch.parseSearchQuery(searchInput?.value ?? "");
-        const normalizedActiveTags = siteSearch.activeTagTerms(parsedQuery);
-        let visibleCount = 0;
+            siteSearch.sortCards(list, cards, parsedQuery.order, (card) => {
+                const cardData = readCardData(card);
+                return {
+                    dateValue: Date.parse(cardData.date) || 0,
+                    defaultIndex: Number(card.dataset.defaultIndex ?? "0"),
+                    featured: cardData.featured === "true",
+                    tagCount: cardData.tags.length,
+                    title: cardData.title
+                };
+            });
 
-        articleCards.forEach((card) => {
-            const category = card.getAttribute("data-article-category");
-            const isProfessional = card.getAttribute("data-article-professional") === "true";
-            const tags = (card.getAttribute("data-article-tags") ?? "").split(/\s+/).filter(Boolean);
-            const cardData = {
-                category: category ?? "",
-                date: card.getAttribute("data-article-date") ?? "",
-                featured: "",
-                listed: card.getAttribute("data-article-listed") ?? "",
-                searchText: card.getAttribute("data-article-search") ?? "",
-                tags,
-                title: card.getAttribute("data-article-title") ?? ""
-            };
-            const isVisible = (activeCategory === "all" || category === activeCategory)
-                && (activeTag === "all" || tags.includes(activeTag))
-                && siteSearch.cardMatchesParsedQuery(parsedQuery, cardData)
-                && (!forceProfessionalOnly || isProfessional);
+            categoryButtons.forEach((button) => {
+                const isActive = (button.dataset.contentCategory ?? "all") === activeCategory;
+                button.classList.toggle("active", isActive);
+                button.setAttribute("aria-pressed", isActive ? "true" : "false");
+            });
 
-            card.classList.toggle("d-none", !isVisible);
-            if (isVisible) {
-                visibleCount += 1;
+            tagButtons.forEach((button) => {
+                const buttonTag = button.dataset.contentTag ?? "all";
+                const isActive = buttonTag === activeTag || normalizedActiveTags.includes(buttonTag);
+                button.classList.toggle("active", isActive);
+                button.setAttribute("aria-pressed", isActive ? "true" : "false");
+            });
+
+            emptyState?.classList.toggle("d-none", visibleCount > 0);
+            if (status) {
+                status.textContent = `${visibleCount} ${itemLabel}${visibleCount === 1 ? "" : "s"} shown.`;
             }
-        });
-
-        siteSearch.sortCards(articleList, articleCards, parsedQuery.order, (card) => ({
-            dateValue: Date.parse(card.getAttribute("data-article-date") ?? "") || 0,
-            defaultIndex: Number(card.dataset.defaultIndex ?? "0"),
-            tagCount: (card.getAttribute("data-article-tags") ?? "").split(/\s+/).filter(Boolean).length,
-            title: card.getAttribute("data-article-title") ?? ""
-        }));
+        };
 
         categoryButtons.forEach((button) => {
-            const isActive = button.getAttribute("data-article-category") === activeCategory;
-            button.classList.toggle("active", isActive);
-            button.setAttribute("aria-pressed", isActive ? "true" : "false");
+            button.addEventListener("click", () => {
+                activeCategory = button.dataset.contentCategory ?? "all";
+                applyFilters();
+            });
         });
+
         tagButtons.forEach((button) => {
-            const buttonTag = button.getAttribute("data-article-tag") ?? "all";
-            const isActive = buttonTag === activeTag || normalizedActiveTags.includes(buttonTag);
-            button.classList.toggle("active", isActive);
-            button.setAttribute("aria-pressed", isActive ? "true" : "false");
+            button.addEventListener("click", () => {
+                activeTag = button.dataset.contentTag ?? "all";
+                applyFilters();
+            });
         });
 
-        emptyState?.classList.toggle("d-none", visibleCount > 0);
-        if (status) {
-            status.textContent = `${visibleCount} article${visibleCount === 1 ? "" : "s"} shown.`;
-        }
-    };
-
-    categoryButtons.forEach((button) => {
-        button.addEventListener("click", () => {
-            activeCategory = button.getAttribute("data-article-category") ?? "all";
-            applyFilters();
-        });
+        searchInput?.addEventListener("input", applyFilters);
+        applyFilters();
     });
-    tagButtons.forEach((button) => {
-        button.addEventListener("click", () => {
-            activeTag = button.getAttribute("data-article-tag") ?? "all";
-            applyFilters();
-        });
-    });
-
-    searchInput?.addEventListener("input", applyFilters);
-    applyFilters();
 })();

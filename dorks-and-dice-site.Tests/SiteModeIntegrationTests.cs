@@ -179,18 +179,18 @@ public sealed class SiteModeIntegrationTests : IClassFixture<WebApplicationFacto
         var html = await response.Content.ReadAsStringAsync();
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.Contains("data-filter-tag=\"all\"", html);
-        Assert.Contains("data-filter-tag=\"architecture\"", html);
-        Assert.Contains("data-filter-tag=\"web-development\"", html);
+        Assert.Contains("data-content-filter", html);
+        Assert.Contains("data-content-tag=\"all\"", html);
+        Assert.Contains("data-content-tag=\"architecture\"", html);
+        Assert.Contains("data-content-tag=\"web-development\"", html);
         Assert.Contains("list=\"projectTagSuggestions\"", html);
         Assert.Contains("<option value=\"architecture\">", html);
         Assert.Contains("id=\"projectList\"", html);
-        Assert.Contains("data-featured=\"true\"", html);
-        Assert.Contains("data-search=\"", html);
-        Assert.Contains("data-title=\"personal multi-mode website\"", html);
-        Assert.DoesNotContain("data-filter=\"professional\"", html);
-        Assert.DoesNotContain("data-filter-tag=\"project\"", html);
-        Assert.DoesNotContain("data-filter-tag=\"experience\"", html);
+        Assert.Contains("data-content-featured=\"true\"", html);
+        Assert.Contains("data-content-search=\"", html);
+        Assert.Contains("data-content-title=\"personal multi-mode website\"", html);
+        Assert.DoesNotContain("data-content-tag=\"project\"", html);
+        Assert.DoesNotContain("data-content-tag=\"experience\"", html);
         Assert.DoesNotContain("_internal:", html);
     }
 
@@ -204,18 +204,19 @@ public sealed class SiteModeIntegrationTests : IClassFixture<WebApplicationFacto
         var html = await response.Content.ReadAsStringAsync();
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.Contains("data-article-tag=\"all\"", html);
-        Assert.Contains("data-article-tag=\"technical-investigation\"", html);
+        Assert.Contains("data-content-filter", html);
+        Assert.Contains("data-content-tag=\"all\"", html);
+        Assert.Contains("data-content-tag=\"technical-investigation\"", html);
         Assert.Contains("technical-investigation", html);
         Assert.Contains("puzzle", html);
         Assert.Contains("write-up", html);
         Assert.Contains("list=\"articleTagSuggestions\"", html);
         Assert.Contains("<option value=\"technical-investigation\">", html);
         Assert.Contains("id=\"articleList\"", html);
-        Assert.Contains("data-article-listed=\"true\"", html);
-        Assert.Contains("data-article-date=\"august 12, 2026\"", html);
-        Assert.Contains("data-article-title=\"freeing the bees: solving consolevariations&#x27; hidden web puzzle\"", html);
-        Assert.DoesNotContain("data-article-tag=\"article\"", html);
+        Assert.Contains("data-content-listed=\"true\"", html);
+        Assert.Contains("data-content-date=\"august 12, 2026\"", html);
+        Assert.Contains("data-content-title=\"freeing the bees: solving consolevariations&#x27; hidden web puzzle\"", html);
+        Assert.DoesNotContain("data-content-tag=\"article\"", html);
         Assert.DoesNotContain("_internal:", html);
     }
 

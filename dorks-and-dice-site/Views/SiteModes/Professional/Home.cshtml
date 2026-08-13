@@ -84,7 +84,13 @@
     <h2 class="h4 resume-section-title" id="projects">Projects</h2>
     <p class="text-muted mb-3">Selected portfolio work, with featured projects shown first.</p>
 
-    <div id="projectFilters" class="article-filters mb-3">
+    <div id="projectFilters"
+         class="article-filters mb-3"
+         data-content-filter
+         data-content-search="projectSearch"
+         data-content-list="projectList"
+         data-content-status="projectFilterStatus"
+         data-content-label="project">
         <label class="form-label visually-hidden" for="projectSearch">Search projects</label>
         <input id="projectSearch"
                type="search"
@@ -99,10 +105,10 @@
             }
         </datalist>
         <div class="d-flex flex-wrap gap-2" aria-label="Project tags">
-            <button type="button" class="btn btn-sm btn-outline-secondary active" data-filter-tag="all">All</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary active" data-content-tag="all">All</button>
             @foreach (var tag in projectTags)
             {
-                <button type="button" class="btn btn-sm btn-outline-secondary" data-filter-tag="@tag">@formatTagLabel(tag)</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-content-tag="@tag">@formatTagLabel(tag)</button>
             }
         </div>
     </div>

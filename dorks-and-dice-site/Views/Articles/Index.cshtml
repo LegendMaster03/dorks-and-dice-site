@@ -22,7 +22,15 @@
 
     @if (Model.ShouldShowSearchFilter || Model.ShouldShowCategoryFilter)
     {
-        <div id="articleFilters" class="article-filters mb-3" data-professional-filter="@(Model.Presentation.ForceProfessionalFilter ? "true" : "false")">
+        <div id="articleFilters"
+             class="article-filters mb-3"
+             data-content-filter
+             data-content-search="articleSearch"
+             data-content-list="articleList"
+             data-content-status="articleFilterStatus"
+             data-content-empty="articleEmptyState"
+             data-content-label="article"
+             data-content-professional-only="@(Model.Presentation.ForceProfessionalFilter ? "true" : "false")">
             @if (Model.ShouldShowSearchFilter)
             {
                 <label class="form-label visually-hidden" for="articleSearch">Search articles</label>
@@ -42,20 +50,20 @@
             @if (Model.ShouldShowCategoryFilter)
             {
                 <div class="d-flex flex-wrap gap-2" aria-label="Article categories">
-                    <button type="button" class="btn btn-sm btn-outline-secondary active" data-article-category="all">All</button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary active" data-content-category="all">All</button>
                     @foreach (var category in Model.Categories)
                     {
-                        <button type="button" class="btn btn-sm btn-outline-secondary" data-article-category="@category">@category</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" data-content-category="@category">@category</button>
                     }
                 </div>
             }
             @if (Model.ShouldShowTagFilter)
             {
                 <div class="d-flex flex-wrap gap-2" aria-label="Article tags">
-                    <button type="button" class="btn btn-sm btn-outline-secondary active" data-article-tag="all">All Tags</button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary active" data-content-tag="all">All Tags</button>
                     @foreach (var tag in Model.Tags)
                     {
-                        <button type="button" class="btn btn-sm btn-outline-secondary" data-article-tag="@tag">@formatTagLabel(tag)</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" data-content-tag="@tag">@formatTagLabel(tag)</button>
                     }
                 </div>
             }
@@ -63,7 +71,14 @@
     }
     else
     {
-        <div id="articleFilters" class="d-none" data-professional-filter="@(Model.Presentation.ForceProfessionalFilter ? "true" : "false")"></div>
+        <div id="articleFilters"
+             class="d-none"
+             data-content-filter
+             data-content-list="articleList"
+             data-content-status="articleFilterStatus"
+             data-content-empty="articleEmptyState"
+             data-content-label="article"
+             data-content-professional-only="@(Model.Presentation.ForceProfessionalFilter ? "true" : "false")"></div>
     }
     <p id="articleFilterStatus" class="visually-hidden" role="status" aria-live="polite"></p>
 
@@ -80,13 +95,14 @@
                 var listingStatusText = article.IsListed ? dateText : "Unlisted";
                 var articleSearchText = $"{title} {summary} {category} {string.Join(' ', publicTags)}".ToLowerInvariant();
                 <div class="col article-card"
-                     data-article-category="@category"
-                     data-article-professional="@(article.IsVisibleInMode(SiteMode.Professional) ? "true" : "false")"
-                     data-article-listed="@(article.IsListed ? "true" : "false")"
-                     data-article-date="@dateText.ToLowerInvariant()"
-                     data-article-tags="@string.Join(' ', publicTags)"
-                     data-article-title="@title.ToLowerInvariant()"
-                     data-article-search="@articleSearchText">
+                     data-content-card
+                     data-content-category="@category"
+                     data-content-professional="@(article.IsVisibleInMode(SiteMode.Professional) ? "true" : "false")"
+                     data-content-listed="@(article.IsListed ? "true" : "false")"
+                     data-content-date="@dateText.ToLowerInvariant()"
+                     data-content-tags="@string.Join(' ', publicTags)"
+                     data-content-title="@title.ToLowerInvariant()"
+                     data-content-search="@articleSearchText">
                     <article class="card h-100 project-card-inner">
                         @if (article.ListingImage is not null)
                         {

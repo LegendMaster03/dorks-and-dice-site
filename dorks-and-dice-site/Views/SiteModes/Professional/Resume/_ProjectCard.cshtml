@@ -17,11 +17,12 @@
 }
 
 <div class="col project-card"
-     data-category="@category"
-     data-featured="@(featured ? "true" : "false")"
-     data-tags="@string.Join(' ', publicTags)"
-     data-title="@title.ToLowerInvariant()"
-     data-search="@projectSearchText">
+     data-content-card
+     data-content-category="@category"
+     data-content-featured="@(featured ? "true" : "false")"
+     data-content-tags="@string.Join(' ', publicTags)"
+     data-content-title="@title.ToLowerInvariant()"
+     data-content-search="@projectSearchText">
     <div class="card h-100 project-card-inner @(featured ? "project-card-featured" : string.Empty)">
         <div class="card-body">
             <div class="project-card-header">
