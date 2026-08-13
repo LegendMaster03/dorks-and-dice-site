@@ -2,26 +2,29 @@
 
 <div class="development-preview-toolbar border-bottom">
     <div class="container-fluid py-2">
-        <form class="d-flex flex-wrap align-items-center gap-2" method="post" action="/development-preview" data-auto-submit="change">
-            <input type="hidden" name="returnUrl" value="@Model.ReturnUrl" />
-            <span class="small fw-semibold text-uppercase">Development Preview</span>
-            <label class="small text-muted" for="siteMode">Mode</label>
-            <select class="form-select form-select-sm development-preview-select" id="siteMode" name="siteMode">
-                <option value="dorks-and-dice" selected="@(Model.SelectedMode == SiteMode.DorksAndDice)">Dorks &amp; Dice</option>
-                <option value="professional" selected="@(Model.SelectedMode == SiteMode.Professional)">Professional</option>
-                <option value="development" selected="@(Model.SelectedMode == SiteMode.Development)">Development</option>
-            </select>
-            <div class="form-check form-switch mb-0">
-                <input class="form-check-input"
-                       type="checkbox"
-                       role="switch"
-                       id="includeUnlisted"
-                       name="includeUnlisted"
-                       value="true"
-                       checked="@Model.IncludeUnlistedArticles">
-                <label class="form-check-label small" for="includeUnlisted">Show unlisted articles</label>
-            </div>
-        </form>
+        <div class="d-flex flex-wrap align-items-center gap-2">
+            <form class="d-flex flex-wrap align-items-center gap-2" method="post" action="/development-preview" data-auto-submit="change">
+                <input type="hidden" name="returnUrl" value="@Model.ReturnUrl" />
+                <span class="small fw-semibold text-uppercase">Development Preview</span>
+                <label class="small text-muted" for="siteMode">Mode</label>
+                <select class="form-select form-select-sm development-preview-select" id="siteMode" name="siteMode">
+                    <option value="dorks-and-dice" selected="@(Model.SelectedMode == SiteMode.DorksAndDice)">Dorks &amp; Dice</option>
+                    <option value="professional" selected="@(Model.SelectedMode == SiteMode.Professional)">Professional</option>
+                    <option value="development" selected="@(Model.SelectedMode == SiteMode.Development)">Development</option>
+                </select>
+                <div class="form-check form-switch mb-0">
+                    <input class="form-check-input"
+                           type="checkbox"
+                           role="switch"
+                           id="includeUnlisted"
+                           name="includeUnlisted"
+                           value="true"
+                           checked="@Model.IncludeUnlistedArticles">
+                    <label class="form-check-label small" for="includeUnlisted">Show unlisted articles</label>
+                </div>
+            </form>
+            <a class="btn btn-sm btn-outline-secondary ms-auto" href="/development/content">Content editor</a>
+        </div>
         @if (Model.RouteRestrictionMismatch)
         {
             <div class="development-preview-warning mt-2" role="alert">

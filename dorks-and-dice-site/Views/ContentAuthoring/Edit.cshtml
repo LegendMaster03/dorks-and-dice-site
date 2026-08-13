@@ -1,0 +1,113 @@
+@model dorks_and_dice_site.Models.Content.ContentAuthoringEditViewModel
+@{
+    var document = Model.Document;
+    ViewData["Title"] = document.IsNew ? "New Content" : $"Edit {document.Id}";
+    ViewData["Robots"] = "noindex, nofollow";
+    var saveAction = document.IsNew
+        ? "/development/content/new"
+        : $"/development/content/{document.Slug}/edit";
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+    <div>
+        <p class="text-uppercase text-muted small mb-1">Development only</p>
+        <h1 class="h3 mb-0">@(document.IsNew ? "New content page" : $"Edit {document.Id}")</h1>
+    </div>
+    <a class="btn btn-outline-secondary" href="/development/content">Back to content</a>
+</div>
+
+<div asp-validation-summary="All" class="text-danger mb-3"></div>
+
+<form method="post" action="@saveAction">
+    @Html.AntiForgeryToken()
+    <input asp-for="Document.IsNew" type="hidden" />
+    <input asp-for="Document.ExpectedRevisionId" type="hidden" />
+
+    <div class="row g-3 mb-3">
+        <div class="col-md-6">
+            <label asp-for="Document.Id" class="form-label">Stable ID</label>
+            <input asp-for="Document.Id" class="form-control" readonly="@(!document.IsNew)" />
+            <div class="form-text">Stable internal identity. Existing page IDs do not change across revisions.</div>
+        </div>
+        <div class="col-md-6">
+            <label asp-for="Document.Slug" class="form-label">Slug</label>
+            <input asp-for="Document.Slug" class="form-control" />
+            <div class="form-text">Public detail-route segment. Changing it moves the current route while retaining page identity.</div>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-3">
+        <div class="col-lg-6">
+            <label asp-for="Document.TagsText" class="form-label">Tags</label>
+            <textarea asp-for="Document.TagsText" class="form-control font-monospace" rows="7"></textarea>
+            <div class="form-text">One per line or comma-separated. Include one or more context tags: project, experience, article.</div>
+        </div>
+        <div class="col-lg-6">
+            <label asp-for="Document.VisibleModesText" class="form-label">Visible site modes</label>
+            <textarea asp-for="Document.VisibleModesText" class="form-control font-monospace" rows="7"></textarea>
+            <div class="form-text">One per line or comma-separated, for example Professional or DorksAndDice.</div>
+        </div>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="Document.MetadataJson" class="form-label">Revision metadata</label>
+        <textarea asp-for="Document.MetadataJson" class="form-control font-monospace" rows="24" spellcheck="false"></textarea>
+        <div class="form-text">Structured metadata for titles, summaries, context presentations, header information, images, and SEO.</div>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="Document.BodyFormat" class="form-label">Body format</label>
+        <select asp-for="Document.BodyFormat" class="form-select">
+            <option value="markdown">Markdown</option>
+        </select>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="Document.Body" class="form-label">Body</label>
+        <textarea asp-for="Document.Body" class="form-control font-monospace" rows="34" spellcheck="true"></textarea>
+        <div class="form-text">Markdown is the primary format. Existing rich HTML and registered <code>{{directive}}</code> blocks are supported inside the body.</div>
+    </div>
+
+    <div class="d-flex flex-wrap gap-2 mb-4">
+        <button class="btn btn-primary" type="submit">@(document.IsNew ? "Create page" : "Save revision")</button>
+        <button class="btn btn-outline-secondary" type="submit" formaction="/development/content/preview">Preview body</button>
+    </div>
+</form>
+
+@if (!string.IsNullOrWhiteSpace(Model.RenderedPreviewHtml))
+{
+    <section class="card mb-4">
+        <div class="card-header">Body preview</div>
+        <div class="card-body content-detail-body">
+            @Html.Raw(Model.RenderedPreviewHtml)
+        </div>
+    </section>
+}
+
+@if (!document.IsNew && Model.History.Count > 0)
+{
+    <section class="mt-4">
+        <h2 class="h5">Revision history</h2>
+        <div class="table-responsive">
+            <table class="table table-sm align-middle">
+                <thead>
+                    <tr>
+                        <th scope="col">Revision</th>
+                        <th scope="col">Parent</th>
+                        <th scope="col">Created UTC</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var revision in Model.History)
+                    {
+                        <tr class="@(revision.RevisionId == document.ExpectedRevisionId ? "table-active" : string.Empty)">
+                            <th scope="row">@revision.RevisionId</th>
+                            <td>@(revision.ParentRevisionId?.ToString() ?? "Initial")</td>
+                            <td>@revision.CreatedUtc.ToString("u")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </section>
+}

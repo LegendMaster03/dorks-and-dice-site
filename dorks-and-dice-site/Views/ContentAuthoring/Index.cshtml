@@ -1,0 +1,47 @@
+@model dorks_and_dice_site.Models.Content.ContentAuthoringIndexViewModel
+@using dorks_and_dice_site.Models.Content
+@{
+    ViewData["Title"] = "Content Authoring";
+    ViewData["Robots"] = "noindex, nofollow";
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+    <div>
+        <p class="text-uppercase text-muted small mb-1">Development only</p>
+        <h1 class="h3 mb-0">Content Authoring</h1>
+    </div>
+    <a class="btn btn-primary" href="/development/content/new">New content page</a>
+</div>
+
+<p class="text-muted">
+    Content is stored in the configured database. Saving an existing page creates a new revision and moves the page's current-revision pointer.
+</p>
+
+<div class="table-responsive">
+    <table class="table align-middle">
+        <thead>
+            <tr>
+                <th scope="col">Title</th>
+                <th scope="col">Contexts</th>
+                <th scope="col">Slug</th>
+                <th scope="col">Revision</th>
+                <th scope="col"></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in Model.Items)
+            {
+                var contexts = item.Tags.Where(ContentTags.IsContext).ToList();
+                <tr>
+                    <th scope="row">@item.Title</th>
+                    <td>@string.Join(", ", contexts)</td>
+                    <td><code>@item.Slug</code></td>
+                    <td>@item.RevisionId</td>
+                    <td class="text-end">
+                        <a class="btn btn-sm btn-outline-primary" href="/development/content/@item.Slug/edit">Edit</a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
