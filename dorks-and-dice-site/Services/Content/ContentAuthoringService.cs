@@ -1,6 +1,5 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using System.Text.RegularExpressions;
 using dorks_and_dice_site.Models.Content;
 using dorks_and_dice_site.Models.Site;
 using dorks_and_dice_site.Services.Content.Storage;
@@ -10,7 +9,6 @@ namespace dorks_and_dice_site.Services.Content;
 
 public sealed class ContentAuthoringService : IContentAuthoringService
 {
-    private static readonly Regex KeyPattern = new("^[a-z0-9][a-z0-9-]*$", RegexOptions.Compiled | RegexOptions.CultureInvariant);
     private static readonly JsonSerializerOptions MetadataJsonOptions = CreateMetadataJsonOptions();
 
     private readonly IContentSourceRegistry _sourceRegistry;
@@ -48,6 +46,7 @@ public sealed class ContentAuthoringService : IContentAuthoringService
         CancellationToken cancellationToken = default)
     {
         sourceKey = ResolveSourceKey(sourceKey);
+        ContentInputValidator.ValidateKey("Slug", slug);
         await using var context = CreateContext(sourceKey);
         await context.Database.EnsureCreatedAsync(cancellationToken);
         var repository = new DatabaseContentRepository(context);
@@ -183,6 +182,7 @@ public sealed class ContentAuthoringService : IContentAuthoringService
         string slug,
         CancellationToken cancellationToken = default)
     {
+        ContentInputValidator.ValidateKey("Slug", slug);
         sourceKey = ResolveSourceKey(sourceKey);
         targetSourceKey = ResolveSourceKey(targetSourceKey);
         if (string.Equals(sourceKey, targetSourceKey, StringComparison.OrdinalIgnoreCase))
@@ -303,15 +303,7 @@ public sealed class ContentAuthoringService : IContentAuthoringService
 
     private static ContentItem ParseAndValidate(ContentAuthoringDocument document, bool requireExistingRevision)
     {
-        if (string.IsNullOrWhiteSpace(document.Id) || !KeyPattern.IsMatch(document.Id))
-        {
-            throw new InvalidOperationException("Stable ID is required and may contain lowercase letters, numbers, and hyphens.");
-        }
-
-        if (string.IsNullOrWhiteSpace(document.Slug) || !KeyPattern.IsMatch(document.Slug))
-        {
-            throw new InvalidOperationException("Slug is required and may contain lowercase letters, numbers, and hyphens.");
-        }
+        ContentInputValidator.ValidateDocumentShape(document);
 
         if (requireExistingRevision && document.ExpectedRevisionId <= 0)
         {
@@ -331,25 +323,16 @@ public sealed class ContentAuthoringService : IContentAuthoringService
 
         item.Id = document.Id;
         item.Slug = document.Slug;
-        item.Tags = ParseValues(document.TagsText, lowercase: true);
-        item.Tags.RemoveAll(tag => string.Equals(tag, ContentTags.Unlisted, StringComparison.OrdinalIgnoreCase));
+        item.Tags = ContentInputValidator.ParseTags(document.TagsText);
         if (!document.IsListed)
         {
             item.Tags.Add(ContentTags.Unlisted);
         }
-        item.VisibleInModes = ParseModes(document.VisibleModesText);
+        item.VisibleInModes = ContentInputValidator.ParseModes(document.VisibleModesText);
         item.BodyFormat = document.BodyFormat.Trim().ToLowerInvariant();
-        item.Body = document.Body ?? string.Empty;
+        item.Body = document.Body;
 
-        if (string.IsNullOrWhiteSpace(item.Title))
-        {
-            throw new InvalidOperationException("Metadata title is required.");
-        }
-
-        if (string.IsNullOrWhiteSpace(item.Summary))
-        {
-            throw new InvalidOperationException("Metadata summary is required.");
-        }
+        ContentInputValidator.ValidateItem(item);
 
         if (!item.Tags.Any(ContentTags.IsContext))
         {
@@ -359,16 +342,6 @@ public sealed class ContentAuthoringService : IContentAuthoringService
         if (item.VisibleInModes.Count == 0)
         {
             throw new InvalidOperationException("At least one visible site mode is required.");
-        }
-
-        if (!string.Equals(item.BodyFormat, "markdown", StringComparison.OrdinalIgnoreCase))
-        {
-            throw new InvalidOperationException("Only the markdown body format is currently supported.");
-        }
-
-        if (string.IsNullOrWhiteSpace(item.Body))
-        {
-            throw new InvalidOperationException("Content body can not be empty.");
         }
 
         return item;
@@ -415,33 +388,6 @@ public sealed class ContentAuthoringService : IContentAuthoringService
             .ToList();
     }
 
-    private static List<string> ParseValues(string rawValues, bool lowercase)
-    {
-        return rawValues
-            .Split([',', '\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Select(value => lowercase ? value.ToLowerInvariant() : value)
-            .Where(value => !string.IsNullOrWhiteSpace(value))
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToList();
-    }
-
-    private static List<SiteMode> ParseModes(string rawModes)
-    {
-        var values = ParseValues(rawModes, lowercase: false);
-        var modes = new List<SiteMode>();
-        foreach (var value in values)
-        {
-            if (!Enum.TryParse<SiteMode>(value, ignoreCase: true, out var mode))
-            {
-                throw new InvalidOperationException($"Unknown site mode '{value}'.");
-            }
-
-            modes.Add(mode);
-        }
-
-        return modes.Distinct().ToList();
-    }
-
     private static string PrettyMetadata(string metadataJson)
     {
         using var document = JsonDocument.Parse(metadataJson);
@@ -453,8 +399,10 @@ public sealed class ContentAuthoringService : IContentAuthoringService
         var options = new JsonSerializerOptions(JsonSerializerDefaults.Web)
         {
             PropertyNameCaseInsensitive = true,
-            AllowTrailingCommas = true,
-            ReadCommentHandling = JsonCommentHandling.Skip
+            AllowTrailingCommas = false,
+            ReadCommentHandling = JsonCommentHandling.Disallow,
+            MaxDepth = 32,
+            UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow
         };
         options.Converters.Add(new JsonStringEnumConverter());
         return options;
