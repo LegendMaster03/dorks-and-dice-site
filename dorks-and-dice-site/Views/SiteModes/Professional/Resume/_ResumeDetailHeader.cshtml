@@ -1,13 +1,25 @@
 @model dorks_and_dice_site.Models.Resume.ResumeDetailHeaderViewModel
 @{
+    var currentController = ViewContext.RouteData.Values["controller"]?.ToString();
+    var isArticleDetail = string.Equals(currentController, "Articles", StringComparison.OrdinalIgnoreCase);
     var isExperienceDetail = Model.Title.StartsWith("Experience:", StringComparison.OrdinalIgnoreCase);
-    var backLinkText = isExperienceDetail ? "Back to experience" : "Back to projects";
-    var backLinkFragment = isExperienceDetail ? "experience-section" : "projects-section";
+
+    var backLinkText = isArticleDetail
+        ? "Back to articles"
+        : isExperienceDetail
+            ? "Back to experience"
+            : "Back to projects";
+    var backLinkController = isArticleDetail ? "Articles" : "Resume";
+    var backLinkFragment = isArticleDetail
+        ? null
+        : isExperienceDetail
+            ? "experience-section"
+            : "projects-section";
 }
 
 <nav class="resume-detail-back mb-3" aria-label="Detail navigation">
     <a class="btn btn-sm btn-outline-primary"
-       asp-controller="Resume"
+       asp-controller="@backLinkController"
        asp-action="Index"
        asp-fragment="@backLinkFragment">
         &larr; @backLinkText
