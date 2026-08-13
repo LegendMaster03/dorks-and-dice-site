@@ -32,6 +32,7 @@ public static class ContentStorageServiceCollectionExtensions
 
         services.AddScoped<IContentRepository, DatabaseContentRepository>();
         services.AddScoped<IContentCatalogService, ContentCatalogService>();
+        services.AddSingleton<IContentDirectiveRenderer, SiteModeArchitectureDirectiveRenderer>();
         services.AddSingleton<IContentBodyRenderer, ContentBodyRenderer>();
 
         return services;
