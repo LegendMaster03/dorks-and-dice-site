@@ -1,5 +1,6 @@
 using dorks_and_dice_site.Models.Content;
 using dorks_and_dice_site.Services.Content;
+using dorks_and_dice_site.Services.Content.Storage;
 using dorks_and_dice_site.Services.Site;
 using Microsoft.AspNetCore.Mvc;
 
@@ -10,10 +11,14 @@ namespace dorks_and_dice_site.Controllers;
 public sealed class ContentMediaAuthoringController : Controller
 {
     private readonly IContentAssetService _assets;
+    private readonly IContentSourceRegistry _sourceRegistry;
 
-    public ContentMediaAuthoringController(IContentAssetService assets)
+    public ContentMediaAuthoringController(
+        IContentAssetService assets,
+        IContentSourceRegistry sourceRegistry)
     {
         _assets = assets;
+        _sourceRegistry = sourceRegistry;
     }
 
     [HttpGet("")]
@@ -27,7 +32,7 @@ public sealed class ContentMediaAuthoringController : Controller
             return NotFound();
         }
 
-        source ??= "Local";
+        source ??= _sourceRegistry.AuthoringSourceKey;
         try
         {
             var assets = await _assets.GetForPageAsync(source, slug, cancellationToken);
