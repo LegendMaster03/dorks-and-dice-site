@@ -1,3 +1,4 @@
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 
 namespace dorks_and_dice_site.Services.Content.Storage;
@@ -6,7 +7,8 @@ public static class ContentStorageServiceCollectionExtensions
 {
     public static IServiceCollection AddContentStorage(
         this IServiceCollection services,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        string contentRootPath)
     {
         var profileName = configuration["ContentStorage:Profile"] ?? "External";
         var profile = configuration.GetSection($"ContentStorage:Profiles:{profileName}");
@@ -22,7 +24,13 @@ public static class ContentStorageServiceCollectionExtensions
             switch (provider.ToLowerInvariant())
             {
                 case "sqlite":
-                    options.UseSqlite(connectionString);
+                    var sqliteConnection = new SqliteConnectionStringBuilder(connectionString);
+                    if (!Path.IsPathRooted(sqliteConnection.DataSource))
+                    {
+                        sqliteConnection.DataSource = Path.GetFullPath(
+                            Path.Combine(contentRootPath, sqliteConnection.DataSource));
+                    }
+                    options.UseSqlite(sqliteConnection.ConnectionString);
                     break;
                 default:
                     throw new NotSupportedException(

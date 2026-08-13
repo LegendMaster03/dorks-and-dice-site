@@ -29,7 +29,9 @@ namespace dorks_and_dice_site.Controllers
             switch (GetSiteMode())
             {
                 case SiteMode.Professional:
-                    return View("~/Views/SiteModes/Professional/Home.cshtml", _resumeContentService.GetResumePage());
+                    return View(
+                        "~/Views/SiteModes/Professional/Home.cshtml",
+                        await _resumeContentService.GetResumePageAsync(cancellationToken));
                 case SiteMode.Development:
                     return RouteResolutionIssue(
                         "Development mode cannot resolve this shared route",
@@ -43,91 +45,6 @@ namespace dorks_and_dice_site.Controllers
                 default:
                     throw new InvalidOperationException($"Unhandled site mode: {GetSiteMode()}");
             }
-        }
-
-        public IActionResult Resume()
-        {
-            return RedirectToAction(nameof(ResumeController.Index), "Resume");
-        }
-
-        public IActionResult XnGine()
-        {
-            return RedirectToAction(nameof(ResumeController.XnGine), "Resume");
-        }
-
-        public IActionResult SeniorProject()
-        {
-            return RedirectToAction(nameof(ResumeController.SeniorProject), "Resume");
-        }
-
-        public IActionResult CyberSecurityTeam()
-        {
-            return RedirectToAction(nameof(ResumeController.DirectedIndependentStudy), "Resume");
-        }
-
-        public IActionResult DirectedIndependentStudy()
-        {
-            return RedirectToAction(nameof(ResumeController.DirectedIndependentStudy), "Resume");
-        }
-
-        public IActionResult Skyblivion()
-        {
-            return RedirectToAction(nameof(ResumeController.Skyblivion), "Resume");
-        }
-
-        public IActionResult Skywind()
-        {
-            return RedirectToAction(nameof(ResumeController.Skywind), "Resume");
-        }
-
-        public IActionResult TechnologyServices()
-        {
-            return RedirectToAction(nameof(ResumeController.ExperienceTechnologyServices), "Resume");
-        }
-
-        public IActionResult SimLabExpo()
-        {
-            return RedirectToAction(nameof(ResumeController.SimLabExpo), "Resume");
-        }
-
-        public IActionResult WiredWorks()
-        {
-            return RedirectToAction(nameof(ResumeController.WiredWorks), "Resume");
-        }
-
-        public IActionResult DndTools()
-        {
-            return RedirectToAction(nameof(ResumeController.DndTools), "Resume");
-        }
-
-        public IActionResult ExperienceCyberSecurityTeam()
-        {
-            return RedirectToAction(nameof(ResumeController.ExperienceCyberSecurityTeam), "Resume");
-        }
-
-        public IActionResult ExperienceTechnologyServices()
-        {
-            return RedirectToAction(nameof(ResumeController.ExperienceTechnologyServices), "Resume");
-        }
-
-        public IActionResult ExperienceSimLab()
-        {
-            return RedirectToAction(nameof(ResumeController.ExperienceSimLab), "Resume");
-        }
-
-        public IActionResult ExperienceWiredWorks()
-        {
-            return RedirectToAction(nameof(ResumeController.ExperienceWiredWorks), "Resume");
-        }
-
-        public IActionResult ExperienceSkyblivion()
-        {
-            return RedirectToAction(nameof(ResumeController.Skyblivion), "Resume");
-        }
-
-        public IActionResult ExperienceSkywind()
-        {
-            return RedirectToAction(nameof(ResumeController.Skywind), "Resume");
         }
 
         public IActionResult NotFoundPage()

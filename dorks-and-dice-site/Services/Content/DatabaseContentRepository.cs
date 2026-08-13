@@ -18,9 +18,9 @@ public sealed class DatabaseContentRepository : IContentRepository
         var pages = await _context.Pages
             .AsNoTracking()
             .Include(page => page.CurrentRevision)!
-                .ThenInclude(revision => revision.Tags)
+                .ThenInclude(revision => revision!.Tags)
             .Include(page => page.CurrentRevision)!
-                .ThenInclude(revision => revision.Modes)
+                .ThenInclude(revision => revision!.Modes)
             .Where(page => page.CurrentRevisionId != null)
             .OrderBy(page => page.Id)
             .ToListAsync(cancellationToken);
@@ -33,9 +33,9 @@ public sealed class DatabaseContentRepository : IContentRepository
         var page = await _context.Pages
             .AsNoTracking()
             .Include(candidate => candidate.CurrentRevision)!
-                .ThenInclude(revision => revision.Tags)
+                .ThenInclude(revision => revision!.Tags)
             .Include(candidate => candidate.CurrentRevision)!
-                .ThenInclude(revision => revision.Modes)
+                .ThenInclude(revision => revision!.Modes)
             .SingleOrDefaultAsync(
                 candidate => candidate.Slug == slug && candidate.CurrentRevisionId != null,
                 cancellationToken);

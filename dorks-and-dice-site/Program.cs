@@ -15,7 +15,7 @@ builder.Services.AddControllersWithViews();
 builder.Services.Configure<MinecraftServerOptions>(
     builder.Configuration.GetSection(MinecraftServerOptions.SectionName));
 builder.Services.AddSingleton<IMinecraftServerStatusService, MinecraftServerStatusService>();
-builder.Services.AddContentStorage(builder.Configuration);
+builder.Services.AddContentStorage(builder.Configuration, builder.Environment.ContentRootPath);
 builder.Services.AddScoped<IResumeContentService, ResumeContentService>();
 builder.Services.AddSingleton<SiteModeOptions>();
 builder.Services.AddSingleton<ISiteModePartialResolver, SiteModePartialResolver>();
