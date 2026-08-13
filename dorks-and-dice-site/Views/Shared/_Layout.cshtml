@@ -1,8 +1,10 @@
 @using dorks_and_dice_site.Services.Site
+@using dorks_and_dice_site.Services.Content.Storage
 @using dorks_and_dice_site.Models.Site
 @using System.Text.Json
 @inject ISiteModePartialResolver SiteModePartialResolver
 @inject ISiteModePresentationService SiteModePresentationService
+@inject IContentSourceRegistry ContentSourceRegistry
 @{
     var siteModeContext = Context.GetSiteModeContext();
     var isDevelopmentPreview = siteModeContext.IsDevelopmentPreview;
@@ -38,12 +40,30 @@
         siteModeContext.SiteMode,
         SiteModeBrandingPart.Footer);
     var developmentToolsPartialPath = "~/Views/SiteModes/Development/_DevelopmentTools.cshtml";
+    var defaultSourceKeys = isDevelopmentPreview
+        ? ContentSourceRegistry.GetDefaultSources(siteModeContext.SiteMode)
+            .Select(source => source.Key)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase)
+        : new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+    var enabledSourceKeys = siteModeContext.HasContentSourceOverride
+        ? siteModeContext.EnabledContentSources
+        : defaultSourceKeys;
     var developmentTools = new DevelopmentPreviewToolbarViewModel
     {
         SelectedMode = siteModeContext.SiteMode,
         IncludeUnlistedArticles = siteModeContext.IncludeUnlistedArticles,
         RouteRestrictionMismatch = siteModeContext.DevelopmentPreviewRouteRestrictionMismatch,
-        ReturnUrl = developmentPreviewReturnUrl
+        ReturnUrl = developmentPreviewReturnUrl,
+        ContentSources = isDevelopmentPreview
+            ? ContentSourceRegistry.GetAllSources()
+                .Select(source => new DevelopmentContentSourceToggleViewModel
+                {
+                    Key = source.Key,
+                    DisplayName = source.DisplayName,
+                    IsEnabled = enabledSourceKeys.Contains(source.Key)
+                })
+                .ToList()
+            : []
     };
     var professionalProfileJson = siteModeContext.SiteMode == SiteMode.Professional
         ? JsonSerializer.Serialize(new

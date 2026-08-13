@@ -44,6 +44,9 @@ public sealed class ContentItem
     public List<string> Tags { get; set; } = [];
 
     [JsonIgnore]
+    public string SourceKey { get; set; } = string.Empty;
+
+    [JsonIgnore]
     public long RevisionId { get; set; }
 
     [JsonIgnore]

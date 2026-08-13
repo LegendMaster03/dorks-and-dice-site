@@ -21,6 +21,7 @@ public sealed class SiteModeMiddleware
         var isDevelopmentHost = _options.DevelopmentHosts.Contains(host);
         var previewModeValue = GetDevelopmentPreviewModeValue(context);
         var includeUnlistedArticles = GetIncludeUnlistedArticles(context, isDevelopmentHost);
+        var sourceSelection = GetEnabledContentSources(context, isDevelopmentHost);
         var siteMode = ResolveSiteMode(isProfessionalDomain, isDorksAndDiceDomain, isDevelopmentHost, previewModeValue);
         var isAllowedInMode = SiteRouteOwnership.IsAllowedInMode(context.Request.Path, siteMode);
 
@@ -31,6 +32,8 @@ public sealed class SiteModeMiddleware
             IsDorksAndDiceDomain = isDorksAndDiceDomain,
             IsDevelopmentPreview = isDevelopmentHost,
             IncludeUnlistedArticles = includeUnlistedArticles,
+            HasContentSourceOverride = sourceSelection.HasOverride,
+            EnabledContentSources = sourceSelection.EnabledSources,
             DevelopmentPreviewRouteRestrictionMismatch = isDevelopmentHost && !isAllowedInMode
         };
 
@@ -86,10 +89,35 @@ public sealed class SiteModeMiddleware
 
     private static bool GetIncludeUnlistedArticles(HttpContext context, bool isDevelopmentHost)
     {
-        var includeUnlistedArticles = isDevelopmentHost
+        return isDevelopmentHost
             && string.Equals(context.Request.Cookies[SiteModeValues.IncludeUnlistedCookie], "true", StringComparison.OrdinalIgnoreCase);
+    }
 
-        return includeUnlistedArticles;
+    private static (bool HasOverride, IReadOnlySet<string> EnabledSources) GetEnabledContentSources(
+        HttpContext context,
+        bool isDevelopmentHost)
+    {
+        if (!isDevelopmentHost)
+        {
+            return (false, new HashSet<string>(StringComparer.OrdinalIgnoreCase));
+        }
+
+        var rawValue = context.Request.Cookies[SiteModeValues.EnabledContentSourcesCookie];
+        if (rawValue is null)
+        {
+            return (false, new HashSet<string>(StringComparer.OrdinalIgnoreCase));
+        }
+
+        if (string.Equals(rawValue, SiteModeValues.NoContentSourcesCookieValue, StringComparison.Ordinal))
+        {
+            return (true, new HashSet<string>(StringComparer.OrdinalIgnoreCase));
+        }
+
+        return (
+            true,
+            new HashSet<string>(
+                rawValue.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),
+                StringComparer.OrdinalIgnoreCase));
     }
 
     private static bool IsKnownDevelopmentPreviewModeValue(string? value)

@@ -14,5 +14,7 @@ public sealed class SiteModeContext
     public bool IsAssignedDomain => IsProfessionalDomain || IsDorksAndDiceDomain || IsDevelopmentPreview;
     public bool IsDevelopmentPreview { get; init; }
     public bool IncludeUnlistedArticles { get; init; }
+    public bool HasContentSourceOverride { get; init; }
+    public IReadOnlySet<string> EnabledContentSources { get; init; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
     public bool DevelopmentPreviewRouteRestrictionMismatch { get; init; }
 }

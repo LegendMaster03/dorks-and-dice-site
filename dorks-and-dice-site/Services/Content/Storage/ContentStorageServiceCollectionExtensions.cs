@@ -1,4 +1,3 @@
-using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 
 namespace dorks_and_dice_site.Services.Content.Storage;
@@ -10,35 +9,14 @@ public static class ContentStorageServiceCollectionExtensions
         IConfiguration configuration,
         string contentRootPath)
     {
-        var profileName = configuration["ContentStorage:Profile"] ?? "External";
-        var profile = configuration.GetSection($"ContentStorage:Profiles:{profileName}");
-        var provider = profile["Provider"]
-            ?? throw new InvalidOperationException($"Content storage profile '{profileName}' does not define a provider.");
-        var connectionStringName = profile["ConnectionString"]
-            ?? throw new InvalidOperationException($"Content storage profile '{profileName}' does not define a connection string name.");
-        var connectionString = configuration.GetConnectionString(connectionStringName)
-            ?? throw new InvalidOperationException($"Connection string '{connectionStringName}' was not found for content storage profile '{profileName}'.");
+        var sourceRegistry = new ContentSourceRegistry(configuration, contentRootPath);
 
+        services.AddSingleton<IContentSourceRegistry>(sourceRegistry);
+        services.AddHttpContextAccessor();
         services.AddDbContext<ContentDbContext>(options =>
-        {
-            switch (provider.ToLowerInvariant())
-            {
-                case "sqlite":
-                    var sqliteConnection = new SqliteConnectionStringBuilder(connectionString);
-                    if (!Path.IsPathRooted(sqliteConnection.DataSource))
-                    {
-                        sqliteConnection.DataSource = Path.GetFullPath(
-                            Path.Combine(contentRootPath, sqliteConnection.DataSource));
-                    }
-                    options.UseSqlite(sqliteConnection.ConnectionString);
-                    break;
-                default:
-                    throw new NotSupportedException(
-                        $"Content database provider '{provider}' is not supported by this build.");
-            }
-        });
+            sourceRegistry.ConfigureDbContext(options, sourceRegistry.AuthoringSourceKey));
 
-        services.AddScoped<IContentRepository, DatabaseContentRepository>();
+        services.AddScoped<IContentRepository, CompositeContentRepository>();
         services.AddScoped<IContentCatalogService, ContentCatalogService>();
         services.AddScoped<IContentAuthoringService, ContentAuthoringService>();
         services.AddSingleton<IContentDirectiveRenderer, SiteModeArchitectureDirectiveRenderer>();

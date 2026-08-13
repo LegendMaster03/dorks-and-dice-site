@@ -14,12 +14,12 @@ public sealed class ContentAuthoringService : IContentAuthoringService
     private static readonly JsonSerializerOptions MetadataJsonOptions = CreateMetadataJsonOptions();
 
     private readonly ContentDbContext _context;
-    private readonly IContentRepository _repository;
+    private readonly DatabaseContentRepository _repository;
 
-    public ContentAuthoringService(ContentDbContext context, IContentRepository repository)
+    public ContentAuthoringService(ContentDbContext context)
     {
         _context = context;
-        _repository = repository;
+        _repository = new DatabaseContentRepository(context);
     }
 
     public async Task<ContentAuthoringIndexViewModel> GetIndexAsync(CancellationToken cancellationToken = default)

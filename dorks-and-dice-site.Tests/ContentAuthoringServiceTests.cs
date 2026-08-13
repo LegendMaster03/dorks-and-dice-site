@@ -20,7 +20,7 @@ public sealed class ContentAuthoringServiceTests
         await context.Database.EnsureCreatedAsync();
 
         var repository = new DatabaseContentRepository(context);
-        var service = new ContentAuthoringService(context, repository);
+        var service = new ContentAuthoringService(context);
         var newModel = service.GetNew();
         newModel.Document.Id = "authoring-test";
         newModel.Document.Slug = "authoring-test";
@@ -62,8 +62,7 @@ public sealed class ContentAuthoringServiceTests
         await using var context = new ContentDbContext(options);
         await context.Database.EnsureCreatedAsync();
 
-        var repository = new DatabaseContentRepository(context);
-        var service = new ContentAuthoringService(context, repository);
+        var service = new ContentAuthoringService(context);
         var newModel = service.GetNew();
         newModel.Document.Id = "conflict-test";
         newModel.Document.Slug = "conflict-test";

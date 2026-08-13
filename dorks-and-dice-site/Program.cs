@@ -134,7 +134,9 @@ app.MapGet("/sitemap.xml", (HttpContext context) =>
     return Results.Text(xml, "application/xml");
 });
 
-app.MapPost("/development-preview", async (HttpContext context) =>
+app.MapPost("/development-preview", async (
+    HttpContext context,
+    IContentSourceRegistry contentSourceRegistry) =>
 {
     var siteModeContext = context.GetSiteModeContext();
     if (!siteModeContext.IsDevelopmentPreview)
@@ -143,23 +145,47 @@ app.MapPost("/development-preview", async (HttpContext context) =>
     }
 
     var form = await context.Request.ReadFormAsync();
-    var requestedMode = form["siteMode"].FirstOrDefault();
-    if (requestedMode is not (SiteModeValues.DorksAndDiceModeValue
-        or SiteModeValues.ProfessionalModeValue
-        or SiteModeValues.DevelopmentModeValue))
-    {
-        requestedMode = SiteModeValues.DevelopmentModeValue;
-    }
-
-    var includeUnlisted = form.ContainsKey("includeUnlisted");
     var cookieOptions = new CookieOptions
     {
         IsEssential = true,
         SameSite = SameSiteMode.Lax
     };
 
-    context.Response.Cookies.Append(SiteModeValues.DevelopmentSiteModeCookie, requestedMode, cookieOptions);
-    context.Response.Cookies.Append(SiteModeValues.IncludeUnlistedCookie, includeUnlisted ? "true" : "false", cookieOptions);
+    if (form.ContainsKey("siteMode"))
+    {
+        var requestedMode = form["siteMode"].FirstOrDefault();
+        if (requestedMode is not (SiteModeValues.DorksAndDiceModeValue
+            or SiteModeValues.ProfessionalModeValue
+            or SiteModeValues.DevelopmentModeValue))
+        {
+            requestedMode = SiteModeValues.DevelopmentModeValue;
+        }
+
+        context.Response.Cookies.Append(SiteModeValues.DevelopmentSiteModeCookie, requestedMode, cookieOptions);
+    }
+
+    if (form.ContainsKey("articleSettings"))
+    {
+        context.Response.Cookies.Append(
+            SiteModeValues.IncludeUnlistedCookie,
+            form.ContainsKey("includeUnlisted") ? "true" : "false",
+            cookieOptions);
+
+        var knownSources = contentSourceRegistry.GetKnownSourceKeys();
+        var enabledSources = form["enabledContentSource"]
+            .Where(source => !string.IsNullOrWhiteSpace(source) && knownSources.Contains(source!))
+            .Select(source => source!)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        var cookieValue = enabledSources.Count == 0
+            ? SiteModeValues.NoContentSourcesCookieValue
+            : string.Join(',', enabledSources);
+
+        context.Response.Cookies.Append(
+            SiteModeValues.EnabledContentSourcesCookie,
+            cookieValue,
+            cookieOptions);
+    }
 
     var returnUrl = form["returnUrl"].FirstOrDefault();
     if (string.IsNullOrWhiteSpace(returnUrl) || !IsLocalUrl(returnUrl))
