@@ -1,5 +1,6 @@
 using dorks_and_dice_site.Models.Content;
 using dorks_and_dice_site.Services.Content;
+using dorks_and_dice_site.Services.Content.Storage;
 using dorks_and_dice_site.Services.Site;
 using Microsoft.AspNetCore.Mvc;
 
@@ -9,13 +10,16 @@ namespace dorks_and_dice_site.Controllers;
 public sealed class ContentAuthoringController : Controller
 {
     private readonly IContentAuthoringService _authoringService;
+    private readonly IContentSourceTransferService _transferService;
     private readonly IContentBodyRenderer _bodyRenderer;
 
     public ContentAuthoringController(
         IContentAuthoringService authoringService,
+        IContentSourceTransferService transferService,
         IContentBodyRenderer bodyRenderer)
     {
         _authoringService = authoringService;
+        _transferService = transferService;
         _bodyRenderer = bodyRenderer;
     }
 
@@ -54,12 +58,12 @@ public sealed class ContentAuthoringController : Controller
             return NotFound();
         }
 
-            model.Document.IsNew = true;
-            try
-            {
-                var created = await _authoringService.CreateAsync(model.Document, cancellationToken);
-                return RedirectToAction(nameof(Edit), new { slug = created.Slug, source = model.Document.SourceKey });
-            }
+        model.Document.IsNew = true;
+        try
+        {
+            var created = await _authoringService.CreateAsync(model.Document, cancellationToken);
+            return RedirectToAction(nameof(Edit), new { slug = created.Slug, source = model.Document.SourceKey });
+        }
         catch (InvalidOperationException ex)
         {
             ModelState.AddModelError(string.Empty, ex.Message);
@@ -93,12 +97,12 @@ public sealed class ContentAuthoringController : Controller
             return NotFound();
         }
 
-            model.Document.IsNew = false;
-            try
-            {
-                var saved = await _authoringService.SaveRevisionAsync(model.Document, cancellationToken);
-                return RedirectToAction(nameof(Edit), new { slug = saved.Slug, source = model.Document.SourceKey });
-            }
+        model.Document.IsNew = false;
+        try
+        {
+            var saved = await _authoringService.SaveRevisionAsync(model.Document, cancellationToken);
+            return RedirectToAction(nameof(Edit), new { slug = saved.Slug, source = model.Document.SourceKey });
+        }
         catch (InvalidOperationException ex)
         {
             ModelState.AddModelError(string.Empty, ex.Message);
@@ -127,6 +131,57 @@ public sealed class ContentAuthoringController : Controller
 
         _authoringService.PopulateOptions(model);
         return View("Edit", model);
+    }
+
+    [HttpPost("{slug}/copy")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Copy(
+        string slug,
+        string source,
+        string targetSource,
+        CancellationToken cancellationToken)
+    {
+        if (!IsDevelopmentPreview())
+        {
+            return NotFound();
+        }
+
+        try
+        {
+            await _transferService.CopyAsync(source, targetSource, slug, cancellationToken);
+            TempData["ContentAuthoringSuccess"] = $"Copied '{slug}' from {source} to {targetSource}.";
+            return RedirectToAction(nameof(Index), new { source });
+        }
+        catch (InvalidOperationException ex)
+        {
+            TempData["ContentAuthoringError"] = ex.Message;
+            return RedirectToAction(nameof(Index), new { source });
+        }
+    }
+
+    [HttpPost("copy-all")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CopyAll(
+        string source,
+        string targetSource,
+        CancellationToken cancellationToken)
+    {
+        if (!IsDevelopmentPreview())
+        {
+            return NotFound();
+        }
+
+        try
+        {
+            var copiedCount = await _transferService.CopyAllAsync(source, targetSource, cancellationToken);
+            TempData["ContentAuthoringSuccess"] = $"Copied {copiedCount} content page(s) from {source} to {targetSource}.";
+            return RedirectToAction(nameof(Index), new { source = targetSource });
+        }
+        catch (InvalidOperationException ex)
+        {
+            TempData["ContentAuthoringError"] = ex.Message;
+            return RedirectToAction(nameof(Index), new { source });
+        }
     }
 
     [HttpPost("{slug}/move")]
