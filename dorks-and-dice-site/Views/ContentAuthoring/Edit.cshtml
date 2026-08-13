@@ -27,6 +27,7 @@
         @if (!document.IsNew)
         {
             <a class="btn btn-outline-primary" href="@detailHref">View page</a>
+            <a class="btn btn-outline-primary" href="/development/content/@document.Slug/media?source=@Uri.EscapeDataString(document.SourceKey)">Manage images</a>
         }
         <a class="btn btn-outline-secondary" href="/development/content?source=@document.SourceKey">Back to content</a>
     </div>
@@ -104,7 +105,7 @@
     <div class="mb-3">
         <label asp-for="Document.Body" class="form-label">Body</label>
         <textarea asp-for="Document.Body" class="form-control font-monospace" rows="34" spellcheck="true"></textarea>
-        <div class="form-text">Markdown is the primary format. Existing rich HTML and registered <code>{{directive}}</code> blocks are supported inside the body.</div>
+        <div class="form-text">Markdown is the authored format. Raw HTML is disabled. Registered <code>{{directive}}</code> blocks are supported. Use Manage images for content-owned media.</div>
     </div>
 
     <div class="d-flex flex-wrap gap-2 mb-4">
