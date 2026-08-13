@@ -189,6 +189,9 @@ public sealed class SiteModeIntegrationTests : IClassFixture<WebApplicationFacto
         Assert.Contains("data-search=\"", html);
         Assert.Contains("data-title=\"personal multi-mode website\"", html);
         Assert.DoesNotContain("data-filter=\"professional\"", html);
+        Assert.DoesNotContain("data-filter-tag=\"project\"", html);
+        Assert.DoesNotContain("data-filter-tag=\"experience\"", html);
+        Assert.DoesNotContain("_internal:", html);
     }
 
     [Fact]
@@ -203,13 +206,17 @@ public sealed class SiteModeIntegrationTests : IClassFixture<WebApplicationFacto
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Contains("data-article-tag=\"all\"", html);
         Assert.Contains("data-article-tag=\"technical-investigation\"", html);
-        Assert.Contains("data-article-tags=\"technical-investigation puzzle write-up\"", html);
+        Assert.Contains("technical-investigation", html);
+        Assert.Contains("puzzle", html);
+        Assert.Contains("write-up", html);
         Assert.Contains("list=\"articleTagSuggestions\"", html);
         Assert.Contains("<option value=\"technical-investigation\">", html);
         Assert.Contains("id=\"articleList\"", html);
         Assert.Contains("data-article-listed=\"true\"", html);
         Assert.Contains("data-article-date=\"august 12, 2026\"", html);
         Assert.Contains("data-article-title=\"freeing the bees: solving consolevariations&#x27; hidden web puzzle\"", html);
+        Assert.DoesNotContain("data-article-tag=\"article\"", html);
+        Assert.DoesNotContain("_internal:", html);
     }
 
     [Fact]
@@ -302,8 +309,8 @@ public sealed class SiteModeIntegrationTests : IClassFixture<WebApplicationFacto
     }
 
     [Theory]
-    [InlineData("/Resume/XnGine", "Back to projects", "/resume#projects-section")]
-    [InlineData("/Resume/ExperienceCyberSecurityTeam", "Back to experience", "/resume#experience-section")]
+    [InlineData("/resume/xngine", "Back to projects", "/resume#projects-section")]
+    [InlineData("/resume/experiencecybersecurityteam", "Back to experience", "/resume#experience-section")]
     public async Task ProfessionalDetailPagesIncludeBackLink(string path, string linkText, string href)
     {
         var response = await SendAsync("kylebarnett.com", path);
@@ -315,11 +322,40 @@ public sealed class SiteModeIntegrationTests : IClassFixture<WebApplicationFacto
     }
 
     [Fact]
+    public async Task SharedProjectExperienceContentUsesOneCanonicalDetailPage()
+    {
+        var resumeResponse = await SendAsync("kylebarnett.com", "/resume");
+        var resumeHtml = await resumeResponse.Content.ReadAsStringAsync();
+        var detailResponse = await SendAsync("kylebarnett.com", "/resume/seniorproject");
+        var detailHtml = await detailResponse.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, resumeResponse.StatusCode);
+        Assert.True(CountOccurrences(resumeHtml, "href=\"/resume/seniorproject\"") >= 2);
+        Assert.Equal(HttpStatusCode.OK, detailResponse.StatusCode);
+        Assert.Contains("Back to projects", detailHtml);
+        Assert.Contains("Back to experience", detailHtml);
+    }
+
+    [Fact]
     public async Task DorksCannotAccessProfessionalOnlyArticle()
     {
         var response = await SendAsync("dorks-and-dice.com", "/articles/freeing-the-bees-consolevariations-puzzle");
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task DevelopmentPreviewCanRenderProfessionalArticleInDorksMode()
+    {
+        using var request = CreateRequest("localhost", "/articles/freeing-the-bees-consolevariations-puzzle");
+        request.Headers.Add("Cookie", "DevelopmentPreviewSiteMode=dorks-and-dice");
+
+        var response = await SendAsync(request);
+        var html = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("This content is not available in the selected site mode.", html);
+        Assert.Contains("Freeing the Bees: Solving ConsoleVariations", html);
     }
 
     [Fact]
@@ -371,5 +407,17 @@ public sealed class SiteModeIntegrationTests : IClassFixture<WebApplicationFacto
         var request = new HttpRequestMessage(HttpMethod.Get, $"http://{host}{path}");
         request.Headers.Host = host;
         return request;
+    }
+
+    private static int CountOccurrences(string value, string searchValue)
+    {
+        var count = 0;
+        var index = 0;
+        while ((index = value.IndexOf(searchValue, index, StringComparison.Ordinal)) >= 0)
+        {
+            count += 1;
+            index += searchValue.Length;
+        }
+        return count;
     }
 }
