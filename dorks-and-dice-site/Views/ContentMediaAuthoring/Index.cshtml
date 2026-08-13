@@ -1,0 +1,78 @@
+@model dorks_and_dice_site.Models.Content.ContentAssetAuthoringViewModel
+@{
+    ViewData["Title"] = $"Media for {Model.Slug}";
+    ViewData["Robots"] = "noindex, nofollow";
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+    <div>
+        <p class="text-uppercase text-muted small mb-1">Development only</p>
+        <h1 class="h3 mb-0">Content media</h1>
+        <p class="text-muted mb-0"><code>@Model.Slug</code> · @Model.SourceKey</p>
+    </div>
+    <a class="btn btn-outline-secondary" href="/development/content/@Model.Slug/edit?source=@Model.SourceKey">Back to editor</a>
+</div>
+
+<p>
+    Images uploaded here belong to this content page and are stored in the selected content source. Copy and Copy all
+    transfer them with the page. Media records are immutable so older revisions can keep stable image URLs.
+</p>
+
+@if (TempData["ContentMediaSuccess"] is string successMessage)
+{
+    <div class="alert alert-success" role="status">@successMessage</div>
+}
+@if (TempData["ContentMediaError"] is string errorMessage)
+{
+    <div class="alert alert-warning" role="alert">@errorMessage</div>
+}
+
+<form method="post" enctype="multipart/form-data" class="card card-body mb-4">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="source" value="@Model.SourceKey" />
+    <div class="row g-3 align-items-end">
+        <div class="col-md-8">
+            <label class="form-label" for="file">Upload image</label>
+            <input class="form-control" id="file" name="file" type="file" accept="image/jpeg,image/png,image/webp,image/gif" required />
+            <div class="form-text">JPEG, PNG, WebP, or GIF. Maximum 12 MB.</div>
+        </div>
+        <div class="col-md-4">
+            <button class="btn btn-primary w-100" type="submit">Upload image</button>
+        </div>
+    </div>
+</form>
+
+@if (Model.Assets.Count == 0)
+{
+    <p class="text-muted">No content-owned images have been uploaded for this page.</p>
+}
+else
+{
+    <div class="row row-cols-1 row-cols-lg-2 g-4">
+        @foreach (var asset in Model.Assets)
+        {
+            var previewUrl = $"/development/content/{Model.Slug}/media/{asset.AssetKey}/preview?source={Uri.EscapeDataString(Model.SourceKey)}";
+            <div class="col">
+                <article class="card h-100">
+                    <img src="@previewUrl" class="card-img-top content-media-preview" alt="Preview of @asset.FileName" />
+                    <div class="card-body">
+                        <h2 class="h6">@asset.FileName</h2>
+                        <dl class="row small mb-3">
+                            <dt class="col-4">Type</dt>
+                            <dd class="col-8">@asset.MediaType</dd>
+                            <dt class="col-4">Size</dt>
+                            <dd class="col-8">@($"{asset.Length / 1024.0:N1} KB")</dd>
+                            <dt class="col-4">SHA-256</dt>
+                            <dd class="col-8 text-break"><code>@asset.Sha256</code></dd>
+                        </dl>
+                        <label class="form-label" for="markdown-@asset.AssetKey">Markdown reference</label>
+                        <input id="markdown-@asset.AssetKey" class="form-control font-monospace" value="@asset.MarkdownReference" readonly />
+                        <div class="form-text">Replace <code>Alt text</code> with a meaningful description before inserting it into the body.</div>
+                        <label class="form-label mt-3" for="url-@asset.AssetKey">Stable media URL</label>
+                        <input id="url-@asset.AssetKey" class="form-control font-monospace" value="@asset.Url" readonly />
+                    </div>
+                </article>
+            </div>
+        }
+    </div>
+}
