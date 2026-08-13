@@ -8,6 +8,26 @@ namespace dorks_and_dice_site.Tests;
 public sealed class PostgresContentSourceTests
 {
     [Fact]
+    public void ProductionConfigurationDoesNotExposeLocalContentSource()
+    {
+        var projectDirectory = Path.GetFullPath(
+            Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "dorks-and-dice-site"));
+        var configuration = new ConfigurationBuilder()
+            .AddJsonFile(Path.Combine(projectDirectory, "appsettings.json"))
+            .AddJsonFile(Path.Combine(projectDirectory, "appsettings.Production.json"))
+            .Build();
+
+        var sourceKeys = configuration.GetSection("ContentStorage:Sources")
+            .GetChildren()
+            .Select(section => section.Key)
+            .ToList();
+
+        Assert.Contains("External", sourceKeys);
+        Assert.DoesNotContain("Local", sourceKeys);
+        Assert.Equal("External", configuration["ContentStorage:AuthoringSource"]);
+    }
+
+    [Fact]
     public void RegistryConfiguresNpgsqlProvider()
     {
         var settings = new Dictionary<string, string?>
