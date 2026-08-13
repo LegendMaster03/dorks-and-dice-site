@@ -12,6 +12,7 @@ public static class ContentStorageServiceCollectionExtensions
         var sourceRegistry = new ContentSourceRegistry(configuration, contentRootPath);
 
         services.AddSingleton<IContentSourceRegistry>(sourceRegistry);
+        services.AddSingleton<IContentStorageInitializer, ContentStorageInitializer>();
         services.AddHttpContextAccessor();
         services.AddDbContext<ContentDbContext>(options =>
             sourceRegistry.ConfigureDbContext(options, sourceRegistry.AuthoringSourceKey));
