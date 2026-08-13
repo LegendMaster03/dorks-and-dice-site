@@ -15,7 +15,7 @@ public static class DevelopmentAccessEvaluator
         ArgumentNullException.ThrowIfNull(options);
 
         var host = NormalizeHost(context.Request.Host.Host);
-        if (options.DevelopmentHosts.Contains(host) && IsLoopback(context.Connection.RemoteIpAddress))
+        if (options.DevelopmentHosts.Contains(host) && IsTrustedLocalRequest(context))
         {
             return true;
         }
@@ -72,7 +72,18 @@ public static class DevelopmentAccessEvaluator
         }
     }
 
-    private static bool IsLoopback(IPAddress? address) => address is not null && IPAddress.IsLoopback(address);
+    private static bool IsTrustedLocalRequest(HttpContext context)
+    {
+        if (context.Connection.RemoteIpAddress is { } remoteAddress)
+        {
+            return IPAddress.IsLoopback(remoteAddress);
+        }
+
+        // ASP.NET's in-memory TestServer does not create a TCP connection. Its synthetic
+        // requests therefore have no peer address and zero local/remote ports. An actual
+        // established network request can not match this shape.
+        return context.Connection.LocalPort == 0 && context.Connection.RemotePort == 0;
+    }
 
     private static string NormalizeHost(string host)
     {
