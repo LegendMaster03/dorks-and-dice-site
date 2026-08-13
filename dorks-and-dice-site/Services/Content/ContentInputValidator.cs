@@ -25,10 +25,10 @@ internal static class ContentInputValidator
     {
         ValidateKey("Stable ID", document.Id);
         ValidateKey("Slug", document.Slug);
-        ValidateLength("Metadata JSON", document.MetadataJson, ContentInputPolicy.MaxMetadataJsonLength);
+        ValidateRequiredText("Metadata JSON", document.MetadataJson, ContentInputPolicy.MaxMetadataJsonLength);
         ValidateLength("Tags", document.TagsText, ContentInputPolicy.MaxTagTextLength);
         ValidateLength("Visible modes", document.VisibleModesText, ContentInputPolicy.MaxModesTextLength);
-        ValidateLength("Body", document.Body, ContentInputPolicy.MaxBodyLength);
+        ValidateRequiredText("Body", document.Body, ContentInputPolicy.MaxBodyLength);
 
         if (!string.Equals(document.BodyFormat?.Trim(), "markdown", StringComparison.OrdinalIgnoreCase))
         {
@@ -89,7 +89,7 @@ internal static class ContentInputValidator
         ValidateOptionalText("Subtitle", item.Subtitle, ContentInputPolicy.MaxShortTextLength);
         ValidateOptionalText("Date text", item.DateText, ContentInputPolicy.MaxShortTextLength);
         ValidateOptionalText("Category", item.Category, ContentInputPolicy.MaxShortTextLength);
-        ValidateOptionalText("Link text", item.LinkText, ContentInputPolicy.MaxShortTextLength);
+        ValidateRequiredText("Link text", item.LinkText, ContentInputPolicy.MaxShortTextLength);
         ValidateOptionalText("Meta title", item.MetaTitle, ContentInputPolicy.MaxTitleLength);
         ValidateOptionalText("Meta description", item.MetaDescription, ContentInputPolicy.MaxSummaryLength);
 
@@ -106,8 +106,16 @@ internal static class ContentInputValidator
             }
         }
 
+        if (item.Highlights is null)
+        {
+            throw new InvalidOperationException("Highlights can not be null.");
+        }
         ValidateTextList("Highlights", item.Highlights, ContentInputPolicy.MaxHighlights, ContentInputPolicy.MaxHighlightLength);
 
+        if (item.Presentations is null)
+        {
+            throw new InvalidOperationException("Presentations can not be null.");
+        }
         if (item.Presentations.Count > ContentTags.ContextTags.Count)
         {
             throw new InvalidOperationException("Too many context presentations were supplied.");
@@ -161,6 +169,10 @@ internal static class ContentInputValidator
             }
         }
 
+        if (item.Header.InfoItems is null || item.Header.InfoItemLinks is null)
+        {
+            throw new InvalidOperationException("Header info collections can not be null.");
+        }
         if (item.Header.InfoItems.Count > ContentInputPolicy.MaxInfoItems
             || item.Header.InfoItemLinks.Count > ContentInputPolicy.MaxInfoItems)
         {
@@ -268,13 +280,13 @@ internal static class ContentInputValidator
         }
 
         ValidateLength(fieldName, value, ContentInputPolicy.MaxUrlLength);
-        if (value.Any(char.IsControl))
+        if (value.Any(char.IsControl) || value.Contains('\\'))
         {
-            throw new InvalidOperationException($"{fieldName} contains control characters.");
+            throw new InvalidOperationException($"{fieldName} contains unsupported characters.");
         }
 
-        if ((value.StartsWith('/', StringComparison.Ordinal) && !value.StartsWith("//", StringComparison.Ordinal))
-            || value.StartsWith('#', StringComparison.Ordinal))
+        if ((value.StartsWith("/", StringComparison.Ordinal) && !value.StartsWith("//", StringComparison.Ordinal))
+            || value.StartsWith("#", StringComparison.Ordinal))
         {
             return;
         }
