@@ -6,7 +6,6 @@ using dorks_and_dice_site.Services.GameServers.Minecraft;
 using dorks_and_dice_site.Services.Site;
 using dorks_and_dice_site.Services.Site.ModePresentation;
 using Microsoft.AspNetCore.HttpOverrides;
-using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -64,8 +63,8 @@ var app = builder.Build();
 
 using (var scope = app.Services.CreateScope())
 {
-    var contentDb = scope.ServiceProvider.GetRequiredService<ContentDbContext>();
-    contentDb.Database.EnsureCreated();
+    var contentStorageInitializer = scope.ServiceProvider.GetRequiredService<IContentStorageInitializer>();
+    await contentStorageInitializer.InitializeAsync();
 }
 
 if (!app.Environment.IsDevelopment())
