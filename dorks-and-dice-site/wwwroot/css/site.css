@@ -155,3 +155,8 @@ body {
 body.dark-mode .image-modal-content img {
   background-color: #0f172a;
 }
+/* Authored Markdown images should remain inside the readable content column. */
+.content-detail-body img {
+  max-width: 100%;
+  height: auto;
+}
