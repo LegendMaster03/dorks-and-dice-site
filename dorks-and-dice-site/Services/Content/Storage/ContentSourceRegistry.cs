@@ -93,6 +93,10 @@ public sealed class ContentSourceRegistry : IContentSourceRegistry
             case "sqlite":
                 options.UseSqlite(source.ConnectionString);
                 break;
+            case "postgres":
+            case "postgresql":
+                options.UseNpgsql(source.ConnectionString);
+                break;
             default:
                 throw new NotSupportedException(
                     $"Content database provider '{source.Provider}' for source '{source.Key}' is not supported by this build.");
