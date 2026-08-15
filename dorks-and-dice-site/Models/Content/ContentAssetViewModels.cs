@@ -10,6 +10,9 @@ public sealed class ContentAssetInfo
     public DateTime CreatedUtc { get; init; }
     public string Url { get; init; } = string.Empty;
     public string MarkdownReference { get; init; } = string.Empty;
+    public string? Relationship { get; init; }
+    public string SourceKey { get; init; } = string.Empty;
+    public bool IsAttached => Relationship is not null;
 }
 
 public sealed class ContentAssetFile
@@ -24,5 +27,14 @@ public sealed class ContentAssetAuthoringViewModel
 {
     public string SourceKey { get; init; } = string.Empty;
     public string Slug { get; init; } = string.Empty;
+    public List<ContentAssetInfo> Assets { get; init; } = [];
+    public List<ContentAssetInfo> AvailableAssets { get; init; } = [];
+    public string SearchQuery { get; init; } = string.Empty;
+}
+
+public sealed class ContentAssetLibraryViewModel
+{
+    public string SourceKey { get; init; } = string.Empty;
+    public List<ContentAuthoringSourceOption> Sources { get; init; } = [];
     public List<ContentAssetInfo> Assets { get; init; } = [];
 }

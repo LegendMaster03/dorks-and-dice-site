@@ -17,6 +17,8 @@ public interface IContentSourceRegistry
     IReadOnlyList<ContentSourceDefinition> GetDefaultSources(SiteMode siteMode);
     IReadOnlyList<ContentSourceDefinition> GetSourcesByKeys(IEnumerable<string> keys);
     IReadOnlyList<ContentSourceDefinition> GetAllSources();
+    IReadOnlyList<ContentSourceDefinition> GetGlobalSources();
+    bool IsGlobalSource(string sourceKey);
     ContentSourceDefinition GetSource(string key);
     IReadOnlySet<string> GetKnownSourceKeys();
     void ConfigureDbContext(DbContextOptionsBuilder options, string sourceKey);
@@ -73,6 +75,11 @@ public sealed class ContentSourceRegistry : IContentSourceRegistry
 
     public IReadOnlyList<ContentSourceDefinition> GetAllSources() =>
         _sourceOrder.Select(GetSource).ToList();
+
+    public IReadOnlyList<ContentSourceDefinition> GetGlobalSources() => GetSourcesByKeys(_globalSources);
+
+    public bool IsGlobalSource(string sourceKey) =>
+        _globalSources.Contains(sourceKey, StringComparer.OrdinalIgnoreCase);
 
     public ContentSourceDefinition GetSource(string key)
     {

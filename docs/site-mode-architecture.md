@@ -236,6 +236,10 @@ content_page
 content_revision
 content_revision_tag
 content_revision_mode
+content_asset
+content_page_asset
+content_page_asset_dependency
+content_revision_asset
 ```
 
 `content_page` owns the stable content key, current slug, and pointer to the current revision. `content_revision` stores
@@ -249,9 +253,12 @@ The body format is currently `markdown`. `ContentBodyRenderer` uses Markdig and 
 blocks for application-owned dynamic sections. This keeps ordinary authoring content out of Razor while preserving a
 controlled extension point for pages that need live application data.
 
-Rendered content is treated as trusted site-authored content. Markdown output is emitted as HTML so existing rich HTML
-and application-owned directives can render correctly. Do not connect an untrusted external authoring source to the
-published catalog without adding sanitization or a stricter Markdown pipeline first.
+Raw HTML in Markdown is disabled. Rendered Markdown and application-owned directive output pass through the configured
+sanitization boundary. Ordinary content cannot weaken that boundary or inject arbitrary HTML.
+
+Media records have stable identities independent of pages. `content_page_asset` records same-database ownership or
+attachment, `content_page_asset_dependency` records source-qualified Global dependencies that cannot use a relational
+foreign key across databases, and `content_revision_asset` records the exact media keys referenced by each revision.
 
 The Professional resume still uses `Content/Resume/resume.json` for resume-only structures that are not navigable detail
 content, such as contact links, education, awards, skills, and leadership. Project and Experience detail records are no
@@ -282,11 +289,12 @@ Only real site identities receive per-mode source-list differences:
 This separation is intentional. Unassigned is a fall-through identity and should represent the global default directly.
 Development is a diagnostic environment and should not accidentally imply a production content-source policy.
 
-The current `Local` and `External` source definitions intentionally point to the same SQLite database. That is redundant
-now, but it preserves the connection boundary. In production, `External` should become the real published content
-database and remain the global source. `Local` is for localhost authoring and test content; once the external database
-is active, deploy should stop publishing the local authoring database to the server. SQLite is the only configured
-provider in the current build; adding another provider is a storage-adapter concern rather than a content-model change.
+`Local` is the SQLite authoring workspace. `External` is the published PostgreSQL database and is configured as the
+Global source. A mode may add its own database while inheriting Global. An article may depend on media in its own source
+or in Global, but not in an unrelated mode database.
+
+Source keys are persistent data identifiers, not only configuration labels. Cross-source media dependencies store the
+source key alongside the asset key, so renaming a configured source requires an explicit data migration.
 
 The local authoring database is selected separately through `ContentStorage:AuthoringSource`. The development editor
 writes revisions only to that source instead of writing through the composed read catalog.
@@ -305,8 +313,31 @@ It can:
 - save a new revision without destroying the previous revision
 - show revision history
 - reject a stale save when the current revision changed after the editor was opened
+- upload media into a selected database library
+- search and attach permitted media dependencies to an article
+- promote one article, or push the complete Local workspace, to Global
+
+Local is intentionally transient and is the default authoring workspace, but all configured sources remain directly
+authorable for review corrections or source-specific content. Promotion copies the complete revision graph, metadata, visibility, tags, media
+ownership, and source-qualified dependencies to Global before removing the Local page. Unlisted pages can be promoted
+for human review; listed pages can be promoted for publication. After the initial content promotion, the committed
+Local database is a valid empty authoring workspace.
 
 The editor is development-host-only. It is not a public CMS and is not exposed on production domains.
+
+#### Visual editor limitation
+
+Markdown remains the canonical body format. The current Visual editor renders Markdown to sanitized HTML in a browser
+`contenteditable` surface and converts the edited DOM back to Markdown when it is saved. It protects application-owned
+directives and supports the standard structures exposed by its toolbar, but this conversion is not a lossless Markdown
+syntax-tree round trip. In particular, entering Visual mode and then saving can normalize or discard syntax details such
+as fenced-code language identifiers, table alignment, ordered-list starting numbers, link titles, and unsupported nested
+structures.
+
+Until the Visual editor uses a Markdown-native document model, Source mode is required for content containing those
+features. Follow-up work should avoid rewriting an unchanged visual surface, detect unsupported constructs, and add
+client-side round-trip tests for every supported Markdown structure. The metadata editor renders Source mode as its
+no-JavaScript default and only activates the field-driven Standard mode after its script initializes successfully.
 
 The current editor deliberately exposes structured metadata as JSON rather than building a large administrative UI too
 early. A richer editor can later sit on the same revision model without changing stored content.

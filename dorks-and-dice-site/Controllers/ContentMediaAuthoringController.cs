@@ -25,6 +25,7 @@ public sealed class ContentMediaAuthoringController : Controller
     public async Task<IActionResult> Index(
         string slug,
         string? source,
+        string? q,
         CancellationToken cancellationToken)
     {
         if (!IsDevelopmentPreview())
@@ -35,12 +36,40 @@ public sealed class ContentMediaAuthoringController : Controller
         source ??= _sourceRegistry.AuthoringSourceKey;
         try
         {
-            var assets = await _assets.GetForPageAsync(source, slug, cancellationToken);
+            var localAssets = await _assets.GetForPageAsync(source, slug, cancellationToken);
+            var dependencyKeys = await _assets.GetDependencyKeysAsync(source, slug, cancellationToken);
+            var poolSources = new[] { _sourceRegistry.GetSource(source) }
+                .Concat(_sourceRegistry.GetGlobalSources())
+                .DistinctBy(item => item.Key, StringComparer.OrdinalIgnoreCase);
+            var pool = new List<ContentAssetInfo>();
+            if (!string.IsNullOrWhiteSpace(q))
+            {
+                foreach (var poolSource in poolSources)
+                    pool.AddRange(await _assets.SearchSourceAsync(poolSource.Key, q, 24, cancellationToken));
+            }
+            var assets = localAssets.ToList();
+            foreach (var dependencyKey in dependencyKeys.Where(key =>
+                         localAssets.All(local => local.AssetKey != key)))
+            {
+                foreach (var globalSource in _sourceRegistry.GetGlobalSources())
+                {
+                    var globalAsset = await _assets.GetInfoFromSourceAsync(
+                        globalSource.Key, dependencyKey, cancellationToken);
+                    if (globalAsset is null) continue;
+                    assets.Add(globalAsset);
+                    break;
+                }
+            }
             return View(new ContentAssetAuthoringViewModel
             {
                 SourceKey = source,
                 Slug = slug,
-                Assets = assets.ToList()
+                Assets = assets.ToList(),
+                AvailableAssets = pool
+                    .Where(asset => !dependencyKeys.Contains(asset.AssetKey))
+                    .Take(48)
+                    .ToList(),
+                SearchQuery = q?.Trim() ?? string.Empty
             });
         }
         catch (InvalidOperationException)
@@ -49,12 +78,13 @@ public sealed class ContentMediaAuthoringController : Controller
         }
     }
 
-    [HttpPost("")]
+    [HttpPost("attach")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Upload(
+    public async Task<IActionResult> Attach(
         string slug,
         string source,
-        IFormFile? file,
+        string assetSource,
+        string assetKey,
         CancellationToken cancellationToken)
     {
         if (!IsDevelopmentPreview())
@@ -62,30 +92,33 @@ public sealed class ContentMediaAuthoringController : Controller
             return NotFound();
         }
 
-        if (file is null)
-        {
-            TempData["ContentMediaError"] = "Choose an image to upload.";
-            return RedirectToAction(nameof(Index), new { slug, source });
-        }
-
         try
         {
-            await using var stream = file.OpenReadStream();
-            var asset = await _assets.UploadAsync(
-                source,
-                slug,
-                file.FileName,
-                file.ContentType,
-                stream,
-                file.Length,
-                cancellationToken);
-            TempData["ContentMediaSuccess"] = $"Stored '{asset.FileName}'.";
+            await _assets.AttachAsync(source, slug, assetSource, assetKey, cancellationToken);
+            TempData["ContentMediaSuccess"] = "Media dependency added.";
         }
         catch (InvalidOperationException ex)
         {
             TempData["ContentMediaError"] = ex.Message;
         }
 
+        return RedirectToAction(nameof(Index), new { slug, source });
+    }
+
+    [HttpPost("detach")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Detach(string slug, string source, string assetKey, CancellationToken cancellationToken)
+    {
+        if (!IsDevelopmentPreview()) return NotFound();
+        try
+        {
+            await _assets.DetachAsync(source, slug, assetKey, cancellationToken);
+            TempData["ContentMediaSuccess"] = "Media dependency removed.";
+        }
+        catch (InvalidOperationException ex)
+        {
+            TempData["ContentMediaError"] = ex.Message;
+        }
         return RedirectToAction(nameof(Index), new { slug, source });
     }
 

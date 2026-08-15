@@ -8,119 +8,115 @@ internal static class ContentStorageSchema
         ContentDbContext context,
         CancellationToken cancellationToken = default)
     {
-        if (await context.Database.EnsureCreatedAsync(cancellationToken))
+        if (!await context.Database.EnsureCreatedAsync(cancellationToken))
         {
-            return;
-        }
-
-        if (context.Database.IsSqlite())
-        {
-            if (!await HasCurrentMediaSchemaAsync(context, SqliteSchemaCheck, cancellationToken))
+            if (context.Database.IsSqlite())
             {
-                await context.Database.ExecuteSqlRawAsync(SqliteContentAssetSchema, cancellationToken);
+                if (!await HasTableAsync(context, "content_page_asset", cancellationToken))
+                {
+                    await context.Database.ExecuteSqlRawAsync(
+                        SqliteCreateMediaSchema,
+                        cancellationToken);
+                }
             }
-            return;
-        }
-
-        if (context.Database.IsNpgsql())
-        {
-            if (!await HasCurrentMediaSchemaAsync(context, PostgresSchemaCheck, cancellationToken))
+            else if (context.Database.IsNpgsql())
             {
-                await context.Database.ExecuteSqlRawAsync(PostgresContentAssetSchema, cancellationToken);
+                await context.Database.ExecuteSqlRawAsync(PostgresEnsureMediaSchema, cancellationToken);
             }
-            return;
+            else
+            {
+                throw new NotSupportedException(
+                    $"Content database provider '{context.Database.ProviderName}' is not supported by the schema initializer.");
+            }
         }
 
-        throw new NotSupportedException(
-            $"Content database provider '{context.Database.ProviderName}' is not supported by the schema initializer.");
+        await context.Database.ExecuteSqlRawAsync(
+            context.Database.IsSqlite() ? SqliteCreateDependencySchema : PostgresCreateDependencySchema,
+            cancellationToken);
+
     }
 
-    private static async Task<bool> HasCurrentMediaSchemaAsync(
+    private static async Task<bool> HasTableAsync(
         ContentDbContext context,
-        string sql,
+        string tableName,
         CancellationToken cancellationToken)
     {
         var connection = context.Database.GetDbConnection();
-        var closeWhenFinished = connection.State != System.Data.ConnectionState.Open;
-        if (closeWhenFinished)
-        {
-            await context.Database.OpenConnectionAsync(cancellationToken);
-        }
-
+        var close = connection.State != System.Data.ConnectionState.Open;
+        if (close) await context.Database.OpenConnectionAsync(cancellationToken);
         try
         {
             await using var command = connection.CreateCommand();
-            command.CommandText = sql;
-            var count = Convert.ToInt32(await command.ExecuteScalarAsync(cancellationToken));
-            return count == 3;
+            command.CommandText = "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name=$name";
+            var parameter = command.CreateParameter();
+            parameter.ParameterName = "$name";
+            parameter.Value = tableName;
+            command.Parameters.Add(parameter);
+            return Convert.ToInt32(await command.ExecuteScalarAsync(cancellationToken)) == 1;
         }
         finally
         {
-            if (closeWhenFinished)
-            {
-                await context.Database.CloseConnectionAsync();
-            }
+            if (close) await context.Database.CloseConnectionAsync();
         }
     }
 
-    private const string SqliteSchemaCheck = """
-        SELECT COUNT(*)
-        FROM sqlite_master
-        WHERE (type = 'table' AND name = 'content_asset')
-           OR (type = 'index' AND name IN (
-               'IX_content_asset_asset_key',
-               'IX_content_asset_asset_page_id_asset_sha256'))
-        """;
-
-    private const string PostgresSchemaCheck = """
-        SELECT COUNT(*)
-        FROM pg_class AS object
-        INNER JOIN pg_namespace AS schema ON schema.oid = object.relnamespace
-        WHERE schema.nspname = current_schema()
-          AND object.relname IN (
-              'content_asset',
-              'IX_content_asset_asset_key',
-              'IX_content_asset_asset_page_id_asset_sha256')
-        """;
-
-    private const string SqliteContentAssetSchema = """
+    private const string SqliteCreateMediaSchema = """
         CREATE TABLE IF NOT EXISTS content_asset (
-            asset_id INTEGER NOT NULL CONSTRAINT PK_content_asset PRIMARY KEY AUTOINCREMENT,
-            asset_key TEXT NOT NULL,
-            asset_page_id INTEGER NOT NULL,
-            asset_file_name TEXT NOT NULL,
-            asset_media_type TEXT NOT NULL,
-            asset_length INTEGER NOT NULL,
-            asset_sha256 TEXT NOT NULL,
-            asset_created_utc TEXT NOT NULL,
-            asset_data BLOB NOT NULL,
-            CONSTRAINT FK_content_asset_content_page_asset_page_id
-                FOREIGN KEY (asset_page_id) REFERENCES content_page (page_id) ON DELETE CASCADE
-        );
-        CREATE UNIQUE INDEX IF NOT EXISTS IX_content_asset_asset_key
-            ON content_asset (asset_key);
-        CREATE UNIQUE INDEX IF NOT EXISTS IX_content_asset_asset_page_id_asset_sha256
-            ON content_asset (asset_page_id, asset_sha256);
+            asset_id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+            asset_key TEXT NOT NULL, asset_file_name TEXT NOT NULL,
+            asset_media_type TEXT NOT NULL, asset_length INTEGER NOT NULL,
+            asset_sha256 TEXT NOT NULL, asset_created_utc TEXT NOT NULL, asset_data BLOB NOT NULL);
+        CREATE UNIQUE INDEX IF NOT EXISTS IX_content_asset_asset_key ON content_asset(asset_key);
+        CREATE INDEX IF NOT EXISTS IX_content_asset_asset_sha256 ON content_asset(asset_sha256);
+        CREATE TABLE IF NOT EXISTS content_page_asset (
+            page_id INTEGER NOT NULL, asset_id INTEGER NOT NULL, relationship TEXT NOT NULL,
+            PRIMARY KEY(page_id, asset_id),
+            FOREIGN KEY(page_id) REFERENCES content_page(page_id) ON DELETE CASCADE,
+            FOREIGN KEY(asset_id) REFERENCES content_asset(asset_id) ON DELETE CASCADE);
+        CREATE INDEX IF NOT EXISTS IX_content_page_asset_asset_id ON content_page_asset(asset_id);
+        CREATE TABLE IF NOT EXISTS content_revision_asset (
+            revision_id INTEGER NOT NULL, asset_key TEXT NOT NULL, relationship TEXT NOT NULL,
+            PRIMARY KEY(revision_id, asset_key),
+            FOREIGN KEY(revision_id) REFERENCES content_revision(revision_id) ON DELETE CASCADE);
+        CREATE INDEX IF NOT EXISTS IX_content_revision_asset_asset_key ON content_revision_asset(asset_key);
         """;
 
-    private const string PostgresContentAssetSchema = """
+    private const string SqliteCreateDependencySchema = """
+        CREATE TABLE IF NOT EXISTS content_page_asset_dependency (
+            page_id INTEGER NOT NULL, asset_source_key TEXT NOT NULL, asset_key TEXT NOT NULL,
+            PRIMARY KEY(page_id, asset_source_key, asset_key),
+            FOREIGN KEY(page_id) REFERENCES content_page(page_id) ON DELETE CASCADE);
+        CREATE INDEX IF NOT EXISTS IX_content_page_asset_dependency_asset_key
+            ON content_page_asset_dependency(asset_key);
+        """;
+
+    private const string PostgresEnsureMediaSchema = """
         CREATE TABLE IF NOT EXISTS content_asset (
-            asset_id bigint GENERATED BY DEFAULT AS IDENTITY,
-            asset_key text NOT NULL,
-            asset_page_id bigint NOT NULL,
-            asset_file_name text NOT NULL,
-            asset_media_type text NOT NULL,
-            asset_length bigint NOT NULL,
-            asset_sha256 text NOT NULL,
-            asset_created_utc timestamp with time zone NOT NULL,
-            asset_data bytea NOT NULL,
-            CONSTRAINT "PK_content_asset" PRIMARY KEY (asset_id),
-            CONSTRAINT "FK_content_asset_content_page_asset_page_id"
-                FOREIGN KEY (asset_page_id) REFERENCES content_page (page_id) ON DELETE CASCADE
-        );
-        CREATE UNIQUE INDEX IF NOT EXISTS "IX_content_asset_asset_key"
-            ON content_asset (asset_key);
-        CREATE UNIQUE INDEX IF NOT EXISTS "IX_content_asset_asset_page_id_asset_sha256"
-            ON content_asset (asset_page_id, asset_sha256);
+            asset_id bigint GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+            asset_key text NOT NULL, asset_file_name text NOT NULL, asset_media_type text NOT NULL,
+            asset_length bigint NOT NULL, asset_sha256 text NOT NULL,
+            asset_created_utc timestamp with time zone NOT NULL, asset_data bytea NOT NULL);
+        CREATE UNIQUE INDEX IF NOT EXISTS "IX_content_asset_asset_key" ON content_asset(asset_key);
+        CREATE INDEX IF NOT EXISTS "IX_content_asset_asset_sha256" ON content_asset(asset_sha256);
+        CREATE TABLE IF NOT EXISTS content_page_asset (
+            page_id bigint NOT NULL, asset_id bigint NOT NULL, relationship text NOT NULL,
+            PRIMARY KEY(page_id,asset_id),
+            FOREIGN KEY(page_id) REFERENCES content_page(page_id) ON DELETE CASCADE,
+            FOREIGN KEY(asset_id) REFERENCES content_asset(asset_id) ON DELETE CASCADE);
+        CREATE INDEX IF NOT EXISTS "IX_content_page_asset_asset_id" ON content_page_asset(asset_id);
+        CREATE TABLE IF NOT EXISTS content_revision_asset (
+            revision_id bigint NOT NULL, asset_key text NOT NULL, relationship text NOT NULL,
+            PRIMARY KEY(revision_id,asset_key),
+            FOREIGN KEY(revision_id) REFERENCES content_revision(revision_id) ON DELETE CASCADE);
+        CREATE INDEX IF NOT EXISTS "IX_content_revision_asset_asset_key" ON content_revision_asset(asset_key);
+        """;
+
+    private const string PostgresCreateDependencySchema = """
+        CREATE TABLE IF NOT EXISTS content_page_asset_dependency (
+            page_id bigint NOT NULL, asset_source_key text NOT NULL, asset_key text NOT NULL,
+            PRIMARY KEY(page_id, asset_source_key, asset_key),
+            FOREIGN KEY(page_id) REFERENCES content_page(page_id) ON DELETE CASCADE);
+        CREATE INDEX IF NOT EXISTS "IX_content_page_asset_dependency_asset_key"
+            ON content_page_asset_dependency(asset_key);
         """;
 }

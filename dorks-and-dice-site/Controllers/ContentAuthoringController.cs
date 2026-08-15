@@ -1,8 +1,9 @@
 using dorks_and_dice_site.Models.Content;
 using dorks_and_dice_site.Services.Content;
-using dorks_and_dice_site.Services.Content.Storage;
 using dorks_and_dice_site.Services.Site;
 using Microsoft.AspNetCore.Mvc;
+using System.Text.Encodings.Web;
+using System.Text.RegularExpressions;
 
 namespace dorks_and_dice_site.Controllers;
 
@@ -10,17 +11,17 @@ namespace dorks_and_dice_site.Controllers;
 [RequestSizeLimit(ContentInputPolicy.MaxAuthoringRequestBytes)]
 public sealed class ContentAuthoringController : Controller
 {
+    private static readonly Regex DirectiveLinePattern = new(
+        @"^[\t ]*(?<directive>\{\{[a-z0-9-]+\}\})[\t ]*$",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.Multiline);
     private readonly IContentAuthoringService _authoringService;
-    private readonly IContentSourceTransferService _transferService;
     private readonly IContentBodyRenderer _bodyRenderer;
 
     public ContentAuthoringController(
         IContentAuthoringService authoringService,
-        IContentSourceTransferService transferService,
         IContentBodyRenderer bodyRenderer)
     {
         _authoringService = authoringService;
-        _transferService = transferService;
         _bodyRenderer = bodyRenderer;
     }
 
@@ -142,55 +143,33 @@ public sealed class ContentAuthoringController : Controller
         return View("Edit", model);
     }
 
-    [HttpPost("{slug}/copy")]
+    [HttpPost("visual/render")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Copy(
-        string slug,
-        string source,
-        string targetSource,
-        CancellationToken cancellationToken)
+    public IActionResult RenderVisual([FromForm] string? body)
     {
-        if (!IsDevelopmentPreview())
+        if (!IsDevelopmentPreview()) return NotFound();
+        body ??= string.Empty;
+
+        var directives = new List<string>();
+        var protectedMarkdown = DirectiveLinePattern.Replace(body, match =>
         {
-            return NotFound();
+            var index = directives.Count;
+            directives.Add(match.Groups["directive"].Value);
+            return $"VISUALDIRECTIVEPLACEHOLDER{index}END";
+        });
+
+        var html = _bodyRenderer.Render("markdown", protectedMarkdown);
+        for (var index = 0; index < directives.Count; index++)
+        {
+            var marker = $"VISUALDIRECTIVEPLACEHOLDER{index}END";
+            var directive = HtmlEncoder.Default.Encode(directives[index]);
+            html = html.Replace(
+                $"<p>{marker}</p>",
+                $"<div class=\"content-visual-directive\" contenteditable=\"false\" data-directive=\"{directive}\">{directive}</div>",
+                StringComparison.Ordinal);
         }
 
-        try
-        {
-            await _transferService.CopyAsync(source, targetSource, slug, cancellationToken);
-            TempData["ContentAuthoringSuccess"] = $"Synchronized '{slug}' from {source} to {targetSource}.";
-            return RedirectToAction(nameof(Index), new { source });
-        }
-        catch (InvalidOperationException ex)
-        {
-            TempData["ContentAuthoringError"] = ex.Message;
-            return RedirectToAction(nameof(Index), new { source });
-        }
-    }
-
-    [HttpPost("copy-all")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> CopyAll(
-        string source,
-        string targetSource,
-        CancellationToken cancellationToken)
-    {
-        if (!IsDevelopmentPreview())
-        {
-            return NotFound();
-        }
-
-        try
-        {
-            var copiedCount = await _transferService.CopyAllAsync(source, targetSource, cancellationToken);
-            TempData["ContentAuthoringSuccess"] = $"Synchronized {copiedCount} content page(s) from {source} to {targetSource}.";
-            return RedirectToAction(nameof(Index), new { source = targetSource });
-        }
-        catch (InvalidOperationException ex)
-        {
-            TempData["ContentAuthoringError"] = ex.Message;
-            return RedirectToAction(nameof(Index), new { source });
-        }
+        return Json(new { html });
     }
 
     [HttpPost("{slug}/move")]
@@ -218,5 +197,27 @@ public sealed class ContentAuthoringController : Controller
         }
     }
 
+    [HttpPost("push-all")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> PushAll(
+        string source,
+        string targetSource,
+        CancellationToken cancellationToken)
+    {
+        if (!IsDevelopmentPreview()) return NotFound();
+        try
+        {
+            var count = await _authoringService.MoveAllAsync(source, targetSource, cancellationToken);
+            TempData["ContentAuthoringSuccess"] = $"Pushed {count} content page(s) from {source} to {targetSource}.";
+            return RedirectToAction(nameof(Index), new { source = targetSource });
+        }
+        catch (InvalidOperationException ex)
+        {
+            TempData["ContentAuthoringError"] = ex.Message;
+            return RedirectToAction(nameof(Index), new { source });
+        }
+    }
+
     private bool IsDevelopmentPreview() => HttpContext.GetSiteModeContext().IsDevelopmentPreview;
+
 }

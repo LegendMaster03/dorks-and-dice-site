@@ -32,6 +32,7 @@ public sealed class ContentAuthoringService : IContentAuthoringService
         return new ContentAuthoringIndexViewModel
         {
             SelectedSourceKey = selectedSourceKey,
+            AuthoringSourceKey = _sourceRegistry.AuthoringSourceKey,
             Sources = GetSourceOptions(),
             MoveTargets = GetMoveTargets(selectedSourceKey),
             Items = items
@@ -84,6 +85,7 @@ public sealed class ContentAuthoringService : IContentAuthoringService
                 MetadataJson = PrettyMetadata(ContentRecordMapper.SerializeMetadata(metadata)),
                 TagsText = ContentTags.Article,
                 VisibleModesText = SiteMode.Professional.ToString(),
+                VisibleModesSelection = [SiteMode.Professional.ToString()],
                 BodyFormat = "markdown",
                 Body = "## Overview\n\nWrite the page body here."
             }
@@ -108,6 +110,11 @@ public sealed class ContentAuthoringService : IContentAuthoringService
         await using var context = CreateContext(document.SourceKey);
         await ContentStorageSchema.EnsureCurrentAsync(context, cancellationToken);
         var item = ParseAndValidate(document, requireExistingRevision: false);
+        if (ContentAssetReferenceParser.FindAssetKeys(item.Body, ContentRecordMapper.SerializeMetadata(item)).Count > 0)
+        {
+            throw new InvalidOperationException(
+                "Create the page first, attach its media dependencies, and then add media references in a revision.");
+        }
         await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
 
         if (await context.Pages.AnyAsync(
@@ -163,6 +170,8 @@ public sealed class ContentAuthoringService : IContentAuthoringService
             throw new InvalidOperationException($"Another content page already uses slug '{item.Slug}'.");
         }
 
+        await ValidateAssetDependenciesAsync(context, page.Id, item, cancellationToken);
+
         page.Slug = item.Slug;
         var revision = CreateRevision(page.Id, page.CurrentRevisionId, item);
         context.Revisions.Add(revision);
@@ -185,81 +194,80 @@ public sealed class ContentAuthoringService : IContentAuthoringService
         ContentInputValidator.ValidateKey("Slug", slug);
         sourceKey = ResolveSourceKey(sourceKey);
         targetSourceKey = ResolveSourceKey(targetSourceKey);
-        if (string.Equals(sourceKey, targetSourceKey, StringComparison.OrdinalIgnoreCase))
-        {
-            throw new InvalidOperationException("Choose a different target source.");
-        }
+        ValidatePromotionSources(sourceKey, targetSourceKey);
 
-        var source = _sourceRegistry.GetSource(sourceKey);
-        var target = _sourceRegistry.GetSource(targetSourceKey);
-        if (string.Equals(source.ConnectionString, target.ConnectionString, StringComparison.OrdinalIgnoreCase))
-        {
-            throw new InvalidOperationException("Those source keys point to the same database.");
-        }
+        var transfer = new ContentSourceTransferService(_sourceRegistry);
+        await transfer.CopyAsync(sourceKey, targetSourceKey, slug, cancellationToken);
 
         await using var sourceContext = CreateContext(sourceKey);
-        await using var targetContext = CreateContext(targetSourceKey);
-        await ContentStorageSchema.EnsureCurrentAsync(sourceContext, cancellationToken);
-        await ContentStorageSchema.EnsureCurrentAsync(targetContext, cancellationToken);
-
-        var sourceRepository = new DatabaseContentRepository(sourceContext);
-        var item = await sourceRepository.GetBySlugAsync(slug, cancellationToken)
-            ?? throw new InvalidOperationException($"Content page '{slug}' was not found in source '{sourceKey}'.");
         var sourcePage = await sourceContext.Pages
-            .Include(page => page.Assets)
-            .SingleAsync(page => page.ContentKey == item.Id, cancellationToken);
+            .Include(page => page.AssetLinks)
+            .SingleAsync(page => page.Slug == slug, cancellationToken);
+        await DeleteSourcePageAsync(sourceContext, sourcePage, cancellationToken);
+    }
 
-        if (await targetContext.Pages.AnyAsync(
-                page => page.ContentKey == item.Id || page.Slug == item.Slug,
-                cancellationToken))
+    public async Task<int> MoveAllAsync(
+        string sourceKey,
+        string targetSourceKey,
+        CancellationToken cancellationToken = default)
+    {
+        sourceKey = ResolveSourceKey(sourceKey);
+        targetSourceKey = ResolveSourceKey(targetSourceKey);
+        ValidatePromotionSources(sourceKey, targetSourceKey);
+
+        var transfer = new ContentSourceTransferService(_sourceRegistry);
+        var copiedCount = await transfer.CopyAllAsync(sourceKey, targetSourceKey, cancellationToken);
+        if (copiedCount == 0) return 0;
+
+        await using var sourceContext = CreateContext(sourceKey);
+        var sourcePages = await sourceContext.Pages
+            .Include(page => page.AssetLinks)
+            .OrderBy(page => page.Id)
+            .ToListAsync(cancellationToken);
+        await using var transaction = await sourceContext.Database.BeginTransactionAsync(cancellationToken);
+        foreach (var sourcePage in sourcePages)
         {
-            throw new InvalidOperationException("The target source already contains a page with that stable ID or slug.");
+            await DeleteSourcePageAsync(sourceContext, sourcePage, cancellationToken);
         }
+        await transaction.CommitAsync(cancellationToken);
+        return copiedCount;
+    }
 
-        var sourceAssetKeys = sourcePage.Assets.Select(asset => asset.AssetKey).ToList();
-        if (sourceAssetKeys.Count > 0
-            && await targetContext.Assets.AnyAsync(
-                asset => sourceAssetKeys.Contains(asset.AssetKey),
-                cancellationToken))
-        {
-            throw new InvalidOperationException("The target source already contains a content media key used by this page.");
-        }
-
-        await using var targetTransaction = await targetContext.Database.BeginTransactionAsync(cancellationToken);
-        var targetPage = new ContentPageRecord
-        {
-            ContentKey = item.Id,
-            Slug = item.Slug
-        };
-        targetContext.Pages.Add(targetPage);
-        await targetContext.SaveChangesAsync(cancellationToken);
-
-        if (sourcePage.Assets.Count > 0)
-        {
-            targetContext.Assets.AddRange(sourcePage.Assets.Select(asset => new ContentAssetRecord
-            {
-                AssetKey = asset.AssetKey,
-                PageId = targetPage.Id,
-                FileName = asset.FileName,
-                MediaType = asset.MediaType,
-                Length = asset.Length,
-                Sha256 = asset.Sha256,
-                CreatedUtc = NormalizeUtc(asset.CreatedUtc),
-                Data = asset.Data.ToArray()
-            }));
-            await targetContext.SaveChangesAsync(cancellationToken);
-        }
-
-        var revision = CreateRevision(targetPage.Id, parentRevisionId: null, item);
-        targetContext.Revisions.Add(revision);
-        await targetContext.SaveChangesAsync(cancellationToken);
-
-        targetPage.CurrentRevisionId = revision.Id;
-        await targetContext.SaveChangesAsync(cancellationToken);
-        await targetTransaction.CommitAsync(cancellationToken);
-
-        sourceContext.Pages.Remove(sourcePage);
+    private static async Task DeleteSourcePageAsync(
+        ContentDbContext sourceContext,
+        ContentPageRecord sourcePage,
+        CancellationToken cancellationToken)
+    {
+        var assetIds = sourcePage.AssetLinks.Select(link => link.AssetId).ToList();
+        sourcePage.CurrentRevisionId = null;
         await sourceContext.SaveChangesAsync(cancellationToken);
+        var revisionIds = await sourceContext.Revisions
+            .Where(revision => revision.PageId == sourcePage.Id)
+            .OrderByDescending(revision => revision.Id)
+            .Select(revision => revision.Id)
+            .ToListAsync(cancellationToken);
+        foreach (var revisionId in revisionIds)
+        {
+            await sourceContext.Revisions
+                .Where(revision => revision.Id == revisionId)
+                .ExecuteDeleteAsync(cancellationToken);
+        }
+        await sourceContext.Pages
+            .Where(page => page.Id == sourcePage.Id)
+            .ExecuteDeleteAsync(cancellationToken);
+        await sourceContext.Assets
+            .Where(asset => assetIds.Contains(asset.Id) && !asset.PageLinks.Any())
+            .ExecuteDeleteAsync(cancellationToken);
+    }
+
+    private void ValidatePromotionSources(string sourceKey, string targetSourceKey)
+    {
+        if (!string.Equals(sourceKey, _sourceRegistry.AuthoringSourceKey, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException("Content promotion must begin in the configured authoring workspace.");
+        if (!_sourceRegistry.IsGlobalSource(targetSourceKey))
+            throw new InvalidOperationException("Content may only be promoted to a configured Global source.");
+        if (string.Equals(sourceKey, targetSourceKey, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException("Choose a different target source.");
     }
 
     private async Task<List<ContentRevisionSummary>> GetHistoryAsync(
@@ -304,7 +312,44 @@ public sealed class ContentAuthoringService : IContentAuthoringService
 
         revision.Tags.AddRange(item.Tags.Select(tag => new ContentRevisionTagRecord { Tag = tag }));
         revision.Modes.AddRange(item.VisibleInModes.Select(mode => new ContentRevisionModeRecord { SiteMode = mode.ToString() }));
+        revision.AssetReferences.AddRange(ContentAssetReferenceParser
+            .FindAssetKeys(revision.Body, revision.MetadataJson)
+            .Select(assetKey => new ContentRevisionAssetRecord
+            {
+                AssetKey = assetKey,
+                Relationship = ContentAssetRelationships.Embedded
+            }));
         return revision;
+    }
+
+    private static async Task ValidateAssetDependenciesAsync(
+        ContentDbContext context,
+        long pageId,
+        ContentItem item,
+        CancellationToken cancellationToken)
+    {
+        var referencedKeys = ContentAssetReferenceParser
+            .FindAssetKeys(item.Body, ContentRecordMapper.SerializeMetadata(item));
+        if (referencedKeys.Count == 0) return;
+
+        var linkedKeys = (await context.PageAssets
+                .Where(link => link.PageId == pageId && referencedKeys.Contains(link.Asset!.AssetKey))
+                .Select(link => link.Asset!.AssetKey)
+                .ToListAsync(cancellationToken))
+            .ToHashSet(StringComparer.Ordinal);
+        foreach (var key in await context.PageAssetDependencies
+                     .Where(link => link.PageId == pageId && referencedKeys.Contains(link.AssetKey))
+                     .Select(link => link.AssetKey)
+                     .ToListAsync(cancellationToken))
+        {
+            linkedKeys.Add(key);
+        }
+        var missing = referencedKeys.Where(key => !linkedKeys.Contains(key)).ToList();
+        if (missing.Count > 0)
+        {
+            throw new InvalidOperationException(
+                $"Attach every referenced media item to this page before saving. Missing dependencies: {string.Join(", ", missing)}.");
+        }
     }
 
     private static ContentAuthoringDocument ToDocument(ContentItem item, string sourceKey)
@@ -322,6 +367,10 @@ public sealed class ContentAuthoringService : IContentAuthoringService
                 .Where(tag => !string.Equals(tag, ContentTags.Unlisted, StringComparison.OrdinalIgnoreCase))
                 .Order(StringComparer.OrdinalIgnoreCase)),
             VisibleModesText = string.Join(Environment.NewLine, item.VisibleInModes.OrderBy(mode => mode.ToString())),
+            VisibleModesSelection = item.VisibleInModes
+                .OrderBy(mode => mode.ToString())
+                .Select(mode => mode.ToString())
+                .ToList(),
             BodyFormat = item.BodyFormat,
             Body = item.Body
         };
@@ -354,7 +403,15 @@ public sealed class ContentAuthoringService : IContentAuthoringService
         {
             item.Tags.Add(ContentTags.Unlisted);
         }
-        item.VisibleInModes = ContentInputValidator.ParseModes(document.VisibleModesText);
+        var selectedModes = document.VisibleModesSelection.Count > 0
+            ? string.Join(Environment.NewLine, document.VisibleModesSelection)
+            : document.VisibleModesText;
+        item.VisibleInModes = ContentInputValidator.ParseModes(selectedModes);
+        if (item.VisibleInModes.Any(mode => mode is SiteMode.Development or SiteMode.Unassigned))
+        {
+            throw new InvalidOperationException(
+                "Development and Unassigned are runtime modes and cannot be selected for article visibility.");
+        }
         item.BodyFormat = document.BodyFormat.Trim().ToLowerInvariant();
         item.Body = document.Body;
 
@@ -401,9 +458,14 @@ public sealed class ContentAuthoringService : IContentAuthoringService
 
     private List<ContentAuthoringSourceOption> GetMoveTargets(string selectedSourceKey)
     {
+        if (!string.Equals(selectedSourceKey, _sourceRegistry.AuthoringSourceKey, StringComparison.OrdinalIgnoreCase))
+        {
+            return [];
+        }
+
         var selectedSource = _sourceRegistry.GetSource(selectedSourceKey);
         return _sourceRegistry
-            .GetAllSources()
+            .GetGlobalSources()
             .Where(source => !string.Equals(source.Key, selectedSourceKey, StringComparison.OrdinalIgnoreCase))
             .Where(source => !string.Equals(source.ConnectionString, selectedSource.ConnectionString, StringComparison.OrdinalIgnoreCase))
             .Select(source => new ContentAuthoringSourceOption

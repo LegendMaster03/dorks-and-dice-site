@@ -13,6 +13,7 @@ public static class SiteRouteOwnership
     {
         var normalizedPath = path.ToString().ToLowerInvariant();
         var isSharedPath = IsModeAdaptivePath(normalizedPath)
+            || IsContentMediaPath(normalizedPath)
             || IsSharedStaticAssetPath(normalizedPath)
             || IsUnassignedAssetPath(normalizedPath)
             || IsSharedSystemPath(normalizedPath);
@@ -26,6 +27,7 @@ public static class SiteRouteOwnership
                 || IsAssetException(SiteMode.Professional, normalizedPath),
             SiteMode.DorksAndDice => isSharedPath || IsDorksAndDiceAssetPath(normalizedPath),
             SiteMode.Unassigned => IsUnassignedModePath(normalizedPath)
+                || IsContentMediaPath(normalizedPath)
                 || IsSharedStaticAssetPath(normalizedPath)
                 || IsUnassignedAssetPath(normalizedPath)
                 || IsSharedSystemPath(normalizedPath),
@@ -51,6 +53,13 @@ public static class SiteRouteOwnership
             || path == "/home/notfoundpage"
             || path == "/home/error"
             || path == "/home/routeresolutionissue";
+    }
+
+    private static bool IsContentMediaPath(string path)
+    {
+        // Route ownership only permits the request to reach the controller. ContentAssetService
+        // still enforces the selected sources and the owning page's visibility for the active mode.
+        return path.StartsWith("/content/media/", StringComparison.Ordinal);
     }
 
     private static bool IsUnassignedModePath(string path)

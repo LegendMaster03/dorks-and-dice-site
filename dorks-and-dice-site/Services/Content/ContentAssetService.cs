@@ -10,6 +10,16 @@ namespace dorks_and_dice_site.Services.Content;
 
 public interface IContentAssetService
 {
+    Task<IReadOnlyList<ContentAssetInfo>> GetForSourceAsync(
+        string sourceKey,
+        CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<ContentAssetInfo>> SearchSourceAsync(
+        string sourceKey, string query, int limit = 24,
+        CancellationToken cancellationToken = default);
+    Task<ContentAssetInfo?> GetInfoFromSourceAsync(
+        string sourceKey, string assetKey, CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<ContentAssetInfo>> GetForPageAsync(
         string sourceKey,
         string slug,
@@ -17,12 +27,15 @@ public interface IContentAssetService
 
     Task<ContentAssetInfo> UploadAsync(
         string sourceKey,
-        string slug,
         string fileName,
         string mediaType,
         Stream stream,
         long declaredLength,
         CancellationToken cancellationToken = default);
+
+    Task<IReadOnlySet<string>> GetDependencyKeysAsync(string sourceKey, string slug, CancellationToken cancellationToken = default);
+    Task AttachAsync(string sourceKey, string slug, string assetSourceKey, string assetKey, CancellationToken cancellationToken = default);
+    Task DetachAsync(string sourceKey, string slug, string assetKey, CancellationToken cancellationToken = default);
 
     Task<ContentAssetFile?> GetForRequestAsync(
         string assetKey,
@@ -60,6 +73,56 @@ public sealed class ContentAssetService : IContentAssetService
         _catalog = catalog;
     }
 
+    public async Task<IReadOnlyList<ContentAssetInfo>> GetForSourceAsync(
+        string sourceKey,
+        CancellationToken cancellationToken = default)
+    {
+        var source = _sourceRegistry.GetSource(sourceKey);
+        await using var context = CreateContext(source.Key);
+        await ContentStorageSchema.EnsureCurrentAsync(context, cancellationToken);
+        var assets = await context.Assets.AsNoTracking()
+            .OrderBy(asset => asset.FileName)
+            .ToListAsync(cancellationToken);
+        return assets.Select(asset => ToInfo(
+            asset.AssetKey, asset.FileName, asset.MediaType, asset.Length,
+            asset.Sha256, NormalizeUtc(asset.CreatedUtc), sourceKey: source.Key)).ToList();
+    }
+
+    public async Task<IReadOnlyList<ContentAssetInfo>> SearchSourceAsync(
+        string sourceKey,
+        string query,
+        int limit = 24,
+        CancellationToken cancellationToken = default)
+    {
+        query = query.Trim();
+        if (query.Length == 0) return [];
+        limit = Math.Clamp(limit, 1, 50);
+        var source = _sourceRegistry.GetSource(sourceKey);
+        await using var context = CreateContext(source.Key);
+        await ContentStorageSchema.EnsureCurrentAsync(context, cancellationToken);
+        var assets = await context.Assets.AsNoTracking()
+            .Where(asset => asset.FileName.Contains(query) || asset.AssetKey.Contains(query))
+            .OrderBy(asset => asset.FileName)
+            .Take(limit)
+            .ToListAsync(cancellationToken);
+        return assets.Select(asset => ToInfo(
+            asset.AssetKey, asset.FileName, asset.MediaType, asset.Length,
+            asset.Sha256, NormalizeUtc(asset.CreatedUtc), sourceKey: source.Key)).ToList();
+    }
+
+    public async Task<ContentAssetInfo?> GetInfoFromSourceAsync(
+        string sourceKey, string assetKey, CancellationToken cancellationToken = default)
+    {
+        ValidateAssetKey(assetKey);
+        var source = _sourceRegistry.GetSource(sourceKey);
+        await using var context = CreateContext(source.Key);
+        var asset = await context.Assets.AsNoTracking()
+            .SingleOrDefaultAsync(item => item.AssetKey == assetKey, cancellationToken);
+        return asset is null ? null : ToInfo(
+            asset.AssetKey, asset.FileName, asset.MediaType, asset.Length,
+            asset.Sha256, NormalizeUtc(asset.CreatedUtc), sourceKey: source.Key);
+    }
+
     public async Task<IReadOnlyList<ContentAssetInfo>> GetForPageAsync(
         string sourceKey,
         string slug,
@@ -76,18 +139,19 @@ public sealed class ContentAssetService : IContentAssetService
             .SingleOrDefaultAsync(cancellationToken)
             ?? throw new InvalidOperationException($"Content page '{slug}' was not found in source '{source.Key}'.");
 
-        var assets = await context.Assets
+        var assets = await context.PageAssets
             .AsNoTracking()
-            .Where(asset => asset.PageId == pageId)
-            .OrderBy(asset => asset.FileName)
-            .Select(asset => new
+            .Where(link => link.PageId == pageId)
+            .OrderBy(link => link.Asset!.FileName)
+            .Select(link => new
             {
-                asset.AssetKey,
-                asset.FileName,
-                asset.MediaType,
-                asset.Length,
-                asset.Sha256,
-                asset.CreatedUtc
+                link.Asset!.AssetKey,
+                link.Asset.FileName,
+                link.Asset.MediaType,
+                link.Asset.Length,
+                link.Asset.Sha256,
+                link.Asset.CreatedUtc,
+                link.Relationship
             })
             .ToListAsync(cancellationToken);
 
@@ -97,20 +161,18 @@ public sealed class ContentAssetService : IContentAssetService
                 asset.MediaType,
                 asset.Length,
                 asset.Sha256,
-                NormalizeUtc(asset.CreatedUtc)))
+                NormalizeUtc(asset.CreatedUtc), asset.Relationship, source.Key))
             .ToList();
     }
 
     public async Task<ContentAssetInfo> UploadAsync(
         string sourceKey,
-        string slug,
         string fileName,
         string mediaType,
         Stream stream,
         long declaredLength,
         CancellationToken cancellationToken = default)
     {
-        ContentInputValidator.ValidateKey("Slug", slug);
         if (declaredLength <= 0)
         {
             throw new InvalidOperationException("Choose a non-empty image file.");
@@ -140,19 +202,13 @@ public sealed class ContentAssetService : IContentAssetService
 
         await using var context = CreateContext(source.Key);
         await ContentStorageSchema.EnsureCurrentAsync(context, cancellationToken);
-        var page = await context.Pages
-            .SingleOrDefaultAsync(candidate => candidate.Slug == slug, cancellationToken)
-            ?? throw new InvalidOperationException($"Content page '{slug}' was not found in source '{source.Key}'.");
-
         var existing = await context.Assets
             .AsNoTracking()
-            .SingleOrDefaultAsync(
-                asset => asset.PageId == page.Id && asset.Sha256 == sha256,
-                cancellationToken);
+            .FirstOrDefaultAsync(asset => asset.Sha256 == sha256, cancellationToken);
         if (existing is not null)
         {
             return ToInfo(
-                existing.AssetKey,
+                existing!.AssetKey,
                 existing.FileName,
                 existing.MediaType,
                 existing.Length,
@@ -163,7 +219,6 @@ public sealed class ContentAssetService : IContentAssetService
         var record = new ContentAssetRecord
         {
             AssetKey = Guid.NewGuid().ToString("N"),
-            PageId = page.Id,
             FileName = normalizedFileName,
             MediaType = mediaType.ToLowerInvariant(),
             Length = data.LongLength,
@@ -183,6 +238,93 @@ public sealed class ContentAssetService : IContentAssetService
             record.CreatedUtc);
     }
 
+    public async Task<IReadOnlySet<string>> GetDependencyKeysAsync(
+        string sourceKey, string slug, CancellationToken cancellationToken = default)
+    {
+        await using var context = CreateContext(_sourceRegistry.GetSource(sourceKey).Key);
+        var page = await context.Pages.Include(item => item.AssetLinks).ThenInclude(link => link.Asset)
+            .Include(item => item.AssetDependencies)
+            .SingleOrDefaultAsync(item => item.Slug == slug, cancellationToken)
+            ?? throw new InvalidOperationException($"Content page '{slug}' was not found in source '{sourceKey}'.");
+        return page.AssetLinks.Select(link => link.Asset!.AssetKey)
+            .Concat(page.AssetDependencies.Select(link => link.AssetKey))
+            .ToHashSet(StringComparer.Ordinal);
+    }
+
+    public async Task AttachAsync(
+        string sourceKey, string slug, string assetSourceKey, string assetKey,
+        CancellationToken cancellationToken = default)
+    {
+        ContentInputValidator.ValidateKey("Slug", slug);
+        ValidateAssetKey(assetKey);
+        var articleSource = _sourceRegistry.GetSource(sourceKey);
+        var assetSource = _sourceRegistry.GetSource(assetSourceKey);
+        if (!string.Equals(articleSource.Key, assetSource.Key, StringComparison.OrdinalIgnoreCase)
+            && !_sourceRegistry.IsGlobalSource(assetSource.Key))
+        {
+            throw new InvalidOperationException("Articles may only depend on media in their own database or a Global database.");
+        }
+        await using var context = CreateContext(articleSource.Key);
+        var pageId = await context.Pages.Where(page => page.Slug == slug).Select(page => (long?)page.Id)
+            .SingleOrDefaultAsync(cancellationToken)
+            ?? throw new InvalidOperationException($"Content page '{slug}' was not found in source '{sourceKey}'.");
+        if (string.Equals(articleSource.Key, assetSource.Key, StringComparison.OrdinalIgnoreCase))
+        {
+            var assetId = await context.Assets.Where(asset => asset.AssetKey == assetKey).Select(asset => (long?)asset.Id)
+                .SingleOrDefaultAsync(cancellationToken)
+                ?? throw new InvalidOperationException("Content media was not found in the selected source.");
+            if (!await context.PageAssets.AnyAsync(link => link.PageId == pageId && link.AssetId == assetId, cancellationToken))
+            {
+                context.PageAssets.Add(new ContentPageAssetRecord
+                {
+                    PageId = pageId, AssetId = assetId, Relationship = ContentAssetRelationships.Attached
+                });
+            }
+        }
+        else
+        {
+            await using var globalContext = CreateContext(assetSource.Key);
+            if (!await globalContext.Assets.AnyAsync(asset => asset.AssetKey == assetKey, cancellationToken))
+                throw new InvalidOperationException("Content media was not found in the Global source.");
+            if (!await context.PageAssetDependencies.AnyAsync(
+                    link => link.PageId == pageId && link.AssetSourceKey == assetSource.Key
+                        && link.AssetKey == assetKey, cancellationToken))
+                context.PageAssetDependencies.Add(new ContentPageAssetDependencyRecord
+                {
+                    PageId = pageId, AssetSourceKey = assetSource.Key, AssetKey = assetKey
+                });
+        }
+        await context.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task DetachAsync(string sourceKey, string slug, string assetKey, CancellationToken cancellationToken = default)
+    {
+        ContentInputValidator.ValidateKey("Slug", slug);
+        ValidateAssetKey(assetKey);
+        await using var context = CreateContext(_sourceRegistry.GetSource(sourceKey).Key);
+        var link = await context.PageAssets.SingleOrDefaultAsync(
+            candidate => candidate.Page!.Slug == slug && candidate.Asset!.AssetKey == assetKey, cancellationToken)
+            ;
+        var externalLink = link is null
+            ? await context.PageAssetDependencies.SingleOrDefaultAsync(
+                candidate => candidate.Page!.Slug == slug && candidate.AssetKey == assetKey, cancellationToken)
+            : null;
+        if (link is null && externalLink is null)
+            throw new InvalidOperationException("That media dependency does not exist.");
+        var isReferenced = await context.Pages
+            .Where(page => page.Id == (link != null ? link.PageId : externalLink!.PageId) && page.CurrentRevisionId != null)
+            .AnyAsync(page => context.RevisionAssets.Any(reference =>
+                reference.RevisionId == page.CurrentRevisionId && reference.AssetKey == assetKey), cancellationToken);
+        if (isReferenced)
+        {
+            throw new InvalidOperationException(
+                "Remove this media reference from the article and save a revision before removing the dependency.");
+        }
+        if (link is not null) context.PageAssets.Remove(link);
+        else context.PageAssetDependencies.Remove(externalLink!);
+        await context.SaveChangesAsync(cancellationToken);
+    }
+
     public async Task<ContentAssetFile?> GetForRequestAsync(
         string assetKey,
         string fileName,
@@ -190,9 +332,17 @@ public sealed class ContentAssetService : IContentAssetService
     {
         ValidateAssetKey(assetKey);
         var modeContext = GetSiteModeContext();
-        var sources = modeContext.IsDevelopmentPreview && modeContext.HasContentSourceOverride
+        var sources = (modeContext.IsDevelopmentPreview && modeContext.HasContentSourceOverride
             ? _sourceRegistry.GetSourcesByKeys(modeContext.EnabledContentSources)
-            : _sourceRegistry.GetDefaultSources(modeContext.SiteMode);
+            : _sourceRegistry.GetDefaultSources(modeContext.SiteMode)).ToList();
+
+        foreach (var globalSource in _sourceRegistry.GetGlobalSources())
+        {
+            if (!sources.Any(source => string.Equals(source.Key, globalSource.Key, StringComparison.OrdinalIgnoreCase)))
+            {
+                sources.Add(globalSource);
+            }
+        }
 
         if (sources.Count == 0 && modeContext.IsDevelopmentPreview)
         {
@@ -205,16 +355,9 @@ public sealed class ContentAssetService : IContentAssetService
             await using var context = CreateContext(source.Key);
             var asset = await context.Assets
                 .AsNoTracking()
+                .Include(candidate => candidate.PageLinks)
+                    .ThenInclude(link => link.Page)
                 .Where(candidate => candidate.AssetKey == assetKey)
-                .Select(candidate => new
-                {
-                    candidate.FileName,
-                    candidate.MediaType,
-                    candidate.Sha256,
-                    candidate.Data,
-                    PageKey = candidate.Page!.ContentKey,
-                    PageSlug = candidate.Page.Slug
-                })
                 .SingleOrDefaultAsync(cancellationToken);
 
             if (asset is null)
@@ -226,13 +369,22 @@ public sealed class ContentAssetService : IContentAssetService
                 return null;
             }
 
-            var visiblePage = await _catalog.GetForDetailAsync(
-                asset.PageSlug,
-                modeContext.SiteMode,
-                modeContext.IsDevelopmentPreview,
-                cancellationToken);
-            if (visiblePage is null
-                || !string.Equals(visiblePage.Id, asset.PageKey, StringComparison.OrdinalIgnoreCase))
+            var isVisible = asset.PageLinks.Count == 0 && _sourceRegistry.IsGlobalSource(source.Key);
+            foreach (var owner in asset.PageLinks.Select(link => link.Page).Where(page => page is not null))
+            {
+                var visiblePage = await _catalog.GetForDetailAsync(
+                    owner!.Slug,
+                    modeContext.SiteMode,
+                    modeContext.IsDevelopmentPreview,
+                    cancellationToken);
+                if (visiblePage is not null
+                    && string.Equals(visiblePage.Id, owner.ContentKey, StringComparison.OrdinalIgnoreCase))
+                {
+                    isVisible = true;
+                    break;
+                }
+            }
+            if (!isVisible)
             {
                 return null;
             }
@@ -299,7 +451,9 @@ public sealed class ContentAssetService : IContentAssetService
         string mediaType,
         long length,
         string sha256,
-        DateTime createdUtc)
+        DateTime createdUtc,
+        string? relationship = null,
+        string sourceKey = "")
     {
         var url = $"/content/media/{assetKey}/{fileName}";
         return new ContentAssetInfo
@@ -311,7 +465,9 @@ public sealed class ContentAssetService : IContentAssetService
             Sha256 = sha256,
             CreatedUtc = createdUtc,
             Url = url,
-            MarkdownReference = $"![Alt text]({url})"
+            MarkdownReference = $"![Alt text]({url})",
+            Relationship = relationship,
+            SourceKey = sourceKey
         };
     }
 

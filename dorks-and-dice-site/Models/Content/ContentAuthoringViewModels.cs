@@ -11,6 +11,7 @@ public sealed class ContentAuthoringDocument
     public string MetadataJson { get; set; } = string.Empty;
     public string TagsText { get; set; } = string.Empty;
     public string VisibleModesText { get; set; } = string.Empty;
+    public List<string> VisibleModesSelection { get; set; } = [];
     public string BodyFormat { get; set; } = "markdown";
     public string Body { get; set; } = string.Empty;
 }
@@ -34,6 +35,9 @@ public sealed class ContentAuthoringIndexViewModel
 {
     public List<ContentItem> Items { get; init; } = [];
     public string SelectedSourceKey { get; init; } = string.Empty;
+    public string AuthoringSourceKey { get; init; } = string.Empty;
+    public bool IsAuthoringWorkspace => string.Equals(
+        SelectedSourceKey, AuthoringSourceKey, StringComparison.OrdinalIgnoreCase);
     public List<ContentAuthoringSourceOption> Sources { get; init; } = [];
     public List<ContentAuthoringSourceOption> MoveTargets { get; init; } = [];
 }

@@ -29,11 +29,11 @@ public sealed class ContentSourceTransferServiceTests
         await using var imageStream = new MemoryStream(pngSignature);
         var sourceAsset = await assets.UploadAsync(
             "Source",
-            "copy-history-test",
             "diagram.png",
             "image/png",
             imageStream,
             pngSignature.Length);
+        await assets.AttachAsync("Source", "copy-history-test", "Source", sourceAsset.AssetKey);
 
         var copiedCount = await transfer.CopyAllAsync("Source", "Target");
 
@@ -64,11 +64,11 @@ public sealed class ContentSourceTransferServiceTests
         await using var secondImageStream = new MemoryStream(secondPng);
         var secondSourceAsset = await assets.UploadAsync(
             "Source",
-            "copy-history-test",
             "second-diagram.png",
             "image/png",
             secondImageStream,
             secondPng.Length);
+        await assets.AttachAsync("Source", "copy-history-test", "Source", secondSourceAsset.AssetKey);
 
         Assert.Equal(1, await transfer.CopyAllAsync("Source", "Target"));
 
@@ -137,6 +137,93 @@ public sealed class ContentSourceTransferServiceTests
         Assert.NotNull(await authoring.GetEditAsync("Target", "different-target-slug"));
     }
 
+    [Fact]
+    public async Task MovePromotesTheCompletePageAndOwnedMediaThenRemovesTheAuthoringCopy()
+    {
+        using var fixture = new TransferFixture();
+        var authoring = new ContentAuthoringService(fixture.Registry);
+        var assets = new ContentAssetService(fixture.Registry, new HttpContextAccessor(), null!);
+
+        var model = authoring.GetNew("Source");
+        model.Document.Id = "promote-test";
+        model.Document.Slug = "promote-test";
+        await authoring.CreateAsync(model.Document);
+
+        var edit = await authoring.GetEditAsync("Source", "promote-test");
+        Assert.NotNull(edit);
+        edit.Document.Body += "\n\nReady for review.";
+        await authoring.SaveRevisionAsync(edit.Document);
+
+        var png = new byte[] { 0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a };
+        await using var stream = new MemoryStream(png);
+        var asset = await assets.UploadAsync(
+            "Source", "unused-but-attached.png", "image/png", stream, png.Length);
+        await assets.AttachAsync("Source", "promote-test", "Source", asset.AssetKey);
+
+        await authoring.MoveAsync("Source", "Target", "promote-test");
+
+        Assert.Null(await authoring.GetEditAsync("Source", "promote-test"));
+        var promoted = await authoring.GetEditAsync("Target", "promote-test");
+        Assert.NotNull(promoted);
+        Assert.Equal(2, promoted.History.Count);
+        Assert.Contains("Ready for review.", promoted.Document.Body);
+        var promotedAsset = Assert.Single(await assets.GetForPageAsync("Target", "promote-test"));
+        Assert.Equal(asset.AssetKey, promotedAsset.AssetKey);
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => assets.GetForPageAsync("Source", "promote-test"));
+    }
+
+    [Fact]
+    public async Task ArticleMayReferenceAttachedOwnOrGlobalMediaButRejectsUnattachedMedia()
+    {
+        using var fixture = new TransferFixture();
+        var authoring = new ContentAuthoringService(fixture.Registry);
+        var assets = new ContentAssetService(fixture.Registry, new HttpContextAccessor(), null!);
+        var model = authoring.GetNew("Source");
+        model.Document.Id = "dependency-test";
+        model.Document.Slug = "dependency-test";
+        await authoring.CreateAsync(model.Document);
+
+        var png = new byte[] { 0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a };
+        await using var globalStream = new MemoryStream(png);
+        var global = await assets.UploadAsync("Target", "global.png", "image/png", globalStream, png.Length);
+        await assets.AttachAsync("Source", "dependency-test", "Target", global.AssetKey);
+
+        var edit = await authoring.GetEditAsync("Source", "dependency-test");
+        Assert.NotNull(edit);
+        edit.Document.Body = $"![Global]({global.Url})";
+        await authoring.SaveRevisionAsync(edit.Document);
+
+        await using var localStream = new MemoryStream(png.Concat(new byte[] { 1 }).ToArray());
+        var unattached = await assets.UploadAsync("Source", "unattached.png", "image/png", localStream, png.Length + 1);
+        edit = await authoring.GetEditAsync("Source", "dependency-test");
+        Assert.NotNull(edit);
+        edit.Document.Body += $"\n\n![Missing]({unattached.Url})";
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(() => authoring.SaveRevisionAsync(edit.Document));
+        Assert.Contains(unattached.AssetKey, error.Message);
+    }
+
+    [Fact]
+    public async Task PushAllPromotesEveryPageAndClearsTheAuthoringWorkspace()
+    {
+        using var fixture = new TransferFixture();
+        var authoring = new ContentAuthoringService(fixture.Registry);
+        foreach (var slug in new[] { "bulk-one", "bulk-two" })
+        {
+            var model = authoring.GetNew("Source");
+            model.Document.Id = slug;
+            model.Document.Slug = slug;
+            await authoring.CreateAsync(model.Document);
+        }
+
+        Assert.Equal(2, await authoring.MoveAllAsync("Source", "Target"));
+
+        Assert.Null(await authoring.GetEditAsync("Source", "bulk-one"));
+        Assert.Null(await authoring.GetEditAsync("Source", "bulk-two"));
+        Assert.NotNull(await authoring.GetEditAsync("Target", "bulk-one"));
+        Assert.NotNull(await authoring.GetEditAsync("Target", "bulk-two"));
+    }
+
     private sealed class TransferFixture : IDisposable
     {
         private readonly string _directory;
@@ -153,7 +240,8 @@ public sealed class ContentSourceTransferServiceTests
                 ["ContentStorage:Sources:Source:Provider"] = "Sqlite",
                 ["ContentStorage:Sources:Source:ConnectionString"] = "SourceDb",
                 ["ContentStorage:Sources:Target:Provider"] = "Sqlite",
-                ["ContentStorage:Sources:Target:ConnectionString"] = "TargetDb"
+                ["ContentStorage:Sources:Target:ConnectionString"] = "TargetDb",
+                ["ContentStorage:GlobalSources:0"] = "Target"
             };
 
             var configuration = new ConfigurationBuilder()

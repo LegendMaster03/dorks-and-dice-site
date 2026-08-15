@@ -12,6 +12,7 @@ public interface IContentAuthoringService
     Task<ContentItem> CreateAsync(ContentAuthoringDocument document, CancellationToken cancellationToken = default);
     Task<ContentItem> SaveRevisionAsync(ContentAuthoringDocument document, CancellationToken cancellationToken = default);
     Task MoveAsync(string sourceKey, string targetSourceKey, string slug, CancellationToken cancellationToken = default);
+    Task<int> MoveAllAsync(string sourceKey, string targetSourceKey, CancellationToken cancellationToken = default);
 }
 
 public sealed class ContentAuthoringConflictException : InvalidOperationException

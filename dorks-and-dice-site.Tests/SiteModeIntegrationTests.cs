@@ -195,7 +195,7 @@ public sealed class SiteModeIntegrationTests : IClassFixture<WebApplicationFacto
     }
 
     [Fact]
-    public async Task ArticleIndexExposesUserConfigurableTagFiltersInDevelopmentPreview()
+    public async Task EmptyLocalAuthoringWorkspaceDoesNotInventArticleFilters()
     {
         using var request = CreateRequest("localhost", "/articles");
         request.Headers.Add("Cookie", "DevelopmentPreviewSiteMode=development; DevelopmentIncludeUnlistedArticles=true; DevelopmentEnabledContentSources=Local");
@@ -204,20 +204,8 @@ public sealed class SiteModeIntegrationTests : IClassFixture<WebApplicationFacto
         var html = await response.Content.ReadAsStringAsync();
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.Contains("data-content-filter", html);
-        Assert.Contains("data-content-tag=\"all\"", html);
-        Assert.Contains("data-content-tag=\"technical-investigation\"", html);
-        Assert.Contains("technical-investigation", html);
-        Assert.Contains("puzzle", html);
-        Assert.Contains("write-up", html);
-        Assert.Contains("list=\"articleTagSuggestions\"", html);
-        Assert.Contains("<option value=\"technical-investigation\">", html);
-        Assert.Contains("id=\"articleList\"", html);
-        Assert.Contains("data-content-listed=\"true\"", html);
-        Assert.Contains("data-content-date=\"august 12, 2026\"", html);
-        Assert.Contains("data-content-title=\"freeing the bees: solving consolevariations&#x27; hidden web puzzle\"", html);
-        Assert.DoesNotContain("data-content-tag=\"article\"", html);
-        Assert.DoesNotContain("_internal:", html);
+        Assert.DoesNotContain("data-content-tag=\"all\"", html);
+        Assert.DoesNotContain("data-content-listed=\"true\"", html);
     }
 
     [Fact]
@@ -383,7 +371,7 @@ public sealed class SiteModeIntegrationTests : IClassFixture<WebApplicationFacto
     }
 
     [Fact]
-    public async Task DevelopmentPreviewListsPublishedArticle()
+    public async Task DevelopmentPreviewAllowsAnEmptyLocalArticleWorkspace()
     {
         using var request = CreateRequest("localhost", "/articles");
         request.Headers.Add("Cookie", "DevelopmentPreviewSiteMode=development; DevelopmentIncludeUnlistedArticles=true; DevelopmentEnabledContentSources=Local");
@@ -392,8 +380,7 @@ public sealed class SiteModeIntegrationTests : IClassFixture<WebApplicationFacto
         var html = await response.Content.ReadAsStringAsync();
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.Contains("Freeing the Bees: Solving ConsoleVariations", html);
-        Assert.Contains("August 12, 2026", html);
+        Assert.DoesNotContain("Freeing the Bees: Solving ConsoleVariations", html);
     }
 
     private async Task<HttpResponseMessage> SendAsync(string host, string path)

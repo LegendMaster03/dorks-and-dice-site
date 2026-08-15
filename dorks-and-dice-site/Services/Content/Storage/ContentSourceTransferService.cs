@@ -43,6 +43,7 @@ public sealed class ContentSourceTransferService : IContentSourceTransferService
                 $"Content page '{slug}' was not found in source '{source.Key}'.");
 
         var targetPage = await GetReplaceableTargetPageAsync(targetContext, sourcePage, cancellationToken);
+        await EnsureDependenciesAvailableAsync(targetContext, target.Key, sourcePage, cancellationToken);
         await using var transaction = await targetContext.Database.BeginTransactionAsync(cancellationToken);
         if (targetPage is not null)
         {
@@ -76,6 +77,7 @@ public sealed class ContentSourceTransferService : IContentSourceTransferService
                 targetContext,
                 sourcePage,
                 cancellationToken);
+            await EnsureDependenciesAvailableAsync(targetContext, target.Key, sourcePage, cancellationToken);
         }
 
         await using var transaction = await targetContext.Database.BeginTransactionAsync(cancellationToken);
@@ -105,23 +107,39 @@ public sealed class ContentSourceTransferService : IContentSourceTransferService
         targetContext.Pages.Add(targetPage);
         await targetContext.SaveChangesAsync(cancellationToken);
 
-        if (sourcePage.Assets.Count > 0)
+        if (sourcePage.AssetLinks.Count > 0)
         {
-            targetContext.Assets.AddRange(sourcePage.Assets
-                .OrderBy(asset => asset.Id)
-                .Select(asset => new ContentAssetRecord
+            targetContext.Assets.AddRange(sourcePage.AssetLinks
+                .OrderBy(link => link.AssetId)
+                .Select(link => new ContentAssetRecord
                 {
-                    AssetKey = asset.AssetKey,
-                    PageId = targetPage.Id,
-                    FileName = asset.FileName,
-                    MediaType = asset.MediaType,
-                    Length = asset.Length,
-                    Sha256 = asset.Sha256,
-                    CreatedUtc = NormalizeUtc(asset.CreatedUtc),
-                    Data = asset.Data.ToArray()
+                    AssetKey = link.Asset!.AssetKey,
+                    FileName = link.Asset.FileName,
+                    MediaType = link.Asset.MediaType,
+                    Length = link.Asset.Length,
+                    Sha256 = link.Asset.Sha256,
+                    CreatedUtc = NormalizeUtc(link.Asset.CreatedUtc),
+                    Data = link.Asset.Data.ToArray(),
+                    PageLinks =
+                    [
+                        new ContentPageAssetRecord
+                        {
+                            PageId = targetPage.Id,
+                            Relationship = link.Relationship
+                        }
+                    ]
                 }));
             await targetContext.SaveChangesAsync(cancellationToken);
         }
+
+        targetPage.AssetDependencies.AddRange(sourcePage.AssetDependencies.Select(link =>
+            new ContentPageAssetDependencyRecord
+            {
+                AssetSourceKey = link.AssetSourceKey,
+                AssetKey = link.AssetKey
+            }));
+        if (targetPage.AssetDependencies.Count > 0)
+            await targetContext.SaveChangesAsync(cancellationToken);
 
         var revisionIdMap = new Dictionary<long, long>();
         var pending = sourcePage.Revisions
@@ -158,6 +176,12 @@ public sealed class ContentSourceTransferService : IContentSourceTransferService
                 {
                     SiteMode = mode.SiteMode
                 }));
+                targetRevision.AssetReferences.AddRange(sourceRevision.AssetReferences.Select(reference =>
+                    new ContentRevisionAssetRecord
+                    {
+                        AssetKey = reference.AssetKey,
+                        Relationship = reference.Relationship
+                    }));
 
                 targetContext.Revisions.Add(targetRevision);
                 await targetContext.SaveChangesAsync(cancellationToken);
@@ -205,11 +229,11 @@ public sealed class ContentSourceTransferService : IContentSourceTransferService
         }
 
         var targetPage = matches.SingleOrDefault();
-        var assetKeys = sourcePage.Assets.Select(asset => asset.AssetKey).ToList();
+        var assetKeys = sourcePage.AssetLinks.Select(link => link.Asset!.AssetKey).ToList();
         if (assetKeys.Count > 0
             && await targetContext.Assets.AnyAsync(
                 asset => assetKeys.Contains(asset.AssetKey)
-                    && (targetPage == null || asset.PageId != targetPage.Id),
+                    && (targetPage == null || !asset.PageLinks.Any(link => link.PageId == targetPage.Id)),
                 cancellationToken))
         {
             throw new InvalidOperationException(
@@ -239,11 +263,17 @@ public sealed class ContentSourceTransferService : IContentSourceTransferService
                 .ExecuteDeleteAsync(cancellationToken);
         }
 
-        await targetContext.Assets
-            .Where(asset => asset.PageId == targetPage.Id)
+        var linkedAssetIds = await targetContext.PageAssets
+            .Where(link => link.PageId == targetPage.Id)
+            .Select(link => link.AssetId)
+            .ToListAsync(cancellationToken);
+        await targetContext.Pages
+            .Where(page => page.Id == targetPage.Id)
             .ExecuteDeleteAsync(cancellationToken);
-        targetContext.Pages.Remove(targetPage);
-        await targetContext.SaveChangesAsync(cancellationToken);
+        targetContext.Entry(targetPage).State = EntityState.Detached;
+        await targetContext.Assets
+            .Where(asset => linkedAssetIds.Contains(asset.Id) && !asset.PageLinks.Any())
+            .ExecuteDeleteAsync(cancellationToken);
     }
 
     private static async Task<ContentPageRecord?> LoadPageAsync(
@@ -251,23 +281,74 @@ public sealed class ContentSourceTransferService : IContentSourceTransferService
         string slug,
         CancellationToken cancellationToken) => await context.Pages
         .AsNoTracking()
-        .Include(page => page.Assets)
+        .Include(page => page.AssetLinks)
+            .ThenInclude(link => link.Asset)
+        .Include(page => page.AssetDependencies)
         .Include(page => page.Revisions)
             .ThenInclude(revision => revision.Tags)
         .Include(page => page.Revisions)
             .ThenInclude(revision => revision.Modes)
+        .Include(page => page.Revisions)
+            .ThenInclude(revision => revision.AssetReferences)
         .SingleOrDefaultAsync(page => page.Slug == slug, cancellationToken);
 
     private static async Task<List<ContentPageRecord>> LoadAllPagesAsync(
         ContentDbContext context,
         CancellationToken cancellationToken) => await context.Pages
         .AsNoTracking()
-        .Include(page => page.Assets)
+        .Include(page => page.AssetLinks)
+            .ThenInclude(link => link.Asset)
+        .Include(page => page.AssetDependencies)
         .Include(page => page.Revisions)
             .ThenInclude(revision => revision.Tags)
         .Include(page => page.Revisions)
             .ThenInclude(revision => revision.Modes)
+        .Include(page => page.Revisions)
+            .ThenInclude(revision => revision.AssetReferences)
         .ToListAsync(cancellationToken);
+
+    private async Task EnsureDependenciesAvailableAsync(
+        ContentDbContext targetContext,
+        string targetSourceKey,
+        ContentPageRecord sourcePage,
+        CancellationToken cancellationToken)
+    {
+        var bundledKeys = sourcePage.AssetLinks
+            .Select(link => link.Asset!.AssetKey)
+            .ToHashSet(StringComparer.Ordinal);
+        var requiredKeys = sourcePage.Revisions
+            .SelectMany(revision => revision.AssetReferences)
+            .Select(reference => reference.AssetKey)
+            .Where(assetKey => !bundledKeys.Contains(assetKey))
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+        if (requiredKeys.Count == 0) return;
+
+        var available = (await targetContext.Assets
+                .Where(asset => requiredKeys.Contains(asset.AssetKey))
+                .Select(asset => asset.AssetKey)
+                .ToListAsync(cancellationToken))
+            .ToHashSet(StringComparer.Ordinal);
+        foreach (var globalSource in _sourceRegistry.GetGlobalSources()
+                     .Where(source => !string.Equals(source.Key, targetSourceKey, StringComparison.OrdinalIgnoreCase)))
+        {
+            await using var globalContext = CreateContext(globalSource.Key);
+            foreach (var key in await globalContext.Assets
+                         .Where(asset => requiredKeys.Contains(asset.AssetKey))
+                         .Select(asset => asset.AssetKey)
+                         .ToListAsync(cancellationToken))
+            {
+                available.Add(key);
+            }
+        }
+
+        var missing = requiredKeys.Where(key => !available.Contains(key)).ToList();
+        if (missing.Count > 0)
+        {
+            throw new InvalidOperationException(
+                $"Content page '{sourcePage.ContentKey}' references media that is not bundled with the page or available from a Global source: {string.Join(", ", missing)}.");
+        }
+    }
 
     private (ContentSourceDefinition Source, ContentSourceDefinition Target) ResolveDistinctSources(
         string sourceKey,

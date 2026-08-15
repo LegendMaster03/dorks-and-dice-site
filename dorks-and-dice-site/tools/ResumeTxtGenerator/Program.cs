@@ -25,6 +25,12 @@ if (string.IsNullOrWhiteSpace(projectDir))
 try
 {
     var model = ResumePageContentBuilder.Build(projectDir);
+    if (validateOnly)
+    {
+        Console.WriteLine($"Validated: {Path.Combine(projectDir, "Content", "Resume", "resume.json")}");
+        return 0;
+    }
+
     var contentItems = LoadContentItems(projectDir);
     model.ExperienceItems = contentItems.Where(item => item.HasTag(ContentTags.Experience)).ToList();
     model.ProjectItems = contentItems.Where(item => item.HasTag(ContentTags.Project)).ToList();
@@ -32,13 +38,6 @@ try
     if (model.ExperienceItems.Count == 0 || model.ProjectItems.Count == 0)
     {
         throw new InvalidOperationException("Unified content database must contain both experience and project items.");
-    }
-
-    if (validateOnly)
-    {
-        Console.WriteLine($"Validated: {Path.Combine(projectDir, "Content", "Resume", "resume.json")}");
-        Console.WriteLine($"Validated: {Path.Combine(projectDir, "Content", "content.db")}");
-        return 0;
     }
 
     var outputPath = Path.Combine(projectDir, "wwwroot", "site-modes", "professional", "files", "kyle-resume.txt");

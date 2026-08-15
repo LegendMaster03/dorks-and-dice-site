@@ -14,6 +14,9 @@ public sealed class ContentDbContext : DbContext
     internal DbSet<ContentRevisionTagRecord> RevisionTags => Set<ContentRevisionTagRecord>();
     internal DbSet<ContentRevisionModeRecord> RevisionModes => Set<ContentRevisionModeRecord>();
     internal DbSet<ContentAssetRecord> Assets => Set<ContentAssetRecord>();
+    internal DbSet<ContentPageAssetRecord> PageAssets => Set<ContentPageAssetRecord>();
+    internal DbSet<ContentRevisionAssetRecord> RevisionAssets => Set<ContentRevisionAssetRecord>();
+    internal DbSet<ContentPageAssetDependencyRecord> PageAssetDependencies => Set<ContentPageAssetDependencyRecord>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -89,19 +92,58 @@ public sealed class ContentDbContext : DbContext
             entity.HasKey(asset => asset.Id);
             entity.Property(asset => asset.Id).HasColumnName("asset_id");
             entity.Property(asset => asset.AssetKey).HasColumnName("asset_key").IsRequired();
-            entity.Property(asset => asset.PageId).HasColumnName("asset_page_id");
             entity.Property(asset => asset.FileName).HasColumnName("asset_file_name").IsRequired();
             entity.Property(asset => asset.MediaType).HasColumnName("asset_media_type").IsRequired();
             entity.Property(asset => asset.Length).HasColumnName("asset_length").IsRequired();
             entity.Property(asset => asset.Sha256).HasColumnName("asset_sha256").IsRequired();
             entity.Property(asset => asset.CreatedUtc).HasColumnName("asset_created_utc").IsRequired();
             entity.Property(asset => asset.Data).HasColumnName("asset_data").IsRequired();
-            entity.HasOne(asset => asset.Page)
-                .WithMany(page => page.Assets)
-                .HasForeignKey(asset => asset.PageId)
-                .OnDelete(DeleteBehavior.Cascade);
             entity.HasIndex(asset => asset.AssetKey).IsUnique();
-            entity.HasIndex(asset => new { asset.PageId, asset.Sha256 }).IsUnique();
+            entity.HasIndex(asset => asset.Sha256);
+        });
+
+        modelBuilder.Entity<ContentPageAssetRecord>(entity =>
+        {
+            entity.ToTable("content_page_asset");
+            entity.HasKey(link => new { link.PageId, link.AssetId });
+            entity.Property(link => link.PageId).HasColumnName("page_id");
+            entity.Property(link => link.AssetId).HasColumnName("asset_id");
+            entity.Property(link => link.Relationship).HasColumnName("relationship").IsRequired();
+            entity.HasOne(link => link.Page)
+                .WithMany(page => page.AssetLinks)
+                .HasForeignKey(link => link.PageId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(link => link.Asset)
+                .WithMany(asset => asset.PageLinks)
+                .HasForeignKey(link => link.AssetId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasIndex(link => link.AssetId);
+        });
+
+        modelBuilder.Entity<ContentRevisionAssetRecord>(entity =>
+        {
+            entity.ToTable("content_revision_asset");
+            entity.HasKey(link => new { link.RevisionId, link.AssetKey });
+            entity.Property(link => link.RevisionId).HasColumnName("revision_id");
+            entity.Property(link => link.AssetKey).HasColumnName("asset_key").IsRequired();
+            entity.Property(link => link.Relationship).HasColumnName("relationship").IsRequired();
+            entity.HasOne(link => link.Revision)
+                .WithMany(revision => revision.AssetReferences)
+                .HasForeignKey(link => link.RevisionId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasIndex(link => link.AssetKey);
+        });
+
+        modelBuilder.Entity<ContentPageAssetDependencyRecord>(entity =>
+        {
+            entity.ToTable("content_page_asset_dependency");
+            entity.HasKey(link => new { link.PageId, link.AssetSourceKey, link.AssetKey });
+            entity.Property(link => link.PageId).HasColumnName("page_id");
+            entity.Property(link => link.AssetSourceKey).HasColumnName("asset_source_key").IsRequired();
+            entity.Property(link => link.AssetKey).HasColumnName("asset_key").IsRequired();
+            entity.HasOne(link => link.Page).WithMany(page => page.AssetDependencies)
+                .HasForeignKey(link => link.PageId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasIndex(link => link.AssetKey);
         });
     }
 }
@@ -114,7 +156,8 @@ internal sealed class ContentPageRecord
     public long? CurrentRevisionId { get; set; }
     public ContentRevisionRecord? CurrentRevision { get; set; }
     public List<ContentRevisionRecord> Revisions { get; set; } = [];
-    public List<ContentAssetRecord> Assets { get; set; } = [];
+    public List<ContentPageAssetRecord> AssetLinks { get; set; } = [];
+    public List<ContentPageAssetDependencyRecord> AssetDependencies { get; set; } = [];
 }
 
 internal sealed class ContentRevisionRecord
@@ -130,6 +173,7 @@ internal sealed class ContentRevisionRecord
     public ContentRevisionRecord? ParentRevision { get; set; }
     public List<ContentRevisionTagRecord> Tags { get; set; } = [];
     public List<ContentRevisionModeRecord> Modes { get; set; } = [];
+    public List<ContentRevisionAssetRecord> AssetReferences { get; set; } = [];
 }
 
 internal sealed class ContentRevisionTagRecord
@@ -150,12 +194,43 @@ internal sealed class ContentAssetRecord
 {
     public long Id { get; set; }
     public string AssetKey { get; set; } = string.Empty;
-    public long PageId { get; set; }
     public string FileName { get; set; } = string.Empty;
     public string MediaType { get; set; } = string.Empty;
     public long Length { get; set; }
     public string Sha256 { get; set; } = string.Empty;
     public DateTime CreatedUtc { get; set; }
     public byte[] Data { get; set; } = [];
+    public List<ContentPageAssetRecord> PageLinks { get; set; } = [];
+}
+
+internal sealed class ContentPageAssetRecord
+{
+    public long PageId { get; set; }
+    public long AssetId { get; set; }
+    public string Relationship { get; set; } = ContentAssetRelationships.Owned;
     public ContentPageRecord? Page { get; set; }
+    public ContentAssetRecord? Asset { get; set; }
+}
+
+internal sealed class ContentRevisionAssetRecord
+{
+    public long RevisionId { get; set; }
+    public string AssetKey { get; set; } = string.Empty;
+    public string Relationship { get; set; } = ContentAssetRelationships.Embedded;
+    public ContentRevisionRecord? Revision { get; set; }
+}
+
+internal sealed class ContentPageAssetDependencyRecord
+{
+    public long PageId { get; set; }
+    public string AssetSourceKey { get; set; } = string.Empty;
+    public string AssetKey { get; set; } = string.Empty;
+    public ContentPageRecord? Page { get; set; }
+}
+
+internal static class ContentAssetRelationships
+{
+    public const string Owned = "owned";
+    public const string Attached = "attached";
+    public const string Embedded = "embedded";
 }
