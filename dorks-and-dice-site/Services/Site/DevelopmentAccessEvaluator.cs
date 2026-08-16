@@ -5,9 +5,17 @@ namespace dorks_and_dice_site.Services.Site;
 
 public static class DevelopmentAccessEvaluator
 {
+    private static readonly object OriginalConnectionItemKey = new();
+
     public const string AppCapabilitiesHeader = "Tailscale-App-Capabilities";
     public const string DevelopmentCapability = "dorks-and-dice.com/cap/dev-mode";
     public const int TrustedTailscaleIngressPort = 8082;
+
+    public static void CaptureOriginalConnection(HttpContext context)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        context.Items[OriginalConnectionItemKey] = new OriginalConnection(context.Connection.RemoteIpAddress);
+    }
 
     public static bool IsAuthorized(HttpContext context, SiteModeOptions options)
     {
@@ -74,7 +82,12 @@ public static class DevelopmentAccessEvaluator
 
     private static bool IsTrustedLocalRequest(HttpContext context)
     {
-        if (context.Connection.RemoteIpAddress is { } remoteAddress)
+        var remoteAddress = context.Items.TryGetValue(OriginalConnectionItemKey, out var value)
+            && value is OriginalConnection originalConnection
+                ? originalConnection.RemoteIpAddress
+                : context.Connection.RemoteIpAddress;
+
+        if (remoteAddress is not null)
         {
             return IPAddress.IsLoopback(remoteAddress);
         }
@@ -84,6 +97,8 @@ public static class DevelopmentAccessEvaluator
         // established network request can not match this shape.
         return context.Connection.LocalPort == 0 && context.Connection.RemotePort == 0;
     }
+
+    private sealed record OriginalConnection(IPAddress? RemoteIpAddress);
 
     private static string NormalizeHost(string host)
     {

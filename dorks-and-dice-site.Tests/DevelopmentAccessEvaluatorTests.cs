@@ -12,8 +12,21 @@ public sealed class DevelopmentAccessEvaluatorTests
     public void GenuineLocalhostRequestIsAuthorized()
     {
         var context = CreateContext("localhost", IPAddress.Loopback, localPort: 5000);
+        DevelopmentAccessEvaluator.CaptureOriginalConnection(context);
 
         Assert.True(DevelopmentAccessEvaluator.IsAuthorized(context, _options));
+    }
+
+    [Fact]
+    public void ForwardedLoopbackCanNotReplaceTheOriginalPrivateNetworkPeer()
+    {
+        var context = CreateContext("public.example", IPAddress.Parse("10.0.0.25"), localPort: 8080);
+        DevelopmentAccessEvaluator.CaptureOriginalConnection(context);
+
+        context.Request.Host = new HostString("localhost");
+        context.Connection.RemoteIpAddress = IPAddress.Loopback;
+
+        Assert.False(DevelopmentAccessEvaluator.IsAuthorized(context, _options));
     }
 
     [Fact]

@@ -73,6 +73,11 @@ if (!app.Environment.IsDevelopment())
     app.UseHsts();
 }
 
+app.Use(async (context, next) =>
+{
+    DevelopmentAccessEvaluator.CaptureOriginalConnection(context);
+    await next();
+});
 app.UseForwardedHeaders();
 app.Use(async (context, next) =>
 {
