@@ -259,6 +259,9 @@ sanitization boundary. Ordinary content cannot weaken that boundary or inject ar
 Media records have stable identities independent of pages. `content_page_asset` records same-database ownership or
 attachment, `content_page_asset_dependency` records source-qualified Global dependencies that cannot use a relational
 foreign key across databases, and `content_revision_asset` records the exact media keys referenced by each revision.
+The public media endpoint serves an asset only when the current revision of a page in the composed catalog references
+that asset and the page is visible for the active site mode. Uploading, attaching, or retaining an asset only in an older
+revision does not publish it.
 
 The Professional resume still uses `Content/Resume/resume.json` for resume-only structures that are not navigable detail
 content, such as contact links, education, awards, skills, and leadership. Project and Experience detail records are no

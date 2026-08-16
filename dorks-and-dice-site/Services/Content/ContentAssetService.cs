@@ -332,31 +332,32 @@ public sealed class ContentAssetService : IContentAssetService
     {
         ValidateAssetKey(assetKey);
         var modeContext = GetSiteModeContext();
-        var sources = (modeContext.IsDevelopmentPreview && modeContext.HasContentSourceOverride
+        var pageSources = (modeContext.IsDevelopmentPreview && modeContext.HasContentSourceOverride
             ? _sourceRegistry.GetSourcesByKeys(modeContext.EnabledContentSources)
             : _sourceRegistry.GetDefaultSources(modeContext.SiteMode)).ToList();
+        var assetSources = pageSources.ToList();
 
         foreach (var globalSource in _sourceRegistry.GetGlobalSources())
         {
-            if (!sources.Any(source => string.Equals(source.Key, globalSource.Key, StringComparison.OrdinalIgnoreCase)))
+            if (!assetSources.Any(source => string.Equals(source.Key, globalSource.Key, StringComparison.OrdinalIgnoreCase)))
             {
-                sources.Add(globalSource);
+                assetSources.Add(globalSource);
             }
         }
 
-        if (sources.Count == 0 && modeContext.IsDevelopmentPreview)
+        if (assetSources.Count == 0 && modeContext.IsDevelopmentPreview)
         {
-            sources = [_sourceRegistry.GetSource(_sourceRegistry.AuthoringSourceKey)];
+            var authoringSource = _sourceRegistry.GetSource(_sourceRegistry.AuthoringSourceKey);
+            pageSources = [authoringSource];
+            assetSources = [authoringSource];
         }
 
-        for (var index = sources.Count - 1; index >= 0; index--)
+        for (var index = assetSources.Count - 1; index >= 0; index--)
         {
-            var source = sources[index];
+            var source = assetSources[index];
             await using var context = CreateContext(source.Key);
             var asset = await context.Assets
                 .AsNoTracking()
-                .Include(candidate => candidate.PageLinks)
-                    .ThenInclude(link => link.Page)
                 .Where(candidate => candidate.AssetKey == assetKey)
                 .SingleOrDefaultAsync(cancellationToken);
 
@@ -369,22 +370,12 @@ public sealed class ContentAssetService : IContentAssetService
                 return null;
             }
 
-            var isVisible = asset.PageLinks.Count == 0 && _sourceRegistry.IsGlobalSource(source.Key);
-            foreach (var owner in asset.PageLinks.Select(link => link.Page).Where(page => page is not null))
-            {
-                var visiblePage = await _catalog.GetForDetailAsync(
-                    owner!.Slug,
-                    modeContext.SiteMode,
-                    modeContext.IsDevelopmentPreview,
-                    cancellationToken);
-                if (visiblePage is not null
-                    && string.Equals(visiblePage.Id, owner.ContentKey, StringComparison.OrdinalIgnoreCase))
-                {
-                    isVisible = true;
-                    break;
-                }
-            }
-            if (!isVisible)
+            if (!await IsReferencedByVisiblePageAsync(
+                    source.Key,
+                    assetKey,
+                    pageSources,
+                    modeContext,
+                    cancellationToken))
             {
                 return null;
             }
@@ -399,6 +390,55 @@ public sealed class ContentAssetService : IContentAssetService
         }
 
         return null;
+    }
+
+    private async Task<bool> IsReferencedByVisiblePageAsync(
+        string assetSourceKey,
+        string assetKey,
+        IReadOnlyList<ContentSourceDefinition> pageSources,
+        SiteModeContext modeContext,
+        CancellationToken cancellationToken)
+    {
+        foreach (var pageSource in pageSources)
+        {
+            await using var context = CreateContext(pageSource.Key);
+            var isAssetInPageSource = string.Equals(
+                pageSource.Key,
+                assetSourceKey,
+                StringComparison.OrdinalIgnoreCase);
+            var referencingPages = await context.Pages
+                .AsNoTracking()
+                .Where(page => page.CurrentRevisionId != null
+                    && context.RevisionAssets.Any(reference =>
+                        reference.RevisionId == page.CurrentRevisionId
+                        && reference.AssetKey == assetKey)
+                    && (isAssetInPageSource && context.PageAssets.Any(link =>
+                            link.PageId == page.Id
+                            && link.Asset!.AssetKey == assetKey)
+                        || context.PageAssetDependencies.Any(dependency =>
+                            dependency.PageId == page.Id
+                            && dependency.AssetSourceKey == assetSourceKey
+                            && dependency.AssetKey == assetKey)))
+                .Select(page => new { page.ContentKey, page.Slug })
+                .ToListAsync(cancellationToken);
+
+            foreach (var page in referencingPages)
+            {
+                var visiblePage = await _catalog.GetForDetailAsync(
+                    page.Slug,
+                    modeContext.SiteMode,
+                    modeContext.IsDevelopmentPreview,
+                    cancellationToken);
+                if (visiblePage is not null
+                    && string.Equals(visiblePage.Id, page.ContentKey, StringComparison.OrdinalIgnoreCase)
+                    && string.Equals(visiblePage.SourceKey, pageSource.Key, StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     public async Task<ContentAssetFile?> GetFromSourceAsync(
