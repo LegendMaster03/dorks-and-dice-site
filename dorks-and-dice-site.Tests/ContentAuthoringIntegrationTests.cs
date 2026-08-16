@@ -3,11 +3,12 @@ using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace dorks_and_dice_site.Tests;
 
-public sealed class ContentAuthoringIntegrationTests : IClassFixture<WebApplicationFactory<Program>>
+[Collection(PublishedContentIntegrationCollection.Name)]
+public sealed class ContentAuthoringIntegrationTests
 {
-    private readonly WebApplicationFactory<Program> _factory;
+    private readonly PublishedContentWebApplicationFactory _factory;
 
-    public ContentAuthoringIntegrationTests(WebApplicationFactory<Program> factory)
+    public ContentAuthoringIntegrationTests(PublishedContentWebApplicationFactory factory)
     {
         _factory = factory;
     }

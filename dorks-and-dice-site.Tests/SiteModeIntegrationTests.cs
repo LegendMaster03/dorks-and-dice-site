@@ -5,11 +5,12 @@ using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace dorks_and_dice_site.Tests;
 
-public sealed class SiteModeIntegrationTests : IClassFixture<WebApplicationFactory<Program>>
+[Collection(PublishedContentIntegrationCollection.Name)]
+public sealed class SiteModeIntegrationTests
 {
-    private readonly WebApplicationFactory<Program> _factory;
+    private readonly PublishedContentWebApplicationFactory _factory;
 
-    public SiteModeIntegrationTests(WebApplicationFactory<Program> factory)
+    public SiteModeIntegrationTests(PublishedContentWebApplicationFactory factory)
     {
         _factory = factory;
     }

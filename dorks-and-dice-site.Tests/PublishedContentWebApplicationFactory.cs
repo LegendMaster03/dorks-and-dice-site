@@ -1,0 +1,163 @@
+using System.Text.Json;
+using dorks_and_dice_site.Models.Content;
+using dorks_and_dice_site.Models.Site;
+using dorks_and_dice_site.Services.Content;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+
+namespace dorks_and_dice_site.Tests;
+
+[CollectionDefinition(Name)]
+public sealed class PublishedContentIntegrationCollection : ICollectionFixture<PublishedContentWebApplicationFactory>
+{
+    public const string Name = "Published content integration";
+}
+
+/// <summary>
+/// Gives HTTP integration tests deterministic published content without coupling
+/// them to either the empty Local authoring workspace or the live External store.
+/// </summary>
+public sealed class PublishedContentWebApplicationFactory : WebApplicationFactory<Program>
+{
+    private readonly string _directory = Path.Combine(
+        Path.GetTempPath(), $"dorks-and-dice-integration-{Guid.NewGuid():N}");
+    private int _seeded;
+
+    protected override void ConfigureWebHost(IWebHostBuilder builder)
+    {
+        Directory.CreateDirectory(_directory);
+        var externalPath = Path.Combine(_directory, "external.db");
+        var localPath = Path.Combine(_directory, "local.db");
+
+        builder.UseSetting("ConnectionStrings:ContentDatabaseExternal", $"Data Source={externalPath};Pooling=False");
+        builder.UseSetting("ConnectionStrings:ContentDatabaseLocal", $"Data Source={localPath};Pooling=False");
+        builder.UseSetting("ContentStorage:AuthoringSource", "External");
+        builder.UseSetting("ContentStorage:Sources:External:DisplayName", "External content");
+        builder.UseSetting("ContentStorage:Sources:External:Provider", "Sqlite");
+        builder.UseSetting("ContentStorage:Sources:External:ConnectionString", "ContentDatabaseExternal");
+        builder.UseSetting("ContentStorage:Sources:Local:DisplayName", "Local content");
+        builder.UseSetting("ContentStorage:Sources:Local:Provider", "Sqlite");
+        builder.UseSetting("ContentStorage:Sources:Local:ConnectionString", "ContentDatabaseLocal");
+        builder.UseSetting("ContentStorage:GlobalSources:0", "External");
+    }
+
+    protected override IHost CreateHost(IHostBuilder builder)
+    {
+        var host = base.CreateHost(builder);
+        if (Interlocked.Exchange(ref _seeded, 1) == 0)
+        {
+            using var scope = host.Services.CreateScope();
+            var authoring = scope.ServiceProvider.GetRequiredService<IContentAuthoringService>();
+            SeedAsync(authoring).GetAwaiter().GetResult();
+        }
+        return host;
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        base.Dispose(disposing);
+        if (disposing && Directory.Exists(_directory))
+        {
+            Directory.Delete(_directory, recursive: true);
+        }
+    }
+
+    private static async Task SeedAsync(IContentAuthoringService authoring)
+    {
+        await CreateAsync(authoring, new ContentItem
+        {
+            Id = "article-bees",
+            Slug = "freeing-the-bees-consolevariations-puzzle",
+            Title = "Freeing the Bees: Solving ConsoleVariations",
+            Summary = "A debugging story about freeing the bees.",
+            DateText = "August 12, 2026",
+            LinkText = "Read article",
+            Tags = [ContentTags.Article, "software-development"],
+            VisibleInModes = [SiteMode.Professional],
+            Body = "## Freeing the Bees\n\n- Inspect the console\n- Fix the variation"
+        });
+
+        await CreateAsync(authoring, Project(
+            "personal-multi-mode-website", "personalmultimodewebsite", "Personal Multi-Mode Website",
+            "## Architecture Flow\n\nResolve Mode → Check Access → Fallback Piece\n\n{{site-mode-architecture}}", ["architecture", "web-development"],
+            logoUrl: "/site-modes/professional/images/favicon.svg", logoAlt: "Kyle Barnett favicon"));
+        await CreateAsync(authoring, Project(
+            "dnd-tools", "dndtools", "D&D Tools", "## D&D Tools", ["web-development"],
+            logoUrl: "/favicon.ico", logoAlt: "Dorks & Dice logo"));
+        await CreateAsync(authoring, Project(
+            "skyblivion", "skyblivion", "Skyblivion", "## Skyblivion\n\nGallery presentation.", ["game-development"]));
+        await CreateAsync(authoring, Project(
+            "python-finance-analytics", "pythonfinanceanalytics", "Python Finance Analytics",
+            "[View Notebook on GitHub](https://github.com/LegendMaster03/python-finance-analytics/blob/main/finance-analysis.ipynb)\n\n[View Repository](https://github.com/LegendMaster03/python-finance-analytics)",
+            ["python"], repositoryUrl: "https://github.com/LegendMaster03/python-finance-analytics"));
+        await CreateAsync(authoring, Project("xngine", "xngine", "Xngine", "## Xngine", ["architecture"]));
+
+        await CreateAsync(authoring, new ContentItem
+        {
+            Id = "experience-cybersecurity-team",
+            Slug = "experiencecybersecurityteam",
+            Title = "Cybersecurity Team",
+            Summary = "Professional cybersecurity experience.",
+            LinkText = "View experience",
+            Tags = [ContentTags.Experience, "cybersecurity"],
+            VisibleInModes = [SiteMode.Professional],
+            Body = "## Experience Information"
+        });
+
+        var seniorProject = Project(
+            "senior-project", "seniorproject", "Senior Project", "## Experience Information", ["web-development"]);
+        seniorProject.Tags.Add(ContentTags.Experience);
+        seniorProject.Presentations[ContentTags.Experience] = new ContentPresentation
+        {
+            Title = "Safe Future Foundation - Full-Stack Developer",
+            Summary = "Full-stack development experience.",
+            LinkText = "View experience"
+        };
+        await CreateAsync(authoring, seniorProject);
+    }
+
+    private static ContentItem Project(
+        string id,
+        string slug,
+        string title,
+        string body,
+        IEnumerable<string> publicTags,
+        string? repositoryUrl = null,
+        string? logoUrl = null,
+        string? logoAlt = null) => new()
+        {
+            Id = id,
+            Slug = slug,
+            Title = title,
+            Summary = $"{title} project summary.",
+            LinkText = "View project",
+            Featured = true,
+            RepositoryUrl = repositoryUrl,
+            Header = new ContentDetailHeader
+            {
+                LogoUrl = logoUrl,
+                LogoAltText = logoAlt,
+                LogoLinkUrl = logoUrl is null ? null : "https://example.test"
+            },
+            Tags = [ContentTags.Project, .. publicTags],
+            VisibleInModes = [SiteMode.Professional],
+            Body = body
+        };
+
+    private static Task CreateAsync(IContentAuthoringService authoring, ContentItem item) =>
+        authoring.CreateAsync(new ContentAuthoringDocument
+        {
+            IsNew = true,
+            SourceKey = "External",
+            Id = item.Id,
+            Slug = item.Slug,
+            IsListed = true,
+            MetadataJson = JsonSerializer.Serialize(item),
+            TagsText = string.Join('\n', item.Tags),
+            VisibleModesSelection = item.VisibleInModes.Select(mode => mode.ToString()).ToList(),
+            BodyFormat = "markdown",
+            Body = item.Body
+        });
+}

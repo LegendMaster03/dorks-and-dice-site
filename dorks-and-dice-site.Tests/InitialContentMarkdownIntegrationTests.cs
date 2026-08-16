@@ -3,11 +3,12 @@ using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace dorks_and_dice_site.Tests;
 
-public sealed class InitialContentMarkdownIntegrationTests : IClassFixture<WebApplicationFactory<Program>>
+[Collection(PublishedContentIntegrationCollection.Name)]
+public sealed class InitialContentMarkdownIntegrationTests
 {
-    private readonly WebApplicationFactory<Program> _factory;
+    private readonly PublishedContentWebApplicationFactory _factory;
 
-    public InitialContentMarkdownIntegrationTests(WebApplicationFactory<Program> factory) => _factory = factory;
+    public InitialContentMarkdownIntegrationTests(PublishedContentWebApplicationFactory factory) => _factory = factory;
 
     [Fact]
     public void RepresentativeMigratedMarkdownRendersAsStructuredSafeHtml()
