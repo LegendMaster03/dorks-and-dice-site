@@ -24,6 +24,7 @@ public sealed class ContentStorageSchemaTests
             }
 
             await CreateInitializer(directory).InitializeAsync();
+            await CreateInitializer(directory).InitializeAsync();
 
             await using var verifyConnection = new SqliteConnection($"Data Source={databasePath};Pooling=False");
             await verifyConnection.OpenAsync();

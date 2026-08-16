@@ -16,14 +16,44 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Start disposable PostgreSQL
+        run: |
+          docker rm -f dorks-and-dice-content-test-postgres 2>/dev/null || true
+          docker network create dorks-and-dice-content-test 2>/dev/null || true
+          docker run -d --name dorks-and-dice-content-test-postgres \
+            --network dorks-and-dice-content-test \
+            -e POSTGRES_DB=content_test \
+            -e POSTGRES_USER=content_test \
+            -e POSTGRES_PASSWORD=content_test \
+            postgres:17
+
+          for i in {1..30}; do
+            if docker exec dorks-and-dice-content-test-postgres \
+              pg_isready -U content_test -d content_test; then
+              exit 0
+            fi
+            sleep 1
+          done
+
+          docker logs dorks-and-dice-content-test-postgres
+          exit 1
+
       - name: Run tests
         run: |
           docker run --rm \
             --user "$(id -u):$(id -g)" \
+            --network dorks-and-dice-content-test \
             -e HOME=/tmp \
             -e DOTNET_CLI_HOME=/tmp \
             -e NUGET_PACKAGES=/tmp/.nuget/packages \
+            -e CONTENT_TEST_POSTGRES='Host=dorks-and-dice-content-test-postgres;Port=5432;Database=content_test;Username=content_test;Password=content_test' \
             -v "$PWD:/src" \
             -w /src \
             mcr.microsoft.com/dotnet/sdk:10.0 \
             dotnet test dorks-and-dice-site.slnx --configuration Release
+
+      - name: Cleanup disposable PostgreSQL
+        if: always()
+        run: |
+          docker rm -f dorks-and-dice-content-test-postgres 2>/dev/null || true
+          docker network rm dorks-and-dice-content-test 2>/dev/null || true

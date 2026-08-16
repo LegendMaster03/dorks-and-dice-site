@@ -50,7 +50,8 @@ public sealed class PublishedContentWebApplicationFactory : WebApplicationFactor
         {
             using var scope = host.Services.CreateScope();
             var authoring = scope.ServiceProvider.GetRequiredService<IContentAuthoringService>();
-            SeedAsync(authoring).GetAwaiter().GetResult();
+            var assets = scope.ServiceProvider.GetRequiredService<IContentAssetService>();
+            SeedAsync(authoring, assets).GetAwaiter().GetResult();
         }
         return host;
     }
@@ -64,7 +65,7 @@ public sealed class PublishedContentWebApplicationFactory : WebApplicationFactor
         }
     }
 
-    private static async Task SeedAsync(IContentAuthoringService authoring)
+    private static async Task SeedAsync(IContentAuthoringService authoring, IContentAssetService assets)
     {
         await CreateAsync(authoring, new ContentItem
         {
@@ -84,6 +85,20 @@ public sealed class PublishedContentWebApplicationFactory : WebApplicationFactor
             throw new InvalidOperationException("The seeded article could not be reloaded.");
         }
         article.Document.Slug = "freeing-the-bees-consolevariations-puzzle";
+        await authoring.SaveRevisionAsync(article.Document);
+
+        var png = Convert.FromBase64String(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=");
+        await using var imageStream = new MemoryStream(png);
+        var image = await assets.UploadAsync("External", "fixture-image.png", "image/png", imageStream, png.Length);
+        await assets.AttachAsync(
+            "External", "freeing-the-bees-consolevariations-puzzle", "External", image.AssetKey);
+        article = await authoring.GetEditAsync("External", "freeing-the-bees-consolevariations-puzzle");
+        if (article is null)
+        {
+            throw new InvalidOperationException("The seeded article could not be reloaded after media upload.");
+        }
+        article.Document.Body += $"\n\n![Fixture image]({image.Url})";
         await authoring.SaveRevisionAsync(article.Document);
 
         await CreateAsync(authoring, Project(

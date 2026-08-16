@@ -219,20 +219,33 @@ public sealed class ContentSourceTransferServiceTests
         var png = new byte[] { 0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a };
         await using var stream = new MemoryStream(png);
         var asset = await assets.UploadAsync(
-            "Source", "unused-but-attached.png", "image/png", stream, png.Length);
+            "Source", "promoted-image.png", "image/png", stream, png.Length);
         await assets.AttachAsync("Source", "promote-test", "Source", asset.AssetKey);
 
-        await authoring.MoveAsync("Source", "Target", "promote-test");
+        edit = await authoring.GetEditAsync("Source", "promote-test");
+        Assert.NotNull(edit);
+        edit.Document.Slug = "promote-current";
+        edit.Document.Body += $"\n\n![Promoted image]({asset.Url})";
+        await authoring.SaveRevisionAsync(edit.Document);
+
+        await authoring.MoveAsync("Source", "Target", "promote-current");
 
         Assert.Null(await authoring.GetEditAsync("Source", "promote-test"));
-        var promoted = await authoring.GetEditAsync("Target", "promote-test");
+        Assert.Null(await authoring.GetEditAsync("Source", "promote-current"));
+        var promoted = await authoring.GetEditAsync("Target", "promote-current");
         Assert.NotNull(promoted);
-        Assert.Equal(2, promoted.History.Count);
+        Assert.Equal(3, promoted.History.Count);
         Assert.Contains("Ready for review.", promoted.Document.Body);
-        var promotedAsset = Assert.Single(await assets.GetForPageAsync("Target", "promote-test"));
+        Assert.Contains(asset.Url, promoted.Document.Body);
+        var promotedAsset = Assert.Single(await assets.GetForPageAsync("Target", "promote-current"));
         Assert.Equal(asset.AssetKey, promotedAsset.AssetKey);
         await Assert.ThrowsAsync<InvalidOperationException>(
-            () => assets.GetForPageAsync("Source", "promote-test"));
+            () => assets.GetForPageAsync("Source", "promote-current"));
+
+        var redirect = fixture.CreateRedirectService("Target");
+        var redirectTarget = await redirect.ResolveAsync(ContentRouteNamespaces.Articles, "promote-test");
+        Assert.NotNull(redirectTarget);
+        Assert.Equal("promote-test", redirectTarget.ContentKey);
     }
 
     [Fact]
