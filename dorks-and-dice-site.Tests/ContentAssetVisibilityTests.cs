@@ -117,6 +117,7 @@ public sealed class ContentAssetVisibilityTests
                 })
                 .Build();
             Registry = new ContentSourceRegistry(configuration, _directory);
+            new ContentStorageInitializer(Registry).InitializeAsync().GetAwaiter().GetResult();
 
             var httpContext = new DefaultHttpContext();
             httpContext.Items[SiteModeContext.HttpContextItemKey] = new SiteModeContext
