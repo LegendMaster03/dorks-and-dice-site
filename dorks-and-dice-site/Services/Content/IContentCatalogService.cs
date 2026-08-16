@@ -16,4 +16,10 @@ public interface IContentCatalogService
         SiteMode siteMode,
         bool isDevelopmentPreview,
         CancellationToken cancellationToken = default);
+
+    Task<ContentItem?> GetForDetailByIdAsync(
+        string contentKey,
+        SiteMode siteMode,
+        bool isDevelopmentPreview,
+        CancellationToken cancellationToken = default);
 }

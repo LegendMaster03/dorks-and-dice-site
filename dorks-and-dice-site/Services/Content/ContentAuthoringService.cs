@@ -123,6 +123,12 @@ public sealed class ContentAuthoringService : IContentAuthoringService
         {
             throw new InvalidOperationException("A content page already uses that stable ID or slug.");
         }
+        if (await context.Redirects.AnyAsync(
+                redirect => redirect.Slug == item.Slug,
+                cancellationToken))
+        {
+            throw new InvalidOperationException("A content redirect already uses that slug.");
+        }
 
         var page = new ContentPageRecord
         {
@@ -155,6 +161,9 @@ public sealed class ContentAuthoringService : IContentAuthoringService
         await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
 
         var page = await context.Pages
+            .Include(candidate => candidate.CurrentRevision)!
+                .ThenInclude(revision => revision!.Tags)
+            .Include(candidate => candidate.Redirects)
             .SingleOrDefaultAsync(candidate => candidate.ContentKey == item.Id, cancellationToken)
             ?? throw new InvalidOperationException($"Content page '{item.Id}' no longer exists.");
 
@@ -170,7 +179,47 @@ public sealed class ContentAuthoringService : IContentAuthoringService
             throw new InvalidOperationException($"Another content page already uses slug '{item.Slug}'.");
         }
 
+        var hasConflictingRedirect = await context.Redirects.AnyAsync(
+            redirect => redirect.Slug == item.Slug && redirect.PageId != page.Id,
+            cancellationToken);
+        if (hasConflictingRedirect)
+        {
+            throw new InvalidOperationException($"A content redirect already uses slug '{item.Slug}'.");
+        }
+
         await ValidateAssetDependenciesAsync(context, page.Id, item, cancellationToken);
+
+        var previousSlug = page.Slug;
+        var slugChanged = !string.Equals(previousSlug, item.Slug, StringComparison.OrdinalIgnoreCase);
+        if (slugChanged)
+        {
+            var previousTags = page.CurrentRevision?.Tags.Select(tag => tag.Tag)
+                ?? Enumerable.Empty<string>();
+            var redirectNamespaces = ContentRouteNamespaces.FromTags(previousTags.Concat(item.Tags));
+            foreach (var routeNamespace in redirectNamespaces)
+            {
+                var existingRedirect = page.Redirects.SingleOrDefault(redirect =>
+                    string.Equals(redirect.Namespace, routeNamespace, StringComparison.OrdinalIgnoreCase)
+                    && string.Equals(redirect.Slug, previousSlug, StringComparison.OrdinalIgnoreCase));
+                if (existingRedirect is null)
+                {
+                    page.Redirects.Add(new ContentRedirectRecord
+                    {
+                        Namespace = routeNamespace,
+                        Slug = previousSlug,
+                        CreatedUtc = DateTime.UtcNow
+                    });
+                }
+            }
+        }
+
+        var redirectsUsingCanonicalSlug = page.Redirects
+            .Where(redirect => string.Equals(redirect.Slug, item.Slug, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        if (redirectsUsingCanonicalSlug.Count > 0)
+        {
+            context.Redirects.RemoveRange(redirectsUsingCanonicalSlug);
+        }
 
         page.Slug = item.Slug;
         var revision = CreateRevision(page.Id, page.CurrentRevisionId, item);

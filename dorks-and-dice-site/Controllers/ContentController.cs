@@ -9,11 +9,16 @@ public sealed class ContentController : Controller
 {
     private readonly IContentCatalogService _catalog;
     private readonly IContentBodyRenderer _bodyRenderer;
+    private readonly IContentRedirectService _redirects;
 
-    public ContentController(IContentCatalogService catalog, IContentBodyRenderer bodyRenderer)
+    public ContentController(
+        IContentCatalogService catalog,
+        IContentBodyRenderer bodyRenderer,
+        IContentRedirectService redirects)
     {
         _catalog = catalog;
         _bodyRenderer = bodyRenderer;
+        _redirects = redirects;
     }
 
     [HttpGet("/resume/{slug}")]
@@ -26,15 +31,26 @@ public sealed class ContentController : Controller
             ? ContentTags.Experience
             : ContentTags.Project;
 
-        return RenderDetailAsync(slug, requestedContext, allowExperienceFallback: true, cancellationToken);
+        return ResolveDetailAsync(
+            slug,
+            ContentRouteNamespaces.Resume,
+            requestedContext,
+            allowExperienceFallback: true,
+            cancellationToken);
     }
 
     [HttpGet("/articles/{slug}")]
     public Task<IActionResult> ArticleDetail(string slug, CancellationToken cancellationToken) =>
-        RenderDetailAsync(slug, ContentTags.Article, allowExperienceFallback: false, cancellationToken);
+        ResolveDetailAsync(
+            slug,
+            ContentRouteNamespaces.Articles,
+            ContentTags.Article,
+            allowExperienceFallback: false,
+            cancellationToken);
 
-    private async Task<IActionResult> RenderDetailAsync(
+    private async Task<IActionResult> ResolveDetailAsync(
         string slug,
+        string routeNamespace,
         string requestedContext,
         bool allowExperienceFallback,
         CancellationToken cancellationToken)
@@ -48,20 +64,31 @@ public sealed class ContentController : Controller
 
         if (item is null)
         {
-            return NotFound();
-        }
-
-        var contextTag = requestedContext;
-        if (!item.HasTag(contextTag))
-        {
-            if (allowExperienceFallback && item.HasTag(ContentTags.Experience))
-            {
-                contextTag = ContentTags.Experience;
-            }
-            else
+            var redirect = await _redirects.ResolveAsync(routeNamespace, slug, cancellationToken);
+            if (redirect is null)
             {
                 return NotFound();
             }
+
+            var targetItem = await _catalog.GetForDetailByIdAsync(
+                redirect.ContentKey,
+                modeContext.SiteMode,
+                modeContext.IsDevelopmentPreview,
+                cancellationToken);
+            if (targetItem is null
+                || ResolveContextTag(targetItem, requestedContext, allowExperienceFallback) is null
+                || string.Equals(targetItem.Slug, slug, StringComparison.Ordinal))
+            {
+                return NotFound();
+            }
+
+            return RedirectPermanent($"/{routeNamespace}/{targetItem.Slug}{Request.QueryString}");
+        }
+
+        var contextTag = ResolveContextTag(item, requestedContext, allowExperienceFallback);
+        if (contextTag is null)
+        {
+            return NotFound();
         }
 
         if (!item.IsListed)
@@ -92,6 +119,21 @@ public sealed class ContentController : Controller
         };
 
         return View("~/Views/Content/Details.cshtml", viewModel);
+    }
+
+    private static string? ResolveContextTag(
+        ContentItem item,
+        string requestedContext,
+        bool allowExperienceFallback)
+    {
+        if (item.HasTag(requestedContext))
+        {
+            return requestedContext;
+        }
+
+        return allowExperienceFallback && item.HasTag(ContentTags.Experience)
+            ? ContentTags.Experience
+            : null;
     }
 
     private static List<ContentNavigationLink> BuildBackLinks(ContentItem item, string contextTag)

@@ -1,6 +1,9 @@
 using dorks_and_dice_site.Models.Content;
+using dorks_and_dice_site.Models.Site;
 using dorks_and_dice_site.Services.Content;
 using dorks_and_dice_site.Services.Content.Storage;
+using dorks_and_dice_site.Services.Site;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 
@@ -40,6 +43,12 @@ public sealed class ContentAuthoringServiceTests
         Assert.Equal(firstRevisionId, reloaded.History[0].ParentRevisionId);
         Assert.Contains("Second revision.", reloaded.Document.Body);
         Assert.Null(await fixture.GetBySlugAsync("authoring-test"));
+
+        var redirect = await fixture.ResolveRedirectAsync(
+            ContentRouteNamespaces.Articles,
+            "authoring-test");
+        Assert.NotNull(redirect);
+        Assert.Equal("authoring-test", redirect.ContentKey);
     }
 
     [Fact]
@@ -65,6 +74,60 @@ public sealed class ContentAuthoringServiceTests
             () => service.SaveRevisionAsync(staleEditor.Document));
     }
 
+    [Fact]
+    public async Task MultipleSlugChangesKeepDirectAliasesToTheStablePage()
+    {
+        using var fixture = new AuthoringSourceFixture();
+        var service = new ContentAuthoringService(fixture.Registry);
+        var newModel = service.GetNew("Test");
+        newModel.Document.Id = "stable-redirect-page";
+        newModel.Document.Slug = "first-slug";
+        await service.CreateAsync(newModel.Document);
+
+        var edit = await service.GetEditAsync("Test", "first-slug");
+        Assert.NotNull(edit);
+        edit.Document.Slug = "second-slug";
+        await service.SaveRevisionAsync(edit.Document);
+
+        edit = await service.GetEditAsync("Test", "second-slug");
+        Assert.NotNull(edit);
+        edit.Document.Slug = "current-slug";
+        await service.SaveRevisionAsync(edit.Document);
+
+        foreach (var alias in new[] { "first-slug", "second-slug" })
+        {
+            var redirect = await fixture.ResolveRedirectAsync(ContentRouteNamespaces.Articles, alias);
+            Assert.NotNull(redirect);
+            Assert.Equal("stable-redirect-page", redirect.ContentKey);
+        }
+
+        Assert.Null(await fixture.ResolveRedirectAsync(ContentRouteNamespaces.Articles, "current-slug"));
+    }
+
+    [Fact]
+    public async Task NewPageCanNotReuseAnExistingRedirectSlug()
+    {
+        using var fixture = new AuthoringSourceFixture();
+        var service = new ContentAuthoringService(fixture.Registry);
+        var firstPage = service.GetNew("Test");
+        firstPage.Document.Id = "redirect-owner";
+        firstPage.Document.Slug = "reserved-slug";
+        await service.CreateAsync(firstPage.Document);
+
+        var edit = await service.GetEditAsync("Test", "reserved-slug");
+        Assert.NotNull(edit);
+        edit.Document.Slug = "current-owner-slug";
+        await service.SaveRevisionAsync(edit.Document);
+
+        var conflictingPage = service.GetNew("Test");
+        conflictingPage.Document.Id = "different-page";
+        conflictingPage.Document.Slug = "reserved-slug";
+
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => service.CreateAsync(conflictingPage.Document));
+        Assert.Contains("redirect", error.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
     private sealed class AuthoringSourceFixture : IDisposable
     {
         private readonly string _directory;
@@ -78,7 +141,8 @@ public sealed class ContentAuthoringServiceTests
                 ["ConnectionStrings:TestDb"] = "Data Source=test-content.db",
                 ["ContentStorage:AuthoringSource"] = "Test",
                 ["ContentStorage:Sources:Test:Provider"] = "Sqlite",
-                ["ContentStorage:Sources:Test:ConnectionString"] = "TestDb"
+                ["ContentStorage:Sources:Test:ConnectionString"] = "TestDb",
+                ["ContentStorage:GlobalSources:0"] = "Test"
             };
 
             var configuration = new ConfigurationBuilder()
@@ -96,6 +160,18 @@ public sealed class ContentAuthoringServiceTests
             await using var context = new ContentDbContext(options.Options);
             var repository = new DatabaseContentRepository(context);
             return await repository.GetBySlugAsync(slug);
+        }
+
+        public Task<ContentRedirectTarget?> ResolveRedirectAsync(string routeNamespace, string slug)
+        {
+            var httpContext = new DefaultHttpContext();
+            httpContext.Items[SiteModeContext.HttpContextItemKey] = new SiteModeContext
+            {
+                SiteMode = SiteMode.Professional
+            };
+            var accessor = new HttpContextAccessor { HttpContext = httpContext };
+            var redirects = new ContentRedirectService(Registry, accessor);
+            return redirects.ResolveAsync(routeNamespace, slug);
         }
 
         public void Dispose()

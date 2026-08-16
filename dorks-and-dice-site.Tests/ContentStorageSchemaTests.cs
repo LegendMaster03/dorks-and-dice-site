@@ -7,7 +7,7 @@ namespace dorks_and_dice_site.Tests;
 public sealed class ContentStorageSchemaTests
 {
     [Fact]
-    public async Task InitializerAddsMediaWikiStyleTablesToAnExistingContentDatabase()
+    public async Task InitializerAddsMediaAndRedirectTablesToAnExistingContentDatabase()
     {
         var directory = Path.Combine(Path.GetTempPath(), $"content-schema-{Guid.NewGuid():N}");
         Directory.CreateDirectory(directory);
@@ -32,9 +32,14 @@ public sealed class ContentStorageSchemaTests
                 SELECT COUNT(*)
                 FROM sqlite_master
                 WHERE type = 'table'
-                  AND name IN ('content_asset', 'content_page_asset', 'content_revision_asset', 'content_page_asset_dependency')
+                  AND name IN (
+                      'content_asset',
+                      'content_page_asset',
+                      'content_revision_asset',
+                      'content_page_asset_dependency',
+                      'content_redirect')
                 """;
-            Assert.Equal(4L, (long)(await verifyCommand.ExecuteScalarAsync())!);
+            Assert.Equal(5L, (long)(await verifyCommand.ExecuteScalarAsync())!);
 
             verifyCommand.CommandText = """
                 SELECT COUNT(*)
@@ -45,9 +50,11 @@ public sealed class ContentStorageSchemaTests
                       'IX_content_asset_asset_sha256',
                       'IX_content_page_asset_asset_id',
                       'IX_content_revision_asset_asset_key',
-                      'IX_content_page_asset_dependency_asset_key')
+                      'IX_content_page_asset_dependency_asset_key',
+                      'IX_content_redirect_redirect_namespace_redirect_slug',
+                      'IX_content_redirect_redirect_page_id')
                 """;
-            Assert.Equal(5L, (long)(await verifyCommand.ExecuteScalarAsync())!);
+            Assert.Equal(7L, (long)(await verifyCommand.ExecuteScalarAsync())!);
         }
         finally
         {

@@ -1,5 +1,8 @@
+using dorks_and_dice_site.Models.Content;
+using dorks_and_dice_site.Models.Site;
 using dorks_and_dice_site.Services.Content;
 using dorks_and_dice_site.Services.Content.Storage;
+using dorks_and_dice_site.Services.Site;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 
@@ -114,27 +117,86 @@ public sealed class ContentSourceTransferServiceTests
     }
 
     [Fact]
-    public async Task CopyAllRejectsAStableIdentityConflictWithoutChangingEitherSource()
+    public async Task CopyAllSynchronizesCanonicalSlugChangesForTheSameStableIdentity()
     {
         using var fixture = new TransferFixture();
         var authoring = new ContentAuthoringService(fixture.Registry);
         var transfer = new ContentSourceTransferService(fixture.Registry);
 
         var sourceModel = authoring.GetNew("Source");
-        sourceModel.Document.Id = "identity-conflict";
-        sourceModel.Document.Slug = "source-slug";
+        sourceModel.Document.Id = "stable-page";
+        sourceModel.Document.Slug = "original-slug";
+        await authoring.CreateAsync(sourceModel.Document);
+        Assert.Equal(1, await transfer.CopyAllAsync("Source", "Target"));
+
+        var sourceEdit = await authoring.GetEditAsync("Source", "original-slug");
+        Assert.NotNull(sourceEdit);
+        sourceEdit.Document.Slug = "current-slug";
+        await authoring.SaveRevisionAsync(sourceEdit.Document);
+
+        Assert.Equal(1, await transfer.CopyAllAsync("Source", "Target"));
+
+        Assert.Null(await authoring.GetEditAsync("Target", "original-slug"));
+        var synchronizedTarget = await authoring.GetEditAsync("Target", "current-slug");
+        Assert.NotNull(synchronizedTarget);
+        Assert.Equal("stable-page", synchronizedTarget.Document.Id);
+
+        var redirect = fixture.CreateRedirectService("Target");
+        var target = await redirect.ResolveAsync(ContentRouteNamespaces.Articles, "original-slug");
+        Assert.NotNull(target);
+        Assert.Equal("stable-page", target.ContentKey);
+    }
+
+    [Fact]
+    public async Task CopyAllRejectsADifferentStableIdentityReusingTheCanonicalSlug()
+    {
+        using var fixture = new TransferFixture();
+        var authoring = new ContentAuthoringService(fixture.Registry);
+        var transfer = new ContentSourceTransferService(fixture.Registry);
+
+        var sourceModel = authoring.GetNew("Source");
+        sourceModel.Document.Id = "source-page";
+        sourceModel.Document.Slug = "shared-slug";
         await authoring.CreateAsync(sourceModel.Document);
 
         var targetModel = authoring.GetNew("Target");
-        targetModel.Document.Id = "identity-conflict";
-        targetModel.Document.Slug = "different-target-slug";
+        targetModel.Document.Id = "different-target-page";
+        targetModel.Document.Slug = "shared-slug";
         await authoring.CreateAsync(targetModel.Document);
 
         await Assert.ThrowsAsync<InvalidOperationException>(
             () => transfer.CopyAllAsync("Source", "Target"));
 
-        Assert.NotNull(await authoring.GetEditAsync("Source", "source-slug"));
-        Assert.NotNull(await authoring.GetEditAsync("Target", "different-target-slug"));
+        Assert.NotNull(await authoring.GetEditAsync("Source", "shared-slug"));
+        Assert.NotNull(await authoring.GetEditAsync("Target", "shared-slug"));
+    }
+
+    [Fact]
+    public async Task CopyAllPreservesRedirectAliasesForStablePages()
+    {
+        using var fixture = new TransferFixture();
+        var authoring = new ContentAuthoringService(fixture.Registry);
+        var transfer = new ContentSourceTransferService(fixture.Registry);
+
+        var model = authoring.GetNew("Source");
+        model.Document.Id = "redirect-transfer-test";
+        model.Document.Slug = "original-article-slug";
+        await authoring.CreateAsync(model.Document);
+
+        var edit = await authoring.GetEditAsync("Source", "original-article-slug");
+        Assert.NotNull(edit);
+        edit.Document.Slug = "current-article-slug";
+        await authoring.SaveRevisionAsync(edit.Document);
+
+        Assert.Equal(1, await transfer.CopyAllAsync("Source", "Target"));
+
+        var redirects = fixture.CreateRedirectService("Target");
+        var target = await redirects.ResolveAsync(
+            ContentRouteNamespaces.Articles,
+            "original-article-slug");
+
+        Assert.NotNull(target);
+        Assert.Equal("redirect-transfer-test", target.ContentKey);
     }
 
     [Fact]
@@ -251,6 +313,21 @@ public sealed class ContentSourceTransferServiceTests
         }
 
         public ContentSourceRegistry Registry { get; }
+
+        public ContentRedirectService CreateRedirectService(string sourceKey)
+        {
+            var httpContext = new DefaultHttpContext();
+            httpContext.Items[SiteModeContext.HttpContextItemKey] = new SiteModeContext
+            {
+                SiteMode = SiteMode.Professional,
+                IsDevelopmentPreview = true,
+                HasContentSourceOverride = true,
+                EnabledContentSources = new HashSet<string>([sourceKey], StringComparer.OrdinalIgnoreCase)
+            };
+            return new ContentRedirectService(
+                Registry,
+                new HttpContextAccessor { HttpContext = httpContext });
+        }
 
         public void Dispose()
         {

@@ -69,7 +69,7 @@ public sealed class PublishedContentWebApplicationFactory : WebApplicationFactor
         await CreateAsync(authoring, new ContentItem
         {
             Id = "article-bees",
-            Slug = "freeing-the-bees-consolevariations-puzzle",
+            Slug = "legacy-bees-article",
             Title = "Freeing the Bees: Solving ConsoleVariations",
             Summary = "A debugging story about freeing the bees.",
             DateText = "August 12, 2026",
@@ -78,6 +78,13 @@ public sealed class PublishedContentWebApplicationFactory : WebApplicationFactor
             VisibleInModes = [SiteMode.Professional],
             Body = "## Freeing the Bees\n\n- Inspect the console\n- Fix the variation"
         });
+        var article = await authoring.GetEditAsync("External", "legacy-bees-article");
+        if (article is null)
+        {
+            throw new InvalidOperationException("The seeded article could not be reloaded.");
+        }
+        article.Document.Slug = "freeing-the-bees-consolevariations-puzzle";
+        await authoring.SaveRevisionAsync(article.Document);
 
         await CreateAsync(authoring, Project(
             "personal-multi-mode-website", "personalmultimodewebsite", "Personal Multi-Mode Website",
@@ -87,7 +94,14 @@ public sealed class PublishedContentWebApplicationFactory : WebApplicationFactor
             "dnd-tools", "dndtools", "D&D Tools", "## D&D Tools", ["web-development"],
             logoUrl: "/favicon.ico", logoAlt: "Dorks & Dice logo"));
         await CreateAsync(authoring, Project(
-            "skyblivion", "skyblivion", "Skyblivion", "## Skyblivion\n\nGallery presentation.", ["game-development"]));
+            "skyblivion", "experienceskyblivion", "Skyblivion", "## Skyblivion\n\nGallery presentation.", ["game-development"]));
+        var skyblivion = await authoring.GetEditAsync("External", "experienceskyblivion");
+        if (skyblivion is null)
+        {
+            throw new InvalidOperationException("The seeded Skyblivion page could not be reloaded.");
+        }
+        skyblivion.Document.Slug = "skyblivion";
+        await authoring.SaveRevisionAsync(skyblivion.Document);
         await CreateAsync(authoring, Project(
             "python-finance-analytics", "pythonfinanceanalytics", "Python Finance Analytics",
             "[View Notebook on GitHub](https://github.com/LegendMaster03/python-finance-analytics/blob/main/finance-analysis.ipynb)\n\n[View Repository](https://github.com/LegendMaster03/python-finance-analytics)",

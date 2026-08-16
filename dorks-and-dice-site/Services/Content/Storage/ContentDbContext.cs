@@ -17,6 +17,7 @@ public sealed class ContentDbContext : DbContext
     internal DbSet<ContentPageAssetRecord> PageAssets => Set<ContentPageAssetRecord>();
     internal DbSet<ContentRevisionAssetRecord> RevisionAssets => Set<ContentRevisionAssetRecord>();
     internal DbSet<ContentPageAssetDependencyRecord> PageAssetDependencies => Set<ContentPageAssetDependencyRecord>();
+    internal DbSet<ContentRedirectRecord> Redirects => Set<ContentRedirectRecord>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -145,6 +146,23 @@ public sealed class ContentDbContext : DbContext
                 .HasForeignKey(link => link.PageId).OnDelete(DeleteBehavior.Cascade);
             entity.HasIndex(link => link.AssetKey);
         });
+
+        modelBuilder.Entity<ContentRedirectRecord>(entity =>
+        {
+            entity.ToTable("content_redirect");
+            entity.HasKey(redirect => redirect.Id);
+            entity.Property(redirect => redirect.Id).HasColumnName("redirect_id");
+            entity.Property(redirect => redirect.Namespace).HasColumnName("redirect_namespace").IsRequired();
+            entity.Property(redirect => redirect.Slug).HasColumnName("redirect_slug").IsRequired();
+            entity.Property(redirect => redirect.PageId).HasColumnName("redirect_page_id");
+            entity.Property(redirect => redirect.CreatedUtc).HasColumnName("redirect_created_utc").IsRequired();
+            entity.HasOne(redirect => redirect.Page)
+                .WithMany(page => page.Redirects)
+                .HasForeignKey(redirect => redirect.PageId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasIndex(redirect => new { redirect.Namespace, redirect.Slug }).IsUnique();
+            entity.HasIndex(redirect => redirect.PageId);
+        });
     }
 }
 
@@ -158,6 +176,7 @@ internal sealed class ContentPageRecord
     public List<ContentRevisionRecord> Revisions { get; set; } = [];
     public List<ContentPageAssetRecord> AssetLinks { get; set; } = [];
     public List<ContentPageAssetDependencyRecord> AssetDependencies { get; set; } = [];
+    public List<ContentRedirectRecord> Redirects { get; set; } = [];
 }
 
 internal sealed class ContentRevisionRecord
@@ -225,6 +244,16 @@ internal sealed class ContentPageAssetDependencyRecord
     public long PageId { get; set; }
     public string AssetSourceKey { get; set; } = string.Empty;
     public string AssetKey { get; set; } = string.Empty;
+    public ContentPageRecord? Page { get; set; }
+}
+
+internal sealed class ContentRedirectRecord
+{
+    public long Id { get; set; }
+    public string Namespace { get; set; } = string.Empty;
+    public string Slug { get; set; } = string.Empty;
+    public long PageId { get; set; }
+    public DateTime CreatedUtc { get; set; }
     public ContentPageRecord? Page { get; set; }
 }
 

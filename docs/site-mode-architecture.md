@@ -42,7 +42,8 @@ Current rules:
 - `/` is mode-adaptive.
 - `/articles` and `/articles/...` are mode-adaptive.
 - `/resume` and `/resume/...` are Professional-owned.
-- `/development/content` is development-host-only authoring infrastructure.
+- `/development/content` is authoring infrastructure restricted to authorized development access.
+- `/content/media/...` is shared infrastructure whose asset service enforces page and revision visibility.
 - `/health`, static framework assets, and shared error routes are shared exceptions.
 - `/site-modes/professional/...` is Professional-owned.
 - `/site-modes/dorks-and-dice/...` is Dorks & Dice-owned.
@@ -240,6 +241,7 @@ content_asset
 content_page_asset
 content_page_asset_dependency
 content_revision_asset
+content_redirect
 ```
 
 `content_page` owns the stable content key, current slug, and pointer to the current revision. `content_revision` stores
@@ -262,6 +264,11 @@ foreign key across databases, and `content_revision_asset` records the exact med
 The public media endpoint serves an asset only when the current revision of a page in the composed catalog references
 that asset and the page is visible for the active site mode. Uploading, attaching, or retaining an asset only in an older
 revision does not publish it.
+
+`content_redirect` stores route-namespace aliases that point directly to stable page identities. Renaming a page records
+its previous slug in each applicable namespace. Because redirects target pages instead of other redirects, later slug
+changes update the canonical destination without creating redirect chains. Redirect records move with their pages when
+content is synchronized between sources.
 
 The Professional resume still uses `Content/Resume/resume.json` for resume-only structures that are not navigable detail
 content, such as contact links, education, awards, skills, and leadership. Project and Experience detail records are no
@@ -326,7 +333,9 @@ ownership, and source-qualified dependencies to Global before removing the Local
 for human review; listed pages can be promoted for publication. After the initial content promotion, the committed
 Local database is a valid empty authoring workspace.
 
-The editor is development-host-only. It is not a public CMS and is not exposed on production domains.
+The editor is not a public CMS. Localhost access requires the original socket peer to be loopback; forwarded headers can
+not turn a private-network client into a local client. Remote development ingress requires the configured Tailscale app
+capability on its dedicated port.
 
 #### Visual editor limitation
 

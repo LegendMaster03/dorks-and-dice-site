@@ -42,4 +42,23 @@ public sealed class ContentCatalogService : IContentCatalogService
             ? item
             : null;
     }
+
+    public async Task<ContentItem?> GetForDetailByIdAsync(
+        string contentKey,
+        SiteMode siteMode,
+        bool isDevelopmentPreview,
+        CancellationToken cancellationToken = default)
+    {
+        var items = await _repository.GetAllAsync(cancellationToken);
+        var item = items.SingleOrDefault(candidate =>
+            string.Equals(candidate.Id, contentKey, StringComparison.OrdinalIgnoreCase));
+        if (item is null)
+        {
+            return null;
+        }
+
+        return isDevelopmentPreview || item.IsVisibleInMode(siteMode)
+            ? item
+            : null;
+    }
 }

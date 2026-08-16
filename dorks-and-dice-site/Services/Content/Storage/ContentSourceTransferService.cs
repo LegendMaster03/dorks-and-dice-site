@@ -107,6 +107,20 @@ public sealed class ContentSourceTransferService : IContentSourceTransferService
         targetContext.Pages.Add(targetPage);
         await targetContext.SaveChangesAsync(cancellationToken);
 
+        if (sourcePage.Redirects.Count > 0)
+        {
+            targetContext.Redirects.AddRange(sourcePage.Redirects
+                .OrderBy(redirect => redirect.Id)
+                .Select(redirect => new ContentRedirectRecord
+                {
+                    Namespace = redirect.Namespace,
+                    Slug = redirect.Slug,
+                    PageId = targetPage.Id,
+                    CreatedUtc = NormalizeUtc(redirect.CreatedUtc)
+                }));
+            await targetContext.SaveChangesAsync(cancellationToken);
+        }
+
         if (sourcePage.AssetLinks.Count > 0)
         {
             targetContext.Assets.AddRange(sourcePage.AssetLinks
@@ -221,14 +235,46 @@ public sealed class ContentSourceTransferService : IContentSourceTransferService
 
         if (matches.Count > 1
             || matches.Count == 1
-                && (!string.Equals(matches[0].ContentKey, sourcePage.ContentKey, StringComparison.OrdinalIgnoreCase)
-                    || !string.Equals(matches[0].Slug, sourcePage.Slug, StringComparison.OrdinalIgnoreCase)))
+                && !string.Equals(matches[0].ContentKey, sourcePage.ContentKey, StringComparison.OrdinalIgnoreCase))
         {
             throw new InvalidOperationException(
                 $"The target source contains a different page using stable ID '{sourcePage.ContentKey}' or slug '{sourcePage.Slug}'.");
         }
 
         var targetPage = matches.SingleOrDefault();
+        if (sourcePage.Redirects.Any(redirect =>
+                string.Equals(redirect.Slug, sourcePage.Slug, StringComparison.OrdinalIgnoreCase)))
+        {
+            throw new InvalidOperationException(
+                $"Content page '{sourcePage.ContentKey}' contains a redirect using its canonical slug.");
+        }
+
+        if (await targetContext.Redirects.AnyAsync(
+                redirect => redirect.Slug == sourcePage.Slug
+                    && (targetPage == null || redirect.PageId != targetPage.Id),
+                cancellationToken))
+        {
+            throw new InvalidOperationException(
+                $"The target source contains a redirect using canonical slug '{sourcePage.Slug}'.");
+        }
+
+        foreach (var redirect in sourcePage.Redirects)
+        {
+            if (await targetContext.Pages.AnyAsync(
+                    page => page.Slug == redirect.Slug
+                        && (targetPage == null || page.Id != targetPage.Id),
+                    cancellationToken)
+                || await targetContext.Redirects.AnyAsync(
+                    candidate => candidate.Namespace == redirect.Namespace
+                        && candidate.Slug == redirect.Slug
+                        && (targetPage == null || candidate.PageId != targetPage.Id),
+                    cancellationToken))
+            {
+                throw new InvalidOperationException(
+                    $"The target source already uses redirect '{redirect.Namespace}:{redirect.Slug}'.");
+            }
+        }
+
         var assetKeys = sourcePage.AssetLinks.Select(link => link.Asset!.AssetKey).ToList();
         if (assetKeys.Count > 0
             && await targetContext.Assets.AnyAsync(
@@ -284,6 +330,7 @@ public sealed class ContentSourceTransferService : IContentSourceTransferService
         .Include(page => page.AssetLinks)
             .ThenInclude(link => link.Asset)
         .Include(page => page.AssetDependencies)
+        .Include(page => page.Redirects)
         .Include(page => page.Revisions)
             .ThenInclude(revision => revision.Tags)
         .Include(page => page.Revisions)
@@ -299,6 +346,7 @@ public sealed class ContentSourceTransferService : IContentSourceTransferService
         .Include(page => page.AssetLinks)
             .ThenInclude(link => link.Asset)
         .Include(page => page.AssetDependencies)
+        .Include(page => page.Redirects)
         .Include(page => page.Revisions)
             .ThenInclude(revision => revision.Tags)
         .Include(page => page.Revisions)
