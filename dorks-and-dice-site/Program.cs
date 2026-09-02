@@ -95,6 +95,7 @@ builder.Services.Configure<SecurityStampValidatorOptions>(options =>
 builder.Services.AddScoped<IUserClaimsPrincipalFactory<ApplicationUser>, ApplicationUserClaimsPrincipalFactory>();
 builder.Services.AddScoped<IScopedRoleService, ScopedRoleService>();
 builder.Services.AddHttpContextAccessor();
+builder.Services.AddTransient<Microsoft.AspNetCore.Authentication.IClaimsTransformation, TrustedPrivilegeClaimsTransformation>();
 builder.Services.AddSingleton<IAuthorizationHandler, TrustedAccessAuthorizationHandler>();
 builder.Services.AddSingleton<IAuthorizationHandler, ModeScopedRoleAuthorizationHandler>();
 
@@ -298,7 +299,7 @@ app.MapGet("/sitemap.xml", (HttpContext context) =>
     };
 
     var urls = string.Join(string.Empty, paths.Select(path =>
-        $"<url><loc>{SecurityElement.Escape(BuildAbsoluteUrl(context, path))}</loc></url>"));
+        $"<url><loc>{SecurityElement.Escape(BuildAbsoluteUrl(context, path))</loc></url>"));
     var xml = $"<?xml version=\"1.0\" encoding=\"UTF-8\"?><urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">{urls}</urlset>";
     return Results.Text(xml, "application/xml");
 });
