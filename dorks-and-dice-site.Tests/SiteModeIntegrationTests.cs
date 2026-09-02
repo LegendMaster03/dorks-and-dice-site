@@ -1,5 +1,6 @@
 using System.Net;
 using dorks_and_dice_site.Models.Site;
+using dorks_and_dice_site.Services.Identity;
 using dorks_and_dice_site.Services.Site;
 using Microsoft.AspNetCore.Mvc.Testing;
 
@@ -108,7 +109,7 @@ public sealed class SiteModeIntegrationTests
     }
 
     [Fact]
-    public async Task DevelopmentPreviewLoadsSelectedModeAndDevelopmentToolsStylesheets()
+    public async Task TrustedPreviewLoadsSelectedModeAndDevelopmentToolsStylesheets()
     {
         using var request = CreateRequest("localhost", "/");
         request.Headers.Add("Cookie", "DevelopmentPreviewSiteMode=dorks-and-dice");
@@ -120,6 +121,7 @@ public sealed class SiteModeIntegrationTests
         Assert.Contains("/site-modes/dorks-and-dice/css/site.css", html);
         Assert.Contains("/favicon.ico", html);
         Assert.Contains("/site-modes/development/css/site.css", html);
+        Assert.Contains("Trusted Preview", html);
         Assert.DoesNotContain("/site-modes/professional/css/site.css", html);
     }
 
@@ -196,17 +198,17 @@ public sealed class SiteModeIntegrationTests
     }
 
     [Fact]
-    public async Task EmptyLocalAuthoringWorkspaceDoesNotInventArticleFilters()
+    public async Task TrustedAnonymousPreviewIgnoresDeveloperContentSourceCookies()
     {
         using var request = CreateRequest("localhost", "/articles");
-        request.Headers.Add("Cookie", "DevelopmentPreviewSiteMode=development; DevelopmentIncludeUnlistedArticles=true; DevelopmentEnabledContentSources=Local");
+        request.Headers.Add("Cookie", "DevelopmentPreviewSiteMode=professional; DevelopmentIncludeUnlistedArticles=true; DevelopmentEnabledContentSources=Local");
 
         var response = await SendAsync(request);
         var html = await response.Content.ReadAsStringAsync();
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.DoesNotContain("data-content-tag=\"all\"", html);
-        Assert.DoesNotContain("data-content-listed=\"true\"", html);
+        Assert.Contains("Freeing the Bees: Solving ConsoleVariations", html);
+        Assert.DoesNotContain("Content editor", html);
     }
 
     [Fact]
@@ -341,9 +343,20 @@ public sealed class SiteModeIntegrationTests
     }
 
     [Fact]
-    public async Task DevelopmentPreviewCanRenderProfessionalArticleInDorksMode()
+    public async Task TrustedAnonymousPreviewCanNotBypassContentVisibility()
     {
         using var request = CreateRequest("localhost", "/articles/freeing-the-bees-consolevariations-puzzle");
+        request.Headers.Add("Cookie", "DevelopmentPreviewSiteMode=dorks-and-dice");
+
+        var response = await SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task TrustedDeveloperPreviewCanRenderProfessionalArticleInDorksMode()
+    {
+        using var request = CreateDeveloperRequest("localhost", "/articles/freeing-the-bees-consolevariations-puzzle");
         request.Headers.Add("Cookie", "DevelopmentPreviewSiteMode=dorks-and-dice");
 
         var response = await SendAsync(request);
@@ -358,9 +371,20 @@ public sealed class SiteModeIntegrationTests
     }
 
     [Fact]
-    public async Task DevelopmentPreviewCanRenderRestrictedRouteWithWarning()
+    public async Task TrustedAnonymousPreviewCanNotBypassRouteRestrictions()
     {
         using var request = CreateRequest("localhost", "/resume");
+        request.Headers.Add("Cookie", "DevelopmentPreviewSiteMode=dorks-and-dice");
+
+        var response = await SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task TrustedDeveloperPreviewCanRenderRestrictedRouteWithWarning()
+    {
+        using var request = CreateDeveloperRequest("localhost", "/resume");
         request.Headers.Add("Cookie", "DevelopmentPreviewSiteMode=dorks-and-dice");
 
         var response = await SendAsync(request);
@@ -372,9 +396,9 @@ public sealed class SiteModeIntegrationTests
     }
 
     [Fact]
-    public async Task DevelopmentPreviewAllowsAnEmptyLocalArticleWorkspace()
+    public async Task DeveloperPreviewAllowsAnEmptyLocalArticleWorkspace()
     {
-        using var request = CreateRequest("localhost", "/articles");
+        using var request = CreateDeveloperRequest("localhost", "/articles");
         request.Headers.Add("Cookie", "DevelopmentPreviewSiteMode=development; DevelopmentIncludeUnlistedArticles=true; DevelopmentEnabledContentSources=Local");
 
         var response = await SendAsync(request);
@@ -404,6 +428,13 @@ public sealed class SiteModeIntegrationTests
     {
         var request = new HttpRequestMessage(HttpMethod.Get, $"http://{host}{path}");
         request.Headers.Host = host;
+        return request;
+    }
+
+    private static HttpRequestMessage CreateDeveloperRequest(string host, string path)
+    {
+        var request = CreateRequest(host, path);
+        request.Headers.Add(TestRoleAuthenticationHandler.RolesHeader, AccountRoles.Dev);
         return request;
     }
 
