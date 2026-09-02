@@ -7,4 +7,5 @@ public static class AuthorizationPolicies
     public const string DevAccess = "DevAccess";
     public const string PrivilegedAccess = "PrivilegedAccess";
     public const string AdminAndDevAccess = "AdminAndDevAccess";
+    public const string ModeEditor = "ModeEditor";
 }
