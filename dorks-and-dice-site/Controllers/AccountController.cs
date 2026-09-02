@@ -323,9 +323,9 @@ public sealed class AccountController : Controller
             return RedirectToAction(nameof(Login));
         }
 
-        if (await ActivePrivilegedAccountExistsAsync())
+        if (await ActiveAdministratorExistsAsync())
         {
-            TempData["AccountError"] = "An active privileged account already exists.";
+            TempData["AccountError"] = "An active administrator account already exists.";
             return RedirectToAction(nameof(Index));
         }
 
@@ -338,8 +338,19 @@ public sealed class AccountController : Controller
             }
         }
 
+        var rolesToAdd = new List<string>();
+        foreach (var role in AccountRoles.Privileged)
+        {
+            if (!await _userManager.IsInRoleAsync(user, role))
+            {
+                rolesToAdd.Add(role);
+            }
+        }
+
         user.SecurityStamp = Guid.NewGuid().ToString("N");
-        var addRoleResult = await _userManager.AddToRolesAsync(user, AccountRoles.Privileged);
+        var addRoleResult = rolesToAdd.Count == 0
+            ? IdentityResult.Success
+            : await _userManager.AddToRolesAsync(user, rolesToAdd);
         if (!addRoleResult.Succeeded)
         {
             _logger.LogError(
@@ -479,8 +490,7 @@ public sealed class AccountController : Controller
         var hasTrustedAccess = TrustedAccessEvaluator.IsAuthorized(HttpContext, _siteModeOptions);
         var canBootstrapPrivilegedAccess = hasTrustedAccess
             && !isAdministrator
-            && !isDeveloper
-            && !await ActivePrivilegedAccountExistsAsync();
+            && !await ActiveAdministratorExistsAsync();
 
         return new AccountViewModel
         {
@@ -494,23 +504,15 @@ public sealed class AccountController : Controller
         };
     }
 
-    private async Task<bool> ActivePrivilegedAccountExistsAsync()
+    private async Task<bool> ActiveAdministratorExistsAsync()
     {
-        foreach (var role in AccountRoles.Privileged)
+        if (!await _roleManager.RoleExistsAsync(AccountRoles.Admin))
         {
-            if (!await _roleManager.RoleExistsAsync(role))
-            {
-                continue;
-            }
-
-            var users = await _userManager.GetUsersInRoleAsync(role);
-            if (users.Any(candidate => candidate.DeletedAt is null))
-            {
-                return true;
-            }
+            return false;
         }
 
-        return false;
+        var administrators = await _userManager.GetUsersInRoleAsync(AccountRoles.Admin);
+        return administrators.Any(candidate => candidate.DeletedAt is null);
     }
 
     private async Task<bool> EnsureRoleExistsAsync(string role)
