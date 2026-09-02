@@ -1,0 +1,140 @@
+@using dorks_and_dice_site.Models.Identity
+@using dorks_and_dice_site.Services.Identity
+@model AdminAccountDetailViewModel
+@{
+    ViewData["Title"] = "Manage account";
+    ViewData["Robots"] = "noindex,nofollow";
+    var isDeleted = Model.DeletedAt is not null;
+    var isLocked = Model.LockoutEnd is not null && Model.LockoutEnd > DateTimeOffset.UtcNow;
+}
+
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+    <div>
+        <h1 class="h2 mb-1">Manage account</h1>
+        <div class="text-body-secondary">@Model.DisplayName</div>
+    </div>
+    <a asp-action="Index" class="btn btn-outline-secondary">All accounts</a>
+</div>
+
+@if (TempData["AdminAccountMessage"] is string message)
+{
+    <div class="alert alert-success" role="status">@message</div>
+}
+@if (TempData["AdminAccountError"] is string error)
+{
+    <div class="alert alert-danger" role="alert">@error</div>
+}
+
+<div class="card card-body shadow-sm mb-4">
+    <h2 class="h5">Account</h2>
+    <dl class="row mb-0">
+        <dt class="col-sm-3">User ID</dt>
+        <dd class="col-sm-9 font-monospace">@Model.UserId</dd>
+        <dt class="col-sm-3">Email</dt>
+        <dd class="col-sm-9">@Model.Email</dd>
+        <dt class="col-sm-3">Email confirmed</dt>
+        <dd class="col-sm-9">@(Model.EmailConfirmed ? "Yes" : "No")</dd>
+        <dt class="col-sm-3">Created</dt>
+        <dd class="col-sm-9">@Model.CreatedAt.ToString("u")</dd>
+        <dt class="col-sm-3">Status</dt>
+        <dd class="col-sm-9">
+            @if (isDeleted)
+            {
+                <span>Deleted @Model.DeletedAt?.ToString("u")</span>
+            }
+            else if (isLocked)
+            {
+                <span>Locked</span>
+            }
+            else
+            {
+                <span>Active</span>
+            }
+        </dd>
+    </dl>
+</div>
+
+<div class="card card-body shadow-sm mb-4">
+    <h2 class="h5">Global roles</h2>
+    <p class="text-body-secondary">Admin and Dev are global roles. Their privileged functions require Trusted Access in addition to the role.</p>
+    @foreach (var role in AccountRoles.Privileged)
+    {
+        var enabled = Model.GlobalRoles.Contains(role, StringComparer.Ordinal);
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 border-top py-2">
+            <div>
+                <strong>@role</strong>
+                <div class="small text-body-secondary">@(enabled ? "Assigned" : "Not assigned")</div>
+            </div>
+            @if (!isDeleted)
+            {
+                <form asp-action="SetGlobalRole" asp-route-userId="@Model.UserId" method="post">
+                    <input type="hidden" name="role" value="@role" />
+                    <input type="hidden" name="enabled" value="@(!enabled)" />
+                    <button type="submit" class="btn btn-sm @(enabled ? "btn-outline-danger" : "btn-outline-primary")">
+                        @(enabled ? "Remove" : "Assign")
+                    </button>
+                </form>
+            }
+        </div>
+    }
+</div>
+
+<div class="card card-body shadow-sm mb-4">
+    <h2 class="h5">Scoped roles</h2>
+    <p class="text-body-secondary">Scoped roles apply only within the selected site mode. Individual capabilities can impose additional Trusted Access requirements.</p>
+    @foreach (var scope in AccountRoleScopes.All)
+    {
+        var scopeLabel = scope == AccountRoleScopes.DorksAndDice ? "Dorks & Dice" : "Professional";
+        <h3 class="h6 mt-2">@scopeLabel</h3>
+        @foreach (var role in ScopedAccountRoles.All)
+        {
+            var enabled = Model.ScopedRoles.TryGetValue(scope, out var roles)
+                && roles.Contains(role, StringComparer.Ordinal);
+            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 border-top py-2">
+                <div>
+                    <strong>@role</strong>
+                    <div class="small text-body-secondary">@(enabled ? "Assigned" : "Not assigned")</div>
+                </div>
+                @if (!isDeleted)
+                {
+                    <form asp-action="SetScopedRole" asp-route-userId="@Model.UserId" method="post">
+                        <input type="hidden" name="scope" value="@scope" />
+                        <input type="hidden" name="role" value="@role" />
+                        <input type="hidden" name="enabled" value="@(!enabled)" />
+                        <button type="submit" class="btn btn-sm @(enabled ? "btn-outline-danger" : "btn-outline-primary")">
+                            @(enabled ? "Remove" : "Assign")
+                        </button>
+                    </form>
+                }
+            </div>
+        }
+    }
+</div>
+
+@if (!isDeleted)
+{
+    <div class="card card-body shadow-sm mb-4">
+        <h2 class="h5">Security controls</h2>
+        <div class="d-flex flex-wrap gap-2">
+            @if (isLocked)
+            {
+                <form asp-action="Unlock" asp-route-userId="@Model.UserId" method="post">
+                    <button type="submit" class="btn btn-outline-primary">Unlock account</button>
+                </form>
+            }
+            else
+            {
+                <form asp-action="Lock" asp-route-userId="@Model.UserId" method="post">
+                    <button type="submit" class="btn btn-outline-danger" disabled="@Model.IsCurrentUser">Lock account</button>
+                </form>
+            }
+            <form asp-action="InvalidateSessions" asp-route-userId="@Model.UserId" method="post">
+                <button type="submit" class="btn btn-outline-warning">Invalidate sessions</button>
+            </form>
+        </div>
+        @if (Model.IsCurrentUser)
+        {
+            <div class="form-text mt-2">The current administrator can not lock its own account. Invalidating your own sessions will require you to sign in again.</div>
+        }
+    </div>
+}
