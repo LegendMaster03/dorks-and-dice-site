@@ -34,14 +34,15 @@ public sealed class SiteModeMiddleware
             SiteMode = siteMode,
             IsProfessionalDomain = isProfessionalDomain,
             IsDorksAndDiceDomain = isDorksAndDiceDomain,
-            IsDevelopmentPreview = hasTrustedAccess,
+            HasTrustedAccess = hasTrustedAccess,
+            IsDevelopmentPreview = hasDeveloperAccess,
             IncludeUnlistedArticles = includeUnlistedArticles,
             HasContentSourceOverride = sourceSelection.HasOverride,
             EnabledContentSources = sourceSelection.EnabledSources,
-            DevelopmentPreviewRouteRestrictionMismatch = hasTrustedAccess && !isAllowedInMode
+            DevelopmentPreviewRouteRestrictionMismatch = hasDeveloperAccess && !isAllowedInMode
         };
 
-        if (!hasTrustedAccess && !isAllowedInMode)
+        if (!hasDeveloperAccess && !isAllowedInMode)
         {
             context.Request.Path = "/Home/NotFoundPage";
             await _next(context);
