@@ -3,6 +3,7 @@ using dorks_and_dice_site.Models.Site;
 using dorks_and_dice_site.Services.GameServers.Minecraft;
 using dorks_and_dice_site.Services.Resume;
 using dorks_and_dice_site.Services.Site;
+using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 using System.Diagnostics;
 
@@ -49,7 +50,15 @@ namespace dorks_and_dice_site.Controllers
 
         public IActionResult NotFoundPage()
         {
-            Response.StatusCode = 404;
+            var reExecuteFeature = HttpContext.Features.Get<IStatusCodeReExecuteFeature>();
+            var statusCode = reExecuteFeature?.OriginalStatusCode ?? StatusCodes.Status404NotFound;
+            Response.StatusCode = statusCode;
+
+            if (statusCode != StatusCodes.Status404NotFound)
+            {
+                return new EmptyResult();
+            }
+
             return View();
         }
 
