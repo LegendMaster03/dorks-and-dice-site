@@ -455,6 +455,11 @@ public sealed class AccountController : Controller
             return false;
         }
 
+        if (!await _signInManager.CanSignInAsync(user) || await _userManager.IsLockedOutAsync(user))
+        {
+            return false;
+        }
+
         if (!await _roleManager.RoleExistsAsync(AccountRoles.Admin))
         {
             return false;
@@ -463,7 +468,9 @@ public sealed class AccountController : Controller
         var activeAdministratorCount = 0;
         foreach (var candidate in await _userManager.GetUsersInRoleAsync(AccountRoles.Admin))
         {
-            if (candidate.DeletedAt is not null || await _userManager.IsLockedOutAsync(candidate))
+            if (candidate.DeletedAt is not null
+                || !await _signInManager.CanSignInAsync(candidate)
+                || await _userManager.IsLockedOutAsync(candidate))
             {
                 continue;
             }
