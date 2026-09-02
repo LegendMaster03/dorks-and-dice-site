@@ -2,6 +2,7 @@ using System.Net;
 using System.Text.RegularExpressions;
 using dorks_and_dice_site.Models.Identity;
 using dorks_and_dice_site.Models.Site;
+using dorks_and_dice_site.Services.Identity;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
@@ -120,6 +121,163 @@ public sealed class AccountAuthenticationTests
         Assert.Equal(HttpStatusCode.Redirect, account.StatusCode);
 
         var loginLocation = account.Headers.Location;
+        Assert.NotNull(loginLocation);
+        var loginPath = loginLocation.IsAbsoluteUri
+            ? loginLocation.AbsolutePath
+            : loginLocation.OriginalString.Split('?', 2)[0];
+        Assert.Equal("/account/login", loginPath);
+    }
+
+    [Fact]
+    public async Task AdministratorBootstrapAndSessionsRequireTrustedDevelopmentAccess()
+    {
+        var connectionString = Environment.GetEnvironmentVariable("IDENTITY_TEST_POSTGRES");
+        if (string.IsNullOrWhiteSpace(connectionString))
+        {
+            return;
+        }
+
+        using var factory = new IdentityWebApplicationFactory(connectionString);
+        await ResetAdministratorRoleAsync(factory.Services);
+
+        var email = $"admin-test-{Guid.NewGuid():N}@example.test";
+        const string password = "correct horse battery staple";
+        await CreateConfirmedUserAsync(factory.Services, email, password);
+
+        using var trustedClient = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+            HandleCookies = true,
+            BaseAddress = new Uri("https://localhost")
+        });
+
+        var trustedLogin = await LoginAsync(trustedClient, email, password);
+        Assert.Equal(HttpStatusCode.Redirect, trustedLogin.StatusCode);
+
+        var accountBeforeClaim = await trustedClient.GetAsync("/account");
+        Assert.Equal(HttpStatusCode.OK, accountBeforeClaim.StatusCode);
+        var accountBeforeClaimHtml = await accountBeforeClaim.Content.ReadAsStringAsync();
+        Assert.Contains("Administrator bootstrap", accountBeforeClaimHtml, StringComparison.Ordinal);
+        var claimToken = ExtractAntiforgeryToken(accountBeforeClaimHtml);
+
+        using var claimForm = new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["__RequestVerificationToken"] = claimToken
+        });
+        var claim = await trustedClient.PostAsync("/account/claim-admin", claimForm);
+        Assert.Equal(HttpStatusCode.Redirect, claim.StatusCode);
+        Assert.Equal("/account", claim.Headers.Location?.OriginalString);
+
+        using (var scope = factory.Services.CreateScope())
+        {
+            var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+            var user = await userManager.FindByEmailAsync(email);
+            Assert.NotNull(user);
+            Assert.True(await userManager.IsInRoleAsync(user, AccountRoles.Admin));
+        }
+
+        var trustedAccount = await trustedClient.GetAsync("/account");
+        Assert.Equal(HttpStatusCode.OK, trustedAccount.StatusCode);
+        Assert.Contains(
+            "This account has administrator access",
+            await trustedAccount.Content.ReadAsStringAsync(),
+            StringComparison.Ordinal);
+
+        using var publicSessionRequest = new HttpRequestMessage(HttpMethod.Get, "/account");
+        publicSessionRequest.Headers.Host = "dorks-and-dice.com";
+        var publicSession = await trustedClient.SendAsync(publicSessionRequest);
+        Assert.Equal(HttpStatusCode.Redirect, publicSession.StatusCode);
+        AssertLoginRedirect(publicSession);
+
+        using var publicClient = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+            HandleCookies = true,
+            BaseAddress = new Uri("https://dorks-and-dice.com")
+        });
+        var publicLogin = await LoginAsync(publicClient, email, password);
+        Assert.Equal(HttpStatusCode.OK, publicLogin.StatusCode);
+        Assert.Contains(
+            "Invalid email or password.",
+            await publicLogin.Content.ReadAsStringAsync(),
+            StringComparison.Ordinal);
+
+        var trustedLoginAgain = await LoginAsync(trustedClient, email, password);
+        Assert.Equal(HttpStatusCode.Redirect, trustedLoginAgain.StatusCode);
+        Assert.Equal("/", trustedLoginAgain.Headers.Location?.OriginalString);
+    }
+
+    private static async Task<HttpResponseMessage> LoginAsync(
+        HttpClient client,
+        string email,
+        string password)
+    {
+        var loginPage = await client.GetAsync("/account/login");
+        Assert.Equal(HttpStatusCode.OK, loginPage.StatusCode);
+        var token = ExtractAntiforgeryToken(await loginPage.Content.ReadAsStringAsync());
+
+        using var loginForm = new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["Email"] = email,
+            ["Password"] = password,
+            ["RememberMe"] = "false",
+            ["__RequestVerificationToken"] = token
+        });
+        return await client.PostAsync("/account/login", loginForm);
+    }
+
+    private static async Task CreateConfirmedUserAsync(
+        IServiceProvider services,
+        string email,
+        string password)
+    {
+        using var scope = services.CreateScope();
+        var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+        var user = new ApplicationUser
+        {
+            Id = Guid.NewGuid(),
+            UserName = email,
+            Email = email,
+            DisplayName = "Administrator Test User",
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+
+        var createResult = await userManager.CreateAsync(user, password);
+        Assert.True(createResult.Succeeded, string.Join(", ", createResult.Errors.Select(error => error.Description)));
+        var confirmationToken = await userManager.GenerateEmailConfirmationTokenAsync(user);
+        var confirmationResult = await userManager.ConfirmEmailAsync(user, confirmationToken);
+        Assert.True(
+            confirmationResult.Succeeded,
+            string.Join(", ", confirmationResult.Errors.Select(error => error.Description)));
+    }
+
+    private static async Task ResetAdministratorRoleAsync(IServiceProvider services)
+    {
+        using var scope = services.CreateScope();
+        var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+        var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole<Guid>>>();
+        if (!await roleManager.RoleExistsAsync(AccountRoles.Admin))
+        {
+            return;
+        }
+
+        foreach (var administrator in await userManager.GetUsersInRoleAsync(AccountRoles.Admin))
+        {
+            var removeResult = await userManager.RemoveFromRoleAsync(administrator, AccountRoles.Admin);
+            Assert.True(
+                removeResult.Succeeded,
+                string.Join(", ", removeResult.Errors.Select(error => error.Description)));
+        }
+
+        var role = await roleManager.FindByNameAsync(AccountRoles.Admin);
+        Assert.NotNull(role);
+        var deleteResult = await roleManager.DeleteAsync(role);
+        Assert.True(deleteResult.Succeeded, string.Join(", ", deleteResult.Errors.Select(error => error.Description)));
+    }
+
+    private static void AssertLoginRedirect(HttpResponseMessage response)
+    {
+        var loginLocation = response.Headers.Location;
         Assert.NotNull(loginLocation);
         var loginPath = loginLocation.IsAbsoluteUri
             ? loginLocation.AbsolutePath
