@@ -1,0 +1,24 @@
+@model dorks_and_dice_site.Models.Identity.ResendConfirmationViewModel
+@{
+    ViewData["Title"] = "Resend confirmation";
+    ViewData["Robots"] = "noindex,nofollow";
+}
+
+<div class="row justify-content-center">
+    <div class="col-md-7 col-lg-5">
+        <h1 class="h2 mb-3">Resend confirmation</h1>
+        <form asp-action="ResendConfirmation" method="post" class="card card-body shadow-sm">
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+            <div class="mb-3">
+                <label asp-for="Email" class="form-label"></label>
+                <input asp-for="Email" class="form-control" autocomplete="email" />
+                <span asp-validation-for="Email" class="text-danger"></span>
+            </div>
+            <button type="submit" class="btn btn-primary">Send confirmation email</button>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
