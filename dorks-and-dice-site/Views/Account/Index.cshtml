@@ -31,9 +31,9 @@
                 <div class="form-text">Email changes will be added with the email verification workflow.</div>
             </div>
             <div class="mb-3">
-                <label class="form-label">User ID</label>
-                <input value="@Model.UserId" class="form-control font-monospace" readonly />
-                <div class="form-text">This is the stable internal account identifier.</div>
+                <div class="form-label">User ID</div>
+                <div class="font-monospace text-body-secondary">@Model.UserId</div>
+                <div class="form-text">Stable internal account identifier. It can not be changed.</div>
             </div>
             <button type="submit" class="btn btn-primary">Save changes</button>
         </form>
