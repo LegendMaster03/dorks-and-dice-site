@@ -69,11 +69,12 @@
                 }
             </div>
         }
-        else if (Model.CanBootstrapPrivilegedAccess)
+
+        @if (Model.CanBootstrapPrivilegedAccess)
         {
             <div class="card card-body border-warning shadow-sm mb-4">
                 <h2 class="h5">Privileged account bootstrap</h2>
-                <p>No active privileged account exists. Trusted Access can establish this account as the initial Admin and Dev account.</p>
+                <p>No active administrator account exists. Trusted Access can establish this account as Admin and ensure it also has Dev access.</p>
                 <form asp-action="BootstrapPrivilegedAccess" method="post">
                     <button type="submit" class="btn btn-outline-warning">Initialize Admin and Dev access</button>
                 </form>
