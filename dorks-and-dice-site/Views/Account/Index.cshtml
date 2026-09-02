@@ -38,20 +38,44 @@
             <button type="submit" class="btn btn-primary align-self-start">Save profile</button>
         </form>
 
-        @if (Model.IsAdministrator)
+        @if (Model.IsAdministrator || Model.IsDeveloper)
         {
             <div class="card card-body shadow-sm mb-4">
-                <h2 class="h5">Administrator</h2>
-                <p class="mb-0">This account has administrator access. Administrator authentication and sessions require trusted development access.</p>
+                <h2 class="h5">Privileged roles</h2>
+                <div class="mb-2">
+                    @if (Model.IsAdministrator)
+                    {
+                        <span class="badge text-bg-primary me-1">Admin</span>
+                    }
+                    @if (Model.IsDeveloper)
+                    {
+                        <span class="badge text-bg-secondary me-1">Dev</span>
+                    }
+                </div>
+                <p class="mb-2">These roles do not grant privileged functions unless the current request also passes Trusted Access.</p>
+                <div class="small text-body-secondary mb-3">Trusted Access: @(Model.HasTrustedAccess ? "available" : "not available")</div>
+                @if (Model.HasTrustedAccess)
+                {
+                    <div class="d-flex flex-wrap gap-2">
+                        @if (Model.IsAdministrator)
+                        {
+                            <a asp-controller="AdminAccounts" asp-action="Index" class="btn btn-outline-primary">Manage accounts</a>
+                        }
+                        @if (Model.IsDeveloper)
+                        {
+                            <a href="/development/content" class="btn btn-outline-secondary">Content editor</a>
+                        }
+                    </div>
+                }
             </div>
         }
-        else if (Model.CanClaimAdministrator)
+        else if (Model.CanBootstrapPrivilegedAccess)
         {
             <div class="card card-body border-warning shadow-sm mb-4">
-                <h2 class="h5">Administrator bootstrap</h2>
-                <p>No active administrator account exists. Trusted development access can promote this account as the first administrator.</p>
-                <form asp-action="ClaimAdmin" method="post">
-                    <button type="submit" class="btn btn-outline-warning">Claim administrator access</button>
+                <h2 class="h5">Privileged account bootstrap</h2>
+                <p>No active privileged account exists. Trusted Access can establish this account as the initial Admin and Dev account.</p>
+                <form asp-action="BootstrapPrivilegedAccess" method="post">
+                    <button type="submit" class="btn btn-outline-warning">Initialize Admin and Dev access</button>
                 </form>
             </div>
         }
