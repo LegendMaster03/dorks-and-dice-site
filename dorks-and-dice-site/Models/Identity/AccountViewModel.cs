@@ -9,7 +9,6 @@ public sealed class AccountViewModel
     public bool IsAdministrator { get; init; }
     public bool IsDeveloper { get; init; }
     public bool HasTrustedAccess { get; init; }
-    public bool CanBootstrapPrivilegedAccess { get; init; }
 
     [Required]
     [StringLength(ApplicationUser.DisplayNameMaxLength, MinimumLength = 1)]
