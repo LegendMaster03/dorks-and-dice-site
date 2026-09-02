@@ -84,7 +84,13 @@ public sealed class AccountAuthenticationTests
 
         var account = await client.GetAsync("/account");
         Assert.Equal(HttpStatusCode.Redirect, account.StatusCode);
-        Assert.StartsWith("/account/login", account.Headers.Location?.OriginalString, StringComparison.Ordinal);
+
+        var loginLocation = account.Headers.Location;
+        Assert.NotNull(loginLocation);
+        var loginPath = loginLocation.IsAbsoluteUri
+            ? loginLocation.AbsolutePath
+            : loginLocation.OriginalString.Split('?', 2)[0];
+        Assert.Equal("/account/login", loginPath);
     }
 
     private static string ExtractAntiforgeryToken(string html)
