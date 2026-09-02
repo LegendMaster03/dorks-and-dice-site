@@ -144,6 +144,21 @@ public sealed class AccountAuthenticationTests
         const string password = "correct horse battery staple";
         await CreateConfirmedUserAsync(factory.Services, email, password);
 
+        // A Dev-only account must still be able to recover administrator access when
+        // no active Admin exists. Bootstrap should add the missing Admin role without
+        // failing because Dev is already assigned.
+        using (var scope = factory.Services.CreateScope())
+        {
+            var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+            var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole<Guid>>>();
+            var createDevRole = await roleManager.CreateAsync(new IdentityRole<Guid>(AccountRoles.Dev));
+            Assert.True(createDevRole.Succeeded, string.Join(", ", createDevRole.Errors.Select(error => error.Description)));
+            var user = await userManager.FindByEmailAsync(email);
+            Assert.NotNull(user);
+            var addDevRole = await userManager.AddToRoleAsync(user, AccountRoles.Dev);
+            Assert.True(addDevRole.Succeeded, string.Join(", ", addDevRole.Errors.Select(error => error.Description)));
+        }
+
         using var trustedClient = factory.CreateClient(new WebApplicationFactoryClientOptions
         {
             AllowAutoRedirect = false,
