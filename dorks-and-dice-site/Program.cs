@@ -8,7 +8,7 @@ using dorks_and_dice_site.Services.GameServers.Minecraft;
 using dorks_and_dice_site.Services.Identity;
 using dorks_and_dice_site.Services.Site;
 using dorks_and_dice_site.Services.Site.ModePresentation;
-using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
@@ -93,6 +93,42 @@ builder.Services.Configure<DataProtectionTokenProviderOptions>(options =>
 builder.Services.Configure<SecurityStampValidatorOptions>(options =>
     options.ValidationInterval = TimeSpan.Zero);
 builder.Services.AddScoped<IUserClaimsPrincipalFactory<ApplicationUser>, ApplicationUserClaimsPrincipalFactory>();
+builder.Services.AddScoped<IScopedRoleService, ScopedRoleService>();
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddSingleton<IAuthorizationHandler, TrustedAccessAuthorizationHandler>();
+
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy(AuthorizationPolicies.TrustedAccess, policy =>
+    {
+        policy.Requirements.Add(new TrustedAccessRequirement());
+    });
+    options.AddPolicy(AuthorizationPolicies.AdminAccess, policy =>
+    {
+        policy.RequireAuthenticatedUser();
+        policy.RequireRole(AccountRoles.Admin);
+        policy.Requirements.Add(new TrustedAccessRequirement());
+    });
+    options.AddPolicy(AuthorizationPolicies.DevAccess, policy =>
+    {
+        policy.RequireAuthenticatedUser();
+        policy.RequireRole(AccountRoles.Dev);
+        policy.Requirements.Add(new TrustedAccessRequirement());
+    });
+    options.AddPolicy(AuthorizationPolicies.PrivilegedAccess, policy =>
+    {
+        policy.RequireAuthenticatedUser();
+        policy.RequireRole(AccountRoles.Admin, AccountRoles.Dev);
+        policy.Requirements.Add(new TrustedAccessRequirement());
+    });
+    options.AddPolicy(AuthorizationPolicies.AdminAndDevAccess, policy =>
+    {
+        policy.RequireAuthenticatedUser();
+        policy.RequireRole(AccountRoles.Admin);
+        policy.RequireRole(AccountRoles.Dev);
+        policy.Requirements.Add(new TrustedAccessRequirement());
+    });
+});
 
 builder.Services.ConfigureApplicationCookie(options =>
 {
@@ -105,30 +141,6 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.SlidingExpiration = true;
     options.LoginPath = "/account/login";
     options.AccessDeniedPath = "/account/access-denied";
-
-    var defaultValidatePrincipal = options.Events.OnValidatePrincipal;
-    options.Events.OnValidatePrincipal = async context =>
-    {
-        if (defaultValidatePrincipal is not null)
-        {
-            await defaultValidatePrincipal(context);
-        }
-
-        if (context.Principal?.Identity?.IsAuthenticated != true
-            || !context.Principal.IsInRole(AccountRoles.Admin))
-        {
-            return;
-        }
-
-        var siteModeOptions = context.HttpContext.RequestServices.GetRequiredService<SiteModeOptions>();
-        if (DevelopmentAccessEvaluator.IsAuthorized(context.HttpContext, siteModeOptions))
-        {
-            return;
-        }
-
-        context.RejectPrincipal();
-        await context.HttpContext.SignOutAsync(IdentityConstants.ApplicationScheme);
-    };
 });
 
 builder.Services.AddRateLimiter(options =>
@@ -220,7 +232,7 @@ if (!app.Environment.IsDevelopment())
 
 app.Use(async (context, next) =>
 {
-    DevelopmentAccessEvaluator.CaptureOriginalConnection(context);
+    TrustedAccessEvaluator.CaptureOriginalConnection(context);
     await next();
 });
 app.UseForwardedHeaders();
@@ -253,11 +265,11 @@ app.Use(async (context, next) =>
     await next();
 });
 app.UseHttpsRedirection();
+app.UseAuthentication();
 app.UseMiddleware<SiteModeMiddleware>();
 app.UseRouting();
 app.UseStatusCodePagesWithReExecute("/Home/NotFoundPage");
 app.UseRateLimiter();
-app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapStaticAssets();
@@ -317,6 +329,12 @@ app.MapPost("/development-preview", async (
 
     if (form.ContainsKey("articleSettings"))
     {
+        if (context.User.Identity?.IsAuthenticated != true
+            || !context.User.IsInRole(AccountRoles.Dev))
+        {
+            return Results.Forbid();
+        }
+
         context.Response.Cookies.Append(
             SiteModeValues.IncludeUnlistedCookie,
             form.ContainsKey("includeUnlisted") ? "true" : "false",
