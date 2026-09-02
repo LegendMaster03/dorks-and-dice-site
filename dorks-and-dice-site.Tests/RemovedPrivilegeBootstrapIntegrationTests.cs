@@ -4,10 +4,12 @@ using dorks_and_dice_site.Models.Identity;
 using dorks_and_dice_site.Services.Identity;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace dorks_and_dice_site.Tests;
 
+[Collection(PostgresIntegrationCollection.Name)]
 public sealed class RemovedPrivilegeBootstrapIntegrationTests
 {
     [Fact]
@@ -20,6 +22,14 @@ public sealed class RemovedPrivilegeBootstrapIntegrationTests
         }
 
         using var factory = new IdentityWebApplicationFactory(connectionString);
+        var endpointDataSource = factory.Services.GetRequiredService<EndpointDataSource>();
+        Assert.DoesNotContain(
+            endpointDataSource.Endpoints.OfType<RouteEndpoint>(),
+            endpoint => string.Equals(
+                "/" + (endpoint.RoutePattern.RawText ?? string.Empty).Trim('/'),
+                "/account/bootstrap-privileged",
+                StringComparison.OrdinalIgnoreCase));
+
         var email = $"removed-bootstrap-test-{Guid.NewGuid():N}@example.test";
         const string password = "correct horse battery staple";
         await CreateConfirmedUserAsync(factory.Services, email, password);
@@ -53,12 +63,17 @@ public sealed class RemovedPrivilegeBootstrapIntegrationTests
         Assert.DoesNotContain("Privileged account bootstrap", accountHtml, StringComparison.Ordinal);
         var antiforgeryToken = ExtractAntiforgeryToken(accountHtml);
 
+        var legacyBootstrapPage = await client.GetAsync("/account/bootstrap-privileged");
+        Assert.Equal(HttpStatusCode.NotFound, legacyBootstrapPage.StatusCode);
+
         using var bootstrapForm = new FormUrlEncodedContent(new Dictionary<string, string>
         {
             ["__RequestVerificationToken"] = antiforgeryToken
         });
         var legacyBootstrapAttempt = await client.PostAsync("/account/bootstrap-privileged", bootstrapForm);
-        Assert.Equal(HttpStatusCode.NotFound, legacyBootstrapAttempt.StatusCode);
+        Assert.Contains(
+            legacyBootstrapAttempt.StatusCode,
+            new[] { HttpStatusCode.NotFound, HttpStatusCode.MethodNotAllowed });
 
         using var scope = factory.Services.CreateScope();
         var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
