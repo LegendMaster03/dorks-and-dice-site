@@ -20,6 +20,9 @@ public sealed class IdentityWebApplicationFactory : WebApplicationFactory<Progra
             throw new InvalidOperationException("CONTENT_TEST_POSTGRES is required for identity integration tests.");
         }
 
+        // Avoid appsettings.Development.json adding the Local SQLite source. Identity integration
+        // tests intentionally exercise both content initialization and Identity against PostgreSQL.
+        builder.UseEnvironment("Testing");
         builder.UseSetting("ConnectionStrings:IdentityDatabase", _identityConnectionString);
         builder.UseSetting("IdentityStorage:ApplyMigrationsOnStartup", "true");
         builder.UseSetting("ConnectionStrings:IdentityTestContent", contentConnectionString);
