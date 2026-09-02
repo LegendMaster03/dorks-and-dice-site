@@ -17,17 +17,23 @@ public sealed class AccountController : Controller
 {
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly SignInManager<ApplicationUser> _signInManager;
+    private readonly RoleManager<IdentityRole<Guid>> _roleManager;
+    private readonly SiteModeOptions _siteModeOptions;
     private readonly IAccountEmailSender _emailSender;
     private readonly ILogger<AccountController> _logger;
 
     public AccountController(
         UserManager<ApplicationUser> userManager,
         SignInManager<ApplicationUser> signInManager,
+        RoleManager<IdentityRole<Guid>> roleManager,
+        SiteModeOptions siteModeOptions,
         IAccountEmailSender emailSender,
         ILogger<AccountController> logger)
     {
         _userManager = userManager;
         _signInManager = signInManager;
+        _roleManager = roleManager;
+        _siteModeOptions = siteModeOptions;
         _emailSender = emailSender;
         _logger = logger;
     }
@@ -59,6 +65,13 @@ public sealed class AccountController : Controller
         var email = model.Email.Trim();
         var user = await _userManager.FindByEmailAsync(email);
         if (user is null || user.DeletedAt is not null)
+        {
+            ModelState.AddModelError(string.Empty, "Invalid email or password.");
+            return View(model);
+        }
+
+        if (await _userManager.IsInRoleAsync(user, AccountRoles.Admin)
+            && !DevelopmentAccessEvaluator.IsAuthorized(HttpContext, _siteModeOptions))
         {
             ModelState.AddModelError(string.Empty, "Invalid email or password.");
             return View(model);
@@ -254,12 +267,7 @@ public sealed class AccountController : Controller
             return RedirectToAction(nameof(Login));
         }
 
-        return View(new AccountViewModel
-        {
-            UserId = user.Id,
-            Email = user.Email ?? string.Empty,
-            DisplayName = user.DisplayName
-        });
+        return View(await BuildAccountViewModelAsync(user));
     }
 
     [Authorize]
@@ -274,12 +282,7 @@ public sealed class AccountController : Controller
             return RedirectToAction(nameof(Login));
         }
 
-        model = new AccountViewModel
-        {
-            UserId = user.Id,
-            Email = user.Email ?? string.Empty,
-            DisplayName = model.DisplayName
-        };
+        model = await BuildAccountViewModelAsync(user, model.DisplayName);
 
         if (!ModelState.IsValid)
         {
@@ -307,6 +310,70 @@ public sealed class AccountController : Controller
 
         await _signInManager.RefreshSignInAsync(user);
         TempData["AccountMessage"] = "Account updated.";
+        return RedirectToAction(nameof(Index));
+    }
+
+    [Authorize]
+    [HttpPost("claim-admin")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ClaimAdmin()
+    {
+        if (!DevelopmentAccessEvaluator.IsAuthorized(HttpContext, _siteModeOptions))
+        {
+            return Forbid();
+        }
+
+        var user = await _userManager.GetUserAsync(User);
+        if (user is null || user.DeletedAt is not null)
+        {
+            await _signInManager.SignOutAsync();
+            return RedirectToAction(nameof(Login));
+        }
+
+        if (await _userManager.IsInRoleAsync(user, AccountRoles.Admin))
+        {
+            TempData["AccountMessage"] = "This account already has administrator access.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        if (!await _roleManager.RoleExistsAsync(AccountRoles.Admin))
+        {
+            var createRoleResult = await _roleManager.CreateAsync(new IdentityRole<Guid>(AccountRoles.Admin));
+            if (!createRoleResult.Succeeded && !await _roleManager.RoleExistsAsync(AccountRoles.Admin))
+            {
+                _logger.LogError(
+                    "Could not create the {AdminRole} role: {Errors}",
+                    AccountRoles.Admin,
+                    string.Join(", ", createRoleResult.Errors.Select(error => error.Description)));
+                TempData["AccountError"] = "Administrator access could not be initialized.";
+                return RedirectToAction(nameof(Index));
+            }
+        }
+
+        var activeAdministrators = await _userManager.GetUsersInRoleAsync(AccountRoles.Admin);
+        if (activeAdministrators.Any(candidate => candidate.DeletedAt is null))
+        {
+            TempData["AccountError"] = "An active administrator account already exists.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        // Adding the role persists the user update as well, so changing the stamp here
+        // invalidates any pre-administrator sessions at the same time the role is granted.
+        user.SecurityStamp = Guid.NewGuid().ToString("N");
+        var addRoleResult = await _userManager.AddToRoleAsync(user, AccountRoles.Admin);
+        if (!addRoleResult.Succeeded)
+        {
+            _logger.LogError(
+                "Could not grant the {AdminRole} role to user {UserId}: {Errors}",
+                AccountRoles.Admin,
+                user.Id,
+                string.Join(", ", addRoleResult.Errors.Select(error => error.Description)));
+            TempData["AccountError"] = "Administrator access could not be granted.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        await _signInManager.RefreshSignInAsync(user);
+        TempData["AccountMessage"] = "Administrator access granted. This account now requires trusted development access to authenticate.";
         return RedirectToAction(nameof(Index));
     }
 
@@ -424,6 +491,35 @@ public sealed class AccountController : Controller
     [AllowAnonymous]
     [HttpGet("access-denied")]
     public IActionResult AccessDenied() => View();
+
+    private async Task<AccountViewModel> BuildAccountViewModelAsync(
+        ApplicationUser user,
+        string? displayName = null)
+    {
+        var isAdministrator = await _userManager.IsInRoleAsync(user, AccountRoles.Admin);
+        var canClaimAdministrator = false;
+
+        if (!isAdministrator && DevelopmentAccessEvaluator.IsAuthorized(HttpContext, _siteModeOptions))
+        {
+            var activeAdministratorExists = false;
+            if (await _roleManager.RoleExistsAsync(AccountRoles.Admin))
+            {
+                var administrators = await _userManager.GetUsersInRoleAsync(AccountRoles.Admin);
+                activeAdministratorExists = administrators.Any(candidate => candidate.DeletedAt is null);
+            }
+
+            canClaimAdministrator = !activeAdministratorExists;
+        }
+
+        return new AccountViewModel
+        {
+            UserId = user.Id,
+            Email = user.Email ?? string.Empty,
+            DisplayName = displayName ?? user.DisplayName,
+            IsAdministrator = isAdministrator,
+            CanClaimAdministrator = canClaimAdministrator
+        };
+    }
 
     private async Task SendConfirmationEmailAsync(
         ApplicationUser user,
