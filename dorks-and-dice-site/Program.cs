@@ -32,8 +32,9 @@ builder.Services.AddSingleton<ISiteModePresentationModule, ProfessionalPresentat
 builder.Services.AddSingleton<ISiteModePresentationModule, DevelopmentPresentationModule>();
 builder.Services.AddSingleton<ISiteModePresentationModule, UnassignedPresentationModule>();
 
-builder.Services.AddDbContext<IdentityDbContext>(options =>
-    options.UseNpgsql(IdentityConnectionStringResolver.Resolve(builder.Configuration)));
+builder.Services.AddDbContext<IdentityDbContext>((serviceProvider, options) =>
+    options.UseNpgsql(IdentityConnectionStringResolver.Resolve(
+        serviceProvider.GetRequiredService<IConfiguration>())));
 
 builder.Services
     .AddIdentity<ApplicationUser, IdentityRole<Guid>>(options =>
