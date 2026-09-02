@@ -69,7 +69,7 @@
             {
                 <form asp-action="SetGlobalRole" asp-route-userId="@Model.UserId" method="post">
                     <input type="hidden" name="role" value="@role" />
-                    <input type="hidden" name="enabled" value="@(!enabled)" />
+                    <input type="hidden" name="enabled" value="@(enabled ? "false" : "true")" />
                     <button type="submit" class="btn btn-sm @(enabled ? "btn-outline-danger" : "btn-outline-primary")">
                         @(enabled ? "Remove" : "Assign")
                     </button>
@@ -100,7 +100,7 @@
                     <form asp-action="SetScopedRole" asp-route-userId="@Model.UserId" method="post">
                         <input type="hidden" name="scope" value="@scope" />
                         <input type="hidden" name="role" value="@role" />
-                        <input type="hidden" name="enabled" value="@(!enabled)" />
+                        <input type="hidden" name="enabled" value="@(enabled ? "false" : "true")" />
                         <button type="submit" class="btn btn-sm @(enabled ? "btn-outline-danger" : "btn-outline-primary")">
                             @(enabled ? "Remove" : "Assign")
                         </button>
