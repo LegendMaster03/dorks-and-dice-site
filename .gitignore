@@ -12,3 +12,6 @@ obj/
 .env
 .env.*
 !.env.example
+
+# Local development databases
+dorks-and-dice-site/Content/identity-development.db
