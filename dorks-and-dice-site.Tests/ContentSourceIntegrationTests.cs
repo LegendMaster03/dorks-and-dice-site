@@ -23,9 +23,9 @@ public sealed class ContentSourceIntegrationTests
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Contains("Trusted Preview", html);
         Assert.Contains(">Mode<", html);
-        Assert.DoesNotContain(">Articles<", html);
         Assert.DoesNotContain("Show unlisted articles", html);
         Assert.DoesNotContain("Content editor", html);
+        Assert.DoesNotContain("Database sources", html);
     }
 
     [Fact]
