@@ -129,7 +129,7 @@ public sealed class AccountAuthenticationTests
     }
 
     [Fact]
-    public async Task AdministratorBootstrapAndSessionsRequireTrustedDevelopmentAccess()
+    public async Task PrivilegedRolesCanLoginPubliclyButPrivilegedFunctionsRequireTrustedAccess()
     {
         var connectionString = Environment.GetEnvironmentVariable("IDENTITY_TEST_POSTGRES");
         if (string.IsNullOrWhiteSpace(connectionString))
@@ -138,7 +138,7 @@ public sealed class AccountAuthenticationTests
         }
 
         using var factory = new IdentityWebApplicationFactory(connectionString);
-        await ResetAdministratorRoleAsync(factory.Services);
+        await ResetPrivilegedRolesAsync(factory.Services);
 
         var email = $"admin-test-{Guid.NewGuid():N}@example.test";
         const string password = "correct horse battery staple";
@@ -154,19 +154,19 @@ public sealed class AccountAuthenticationTests
         var trustedLogin = await LoginAsync(trustedClient, email, password);
         Assert.Equal(HttpStatusCode.Redirect, trustedLogin.StatusCode);
 
-        var accountBeforeClaim = await trustedClient.GetAsync("/account");
-        Assert.Equal(HttpStatusCode.OK, accountBeforeClaim.StatusCode);
-        var accountBeforeClaimHtml = await accountBeforeClaim.Content.ReadAsStringAsync();
-        Assert.Contains("Administrator bootstrap", accountBeforeClaimHtml, StringComparison.Ordinal);
-        var claimToken = ExtractAntiforgeryToken(accountBeforeClaimHtml);
+        var accountBeforeBootstrap = await trustedClient.GetAsync("/account");
+        Assert.Equal(HttpStatusCode.OK, accountBeforeBootstrap.StatusCode);
+        var accountBeforeBootstrapHtml = await accountBeforeBootstrap.Content.ReadAsStringAsync();
+        Assert.Contains("Privileged account bootstrap", accountBeforeBootstrapHtml, StringComparison.Ordinal);
+        var bootstrapToken = ExtractAntiforgeryToken(accountBeforeBootstrapHtml);
 
-        using var claimForm = new FormUrlEncodedContent(new Dictionary<string, string>
+        using var bootstrapForm = new FormUrlEncodedContent(new Dictionary<string, string>
         {
-            ["__RequestVerificationToken"] = claimToken
+            ["__RequestVerificationToken"] = bootstrapToken
         });
-        var claim = await trustedClient.PostAsync("/account/claim-admin", claimForm);
-        Assert.Equal(HttpStatusCode.Redirect, claim.StatusCode);
-        Assert.Equal("/account", claim.Headers.Location?.OriginalString);
+        var bootstrap = await trustedClient.PostAsync("/account/bootstrap-privileged", bootstrapForm);
+        Assert.Equal(HttpStatusCode.Redirect, bootstrap.StatusCode);
+        Assert.Equal("/account", bootstrap.Headers.Location?.OriginalString);
 
         using (var scope = factory.Services.CreateScope())
         {
@@ -174,20 +174,39 @@ public sealed class AccountAuthenticationTests
             var user = await userManager.FindByEmailAsync(email);
             Assert.NotNull(user);
             Assert.True(await userManager.IsInRoleAsync(user, AccountRoles.Admin));
+            Assert.True(await userManager.IsInRoleAsync(user, AccountRoles.Dev));
         }
 
         var trustedAccount = await trustedClient.GetAsync("/account");
         Assert.Equal(HttpStatusCode.OK, trustedAccount.StatusCode);
-        Assert.Contains(
-            "This account has administrator access",
-            await trustedAccount.Content.ReadAsStringAsync(),
-            StringComparison.Ordinal);
+        var trustedAccountHtml = await trustedAccount.Content.ReadAsStringAsync();
+        Assert.Contains("Admin", trustedAccountHtml, StringComparison.Ordinal);
+        Assert.Contains("Dev", trustedAccountHtml, StringComparison.Ordinal);
+        Assert.Contains("Trusted Access: available", trustedAccountHtml, StringComparison.Ordinal);
+
+        var trustedAdmin = await trustedClient.GetAsync("/admin/accounts");
+        Assert.Equal(HttpStatusCode.OK, trustedAdmin.StatusCode);
 
         using var publicSessionRequest = new HttpRequestMessage(HttpMethod.Get, "/account");
         publicSessionRequest.Headers.Host = "dorks-and-dice.com";
         var publicSession = await trustedClient.SendAsync(publicSessionRequest);
-        Assert.Equal(HttpStatusCode.Redirect, publicSession.StatusCode);
-        AssertLoginRedirect(publicSession);
+        Assert.Equal(HttpStatusCode.OK, publicSession.StatusCode);
+        Assert.Contains(
+            "Trusted Access: not available",
+            await publicSession.Content.ReadAsStringAsync(),
+            StringComparison.Ordinal);
+
+        using var publicAdminRequest = new HttpRequestMessage(HttpMethod.Get, "/admin/accounts");
+        publicAdminRequest.Headers.Host = "dorks-and-dice.com";
+        var publicAdmin = await trustedClient.SendAsync(publicAdminRequest);
+        Assert.Equal(HttpStatusCode.Redirect, publicAdmin.StatusCode);
+        AssertAccessDeniedRedirect(publicAdmin);
+
+        using var publicDevRequest = new HttpRequestMessage(HttpMethod.Get, "/development/content");
+        publicDevRequest.Headers.Host = "dorks-and-dice.com";
+        var publicDev = await trustedClient.SendAsync(publicDevRequest);
+        Assert.Equal(HttpStatusCode.Redirect, publicDev.StatusCode);
+        AssertAccessDeniedRedirect(publicDev);
 
         using var publicClient = factory.CreateClient(new WebApplicationFactoryClientOptions
         {
@@ -196,15 +215,15 @@ public sealed class AccountAuthenticationTests
             BaseAddress = new Uri("https://dorks-and-dice.com")
         });
         var publicLogin = await LoginAsync(publicClient, email, password);
-        Assert.Equal(HttpStatusCode.OK, publicLogin.StatusCode);
-        Assert.Contains(
-            "Invalid email or password.",
-            await publicLogin.Content.ReadAsStringAsync(),
-            StringComparison.Ordinal);
+        Assert.Equal(HttpStatusCode.Redirect, publicLogin.StatusCode);
+        Assert.Equal("/", publicLogin.Headers.Location?.OriginalString);
 
-        var trustedLoginAgain = await LoginAsync(trustedClient, email, password);
-        Assert.Equal(HttpStatusCode.Redirect, trustedLoginAgain.StatusCode);
-        Assert.Equal("/", trustedLoginAgain.Headers.Location?.OriginalString);
+        var publicAccount = await publicClient.GetAsync("/account");
+        Assert.Equal(HttpStatusCode.OK, publicAccount.StatusCode);
+        Assert.Contains(
+            "Trusted Access: not available",
+            await publicAccount.Content.ReadAsStringAsync(),
+            StringComparison.Ordinal);
     }
 
     private static async Task<HttpResponseMessage> LoginAsync(
@@ -251,38 +270,42 @@ public sealed class AccountAuthenticationTests
             string.Join(", ", confirmationResult.Errors.Select(error => error.Description)));
     }
 
-    private static async Task ResetAdministratorRoleAsync(IServiceProvider services)
+    private static async Task ResetPrivilegedRolesAsync(IServiceProvider services)
     {
         using var scope = services.CreateScope();
         var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
         var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole<Guid>>>();
-        if (!await roleManager.RoleExistsAsync(AccountRoles.Admin))
-        {
-            return;
-        }
 
-        foreach (var administrator in await userManager.GetUsersInRoleAsync(AccountRoles.Admin))
+        foreach (var roleName in AccountRoles.Privileged)
         {
-            var removeResult = await userManager.RemoveFromRoleAsync(administrator, AccountRoles.Admin);
-            Assert.True(
-                removeResult.Succeeded,
-                string.Join(", ", removeResult.Errors.Select(error => error.Description)));
-        }
+            if (!await roleManager.RoleExistsAsync(roleName))
+            {
+                continue;
+            }
 
-        var role = await roleManager.FindByNameAsync(AccountRoles.Admin);
-        Assert.NotNull(role);
-        var deleteResult = await roleManager.DeleteAsync(role);
-        Assert.True(deleteResult.Succeeded, string.Join(", ", deleteResult.Errors.Select(error => error.Description)));
+            foreach (var user in await userManager.GetUsersInRoleAsync(roleName))
+            {
+                var removeResult = await userManager.RemoveFromRoleAsync(user, roleName);
+                Assert.True(
+                    removeResult.Succeeded,
+                    string.Join(", ", removeResult.Errors.Select(error => error.Description)));
+            }
+
+            var role = await roleManager.FindByNameAsync(roleName);
+            Assert.NotNull(role);
+            var deleteResult = await roleManager.DeleteAsync(role);
+            Assert.True(deleteResult.Succeeded, string.Join(", ", deleteResult.Errors.Select(error => error.Description)));
+        }
     }
 
-    private static void AssertLoginRedirect(HttpResponseMessage response)
+    private static void AssertAccessDeniedRedirect(HttpResponseMessage response)
     {
-        var loginLocation = response.Headers.Location;
-        Assert.NotNull(loginLocation);
-        var loginPath = loginLocation.IsAbsoluteUri
-            ? loginLocation.AbsolutePath
-            : loginLocation.OriginalString.Split('?', 2)[0];
-        Assert.Equal("/account/login", loginPath);
+        var location = response.Headers.Location;
+        Assert.NotNull(location);
+        var path = location.IsAbsoluteUri
+            ? location.AbsolutePath
+            : location.OriginalString.Split('?', 2)[0];
+        Assert.Equal("/account/access-denied", path);
     }
 
     private static string ExtractAntiforgeryToken(string html)
