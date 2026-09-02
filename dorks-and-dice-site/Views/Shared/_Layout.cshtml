@@ -8,10 +8,8 @@
 @inject IContentSourceRegistry ContentSourceRegistry
 @{
     var siteModeContext = Context.GetSiteModeContext();
-    var isDevelopmentPreview = siteModeContext.IsDevelopmentPreview;
-    var canUseDeveloperTools = isDevelopmentPreview
-        && User.Identity?.IsAuthenticated == true
-        && User.IsInRole(AccountRoles.Dev);
+    var hasTrustedAccess = siteModeContext.HasTrustedAccess;
+    var canUseDeveloperTools = siteModeContext.IsDevelopmentPreview;
     var siteSuffix = SiteModePresentationService.GetTitleSuffix(siteModeContext.SiteMode);
     var faviconPath = Url.Content(SiteModePresentationService.GetFaviconPath(siteModeContext.SiteMode));
     var pageTitle = $"{ViewData["Title"]} - {siteSuffix}";
@@ -132,7 +130,7 @@
 <body>
     <header>
         @await Html.PartialAsync(brandingHeaderPartialPath)
-        @if (isDevelopmentPreview)
+        @if (hasTrustedAccess)
         {
             @await Html.PartialAsync(developmentToolsPartialPath, developmentTools)
         }
