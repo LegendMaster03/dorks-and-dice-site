@@ -52,6 +52,8 @@ public static class SiteRouteOwnership
             || path == "/sitemap.xml"
             || path == "/account"
             || path.StartsWith("/account/", StringComparison.Ordinal)
+            || path == "/admin"
+            || path.StartsWith("/admin/", StringComparison.Ordinal)
             || path == "/home/notfoundpage"
             || path == "/home/error"
             || path == "/home/routeresolutionissue";
