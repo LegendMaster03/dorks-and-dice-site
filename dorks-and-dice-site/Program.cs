@@ -74,7 +74,7 @@ builder.Services
         options.User.RequireUniqueEmail = true;
         options.SignIn.RequireConfirmedAccount = true;
 
-        options.Password.RequiredLength = 12;
+        options.Password.RequiredLength = 8;
         options.Password.RequireDigit = false;
         options.Password.RequireLowercase = false;
         options.Password.RequireUppercase = false;
