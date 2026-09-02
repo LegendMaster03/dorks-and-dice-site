@@ -1,8 +1,14 @@
+using System.Net;
+using System.Text;
 using dorks_and_dice_site.Models.Identity;
+using dorks_and_dice_site.Models.Site;
+using dorks_and_dice_site.Services.Identity;
+using dorks_and_dice_site.Services.Site;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.WebUtilities;
 
 namespace dorks_and_dice_site.Controllers;
 
@@ -11,13 +17,19 @@ public sealed class AccountController : Controller
 {
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly SignInManager<ApplicationUser> _signInManager;
+    private readonly IAccountEmailSender _emailSender;
+    private readonly ILogger<AccountController> _logger;
 
     public AccountController(
         UserManager<ApplicationUser> userManager,
-        SignInManager<ApplicationUser> signInManager)
+        SignInManager<ApplicationUser> signInManager,
+        IAccountEmailSender emailSender,
+        ILogger<AccountController> logger)
     {
         _userManager = userManager;
         _signInManager = signInManager;
+        _emailSender = emailSender;
+        _logger = logger;
     }
 
     [AllowAnonymous]
@@ -67,6 +79,12 @@ public sealed class AccountController : Controller
         {
             ModelState.AddModelError(string.Empty, "Too many failed login attempts. Try again later.");
         }
+        else if (result.IsNotAllowed)
+        {
+            ModelState.AddModelError(
+                string.Empty,
+                "This account is not available for sign-in. If your email has not been confirmed, request a new confirmation email below.");
+        }
         else
         {
             ModelState.AddModelError(string.Empty, "Invalid email or password.");
@@ -91,7 +109,7 @@ public sealed class AccountController : Controller
     [HttpPost("register")]
     [ValidateAntiForgeryToken]
     [EnableRateLimiting("authentication")]
-    public async Task<IActionResult> Register(RegisterViewModel model)
+    public async Task<IActionResult> Register(RegisterViewModel model, CancellationToken cancellationToken)
     {
         if (!ModelState.IsValid)
         {
@@ -126,8 +144,103 @@ public sealed class AccountController : Controller
             return View(model);
         }
 
-        await _signInManager.SignInAsync(user, isPersistent: false);
-        return RedirectToAction(nameof(Index));
+        try
+        {
+            await SendConfirmationEmailAsync(user, cancellationToken);
+        }
+        catch (Exception exception)
+        {
+            _logger.LogError(exception, "Failed to send initial confirmation email for user {UserId}.", user.Id);
+            await _userManager.DeleteAsync(user);
+            ModelState.AddModelError(
+                string.Empty,
+                "We could not send the confirmation email. Please try again later.");
+            return View(model);
+        }
+
+        return RedirectToAction(nameof(RegistrationPending));
+    }
+
+    [AllowAnonymous]
+    [HttpGet("registration-pending")]
+    public IActionResult RegistrationPending() => View();
+
+    [AllowAnonymous]
+    [HttpGet("confirm-email")]
+    public async Task<IActionResult> ConfirmEmail(Guid userId, string? code)
+    {
+        if (userId == Guid.Empty || string.IsNullOrWhiteSpace(code))
+        {
+            ViewData["EmailConfirmationSucceeded"] = false;
+            return View();
+        }
+
+        var user = await _userManager.FindByIdAsync(userId.ToString());
+        if (user is null || user.DeletedAt is not null)
+        {
+            ViewData["EmailConfirmationSucceeded"] = false;
+            return View();
+        }
+
+        string token;
+        try
+        {
+            token = Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(code));
+        }
+        catch (FormatException)
+        {
+            ViewData["EmailConfirmationSucceeded"] = false;
+            return View();
+        }
+
+        var result = await _userManager.ConfirmEmailAsync(user, token);
+        ViewData["EmailConfirmationSucceeded"] = result.Succeeded;
+        return View();
+    }
+
+    [AllowAnonymous]
+    [HttpGet("resend-confirmation")]
+    public IActionResult ResendConfirmation()
+    {
+        if (User.Identity?.IsAuthenticated == true)
+        {
+            return RedirectToAction(nameof(Index));
+        }
+
+        return View(new ResendConfirmationViewModel());
+    }
+
+    [AllowAnonymous]
+    [HttpPost("resend-confirmation")]
+    [ValidateAntiForgeryToken]
+    [EnableRateLimiting("authentication")]
+    public async Task<IActionResult> ResendConfirmation(
+        ResendConfirmationViewModel model,
+        CancellationToken cancellationToken)
+    {
+        if (!ModelState.IsValid)
+        {
+            return View(model);
+        }
+
+        var user = await _userManager.FindByEmailAsync(model.Email.Trim());
+        if (user is not null && user.DeletedAt is null && !await _userManager.IsEmailConfirmedAsync(user))
+        {
+            try
+            {
+                await SendConfirmationEmailAsync(user, cancellationToken);
+            }
+            catch (Exception exception)
+            {
+                _logger.LogError(exception, "Failed to resend confirmation email for user {UserId}.", user.Id);
+                ModelState.AddModelError(
+                    string.Empty,
+                    "We could not send the confirmation email. Please try again later.");
+                return View(model);
+            }
+        }
+
+        return View("ResendConfirmationSent");
     }
 
     [Authorize]
@@ -198,6 +311,108 @@ public sealed class AccountController : Controller
     }
 
     [Authorize]
+    [HttpGet("change-password")]
+    public IActionResult ChangePassword() => View(new ChangePasswordViewModel());
+
+    [Authorize]
+    [HttpPost("change-password")]
+    [ValidateAntiForgeryToken]
+    [EnableRateLimiting("authentication")]
+    public async Task<IActionResult> ChangePassword(ChangePasswordViewModel model)
+    {
+        if (!ModelState.IsValid)
+        {
+            return View(model);
+        }
+
+        var user = await _userManager.GetUserAsync(User);
+        if (user is null || user.DeletedAt is not null)
+        {
+            await _signInManager.SignOutAsync();
+            return RedirectToAction(nameof(Login));
+        }
+
+        var result = await _userManager.ChangePasswordAsync(user, model.CurrentPassword, model.NewPassword);
+        if (!result.Succeeded)
+        {
+            foreach (var error in result.Errors)
+            {
+                ModelState.AddModelError(string.Empty, error.Description);
+            }
+
+            return View(model);
+        }
+
+        await _signInManager.RefreshSignInAsync(user);
+        TempData["AccountMessage"] = "Password changed.";
+        return RedirectToAction(nameof(Index));
+    }
+
+    [Authorize]
+    [HttpGet("delete")]
+    public IActionResult Delete() => View(new DeleteAccountViewModel());
+
+    [Authorize]
+    [HttpPost("delete")]
+    [ValidateAntiForgeryToken]
+    [EnableRateLimiting("authentication")]
+    public async Task<IActionResult> Delete(DeleteAccountViewModel model)
+    {
+        if (!ModelState.IsValid)
+        {
+            return View(model);
+        }
+
+        var user = await _userManager.GetUserAsync(User);
+        if (user is null || user.DeletedAt is not null)
+        {
+            await _signInManager.SignOutAsync();
+            return RedirectToAction(nameof(Login));
+        }
+
+        if (!await _userManager.CheckPasswordAsync(user, model.Password))
+        {
+            ModelState.AddModelError(nameof(model.Password), "The password is incorrect.");
+            return View(model);
+        }
+
+        var deletedAt = DateTimeOffset.UtcNow;
+        var tombstoneIdentity = $"deleted-{user.Id:N}@deleted.invalid";
+        user.DeletedAt = deletedAt;
+        user.DisplayName = "Deleted account";
+        user.Email = tombstoneIdentity;
+        user.NormalizedEmail = _userManager.NormalizeEmail(tombstoneIdentity);
+        user.EmailConfirmed = false;
+        user.UserName = tombstoneIdentity;
+        user.NormalizedUserName = _userManager.NormalizeName(tombstoneIdentity);
+        user.PhoneNumber = null;
+        user.PhoneNumberConfirmed = false;
+        user.PasswordHash = null;
+        user.TwoFactorEnabled = false;
+        user.LockoutEnabled = true;
+        user.LockoutEnd = deletedAt.AddYears(100);
+        user.SecurityStamp = Guid.NewGuid().ToString("N");
+
+        var result = await _userManager.UpdateAsync(user);
+        if (!result.Succeeded)
+        {
+            foreach (var error in result.Errors)
+            {
+                ModelState.AddModelError(string.Empty, error.Description);
+            }
+
+            return View(model);
+        }
+
+        await _signInManager.SignOutAsync();
+        return RedirectToAction(nameof(Deleted));
+    }
+
+    [AllowAnonymous]
+    [HttpGet("deleted")]
+    public IActionResult Deleted() => View();
+
+    [Authorize]
     [HttpPost("logout")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Logout()
@@ -209,6 +424,39 @@ public sealed class AccountController : Controller
     [AllowAnonymous]
     [HttpGet("access-denied")]
     public IActionResult AccessDenied() => View();
+
+    private async Task SendConfirmationEmailAsync(
+        ApplicationUser user,
+        CancellationToken cancellationToken)
+    {
+        var email = user.Email
+            ?? throw new InvalidOperationException("The account does not have an email address.");
+        var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+        var code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));
+        var confirmationUrl = Url.Action(
+            nameof(ConfirmEmail),
+            "Account",
+            new { userId = user.Id, code },
+            Request.Scheme)
+            ?? throw new InvalidOperationException("Could not generate an email confirmation URL.");
+
+        var siteMode = HttpContext.GetSiteModeContext().SiteMode;
+        var siteName = siteMode == SiteMode.Professional ? "Kyle Barnett" : "Dorks & Dice";
+        var encodedUrl = WebUtility.HtmlEncode(confirmationUrl);
+        var htmlBody = $"<p>Confirm your email address for your {WebUtility.HtmlEncode(siteName)} account.</p>"
+            + $"<p><a href=\"{encodedUrl}\">Confirm email</a></p>"
+            + "<p>This link expires in 24 hours.</p>";
+        var textBody = $"Confirm your email address for your {siteName} account:\n\n{confirmationUrl}\n\n"
+            + "This link expires in 24 hours.";
+
+        await _emailSender.SendAsync(
+            siteMode,
+            email,
+            $"Confirm your {siteName} account",
+            htmlBody,
+            textBody,
+            cancellationToken);
+    }
 
     private string? NormalizeReturnUrl(string? returnUrl) =>
         !string.IsNullOrWhiteSpace(returnUrl) && Url.IsLocalUrl(returnUrl)
