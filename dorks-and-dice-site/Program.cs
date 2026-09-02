@@ -41,9 +41,28 @@ if (!string.IsNullOrWhiteSpace(dataProtectionKeysPath))
     dataProtection.PersistKeysToFileSystem(new DirectoryInfo(dataProtectionKeysPath));
 }
 
+var identityStorageProvider = builder.Configuration[$"{IdentityStorageOptions.SectionName}:Provider"] ?? "PostgreSQL";
 builder.Services.AddDbContext<IdentityDbContext>((serviceProvider, options) =>
-    options.UseNpgsql(IdentityConnectionStringResolver.Resolve(
-        serviceProvider.GetRequiredService<IConfiguration>())));
+{
+    var configuration = serviceProvider.GetRequiredService<IConfiguration>();
+    var connectionString = IdentityConnectionStringResolver.Resolve(configuration);
+
+    if (string.Equals(identityStorageProvider, "Sqlite", StringComparison.OrdinalIgnoreCase)
+        || string.Equals(identityStorageProvider, "SQLite", StringComparison.OrdinalIgnoreCase))
+    {
+        options.UseSqlite(connectionString);
+        return;
+    }
+
+    if (string.Equals(identityStorageProvider, "PostgreSQL", StringComparison.OrdinalIgnoreCase)
+        || string.Equals(identityStorageProvider, "Postgres", StringComparison.OrdinalIgnoreCase))
+    {
+        options.UseNpgsql(connectionString);
+        return;
+    }
+
+    throw new NotSupportedException($"Identity storage provider '{identityStorageProvider}' is not supported.");
+});
 
 builder.Services
     .AddIdentity<ApplicationUser, IdentityRole<Guid>>(options =>
@@ -137,11 +156,27 @@ using (var scope = app.Services.CreateScope())
     await contentStorageInitializer.InitializeAsync();
 }
 
-if (builder.Configuration.GetValue<bool>($"{IdentityStorageOptions.SectionName}:ApplyMigrationsOnStartup"))
+var applyIdentityMigrations = builder.Configuration.GetValue<bool>(
+    $"{IdentityStorageOptions.SectionName}:ApplyMigrationsOnStartup");
+var ensureIdentityCreated = builder.Configuration.GetValue<bool>(
+    $"{IdentityStorageOptions.SectionName}:EnsureCreatedOnStartup");
+if (applyIdentityMigrations && ensureIdentityCreated)
+{
+    throw new InvalidOperationException(
+        "IdentityStorage can not enable both ApplyMigrationsOnStartup and EnsureCreatedOnStartup.");
+}
+if (applyIdentityMigrations || ensureIdentityCreated)
 {
     using var scope = app.Services.CreateScope();
     var identityDbContext = scope.ServiceProvider.GetRequiredService<IdentityDbContext>();
-    await identityDbContext.Database.MigrateAsync();
+    if (applyIdentityMigrations)
+    {
+        await identityDbContext.Database.MigrateAsync();
+    }
+    else
+    {
+        await identityDbContext.Database.EnsureCreatedAsync();
+    }
 }
 
 if (!app.Environment.IsDevelopment())
