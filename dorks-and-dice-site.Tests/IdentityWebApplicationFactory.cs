@@ -1,5 +1,8 @@
+using dorks_and_dice_site.Services.Identity;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace dorks_and_dice_site.Tests;
 
@@ -11,6 +14,8 @@ public sealed class IdentityWebApplicationFactory : WebApplicationFactory<Progra
     {
         _identityConnectionString = identityConnectionString;
     }
+
+    public TestAccountEmailSender EmailSender { get; } = new();
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -31,5 +36,10 @@ public sealed class IdentityWebApplicationFactory : WebApplicationFactory<Progra
         builder.UseSetting("ContentStorage:Sources:External:Provider", "PostgreSQL");
         builder.UseSetting("ContentStorage:Sources:External:ConnectionString", "IdentityTestContent");
         builder.UseSetting("ContentStorage:GlobalSources:0", "External");
+        builder.ConfigureServices(services =>
+        {
+            services.RemoveAll<IAccountEmailSender>();
+            services.AddSingleton<IAccountEmailSender>(EmailSender);
+        });
     }
 }
