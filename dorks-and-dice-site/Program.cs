@@ -33,6 +33,10 @@ builder.Services.AddSingleton<ISiteModePresentationModule, ProfessionalPresentat
 builder.Services.AddSingleton<ISiteModePresentationModule, DevelopmentPresentationModule>();
 builder.Services.AddSingleton<ISiteModePresentationModule, UnassignedPresentationModule>();
 
+builder.Services.Configure<AccountEmailOptions>(
+    builder.Configuration.GetSection(AccountEmailOptions.SectionName));
+builder.Services.AddScoped<IAccountEmailSender, SmtpAccountEmailSender>();
+
 var dataProtection = builder.Services.AddDataProtection()
     .SetApplicationName("dorks-and-dice-site");
 var dataProtectionKeysPath = builder.Configuration["DataProtection:KeysPath"];
@@ -68,7 +72,7 @@ builder.Services
     .AddIdentity<ApplicationUser, IdentityRole<Guid>>(options =>
     {
         options.User.RequireUniqueEmail = true;
-        options.SignIn.RequireConfirmedAccount = false;
+        options.SignIn.RequireConfirmedAccount = true;
 
         options.Password.RequiredLength = 12;
         options.Password.RequireDigit = false;
@@ -83,6 +87,8 @@ builder.Services
     .AddEntityFrameworkStores<IdentityDbContext>()
     .AddDefaultTokenProviders();
 
+builder.Services.Configure<DataProtectionTokenProviderOptions>(options =>
+    options.TokenLifespan = TimeSpan.FromHours(24));
 builder.Services.AddScoped<IUserClaimsPrincipalFactory<ApplicationUser>, ApplicationUserClaimsPrincipalFactory>();
 
 builder.Services.ConfigureApplicationCookie(options =>
