@@ -112,7 +112,7 @@ public sealed class SiteModeArchitectureSummaryService : ISiteModeArchitectureSu
         {
             SiteMode.Professional => "Professional resume and portfolio home",
             SiteMode.DorksAndDice => "Community homepage",
-            SiteMode.Development => "Selected preview mode, with development tools overlay",
+            SiteMode.Development => "Trusted preview context with separately authorized developer tooling",
             SiteMode.Unassigned => "Fallback page for unmapped hosts",
             _ => "Unknown"
         };
@@ -124,7 +124,7 @@ public sealed class SiteModeArchitectureSummaryService : ISiteModeArchitectureSu
         {
             SiteMode.Professional => "Resume, portfolio, and professional article identity",
             SiteMode.DorksAndDice => "Community-facing identity",
-            SiteMode.Development => "Local-only inspection and preview tooling",
+            SiteMode.Development => "Trusted mode preview with role-gated technical capabilities",
             SiteMode.Unassigned => "Fallback behavior for unmapped hosts",
             _ => "Unknown"
         };
@@ -136,7 +136,7 @@ public sealed class SiteModeArchitectureSummaryService : ISiteModeArchitectureSu
         {
             SiteMode.Professional => "Shared routes plus /resume and Professional-owned assets",
             SiteMode.DorksAndDice => "Shared routes plus community-mode assets",
-            SiteMode.Development => "Local inspection of all routes, with warnings for invalid selected-mode states",
+            SiteMode.Development => "Shared routes plus development assets; developer authorization controls inspection overrides",
             SiteMode.Unassigned => "Fallback home, shared system paths, shared assets, and fallback asset space",
             _ => "Unknown"
         };
@@ -160,7 +160,7 @@ public sealed class SiteModeArchitectureSummaryService : ISiteModeArchitectureSu
         {
             SiteMode.Professional => "Shows listed Professional-eligible articles; direct access allowed for eligible unlisted articles",
             SiteMode.DorksAndDice => "Shows listed community-mode eligible articles only",
-            SiteMode.Development => "Can inspect all mode-eligible articles and optionally include unlisted articles",
+            SiteMode.Development => "Uses normal mode eligibility unless an authorized developer enables inspection overrides",
             SiteMode.Unassigned => "Uses fallback article presentation and mode eligibility rules",
             _ => "Unknown"
         };
