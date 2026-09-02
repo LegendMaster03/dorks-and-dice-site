@@ -1,4 +1,5 @@
 @model dorks_and_dice_site.Models.Identity.RegisterViewModel
+@inject Microsoft.Extensions.Options.IOptions<Microsoft.AspNetCore.Identity.IdentityOptions> IdentityOptions
 @{
     ViewData["Title"] = "Create account";
     ViewData["Robots"] = "noindex,nofollow";
@@ -25,7 +26,7 @@
                 <label asp-for="Password" class="form-label"></label>
                 <input asp-for="Password" class="form-control" autocomplete="new-password" />
                 <span asp-validation-for="Password" class="text-danger"></span>
-                <div class="form-text">Use at least 12 characters.</div>
+                <div class="form-text">Use at least @IdentityOptions.Value.Password.RequiredLength characters.</div>
             </div>
             <div class="mb-3">
                 <label asp-for="ConfirmPassword" class="form-label"></label>
