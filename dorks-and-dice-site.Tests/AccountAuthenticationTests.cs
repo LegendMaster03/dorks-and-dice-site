@@ -9,6 +9,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace dorks_and_dice_site.Tests;
 
+[Collection(PostgresIntegrationCollection.Name)]
 public sealed class AccountAuthenticationTests
 {
     [Fact]
@@ -205,7 +206,144 @@ public sealed class AccountAuthenticationTests
     }
 
     [Fact]
-    public async Task FinalActiveAdministratorCanNotDeleteOwnAccount()
+    public async Task AdminRoleFormsSubmitBooleanValuesAndAssignmentsPersist()
+    {
+        var connectionString = Environment.GetEnvironmentVariable("IDENTITY_TEST_POSTGRES");
+        if (string.IsNullOrWhiteSpace(connectionString))
+        {
+            return;
+        }
+
+        using var factory = new IdentityWebApplicationFactory(connectionString);
+        await ResetPrivilegedRolesAsync(factory.Services);
+
+        var adminEmail = $"role-form-admin-{Guid.NewGuid():N}@example.test";
+        var targetEmail = $"role-form-target-{Guid.NewGuid():N}@example.test";
+        const string password = "correct horse battery staple";
+        await CreateConfirmedUserAsync(factory.Services, adminEmail, password);
+        await GrantPrivilegedRolesAsync(factory.Services, adminEmail);
+        await CreateConfirmedUserAsync(factory.Services, targetEmail, password);
+
+        Guid targetUserId;
+        using (var scope = factory.Services.CreateScope())
+        {
+            var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+            var target = await userManager.FindByEmailAsync(targetEmail);
+            Assert.NotNull(target);
+            targetUserId = target.Id;
+        }
+
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+            HandleCookies = true,
+            BaseAddress = new Uri("https://localhost")
+        });
+        Assert.Equal(HttpStatusCode.Redirect, (await LoginAsync(client, adminEmail, password)).StatusCode);
+
+        var details = await client.GetAsync($"/admin/accounts/{targetUserId}");
+        Assert.Equal(HttpStatusCode.OK, details.StatusCode);
+        var detailsHtml = await details.Content.ReadAsStringAsync();
+        Assert.DoesNotContain("name=\"enabled\" value=\"value\"", detailsHtml, StringComparison.OrdinalIgnoreCase);
+        Assert.Matches(
+            new Regex("name=\\\"enabled\\\"\\s+value=\\\"true\\\"", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant),
+            detailsHtml);
+        var token = ExtractAntiforgeryToken(detailsHtml);
+
+        using (var globalRoleForm = new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["role"] = AccountRoles.Dev,
+            ["enabled"] = "true",
+            ["__RequestVerificationToken"] = token
+        }))
+        {
+            var globalRoleResponse = await client.PostAsync($"/admin/accounts/{targetUserId}/global-role", globalRoleForm);
+            Assert.Equal(HttpStatusCode.Redirect, globalRoleResponse.StatusCode);
+        }
+
+        using (var scopedRoleForm = new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["scope"] = AccountRoleScopes.DorksAndDice,
+            ["role"] = ScopedAccountRoles.Editor,
+            ["enabled"] = "true",
+            ["__RequestVerificationToken"] = token
+        }))
+        {
+            var scopedRoleResponse = await client.PostAsync($"/admin/accounts/{targetUserId}/scoped-role", scopedRoleForm);
+            Assert.Equal(HttpStatusCode.Redirect, scopedRoleResponse.StatusCode);
+        }
+
+        using var verificationScope = factory.Services.CreateScope();
+        var verificationUserManager = verificationScope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+        var scopedRoleService = verificationScope.ServiceProvider.GetRequiredService<IScopedRoleService>();
+        var targetUser = await verificationUserManager.FindByIdAsync(targetUserId.ToString());
+        Assert.NotNull(targetUser);
+        Assert.True(await verificationUserManager.IsInRoleAsync(targetUser, AccountRoles.Dev));
+        Assert.True(await scopedRoleService.HasRoleAsync(
+            targetUser,
+            AccountRoleScopes.DorksAndDice,
+            ScopedAccountRoles.Editor));
+    }
+
+    [Fact]
+    public async Task LockedAdministratorDoesNotPermitRemovingTheOnlyUsableAdminRole()
+    {
+        var connectionString = Environment.GetEnvironmentVariable("IDENTITY_TEST_POSTGRES");
+        if (string.IsNullOrWhiteSpace(connectionString))
+        {
+            return;
+        }
+
+        using var factory = new IdentityWebApplicationFactory(connectionString);
+        await ResetPrivilegedRolesAsync(factory.Services);
+
+        var activeAdminEmail = $"active-admin-{Guid.NewGuid():N}@example.test";
+        var lockedAdminEmail = $"locked-admin-{Guid.NewGuid():N}@example.test";
+        const string password = "correct horse battery staple";
+        await CreateConfirmedUserAsync(factory.Services, activeAdminEmail, password);
+        await GrantPrivilegedRolesAsync(factory.Services, activeAdminEmail);
+        await CreateConfirmedUserAsync(factory.Services, lockedAdminEmail, password);
+        await GrantPrivilegedRolesAsync(factory.Services, lockedAdminEmail);
+        await LockUserAsync(factory.Services, lockedAdminEmail);
+
+        Guid activeAdminId;
+        using (var scope = factory.Services.CreateScope())
+        {
+            var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+            var activeAdmin = await userManager.FindByEmailAsync(activeAdminEmail);
+            Assert.NotNull(activeAdmin);
+            activeAdminId = activeAdmin.Id;
+        }
+
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+            HandleCookies = true,
+            BaseAddress = new Uri("https://localhost")
+        });
+        Assert.Equal(HttpStatusCode.Redirect, (await LoginAsync(client, activeAdminEmail, password)).StatusCode);
+
+        var details = await client.GetAsync($"/admin/accounts/{activeAdminId}");
+        Assert.Equal(HttpStatusCode.OK, details.StatusCode);
+        var token = ExtractAntiforgeryToken(await details.Content.ReadAsStringAsync());
+        using var removeAdminForm = new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["role"] = AccountRoles.Admin,
+            ["enabled"] = "false",
+            ["__RequestVerificationToken"] = token
+        });
+        var response = await client.PostAsync($"/admin/accounts/{activeAdminId}/global-role", removeAdminForm);
+        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+
+        using var verificationScope = factory.Services.CreateScope();
+        var verificationUserManager = verificationScope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+        var activeAdminUser = await verificationUserManager.FindByIdAsync(activeAdminId.ToString());
+        Assert.NotNull(activeAdminUser);
+        Assert.True(await verificationUserManager.IsInRoleAsync(activeAdminUser, AccountRoles.Admin));
+    }
+
+    [Fact]
+    public async Task FinalUsableAdministratorCanNotDeleteOwnAccountWhenAnotherAdminIsLocked()
     {
         var connectionString = Environment.GetEnvironmentVariable("IDENTITY_TEST_POSTGRES");
         if (string.IsNullOrWhiteSpace(connectionString))
@@ -217,9 +355,13 @@ public sealed class AccountAuthenticationTests
         await ResetPrivilegedRolesAsync(factory.Services);
 
         var email = $"last-admin-test-{Guid.NewGuid():N}@example.test";
+        var lockedAdminEmail = $"locked-delete-admin-{Guid.NewGuid():N}@example.test";
         const string password = "correct horse battery staple";
         await CreateConfirmedUserAsync(factory.Services, email, password);
         await GrantPrivilegedRolesAsync(factory.Services, email);
+        await CreateConfirmedUserAsync(factory.Services, lockedAdminEmail, password);
+        await GrantPrivilegedRolesAsync(factory.Services, lockedAdminEmail);
+        await LockUserAsync(factory.Services, lockedAdminEmail);
 
         using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
         {
@@ -324,6 +466,19 @@ public sealed class AccountAuthenticationTests
                     string.Join(", ", addRole.Errors.Select(error => error.Description)));
             }
         }
+    }
+
+    private static async Task LockUserAsync(IServiceProvider services, string email)
+    {
+        using var scope = services.CreateScope();
+        var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+        var user = await userManager.FindByEmailAsync(email);
+        Assert.NotNull(user);
+
+        var enableResult = await userManager.SetLockoutEnabledAsync(user, true);
+        Assert.True(enableResult.Succeeded, string.Join(", ", enableResult.Errors.Select(error => error.Description)));
+        var lockResult = await userManager.SetLockoutEndDateAsync(user, DateTimeOffset.MaxValue);
+        Assert.True(lockResult.Succeeded, string.Join(", ", lockResult.Errors.Select(error => error.Description)));
     }
 
     private static async Task ResetPrivilegedRolesAsync(IServiceProvider services)
