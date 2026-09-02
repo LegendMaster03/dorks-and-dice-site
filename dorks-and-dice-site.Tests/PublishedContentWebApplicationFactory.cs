@@ -2,6 +2,7 @@ using System.Text.Json;
 using dorks_and_dice_site.Models.Content;
 using dorks_and_dice_site.Models.Site;
 using dorks_and_dice_site.Services.Content;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
@@ -30,6 +31,7 @@ public sealed class PublishedContentWebApplicationFactory : WebApplicationFactor
         Directory.CreateDirectory(_directory);
         var externalPath = Path.Combine(_directory, "external.db");
         var localPath = Path.Combine(_directory, "local.db");
+        var identityPath = Path.Combine(_directory, "identity.db");
 
         builder.UseSetting("ConnectionStrings:ContentDatabaseExternal", $"Data Source={externalPath};Pooling=False");
         builder.UseSetting("ConnectionStrings:ContentDatabaseLocal", $"Data Source={localPath};Pooling=False");
@@ -41,6 +43,21 @@ public sealed class PublishedContentWebApplicationFactory : WebApplicationFactor
         builder.UseSetting("ContentStorage:Sources:Local:Provider", "Sqlite");
         builder.UseSetting("ContentStorage:Sources:Local:ConnectionString", "ContentDatabaseLocal");
         builder.UseSetting("ContentStorage:GlobalSources:0", "External");
+        builder.UseSetting("ConnectionStrings:IdentityDatabase", $"Data Source={identityPath};Pooling=False");
+        builder.UseSetting("IdentityStorage:Provider", "Sqlite");
+        builder.UseSetting("IdentityStorage:ApplyMigrationsOnStartup", "false");
+        builder.UseSetting("IdentityStorage:EnsureCreatedOnStartup", "true");
+        builder.ConfigureServices(services =>
+        {
+            services.AddAuthentication(options =>
+            {
+                options.DefaultAuthenticateScheme = TestRoleAuthenticationHandler.Scheme;
+                options.DefaultChallengeScheme = TestRoleAuthenticationHandler.Scheme;
+                options.DefaultForbidScheme = TestRoleAuthenticationHandler.Scheme;
+            }).AddScheme<AuthenticationSchemeOptions, TestRoleAuthenticationHandler>(
+                TestRoleAuthenticationHandler.Scheme,
+                _ => { });
+        });
     }
 
     protected override IHost CreateHost(IHostBuilder builder)
