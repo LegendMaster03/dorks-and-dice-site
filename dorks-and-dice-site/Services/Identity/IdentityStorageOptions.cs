@@ -12,4 +12,5 @@ public sealed class IdentityStorageOptions
     public string Username { get; set; } = "dorks_and_dice_identity";
     public string? Password { get; set; }
     public string? PasswordFile { get; set; }
+    public bool ApplyMigrationsOnStartup { get; set; }
 }
