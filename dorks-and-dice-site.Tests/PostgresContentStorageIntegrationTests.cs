@@ -4,6 +4,7 @@ using Npgsql;
 
 namespace dorks_and_dice_site.Tests;
 
+[Collection(PostgresIntegrationCollection.Name)]
 public sealed class PostgresContentStorageIntegrationTests
 {
     [Fact]
