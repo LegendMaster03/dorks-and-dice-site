@@ -26,7 +26,10 @@
             </div>
             <button type="submit" class="btn btn-primary">Log in</button>
         </form>
-        <p class="mt-3 mb-0">No account yet? <a asp-action="Register">Create one</a>.</p>
+        <div class="mt-3">
+            <p class="mb-1">No account yet? <a asp-action="Register">Create one</a>.</p>
+            <p class="mb-0">Need another verification message? <a asp-action="ResendConfirmation">Resend confirmation email</a>.</p>
+        </div>
     </div>
 </div>
 
