@@ -127,6 +127,13 @@ using (var scope = app.Services.CreateScope())
     await contentStorageInitializer.InitializeAsync();
 }
 
+if (builder.Configuration.GetValue<bool>($"{IdentityStorageOptions.SectionName}:ApplyMigrationsOnStartup"))
+{
+    using var scope = app.Services.CreateScope();
+    var identityDbContext = scope.ServiceProvider.GetRequiredService<IdentityDbContext>();
+    await identityDbContext.Database.MigrateAsync();
+}
+
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Home/Error");
