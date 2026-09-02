@@ -27,16 +27,23 @@ jobs:
             -e POSTGRES_PASSWORD=content_test \
             postgres:17
 
+          ready=false
           for i in {1..30}; do
             if docker exec dorks-and-dice-content-test-postgres \
               pg_isready -U content_test -d content_test; then
-              exit 0
+              ready=true
+              break
             fi
             sleep 1
           done
 
-          docker logs dorks-and-dice-content-test-postgres
-          exit 1
+          if [ "$ready" != "true" ]; then
+            docker logs dorks-and-dice-content-test-postgres
+            exit 1
+          fi
+
+          docker exec dorks-and-dice-content-test-postgres \
+            createdb -U content_test -O content_test identity_test
 
       - name: Run tests
         run: |
@@ -47,6 +54,7 @@ jobs:
             -e DOTNET_CLI_HOME=/tmp \
             -e NUGET_PACKAGES=/tmp/.nuget/packages \
             -e CONTENT_TEST_POSTGRES='Host=dorks-and-dice-content-test-postgres;Port=5432;Database=content_test;Username=content_test;Password=content_test' \
+            -e IDENTITY_TEST_POSTGRES='Host=dorks-and-dice-content-test-postgres;Port=5432;Database=identity_test;Username=content_test;Password=content_test' \
             -v "$PWD:/src" \
             -w /src \
             mcr.microsoft.com/dotnet/sdk:10.0 \
