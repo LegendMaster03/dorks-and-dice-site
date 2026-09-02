@@ -11,7 +11,8 @@ public sealed class SiteModeContext
     public SiteMode SiteMode { get; init; } = SiteMode.Unassigned;
     public bool IsProfessionalDomain { get; init; }
     public bool IsDorksAndDiceDomain { get; init; }
-    public bool IsAssignedDomain => IsProfessionalDomain || IsDorksAndDiceDomain || IsDevelopmentPreview;
+    public bool HasTrustedAccess { get; init; }
+    public bool IsAssignedDomain => IsProfessionalDomain || IsDorksAndDiceDomain || HasTrustedAccess;
     public bool IsDevelopmentPreview { get; init; }
     public bool IncludeUnlistedArticles { get; init; }
     public bool HasContentSourceOverride { get; init; }
