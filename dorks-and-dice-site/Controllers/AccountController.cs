@@ -328,7 +328,7 @@ public sealed class AccountController : Controller
             return RedirectToAction(nameof(Login));
         }
 
-        var result = await _signInManager.UserManager.ChangePasswordAsync(user, model.CurrentPassword, model.NewPassword);
+        var result = await _userManager.ChangePasswordAsync(user, model.CurrentPassword, model.NewPassword);
         if (!result.Succeeded)
         {
             foreach (var error in result.Errors)
