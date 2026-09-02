@@ -328,7 +328,7 @@ public sealed class AccountController : Controller
             return RedirectToAction(nameof(Login));
         }
 
-        var result = await _userManager.ChangePasswordAsync(user, model.CurrentPassword, model.NewPassword);
+        var result = await _signInManager.UserManager.ChangePasswordAsync(user, model.CurrentPassword, model.NewPassword);
         if (!result.Succeeded)
         {
             foreach (var error in result.Errors)
@@ -460,8 +460,22 @@ public sealed class AccountController : Controller
             return false;
         }
 
-        var administrators = await _userManager.GetUsersInRoleAsync(AccountRoles.Admin);
-        return administrators.Count(candidate => candidate.DeletedAt is null) <= 1;
+        var activeAdministratorCount = 0;
+        foreach (var candidate in await _userManager.GetUsersInRoleAsync(AccountRoles.Admin))
+        {
+            if (candidate.DeletedAt is not null || await _userManager.IsLockedOutAsync(candidate))
+            {
+                continue;
+            }
+
+            activeAdministratorCount += 1;
+            if (activeAdministratorCount > 1)
+            {
+                return false;
+            }
+        }
+
+        return activeAdministratorCount <= 1;
     }
 
     private async Task SendConfirmationEmailAsync(
