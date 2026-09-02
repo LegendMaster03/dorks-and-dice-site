@@ -22,10 +22,11 @@ public sealed class IdentityWebApplicationFactory : WebApplicationFactory<Progra
 
         builder.UseSetting("ConnectionStrings:IdentityDatabase", _identityConnectionString);
         builder.UseSetting("IdentityStorage:ApplyMigrationsOnStartup", "true");
+        builder.UseSetting("ConnectionStrings:IdentityTestContent", contentConnectionString);
         builder.UseSetting("ContentStorage:AuthoringSource", "External");
         builder.UseSetting("ContentStorage:Sources:External:DisplayName", "Test content");
         builder.UseSetting("ContentStorage:Sources:External:Provider", "PostgreSQL");
-        builder.UseSetting("ContentStorage:Sources:External:ConnectionStringValue", contentConnectionString);
+        builder.UseSetting("ContentStorage:Sources:External:ConnectionString", "IdentityTestContent");
         builder.UseSetting("ContentStorage:GlobalSources:0", "External");
     }
 }
