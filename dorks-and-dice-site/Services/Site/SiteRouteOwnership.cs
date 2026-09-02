@@ -50,6 +50,8 @@ public static class SiteRouteOwnership
         return path == "/health"
             || path == "/robots.txt"
             || path == "/sitemap.xml"
+            || path == "/account"
+            || path.StartsWith("/account/", StringComparison.Ordinal)
             || path == "/home/notfoundpage"
             || path == "/home/error"
             || path == "/home/routeresolutionissue";
