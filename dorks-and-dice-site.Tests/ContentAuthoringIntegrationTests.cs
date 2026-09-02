@@ -1,4 +1,5 @@
 using System.Net;
+using dorks_and_dice_site.Services.Identity;
 using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace dorks_and_dice_site.Tests;
@@ -14,7 +15,7 @@ public sealed class ContentAuthoringIntegrationTests
     }
 
     [Fact]
-    public async Task ContentEditorIsAvailableOnDevelopmentHost()
+    public async Task ContentEditorIsAvailableToDeveloperOnTrustedHost()
     {
         var response = await SendAsync("localhost", "/development/content");
         var html = await response.Content.ReadAsStringAsync();
@@ -26,7 +27,7 @@ public sealed class ContentAuthoringIntegrationTests
     }
 
     [Fact]
-    public async Task ContentEditorIsNotAvailableOnProductionHost()
+    public async Task ContentEditorIsNotAvailableToDeveloperWithoutTrustedAccess()
     {
         var response = await SendAsync("kylebarnett.com", "/development/content");
 
@@ -59,8 +60,9 @@ public sealed class ContentAuthoringIntegrationTests
     public async Task VisualEditorRendersSafeMarkdownAndProtectsDirectives()
     {
         var client = _factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
-        var get = new HttpRequestMessage(HttpMethod.Get, "http://localhost/development/content/new?source=Local");
+        var get = new HttpRequestMessage(HttpMethod.Get, "https://localhost/development/content/new?source=Local");
         get.Headers.Host = "localhost";
+        get.Headers.Add(TestRoleAuthenticationHandler.RolesHeader, AccountRoles.Dev);
         var page = await client.SendAsync(get);
         var pageHtml = await page.Content.ReadAsStringAsync();
         var token = System.Text.RegularExpressions.Regex.Match(
@@ -68,8 +70,9 @@ public sealed class ContentAuthoringIntegrationTests
             .Groups["token"].Value;
         Assert.NotEmpty(token);
 
-        var post = new HttpRequestMessage(HttpMethod.Post, "http://localhost/development/content/visual/render");
+        var post = new HttpRequestMessage(HttpMethod.Post, "https://localhost/development/content/visual/render");
         post.Headers.Host = "localhost";
+        post.Headers.Add(TestRoleAuthenticationHandler.RolesHeader, AccountRoles.Dev);
         post.Content = new FormUrlEncodedContent(new Dictionary<string, string>
         {
             ["__RequestVerificationToken"] = token,
@@ -93,8 +96,9 @@ public sealed class ContentAuthoringIntegrationTests
         {
             AllowAutoRedirect = false
         });
-        using var request = new HttpRequestMessage(HttpMethod.Get, $"http://{host}{path}");
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"https://{host}{path}");
         request.Headers.Host = host;
+        request.Headers.Add(TestRoleAuthenticationHandler.RolesHeader, AccountRoles.Dev);
         return await client.SendAsync(request);
     }
 }
