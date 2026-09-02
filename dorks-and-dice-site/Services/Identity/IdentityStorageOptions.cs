@@ -13,4 +13,5 @@ public sealed class IdentityStorageOptions
     public string? Password { get; set; }
     public string? PasswordFile { get; set; }
     public bool ApplyMigrationsOnStartup { get; set; }
+    public bool EnsureCreatedOnStartup { get; set; }
 }
