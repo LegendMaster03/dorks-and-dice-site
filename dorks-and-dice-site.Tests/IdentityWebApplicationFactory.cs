@@ -6,8 +6,6 @@ namespace dorks_and_dice_site.Tests;
 public sealed class IdentityWebApplicationFactory : WebApplicationFactory<Program>
 {
     private readonly string _identityConnectionString;
-    private readonly string _directory = Path.Combine(
-        Path.GetTempPath(), $"dorks-and-dice-identity-integration-{Guid.NewGuid():N}");
 
     public IdentityWebApplicationFactory(string identityConnectionString)
     {
@@ -16,25 +14,18 @@ public sealed class IdentityWebApplicationFactory : WebApplicationFactory<Progra
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
-        Directory.CreateDirectory(_directory);
-        var contentPath = Path.Combine(_directory, "content.db");
+        var contentConnectionString = Environment.GetEnvironmentVariable("CONTENT_TEST_POSTGRES");
+        if (string.IsNullOrWhiteSpace(contentConnectionString))
+        {
+            throw new InvalidOperationException("CONTENT_TEST_POSTGRES is required for identity integration tests.");
+        }
 
         builder.UseSetting("ConnectionStrings:IdentityDatabase", _identityConnectionString);
         builder.UseSetting("IdentityStorage:ApplyMigrationsOnStartup", "true");
-        builder.UseSetting("ConnectionStrings:ContentDatabaseLocal", $"Data Source={contentPath};Pooling=False");
-        builder.UseSetting("ContentStorage:AuthoringSource", "Local");
-        builder.UseSetting("ContentStorage:Sources:Local:DisplayName", "Test content");
-        builder.UseSetting("ContentStorage:Sources:Local:Provider", "Sqlite");
-        builder.UseSetting("ContentStorage:Sources:Local:ConnectionString", "ContentDatabaseLocal");
-        builder.UseSetting("ContentStorage:GlobalSources:0", "Local");
-    }
-
-    protected override void Dispose(bool disposing)
-    {
-        base.Dispose(disposing);
-        if (disposing && Directory.Exists(_directory))
-        {
-            Directory.Delete(_directory, recursive: true);
-        }
+        builder.UseSetting("ContentStorage:AuthoringSource", "External");
+        builder.UseSetting("ContentStorage:Sources:External:DisplayName", "Test content");
+        builder.UseSetting("ContentStorage:Sources:External:Provider", "PostgreSQL");
+        builder.UseSetting("ContentStorage:Sources:External:ConnectionStringValue", contentConnectionString);
+        builder.UseSetting("ContentStorage:GlobalSources:0", "External");
     }
 }
