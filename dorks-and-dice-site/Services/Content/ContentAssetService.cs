@@ -359,6 +359,12 @@ public sealed class ContentAssetService : IContentAssetService
             var asset = await context.Assets
                 .AsNoTracking()
                 .Where(candidate => candidate.AssetKey == assetKey)
+                .Select(candidate => new
+                {
+                    candidate.FileName,
+                    candidate.MediaType,
+                    candidate.Sha256
+                })
                 .SingleOrDefaultAsync(cancellationToken);
 
             if (asset is null)
@@ -380,12 +386,22 @@ public sealed class ContentAssetService : IContentAssetService
                 return null;
             }
 
+            var data = await context.Assets
+                .AsNoTracking()
+                .Where(candidate => candidate.AssetKey == assetKey)
+                .Select(candidate => candidate.Data)
+                .SingleOrDefaultAsync(cancellationToken);
+            if (data is null)
+            {
+                return null;
+            }
+
             return new ContentAssetFile
             {
                 FileName = asset.FileName,
                 MediaType = asset.MediaType,
                 Sha256 = asset.Sha256,
-                Data = asset.Data
+                Data = data
             };
         }
 
@@ -399,8 +415,10 @@ public sealed class ContentAssetService : IContentAssetService
         SiteModeContext modeContext,
         CancellationToken cancellationToken)
     {
-        foreach (var pageSource in pageSources)
+        var visibleMode = modeContext.SiteMode.ToString();
+        for (var pageSourceIndex = 0; pageSourceIndex < pageSources.Count; pageSourceIndex++)
         {
+            var pageSource = pageSources[pageSourceIndex];
             await using var context = CreateContext(pageSource.Key);
             var isAssetInPageSource = string.Equals(
                 pageSource.Key,
@@ -418,20 +436,39 @@ public sealed class ContentAssetService : IContentAssetService
                         || context.PageAssetDependencies.Any(dependency =>
                             dependency.PageId == page.Id
                             && dependency.AssetSourceKey == assetSourceKey
-                            && dependency.AssetKey == assetKey)))
+                            && dependency.AssetKey == assetKey))
+                    && (modeContext.IsDevelopmentPreview
+                        || context.RevisionModes.Any(mode =>
+                            mode.RevisionId == page.CurrentRevisionId
+                            && mode.SiteMode == visibleMode)))
                 .Select(page => new { page.ContentKey, page.Slug })
                 .ToListAsync(cancellationToken);
 
             foreach (var page in referencingPages)
             {
-                var visiblePage = await _catalog.GetForDetailAsync(
-                    page.Slug,
-                    modeContext.SiteMode,
-                    modeContext.IsDevelopmentPreview,
-                    cancellationToken);
-                if (visiblePage is not null
-                    && string.Equals(visiblePage.Id, page.ContentKey, StringComparison.OrdinalIgnoreCase)
-                    && string.Equals(visiblePage.SourceKey, pageSource.Key, StringComparison.OrdinalIgnoreCase))
+                if (modeContext.IsDevelopmentPreview)
+                {
+                    var visiblePage = await _catalog.GetForDetailAsync(
+                        page.Slug,
+                        modeContext.SiteMode,
+                        isDevelopmentPreview: true,
+                        cancellationToken);
+                    if (visiblePage is not null
+                        && string.Equals(visiblePage.Id, page.ContentKey, StringComparison.OrdinalIgnoreCase)
+                        && string.Equals(visiblePage.SourceKey, pageSource.Key, StringComparison.OrdinalIgnoreCase))
+                    {
+                        return true;
+                    }
+
+                    continue;
+                }
+
+                if (await IsEffectivePageAsync(
+                        pageSourceIndex,
+                        page.ContentKey,
+                        page.Slug,
+                        pageSources,
+                        cancellationToken))
                 {
                     return true;
                 }
@@ -439,6 +476,28 @@ public sealed class ContentAssetService : IContentAssetService
         }
 
         return false;
+    }
+
+    private async Task<bool> IsEffectivePageAsync(
+        int pageSourceIndex,
+        string contentKey,
+        string slug,
+        IReadOnlyList<ContentSourceDefinition> pageSources,
+        CancellationToken cancellationToken)
+    {
+        for (var index = pageSourceIndex + 1; index < pageSources.Count; index++)
+        {
+            await using var context = CreateContext(pageSources[index].Key);
+            var isShadowed = await context.Pages
+                .AsNoTracking()
+                .AnyAsync(page => page.ContentKey == contentKey || page.Slug == slug, cancellationToken);
+            if (isShadowed)
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     public async Task<ContentAssetFile?> GetFromSourceAsync(
