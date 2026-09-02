@@ -20,13 +20,24 @@
                 </li>
                 @if (User.Identity?.IsAuthenticated == true)
                 {
-                    <li class="nav-item">
-                        <a class="nav-link" asp-controller="Account" asp-action="Index">@(string.IsNullOrWhiteSpace(displayName) ? "Account" : displayName)</a>
-                    </li>
-                    <li class="nav-item ms-lg-2">
-                        <form asp-controller="Account" asp-action="Logout" method="post">
-                            <button type="submit" class="btn btn-link nav-link">Log out</button>
-                        </form>
+                    <li class="nav-item dropdown">
+                        <button class="btn btn-link nav-link dropdown-toggle"
+                                type="button"
+                                data-bs-toggle="dropdown"
+                                aria-expanded="false">
+                            @(string.IsNullOrWhiteSpace(displayName) ? "Account" : displayName)
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li>
+                                <a class="dropdown-item" asp-controller="Account" asp-action="Index">Account settings</a>
+                            </li>
+                            <li><hr class="dropdown-divider" /></li>
+                            <li>
+                                <form asp-controller="Account" asp-action="Logout" method="post">
+                                    <button type="submit" class="dropdown-item">Log out</button>
+                                </form>
+                            </li>
+                        </ul>
                     </li>
                 }
                 else
