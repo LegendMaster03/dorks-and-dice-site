@@ -70,13 +70,6 @@ public sealed class AccountController : Controller
             return View(model);
         }
 
-        if (await _userManager.IsInRoleAsync(user, AccountRoles.Admin)
-            && !DevelopmentAccessEvaluator.IsAuthorized(HttpContext, _siteModeOptions))
-        {
-            ModelState.AddModelError(string.Empty, "Invalid email or password.");
-            return View(model);
-        }
-
         var result = await _signInManager.PasswordSignInAsync(
             user,
             model.Password,
@@ -314,11 +307,11 @@ public sealed class AccountController : Controller
     }
 
     [Authorize]
-    [HttpPost("claim-admin")]
+    [HttpPost("bootstrap-privileged")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> ClaimAdmin()
+    public async Task<IActionResult> BootstrapPrivilegedAccess()
     {
-        if (!DevelopmentAccessEvaluator.IsAuthorized(HttpContext, _siteModeOptions))
+        if (!TrustedAccessEvaluator.IsAuthorized(HttpContext, _siteModeOptions))
         {
             return Forbid();
         }
@@ -330,50 +323,35 @@ public sealed class AccountController : Controller
             return RedirectToAction(nameof(Login));
         }
 
-        if (await _userManager.IsInRoleAsync(user, AccountRoles.Admin))
+        if (await ActivePrivilegedAccountExistsAsync())
         {
-            TempData["AccountMessage"] = "This account already has administrator access.";
+            TempData["AccountError"] = "An active privileged account already exists.";
             return RedirectToAction(nameof(Index));
         }
 
-        if (!await _roleManager.RoleExistsAsync(AccountRoles.Admin))
+        foreach (var role in AccountRoles.Privileged)
         {
-            var createRoleResult = await _roleManager.CreateAsync(new IdentityRole<Guid>(AccountRoles.Admin));
-            if (!createRoleResult.Succeeded && !await _roleManager.RoleExistsAsync(AccountRoles.Admin))
+            if (!await EnsureRoleExistsAsync(role))
             {
-                _logger.LogError(
-                    "Could not create the {AdminRole} role: {Errors}",
-                    AccountRoles.Admin,
-                    string.Join(", ", createRoleResult.Errors.Select(error => error.Description)));
-                TempData["AccountError"] = "Administrator access could not be initialized.";
+                TempData["AccountError"] = "Privileged access could not be initialized.";
                 return RedirectToAction(nameof(Index));
             }
         }
 
-        var activeAdministrators = await _userManager.GetUsersInRoleAsync(AccountRoles.Admin);
-        if (activeAdministrators.Any(candidate => candidate.DeletedAt is null))
-        {
-            TempData["AccountError"] = "An active administrator account already exists.";
-            return RedirectToAction(nameof(Index));
-        }
-
-        // Adding the role persists the user update as well, so changing the stamp here
-        // invalidates any pre-administrator sessions at the same time the role is granted.
         user.SecurityStamp = Guid.NewGuid().ToString("N");
-        var addRoleResult = await _userManager.AddToRoleAsync(user, AccountRoles.Admin);
+        var addRoleResult = await _userManager.AddToRolesAsync(user, AccountRoles.Privileged);
         if (!addRoleResult.Succeeded)
         {
             _logger.LogError(
-                "Could not grant the {AdminRole} role to user {UserId}: {Errors}",
-                AccountRoles.Admin,
+                "Could not bootstrap privileged roles for user {UserId}: {Errors}",
                 user.Id,
                 string.Join(", ", addRoleResult.Errors.Select(error => error.Description)));
-            TempData["AccountError"] = "Administrator access could not be granted.";
+            TempData["AccountError"] = "Privileged access could not be granted.";
             return RedirectToAction(nameof(Index));
         }
 
         await _signInManager.RefreshSignInAsync(user);
-        TempData["AccountMessage"] = "Administrator access granted. This account now requires trusted development access to authenticate.";
+        TempData["AccountMessage"] = "Administrator and developer access granted. Privileged functions require trusted access.";
         return RedirectToAction(nameof(Index));
     }
 
@@ -497,19 +475,12 @@ public sealed class AccountController : Controller
         string? displayName = null)
     {
         var isAdministrator = await _userManager.IsInRoleAsync(user, AccountRoles.Admin);
-        var canClaimAdministrator = false;
-
-        if (!isAdministrator && DevelopmentAccessEvaluator.IsAuthorized(HttpContext, _siteModeOptions))
-        {
-            var activeAdministratorExists = false;
-            if (await _roleManager.RoleExistsAsync(AccountRoles.Admin))
-            {
-                var administrators = await _userManager.GetUsersInRoleAsync(AccountRoles.Admin);
-                activeAdministratorExists = administrators.Any(candidate => candidate.DeletedAt is null);
-            }
-
-            canClaimAdministrator = !activeAdministratorExists;
-        }
+        var isDeveloper = await _userManager.IsInRoleAsync(user, AccountRoles.Dev);
+        var hasTrustedAccess = TrustedAccessEvaluator.IsAuthorized(HttpContext, _siteModeOptions);
+        var canBootstrapPrivilegedAccess = hasTrustedAccess
+            && !isAdministrator
+            && !isDeveloper
+            && !await ActivePrivilegedAccountExistsAsync();
 
         return new AccountViewModel
         {
@@ -517,8 +488,49 @@ public sealed class AccountController : Controller
             Email = user.Email ?? string.Empty,
             DisplayName = displayName ?? user.DisplayName,
             IsAdministrator = isAdministrator,
-            CanClaimAdministrator = canClaimAdministrator
+            IsDeveloper = isDeveloper,
+            HasTrustedAccess = hasTrustedAccess,
+            CanBootstrapPrivilegedAccess = canBootstrapPrivilegedAccess
         };
+    }
+
+    private async Task<bool> ActivePrivilegedAccountExistsAsync()
+    {
+        foreach (var role in AccountRoles.Privileged)
+        {
+            if (!await _roleManager.RoleExistsAsync(role))
+            {
+                continue;
+            }
+
+            var users = await _userManager.GetUsersInRoleAsync(role);
+            if (users.Any(candidate => candidate.DeletedAt is null))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private async Task<bool> EnsureRoleExistsAsync(string role)
+    {
+        if (await _roleManager.RoleExistsAsync(role))
+        {
+            return true;
+        }
+
+        var createRoleResult = await _roleManager.CreateAsync(new IdentityRole<Guid>(role));
+        if (createRoleResult.Succeeded || await _roleManager.RoleExistsAsync(role))
+        {
+            return true;
+        }
+
+        _logger.LogError(
+            "Could not create the {Role} role: {Errors}",
+            role,
+            string.Join(", ", createRoleResult.Errors.Select(error => error.Description)));
+        return false;
     }
 
     private async Task SendConfirmationEmailAsync(
