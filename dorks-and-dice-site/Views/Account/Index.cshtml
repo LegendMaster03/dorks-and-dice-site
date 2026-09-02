@@ -12,6 +12,10 @@
         {
             <div class="alert alert-success" role="status">@message</div>
         }
+        @if (TempData["AccountError"] is string error)
+        {
+            <div class="alert alert-danger" role="alert">@error</div>
+        }
 
         <form asp-action="Index" method="post" class="card card-body shadow-sm mb-4">
             <h2 class="h5">Profile</h2>
@@ -33,6 +37,24 @@
             </div>
             <button type="submit" class="btn btn-primary align-self-start">Save profile</button>
         </form>
+
+        @if (Model.IsAdministrator)
+        {
+            <div class="card card-body shadow-sm mb-4">
+                <h2 class="h5">Administrator</h2>
+                <p class="mb-0">This account has administrator access. Administrator authentication and sessions require trusted development access.</p>
+            </div>
+        }
+        else if (Model.CanClaimAdministrator)
+        {
+            <div class="card card-body border-warning shadow-sm mb-4">
+                <h2 class="h5">Administrator bootstrap</h2>
+                <p>No active administrator account exists. Trusted development access can promote this account as the first administrator.</p>
+                <form asp-action="ClaimAdmin" method="post">
+                    <button type="submit" class="btn btn-outline-warning">Claim administrator access</button>
+                </form>
+            </div>
+        }
 
         <div class="card card-body shadow-sm mb-4">
             <h2 class="h5">Security</h2>
