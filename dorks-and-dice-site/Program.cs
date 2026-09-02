@@ -302,7 +302,7 @@ app.MapPost("/development-preview", async (
     IContentSourceRegistry contentSourceRegistry) =>
 {
     var siteModeContext = context.GetSiteModeContext();
-    if (!siteModeContext.IsDevelopmentPreview)
+    if (!siteModeContext.HasTrustedAccess)
     {
         return Results.NotFound();
     }
