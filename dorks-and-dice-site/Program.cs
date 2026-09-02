@@ -8,6 +8,7 @@ using dorks_and_dice_site.Services.GameServers.Minecraft;
 using dorks_and_dice_site.Services.Identity;
 using dorks_and_dice_site.Services.Site;
 using dorks_and_dice_site.Services.Site.ModePresentation;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
@@ -104,6 +105,30 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.SlidingExpiration = true;
     options.LoginPath = "/account/login";
     options.AccessDeniedPath = "/account/access-denied";
+
+    var defaultValidatePrincipal = options.Events.OnValidatePrincipal;
+    options.Events.OnValidatePrincipal = async context =>
+    {
+        if (defaultValidatePrincipal is not null)
+        {
+            await defaultValidatePrincipal(context);
+        }
+
+        if (context.Principal?.Identity?.IsAuthenticated != true
+            || !context.Principal.IsInRole(AccountRoles.Admin))
+        {
+            return;
+        }
+
+        var siteModeOptions = context.HttpContext.RequestServices.GetRequiredService<SiteModeOptions>();
+        if (DevelopmentAccessEvaluator.IsAuthorized(context.HttpContext, siteModeOptions))
+        {
+            return;
+        }
+
+        context.RejectPrincipal();
+        await context.HttpContext.SignOutAsync(IdentityConstants.ApplicationScheme);
+    };
 });
 
 builder.Services.AddRateLimiter(options =>
