@@ -1,4 +1,5 @@
 using System.Net;
+using dorks_and_dice_site.Services.Identity;
 using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace dorks_and_dice_site.Tests;
@@ -14,7 +15,21 @@ public sealed class ContentSourceIntegrationTests
     }
 
     [Fact]
-    public async Task DevelopmentArticlesMenuListsAllConfiguredSources()
+    public async Task TrustedAnonymousPreviewOnlyShowsModeSwitch()
+    {
+        var response = await SendAsync("localhost", "/articles", includeDeveloperRole: false);
+        var html = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("Trusted Preview", html);
+        Assert.Contains(">Mode<", html);
+        Assert.DoesNotContain(">Articles<", html);
+        Assert.DoesNotContain("Show unlisted articles", html);
+        Assert.DoesNotContain("Content editor", html);
+    }
+
+    [Fact]
+    public async Task DeveloperArticlesMenuListsAllConfiguredSources()
     {
         var response = await SendAsync("localhost", "/articles");
         var html = await response.Content.ReadAsStringAsync();
@@ -28,14 +43,14 @@ public sealed class ContentSourceIntegrationTests
     }
 
     [Fact]
-    public async Task DevelopmentCanDisableAllContentSourcesExplicitly()
+    public async Task DeveloperCanDisableAllContentSourcesExplicitly()
     {
         var client = _factory.CreateClient(new WebApplicationFactoryClientOptions
         {
             AllowAutoRedirect = false
         });
 
-        using var post = new HttpRequestMessage(HttpMethod.Post, "http://localhost/development-preview")
+        using var post = new HttpRequestMessage(HttpMethod.Post, "https://localhost/development-preview")
         {
             Content = new FormUrlEncodedContent(new Dictionary<string, string>
             {
@@ -44,6 +59,7 @@ public sealed class ContentSourceIntegrationTests
             })
         };
         post.Headers.Host = "localhost";
+        post.Headers.Add(TestRoleAuthenticationHandler.RolesHeader, AccountRoles.Dev);
         var settingsResponse = await client.SendAsync(post);
 
         Assert.Equal(HttpStatusCode.Redirect, settingsResponse.StatusCode);
@@ -52,8 +68,9 @@ public sealed class ContentSourceIntegrationTests
         var cookiePair = sourceCookie.Split(';', 2)[0];
         Assert.Contains("DevelopmentEnabledContentSources=__none__", cookiePair);
 
-        using var request = new HttpRequestMessage(HttpMethod.Get, "http://localhost/articles");
+        using var request = new HttpRequestMessage(HttpMethod.Get, "https://localhost/articles");
         request.Headers.Host = "localhost";
+        request.Headers.Add(TestRoleAuthenticationHandler.RolesHeader, AccountRoles.Dev);
         request.Headers.Add("Cookie", cookiePair);
         var response = await client.SendAsync(request);
         var html = await response.Content.ReadAsStringAsync();
@@ -63,14 +80,14 @@ public sealed class ContentSourceIntegrationTests
     }
 
     [Fact]
-    public async Task DevelopmentCanSelectExternalSourceIndependently()
+    public async Task DeveloperCanSelectExternalSourceIndependently()
     {
         var client = _factory.CreateClient(new WebApplicationFactoryClientOptions
         {
             AllowAutoRedirect = false
         });
 
-        using var post = new HttpRequestMessage(HttpMethod.Post, "http://localhost/development-preview")
+        using var post = new HttpRequestMessage(HttpMethod.Post, "https://localhost/development-preview")
         {
             Content = new FormUrlEncodedContent(new Dictionary<string, string>
             {
@@ -80,6 +97,7 @@ public sealed class ContentSourceIntegrationTests
             })
         };
         post.Headers.Host = "localhost";
+        post.Headers.Add(TestRoleAuthenticationHandler.RolesHeader, AccountRoles.Dev);
         var settingsResponse = await client.SendAsync(post);
 
         Assert.Equal(HttpStatusCode.Redirect, settingsResponse.StatusCode);
@@ -88,8 +106,9 @@ public sealed class ContentSourceIntegrationTests
         var cookiePair = sourceCookie.Split(';', 2)[0];
         Assert.Contains("DevelopmentEnabledContentSources=External", cookiePair);
 
-        using var request = new HttpRequestMessage(HttpMethod.Get, "http://localhost/articles");
+        using var request = new HttpRequestMessage(HttpMethod.Get, "https://localhost/articles");
         request.Headers.Host = "localhost";
+        request.Headers.Add(TestRoleAuthenticationHandler.RolesHeader, AccountRoles.Dev);
         request.Headers.Add("Cookie", cookiePair);
         var response = await client.SendAsync(request);
         var html = await response.Content.ReadAsStringAsync();
@@ -98,14 +117,21 @@ public sealed class ContentSourceIntegrationTests
         Assert.Contains("Freeing the Bees: Solving ConsoleVariations", html);
     }
 
-    private async Task<HttpResponseMessage> SendAsync(string host, string path)
+    private async Task<HttpResponseMessage> SendAsync(
+        string host,
+        string path,
+        bool includeDeveloperRole = true)
     {
         var client = _factory.CreateClient(new WebApplicationFactoryClientOptions
         {
             AllowAutoRedirect = false
         });
-        using var request = new HttpRequestMessage(HttpMethod.Get, $"http://{host}{path}");
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"https://{host}{path}");
         request.Headers.Host = host;
+        if (includeDeveloperRole)
+        {
+            request.Headers.Add(TestRoleAuthenticationHandler.RolesHeader, AccountRoles.Dev);
+        }
         return await client.SendAsync(request);
     }
 }
