@@ -143,21 +143,7 @@ public sealed class AccountAuthenticationTests
         var email = $"admin-test-{Guid.NewGuid():N}@example.test";
         const string password = "correct horse battery staple";
         await CreateConfirmedUserAsync(factory.Services, email, password);
-
-        // A Dev-only account must still be able to recover administrator access when
-        // no active Admin exists. Bootstrap should add the missing Admin role without
-        // failing because Dev is already assigned.
-        using (var scope = factory.Services.CreateScope())
-        {
-            var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
-            var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole<Guid>>>();
-            var createDevRole = await roleManager.CreateAsync(new IdentityRole<Guid>(AccountRoles.Dev));
-            Assert.True(createDevRole.Succeeded, string.Join(", ", createDevRole.Errors.Select(error => error.Description)));
-            var user = await userManager.FindByEmailAsync(email);
-            Assert.NotNull(user);
-            var addDevRole = await userManager.AddToRoleAsync(user, AccountRoles.Dev);
-            Assert.True(addDevRole.Succeeded, string.Join(", ", addDevRole.Errors.Select(error => error.Description)));
-        }
+        await GrantPrivilegedRolesAsync(factory.Services, email);
 
         using var trustedClient = factory.CreateClient(new WebApplicationFactoryClientOptions
         {
@@ -169,35 +155,13 @@ public sealed class AccountAuthenticationTests
         var trustedLogin = await LoginAsync(trustedClient, email, password);
         Assert.Equal(HttpStatusCode.Redirect, trustedLogin.StatusCode);
 
-        var accountBeforeBootstrap = await trustedClient.GetAsync("/account");
-        Assert.Equal(HttpStatusCode.OK, accountBeforeBootstrap.StatusCode);
-        var accountBeforeBootstrapHtml = await accountBeforeBootstrap.Content.ReadAsStringAsync();
-        Assert.Contains("Privileged account bootstrap", accountBeforeBootstrapHtml, StringComparison.Ordinal);
-        var bootstrapToken = ExtractAntiforgeryToken(accountBeforeBootstrapHtml);
-
-        using var bootstrapForm = new FormUrlEncodedContent(new Dictionary<string, string>
-        {
-            ["__RequestVerificationToken"] = bootstrapToken
-        });
-        var bootstrap = await trustedClient.PostAsync("/account/bootstrap-privileged", bootstrapForm);
-        Assert.Equal(HttpStatusCode.Redirect, bootstrap.StatusCode);
-        Assert.Equal("/account", bootstrap.Headers.Location?.OriginalString);
-
-        using (var scope = factory.Services.CreateScope())
-        {
-            var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
-            var user = await userManager.FindByEmailAsync(email);
-            Assert.NotNull(user);
-            Assert.True(await userManager.IsInRoleAsync(user, AccountRoles.Admin));
-            Assert.True(await userManager.IsInRoleAsync(user, AccountRoles.Dev));
-        }
-
         var trustedAccount = await trustedClient.GetAsync("/account");
         Assert.Equal(HttpStatusCode.OK, trustedAccount.StatusCode);
         var trustedAccountHtml = await trustedAccount.Content.ReadAsStringAsync();
         Assert.Contains("Admin", trustedAccountHtml, StringComparison.Ordinal);
         Assert.Contains("Dev", trustedAccountHtml, StringComparison.Ordinal);
         Assert.Contains("Trusted Access: available", trustedAccountHtml, StringComparison.Ordinal);
+        Assert.DoesNotContain("Privileged account bootstrap", trustedAccountHtml, StringComparison.Ordinal);
 
         var trustedAdmin = await trustedClient.GetAsync("/admin/accounts");
         Assert.Equal(HttpStatusCode.OK, trustedAdmin.StatusCode);
@@ -238,6 +202,56 @@ public sealed class AccountAuthenticationTests
             "Trusted Access: not available",
             await publicAccount.Content.ReadAsStringAsync(),
             StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task FinalActiveAdministratorCanNotDeleteOwnAccount()
+    {
+        var connectionString = Environment.GetEnvironmentVariable("IDENTITY_TEST_POSTGRES");
+        if (string.IsNullOrWhiteSpace(connectionString))
+        {
+            return;
+        }
+
+        using var factory = new IdentityWebApplicationFactory(connectionString);
+        await ResetPrivilegedRolesAsync(factory.Services);
+
+        var email = $"last-admin-test-{Guid.NewGuid():N}@example.test";
+        const string password = "correct horse battery staple";
+        await CreateConfirmedUserAsync(factory.Services, email, password);
+        await GrantPrivilegedRolesAsync(factory.Services, email);
+
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+            HandleCookies = true,
+            BaseAddress = new Uri("https://dorks-and-dice.com")
+        });
+
+        var login = await LoginAsync(client, email, password);
+        Assert.Equal(HttpStatusCode.Redirect, login.StatusCode);
+
+        var deletePage = await client.GetAsync("/account/delete");
+        Assert.Equal(HttpStatusCode.OK, deletePage.StatusCode);
+        var token = ExtractAntiforgeryToken(await deletePage.Content.ReadAsStringAsync());
+
+        using var deleteForm = new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["Password"] = password,
+            ["__RequestVerificationToken"] = token
+        });
+        var deletion = await client.PostAsync("/account/delete", deleteForm);
+        Assert.Equal(HttpStatusCode.OK, deletion.StatusCode);
+        Assert.Contains(
+            "The final active administrator account can not be deleted.",
+            await deletion.Content.ReadAsStringAsync(),
+            StringComparison.Ordinal);
+
+        using var scope = factory.Services.CreateScope();
+        var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+        var user = await userManager.FindByEmailAsync(email);
+        Assert.NotNull(user);
+        Assert.Null(user.DeletedAt);
     }
 
     private static async Task<HttpResponseMessage> LoginAsync(
@@ -282,6 +296,34 @@ public sealed class AccountAuthenticationTests
         Assert.True(
             confirmationResult.Succeeded,
             string.Join(", ", confirmationResult.Errors.Select(error => error.Description)));
+    }
+
+    private static async Task GrantPrivilegedRolesAsync(IServiceProvider services, string email)
+    {
+        using var scope = services.CreateScope();
+        var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+        var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole<Guid>>>();
+        var user = await userManager.FindByEmailAsync(email);
+        Assert.NotNull(user);
+
+        foreach (var roleName in AccountRoles.Privileged)
+        {
+            if (!await roleManager.RoleExistsAsync(roleName))
+            {
+                var createRole = await roleManager.CreateAsync(new IdentityRole<Guid>(roleName));
+                Assert.True(
+                    createRole.Succeeded,
+                    string.Join(", ", createRole.Errors.Select(error => error.Description)));
+            }
+
+            if (!await userManager.IsInRoleAsync(user, roleName))
+            {
+                var addRole = await userManager.AddToRoleAsync(user, roleName);
+                Assert.True(
+                    addRole.Succeeded,
+                    string.Join(", ", addRole.Errors.Select(error => error.Description)));
+            }
+        }
     }
 
     private static async Task ResetPrivilegedRolesAsync(IServiceProvider services)
