@@ -1,13 +1,14 @@
 using System.Security.Claims;
 using System.Text.Encodings.Web;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace dorks_and_dice_site.Tests;
 
 public sealed class TestRoleAuthenticationHandler : AuthenticationHandler<AuthenticationSchemeOptions>
 {
-    public const string Scheme = "IntegrationTestRoles";
+    public new const string Scheme = "IntegrationTestRoles";
     public const string RolesHeader = "X-Test-Roles";
 
     public TestRoleAuthenticationHandler(
