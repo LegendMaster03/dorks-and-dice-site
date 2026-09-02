@@ -24,7 +24,7 @@
         <div class="d-flex flex-wrap align-items-center gap-2">
             <form class="d-flex flex-wrap align-items-center gap-2" method="post" action="/development-preview" data-auto-submit="change">
                 <input type="hidden" name="returnUrl" value="@Model.ReturnUrl" />
-                <span class="small fw-semibold text-uppercase">Development Preview</span>
+                <span class="small fw-semibold text-uppercase">Trusted Preview</span>
                 <label class="small text-muted" for="siteMode">Mode</label>
                 <select class="form-select form-select-sm development-preview-select" id="siteMode" name="siteMode">
                     <option value="dorks-and-dice" selected="@(Model.SelectedMode == SiteMode.DorksAndDice)">Dorks &amp; Dice</option>
@@ -33,61 +33,47 @@
                 </select>
             </form>
 
-            <div class="dropdown ms-auto">
-                <button class="btn btn-sm btn-outline-secondary dropdown-toggle"
-                        type="button"
-                        data-bs-toggle="dropdown"
-                        data-bs-auto-close="outside"
-                        aria-expanded="false">
-                    Articles
-                </button>
-                <div class="dropdown-menu dropdown-menu-end p-3 development-preview-articles-menu">
-                    <a class="btn btn-sm btn-outline-secondary w-100 mb-3" href="/development/content">Content editor</a>
+            @if (Model.CanUseDeveloperTools)
+            {
+                <div class="dropdown ms-auto">
+                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle"
+                            type="button"
+                            data-bs-toggle="dropdown"
+                            data-bs-auto-close="outside"
+                            aria-expanded="false">
+                        Articles
+                    </button>
+                    <div class="dropdown-menu dropdown-menu-end p-3 development-preview-articles-menu">
+                        <a class="btn btn-sm btn-outline-secondary w-100 mb-3" href="/development/content">Content editor</a>
 
-                    <form method="post" action="/development-preview" data-auto-submit="change">
-                        <input type="hidden" name="returnUrl" value="@Model.ReturnUrl" />
-                        <input type="hidden" name="articleSettings" value="true" />
+                        <form method="post" action="/development-preview" data-auto-submit="change">
+                            <input type="hidden" name="returnUrl" value="@Model.ReturnUrl" />
+                            <input type="hidden" name="articleSettings" value="true" />
 
-                        <div class="form-check form-switch mb-3">
-                            <input class="form-check-input"
-                                   type="checkbox"
-                                   role="switch"
-                                   id="includeUnlisted"
-                                   name="includeUnlisted"
-                                   value="true"
-                                   checked="@Model.IncludeUnlistedArticles">
-                            <label class="form-check-label small" for="includeUnlisted">Show unlisted articles</label>
-                        </div>
+                            <div class="form-check form-switch mb-3">
+                                <input class="form-check-input"
+                                       type="checkbox"
+                                       role="switch"
+                                       id="includeUnlisted"
+                                       name="includeUnlisted"
+                                       value="true"
+                                       checked="@Model.IncludeUnlistedArticles">
+                                <label class="form-check-label small" for="includeUnlisted">Show unlisted articles</label>
+                            </div>
 
-                        <button class="btn btn-sm btn-outline-secondary w-100 disclosure-toggle"
-                                type="button"
-                                data-bs-toggle="collapse"
-                                data-bs-target="#developmentContentSources"
-                                aria-expanded="false"
-                                aria-controls="developmentContentSources">
-                            Database sources
-                        </button>
-                        <div class="collapse mt-2" id="developmentContentSources">
-                            <p class="small text-muted mb-2">
-                                External is the production source boundary. Local is exposed here for localhost authoring and testing.
-                            </p>
-                            @foreach (var source in primarySources)
-                            {
-                                var sourceId = $"contentSource-{source.Key}";
-                                <div class="form-check mb-2">
-                                    <input class="form-check-input"
-                                           type="checkbox"
-                                           id="@sourceId"
-                                           name="enabledContentSource"
-                                           value="@source.Key"
-                                           checked="@source.IsEnabled" />
-                                    <label class="form-check-label small" for="@sourceId">@source.DisplayName</label>
-                                </div>
-                            }
-                            @if (additionalSources.Count > 0)
-                            {
-                                <hr class="my-2" />
-                                @foreach (var source in additionalSources)
+                            <button class="btn btn-sm btn-outline-secondary w-100 disclosure-toggle"
+                                    type="button"
+                                    data-bs-toggle="collapse"
+                                    data-bs-target="#developmentContentSources"
+                                    aria-expanded="false"
+                                    aria-controls="developmentContentSources">
+                                Database sources
+                            </button>
+                            <div class="collapse mt-2" id="developmentContentSources">
+                                <p class="small text-muted mb-2">
+                                    External is the production source boundary. Local is exposed here for localhost authoring and testing.
+                                </p>
+                                @foreach (var source in primarySources)
                                 {
                                     var sourceId = $"contentSource-{source.Key}";
                                     <div class="form-check mb-2">
@@ -100,11 +86,28 @@
                                         <label class="form-check-label small" for="@sourceId">@source.DisplayName</label>
                                     </div>
                                 }
-                            }
-                        </div>
-                    </form>
+                                @if (additionalSources.Count > 0)
+                                {
+                                    <hr class="my-2" />
+                                    @foreach (var source in additionalSources)
+                                    {
+                                        var sourceId = $"contentSource-{source.Key}";
+                                        <div class="form-check mb-2">
+                                            <input class="form-check-input"
+                                                   type="checkbox"
+                                                   id="@sourceId"
+                                                   name="enabledContentSource"
+                                                   value="@source.Key"
+                                                   checked="@source.IsEnabled" />
+                                            <label class="form-check-label small" for="@sourceId">@source.DisplayName</label>
+                                        </div>
+                                    }
+                                }
+                            </div>
+                        </form>
+                    </div>
                 </div>
-            </div>
+            }
         </div>
 
         @if (Model.RouteRestrictionMismatch)
