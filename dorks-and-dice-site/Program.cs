@@ -8,6 +8,7 @@ using dorks_and_dice_site.Services.GameServers.Minecraft;
 using dorks_and_dice_site.Services.Identity;
 using dorks_and_dice_site.Services.Site;
 using dorks_and_dice_site.Services.Site.ModePresentation;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.RateLimiting;
@@ -31,6 +32,14 @@ builder.Services.AddSingleton<ISiteModePresentationModule, DorksAndDicePresentat
 builder.Services.AddSingleton<ISiteModePresentationModule, ProfessionalPresentationModule>();
 builder.Services.AddSingleton<ISiteModePresentationModule, DevelopmentPresentationModule>();
 builder.Services.AddSingleton<ISiteModePresentationModule, UnassignedPresentationModule>();
+
+var dataProtection = builder.Services.AddDataProtection()
+    .SetApplicationName("dorks-and-dice-site");
+var dataProtectionKeysPath = builder.Configuration["DataProtection:KeysPath"];
+if (!string.IsNullOrWhiteSpace(dataProtectionKeysPath))
+{
+    dataProtection.PersistKeysToFileSystem(new DirectoryInfo(dataProtectionKeysPath));
+}
 
 builder.Services.AddDbContext<IdentityDbContext>((serviceProvider, options) =>
     options.UseNpgsql(IdentityConnectionStringResolver.Resolve(
