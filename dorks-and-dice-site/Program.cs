@@ -96,6 +96,7 @@ builder.Services.AddScoped<IUserClaimsPrincipalFactory<ApplicationUser>, Applica
 builder.Services.AddScoped<IScopedRoleService, ScopedRoleService>();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddSingleton<IAuthorizationHandler, TrustedAccessAuthorizationHandler>();
+builder.Services.AddSingleton<IAuthorizationHandler, ModeScopedRoleAuthorizationHandler>();
 
 builder.Services.AddAuthorization(options =>
 {
@@ -127,6 +128,11 @@ builder.Services.AddAuthorization(options =>
         policy.RequireRole(AccountRoles.Admin);
         policy.RequireRole(AccountRoles.Dev);
         policy.Requirements.Add(new TrustedAccessRequirement());
+    });
+    options.AddPolicy(AuthorizationPolicies.ModeEditor, policy =>
+    {
+        policy.RequireAuthenticatedUser();
+        policy.Requirements.Add(new ModeScopedRoleRequirement(ScopedAccountRoles.Editor));
     });
 });
 
