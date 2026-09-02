@@ -205,8 +205,7 @@ public sealed class AccountAuthenticationTests
         using var publicDevRequest = new HttpRequestMessage(HttpMethod.Get, "/development/content");
         publicDevRequest.Headers.Host = "dorks-and-dice.com";
         var publicDev = await trustedClient.SendAsync(publicDevRequest);
-        Assert.Equal(HttpStatusCode.Redirect, publicDev.StatusCode);
-        AssertAccessDeniedRedirect(publicDev);
+        Assert.Equal(HttpStatusCode.NotFound, publicDev.StatusCode);
 
         using var publicClient = factory.CreateClient(new WebApplicationFactoryClientOptions
         {
