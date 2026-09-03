@@ -53,20 +53,7 @@
                     }
                 </div>
                 <p class="mb-2">These roles do not grant privileged functions unless the current request also passes Trusted Access.</p>
-                <div class="small text-body-secondary mb-3">Trusted Access: @(Model.HasTrustedAccess ? "available" : "not available")</div>
-                @if (Model.HasTrustedAccess)
-                {
-                    <div class="d-flex flex-wrap gap-2">
-                        @if (Model.IsAdministrator)
-                        {
-                            <a asp-controller="AdminAccounts" asp-action="Index" class="btn btn-outline-primary">Manage accounts</a>
-                        }
-                        @if (Model.IsDeveloper)
-                        {
-                            <a href="/development/content" class="btn btn-outline-secondary">Content editor</a>
-                        }
-                    </div>
-                }
+                <div class="small text-body-secondary">Trusted Access: @(Model.HasTrustedAccess ? "available" : "not available")</div>
             </div>
         }
 
