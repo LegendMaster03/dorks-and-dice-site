@@ -156,4 +156,25 @@
             }
         }
     </div>
+
+    <div class="card card-body border-danger shadow-sm mb-4">
+        <h2 class="h5 text-danger">Danger zone</h2>
+        @if (targetIsOwner)
+        {
+            <p class="text-body-secondary mb-0">Owner accounts are server-managed and can not be deleted through the UI.</p>
+        }
+        else if (Model.IsCurrentUser)
+        {
+            <p class="text-body-secondary">Delete your own account from Account settings. You will be required to confirm your password.</p>
+            <a asp-controller="Account" asp-action="Delete" class="btn btn-outline-danger align-self-start">Delete my account</a>
+        }
+        else
+        {
+            <p class="text-body-secondary">Deleting an account revokes sign-in, frees its email address, and keeps only a tombstone record. This action is not reversible through the UI.</p>
+            <form asp-action="DeleteAccount" asp-route-userId="@Model.UserId" method="post"
+                  onsubmit="return confirm('Delete this account? This action can not be reversed through the UI.');">
+                <button type="submit" class="btn btn-danger">Delete account</button>
+            </form>
+        }
+    </div>
 }

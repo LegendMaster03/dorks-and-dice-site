@@ -77,8 +77,6 @@ public sealed class AdminAccountsController : Controller
             return BadRequest();
         }
 
-        // Admin may manage accounts and scoped Editor access, but only Owner may
-        // delegate or revoke the global Admin and Dev roles.
         if (!User.IsInRole(AccountRoles.Owner))
         {
             return Forbid();
@@ -147,11 +145,7 @@ public sealed class AdminAccountsController : Controller
 
     [HttpPost("{userId:guid}/scoped-role")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> SetScopedRole(
-        Guid userId,
-        string scope,
-        string role,
-        bool enabled)
+    public async Task<IActionResult> SetScopedRole(Guid userId, string scope, string role, bool enabled)
     {
         if (!AccountRoleScopes.All.Contains(scope, StringComparer.Ordinal)
             || !ScopedAccountRoles.All.Contains(role, StringComparer.Ordinal))
@@ -277,6 +271,61 @@ public sealed class AdminAccountsController : Controller
         return IsCurrentUser(user)
             ? RedirectToAction("Login", "Account")
             : RedirectToAction(nameof(Details), new { userId });
+    }
+
+    [HttpPost("{userId:guid}/delete")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> DeleteAccount(Guid userId)
+    {
+        var user = await FindMutableUserAsync(userId);
+        if (user is null)
+        {
+            return NotFound();
+        }
+
+        if (await _userManager.IsInRoleAsync(user, AccountRoles.Owner))
+        {
+            return Forbid();
+        }
+
+        if (IsCurrentUser(user))
+        {
+            TempData["AdminAccountError"] = "Use Account settings to delete your own account.";
+            return RedirectToAction(nameof(Details), new { userId });
+        }
+
+        if (await IsLastActiveAdministratorAsync(user))
+        {
+            TempData["AdminAccountError"] = "The final active administrator account can not be deleted.";
+            return RedirectToAction(nameof(Details), new { userId });
+        }
+
+        var deletedAt = DateTimeOffset.UtcNow;
+        var tombstoneIdentity = $"deleted-{user.Id:N}@deleted.invalid";
+        user.DeletedAt = deletedAt;
+        user.DisplayName = "Deleted account";
+        user.Email = tombstoneIdentity;
+        user.NormalizedEmail = _userManager.NormalizeEmail(tombstoneIdentity);
+        user.EmailConfirmed = false;
+        user.UserName = tombstoneIdentity;
+        user.NormalizedUserName = _userManager.NormalizeName(tombstoneIdentity);
+        user.PhoneNumber = null;
+        user.PhoneNumberConfirmed = false;
+        user.PasswordHash = null;
+        user.TwoFactorEnabled = false;
+        user.LockoutEnabled = true;
+        user.LockoutEnd = deletedAt.AddYears(100);
+        user.SecurityStamp = Guid.NewGuid().ToString("N");
+
+        var result = await _userManager.UpdateAsync(user);
+        if (!result.Succeeded)
+        {
+            TempData["AdminAccountError"] = string.Join(" ", result.Errors.Select(error => error.Description));
+            return RedirectToAction(nameof(Details), new { userId });
+        }
+
+        TempData["AdminAccountMessage"] = "Account deleted.";
+        return RedirectToAction(nameof(Index));
     }
 
     private async Task<AdminAccountDetailViewModel> BuildDetailsAsync(ApplicationUser user)
