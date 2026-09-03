@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using dorks_and_dice_site.Models.Identity;
 
 namespace dorks_and_dice_site.Services.Identity;
 
