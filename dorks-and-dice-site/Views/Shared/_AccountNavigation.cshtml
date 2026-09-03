@@ -4,7 +4,9 @@
 @{
     var displayName = User.FindFirst(AccountClaimTypes.DisplayName)?.Value;
     var returnUrl = $"{Context.Request.Path}{Context.Request.QueryString}";
-    var hasTrustedAccess = Context.GetSiteModeContext().HasTrustedAccess;
+    var siteModeContext = Context.GetSiteModeContext();
+    var showAnonymousLogin = siteModeContext.SiteMode != dorks_and_dice_site.Models.Site.SiteMode.Professional;
+    var hasTrustedAccess = siteModeContext.HasTrustedAccess;
     var hasScopedEditorRole = User.Claims.Any(claim =>
         string.Equals(claim.Type, AccountClaimTypes.ScopedRole, StringComparison.Ordinal)
         && claim.Value.EndsWith($":{ScopedAccountRoles.Editor}", StringComparison.Ordinal));
@@ -52,7 +54,7 @@
         </ul>
     </li>
 }
-else
+else if (showAnonymousLogin)
 {
     <li class="nav-item">
         <a class="nav-link" asp-controller="Account" asp-action="Login" asp-route-returnUrl="@returnUrl">Log in</a>
