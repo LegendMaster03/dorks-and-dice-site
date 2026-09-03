@@ -1,115 +1,103 @@
-using dorks_and_dice_site.Models.Site;
+@model dorks_and_dice_site.Models.Content.ContentAuthoringIndexViewModel
+@{
+    ViewData["Title"] = "Database Management";
+    ViewData["Robots"] = "noindex,nofollow";
+    var selectedSource = Model.Sources.FirstOrDefault(source =>
+        string.Equals(source.Key, Model.SelectedSourceKey, StringComparison.OrdinalIgnoreCase));
+}
 
-namespace dorks_and_dice_site.Services.Site;
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+    <div>
+        <p class="text-uppercase text-muted small mb-1">Development</p>
+        <h1 class="h3 mb-0">Database management</h1>
+    </div>
+    <a class="btn btn-outline-secondary" href="/development">Back to Development</a>
+</div>
 
-public static class SiteRouteOwnership
+<p class="text-muted">Inspect configured content databases and perform explicit per-page transfers. Content creation and editing are handled separately by the Editor role.</p>
+
+@if (TempData["ContentDatabaseSuccess"] is string successMessage)
 {
-    public static bool IsModeAdaptivePath(PathString path)
-    {
-        return IsModeAdaptivePath(path.ToString().ToLowerInvariant());
-    }
+    <div class="alert alert-success" role="status">@successMessage</div>
+}
+@if (TempData["ContentDatabaseError"] is string errorMessage)
+{
+    <div class="alert alert-warning" role="alert">@errorMessage</div>
+}
 
-    public static bool IsAllowedInMode(PathString path, SiteMode siteMode)
-    {
-        var normalizedPath = path.ToString().ToLowerInvariant();
-        var isSharedPath = IsModeAdaptivePath(normalizedPath)
-            || IsContentMediaPath(normalizedPath)
-            || IsSharedStaticAssetPath(normalizedPath)
-            || IsUnassignedAssetPath(normalizedPath)
-            || IsSharedSystemPath(normalizedPath);
+@if (Model.Sources.Count > 1)
+{
+    <form method="get" action="/development/databases" class="row g-3 align-items-end mb-4">
+        <div class="col-sm-8 col-md-5">
+            <label class="form-label" for="source">Content database</label>
+            <select class="form-select" id="source" name="source" data-auto-submit="change">
+                @foreach (var source in Model.Sources)
+                {
+                    <option value="@source.Key" selected="@(string.Equals(source.Key, Model.SelectedSourceKey, StringComparison.OrdinalIgnoreCase))">
+                        @source.DisplayName
+                    </option>
+                }
+            </select>
+        </div>
+    </form>
+}
+else
+{
+    <div class="card card-body mb-4">
+        <div class="small text-uppercase text-muted">Configured content database</div>
+        <div class="fw-semibold">@(selectedSource?.DisplayName ?? Model.SelectedSourceKey)</div>
+        <div class="small text-muted">No database selector is shown because only one source is configured.</div>
+    </div>
+}
 
-        return siteMode switch
-        {
-            SiteMode.Development => isSharedPath || IsDevelopmentAssetPath(normalizedPath),
-            SiteMode.Professional => isSharedPath
-                || IsProfessionalOwnedPath(normalizedPath)
-                || IsProfessionalAssetPath(normalizedPath)
-                || IsAssetException(SiteMode.Professional, normalizedPath),
-            SiteMode.DorksAndDice => isSharedPath || IsDorksAndDiceAssetPath(normalizedPath),
-            SiteMode.Unassigned => IsUnassignedModePath(normalizedPath)
-                || IsContentMediaPath(normalizedPath)
-                || IsSharedStaticAssetPath(normalizedPath)
-                || IsUnassignedAssetPath(normalizedPath)
-                || IsSharedSystemPath(normalizedPath),
-            _ => false
-        };
-    }
-
-    private static bool IsModeAdaptivePath(string path)
-    {
-        return path == "/" || path == "/articles" || path.StartsWith("/articles/");
-    }
-
-    private static bool IsProfessionalOwnedPath(string path)
-    {
-        return path == "/resume" || path.StartsWith("/resume/");
-    }
-
-    private static bool IsSharedSystemPath(string path)
-    {
-        return path == "/health"
-            || path == "/robots.txt"
-            || path == "/sitemap.xml"
-            || path == "/development-preview"
-            || path == "/account"
-            || path.StartsWith("/account/", StringComparison.Ordinal)
-            || path == "/admin"
-            || path.StartsWith("/admin/", StringComparison.Ordinal)
-            || path == "/home/notfoundpage"
-            || path == "/home/error"
-            || path == "/home/routeresolutionissue";
-    }
-
-    private static bool IsContentMediaPath(string path)
-    {
-        // Route ownership only permits the request to reach the controller. ContentAssetService
-        // still requires a current revision reference from a page visible in the active mode.
-        return path.StartsWith("/content/media/", StringComparison.Ordinal);
-    }
-
-    private static bool IsUnassignedModePath(string path)
-    {
-        return path == "/";
-    }
-
-    private static bool IsSharedStaticAssetPath(string path)
-    {
-        return path.StartsWith("/css/")
-            || path.StartsWith("/js/")
-            || path.StartsWith("/lib/")
-            || path.StartsWith("/shared/")
-            || path == "/dorks-and-dice-site.styles.css"
-            || (path.StartsWith("/dorks-and-dice-site.", StringComparison.Ordinal)
-                && path.EndsWith(".styles.css", StringComparison.Ordinal))
-            || path.StartsWith("/favicon");
-    }
-
-    private static bool IsProfessionalAssetPath(string path)
-    {
-        return path.StartsWith("/site-modes/professional/");
-    }
-
-    private static bool IsDorksAndDiceAssetPath(string path)
-    {
-        return path.StartsWith("/site-modes/dorks-and-dice/");
-    }
-
-    private static bool IsDevelopmentAssetPath(string path)
-    {
-        return path.StartsWith("/site-modes/development/");
-    }
-
-    private static bool IsAssetException(SiteMode siteMode, string path)
-    {
-        return siteMode switch
-        {
-            SiteMode.Professional => path == "/site-modes/dorks-and-dice/images/favicon.svg",
-            _ => false
-        };
-    }
-
-    private static bool IsUnassignedAssetPath(string path)
-    {
-        return path.StartsWith("/site-modes/unassigned/");
-    }
+@if (Model.Items.Count == 0)
+{
+    <p class="text-muted">This database contains no content pages.</p>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table align-middle">
+            <thead>
+                <tr>
+                    <th scope="col">Title</th>
+                    <th scope="col">Slug</th>
+                    <th scope="col">Revision</th>
+                    <th scope="col">Listing</th>
+                    @if (Model.MoveTargets.Count > 0)
+                    {
+                        <th scope="col">Transfer</th>
+                    }
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var item in Model.Items)
+            {
+                <tr>
+                    <th scope="row">@item.Title</th>
+                    <td><code>@item.Slug</code></td>
+                    <td>@item.RevisionId</td>
+                    <td>@(item.IsListed ? "Listed" : "Unlisted")</td>
+                    @if (Model.MoveTargets.Count > 0)
+                    {
+                        <td>
+                            <div class="d-flex flex-wrap gap-2">
+                            @foreach (var target in Model.MoveTargets)
+                            {
+                                <form method="post" action="/development/databases/@item.Slug/move"
+                                      onsubmit="return confirm('Move this page to @target.DisplayName and remove it from the current database?');">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="source" value="@Model.SelectedSourceKey" />
+                                    <input type="hidden" name="targetSource" value="@target.Key" />
+                                    <button class="btn btn-sm btn-outline-warning" type="submit">Move to @target.DisplayName</button>
+                                </form>
+                            }
+                            </div>
+                        </td>
+                    }
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
 }

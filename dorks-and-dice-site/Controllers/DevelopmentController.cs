@@ -1,0 +1,56 @@
+@using dorks_and_dice_site.Models.Identity
+@using dorks_and_dice_site.Services.Identity
+@inject Microsoft.AspNetCore.Authorization.IAuthorizationService AuthorizationService
+@{
+    var displayName = User.FindFirst(AccountClaimTypes.DisplayName)?.Value;
+    var returnUrl = $"{Context.Request.Path}{Context.Request.QueryString}";
+    var canUseEditor = (await AuthorizationService.AuthorizeAsync(User, AuthorizationPolicies.ModeEditor)).Succeeded;
+    var canAdminister = (await AuthorizationService.AuthorizeAsync(User, AuthorizationPolicies.AdminAccess)).Succeeded;
+    var canUseDevelopmentTools = (await AuthorizationService.AuthorizeAsync(User, AuthorizationPolicies.DevAccess)).Succeeded;
+}
+@if (User.Identity?.IsAuthenticated == true)
+{
+    <li class="nav-item dropdown">
+        <button class="btn btn-link nav-link dropdown-toggle"
+                type="button"
+                data-bs-toggle="dropdown"
+                aria-expanded="false">
+            @(string.IsNullOrWhiteSpace(displayName) ? "Account" : displayName)
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end">
+            <li>
+                <a class="dropdown-item" asp-controller="Account" asp-action="Index">Account settings</a>
+            </li>
+            @if (canUseEditor)
+            {
+                <li>
+                    <a class="dropdown-item" href="/editor">Editor</a>
+                </li>
+            }
+            @if (canAdminister)
+            {
+                <li>
+                    <a class="dropdown-item" href="/admin">Admin</a>
+                </li>
+            }
+            @if (canUseDevelopmentTools)
+            {
+                <li>
+                    <a class="dropdown-item" href="/development">Development</a>
+                </li>
+            }
+            <li><hr class="dropdown-divider" /></li>
+            <li>
+                <form asp-controller="Account" asp-action="Logout" method="post">
+                    <button type="submit" class="dropdown-item">Log out</button>
+                </form>
+            </li>
+        </ul>
+    </li>
+}
+else
+{
+    <li class="nav-item">
+        <a class="nav-link" asp-controller="Account" asp-action="Login" asp-route-returnUrl="@returnUrl">Log in</a>
+    </li>
+}

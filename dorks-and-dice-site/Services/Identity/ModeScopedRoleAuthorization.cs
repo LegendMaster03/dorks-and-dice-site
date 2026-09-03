@@ -1,48 +1,106 @@
-using dorks_and_dice_site.Models.Identity;
-using dorks_and_dice_site.Models.Site;
-using dorks_and_dice_site.Services.Site;
-using Microsoft.AspNetCore.Authorization;
+@model dorks_and_dice_site.Models.Content.ContentAssetAuthoringViewModel
+@{
+    ViewData["Title"] = $"Media for {Model.Slug}";
+    ViewData["Robots"] = "noindex, nofollow";
+}
 
-namespace dorks_and_dice_site.Services.Identity;
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+    <div>
+        <p class="text-uppercase text-muted small mb-1">Editor</p>
+        <h1 class="h3 mb-0">Content media</h1>
+        <p class="text-muted mb-0"><code>@Model.Slug</code></p>
+    </div>
+    <a class="btn btn-outline-secondary" href="/editor/content/@Model.Slug/edit">Back to editor</a>
+</div>
 
-public sealed record ModeScopedRoleRequirement(string Role) : IAuthorizationRequirement;
+<p>Attach media before referencing its stable URL in the content body. Existing owned media remains attached to the page.</p>
 
-public sealed class ModeScopedRoleAuthorizationHandler : AuthorizationHandler<ModeScopedRoleRequirement>
+@if (TempData["ContentMediaSuccess"] is string successMessage)
 {
-    private readonly IHttpContextAccessor _httpContextAccessor;
+    <div class="alert alert-success" role="status">@successMessage</div>
+}
+@if (TempData["ContentMediaError"] is string errorMessage)
+{
+    <div class="alert alert-warning" role="alert">@errorMessage</div>
+}
 
-    public ModeScopedRoleAuthorizationHandler(IHttpContextAccessor httpContextAccessor)
+<form method="get" class="card card-body mb-4">
+    <div class="row g-3 align-items-end">
+        <div class="col-md-8">
+            <label class="form-label" for="q">Search available media</label>
+            <input class="form-control" id="q" name="q" value="@Model.SearchQuery" placeholder="File name or media key" required />
+            <div class="form-text">Searches reusable media available to this page. Results are limited for fast browsing.</div>
+        </div>
+        <div class="col-md-4">
+            <button class="btn btn-primary w-100" type="submit">Search media</button>
+        </div>
+    </div>
+</form>
+
+@if (!string.IsNullOrWhiteSpace(Model.SearchQuery))
+{
+    <h2 class="h5">Search results</h2>
+    @if (Model.AvailableAssets.Count == 0)
     {
-        _httpContextAccessor = httpContextAccessor;
+        <p class="text-muted">No unattached media matched <strong>@Model.SearchQuery</strong>.</p>
     }
-
-    protected override Task HandleRequirementAsync(
-        AuthorizationHandlerContext context,
-        ModeScopedRoleRequirement requirement)
-    {
-        var httpContext = _httpContextAccessor.HttpContext;
-        if (httpContext is null || context.User.Identity?.IsAuthenticated != true)
+    <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-3 mb-4">
+        @foreach (var asset in Model.AvailableAssets)
         {
-            return Task.CompletedTask;
+            <div class="col"><article class="card h-100">
+                <img src="/editor/media/@asset.AssetKey/preview?source=@Uri.EscapeDataString(asset.SourceKey)" class="card-img-top content-media-preview" alt="Preview of @asset.FileName" />
+                <div class="card-body">
+                    <h3 class="h6">@asset.FileName</h3>
+                    <p class="small text-muted"><code>@asset.AssetKey</code></p>
+                    <form method="post" action="/editor/content/@Model.Slug/media/attach">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="assetSource" value="@asset.SourceKey" />
+                        <input type="hidden" name="assetKey" value="@asset.AssetKey" />
+                        <button class="btn btn-sm btn-primary" type="submit">Add dependency</button>
+                    </form>
+                </div>
+            </article></div>
         }
+    </div>
+}
 
-        var scope = httpContext.GetSiteModeContext().SiteMode switch
+@if (Model.Assets.Count == 0)
+{
+    <p class="text-muted">This page has no media dependencies.</p>
+}
+else
+{
+    <div class="row row-cols-1 row-cols-lg-2 g-4">
+        @foreach (var asset in Model.Assets)
         {
-            SiteMode.DorksAndDice => AccountRoleScopes.DorksAndDice,
-            SiteMode.Professional => AccountRoleScopes.Professional,
-            _ => null
-        };
-        if (scope is null)
-        {
-            return Task.CompletedTask;
+            var previewUrl = $"/editor/media/{asset.AssetKey}/preview?source={Uri.EscapeDataString(asset.SourceKey)}";
+            <div class="col">
+                <article class="card h-100">
+                    <img src="@previewUrl" class="card-img-top content-media-preview" alt="Preview of @asset.FileName" />
+                    <div class="card-body">
+                        <h2 class="h6">@asset.FileName</h2>
+                        <p class="badge text-bg-secondary">@(asset.Relationship ?? "shared")</p>
+                        <dl class="row small mb-3">
+                            <dt class="col-4">Type</dt>
+                            <dd class="col-8">@asset.MediaType</dd>
+                            <dt class="col-4">Size</dt>
+                            <dd class="col-8">@($"{asset.Length / 1024.0:N1} KB")</dd>
+                            <dt class="col-4">SHA-256</dt>
+                            <dd class="col-8 text-break"><code>@asset.Sha256</code></dd>
+                        </dl>
+                        <label class="form-label" for="markdown-@asset.AssetKey">Markdown reference</label>
+                        <input id="markdown-@asset.AssetKey" class="form-control font-monospace" value="@asset.MarkdownReference" readonly />
+                        <div class="form-text">Replace <code>Alt text</code> with a meaningful description before inserting it into the body.</div>
+                        <label class="form-label mt-3" for="url-@asset.AssetKey">Stable media URL</label>
+                        <input id="url-@asset.AssetKey" class="form-control font-monospace" value="@asset.Url" readonly />
+                        <form method="post" action="/editor/content/@Model.Slug/media/detach" class="mt-3">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="assetKey" value="@asset.AssetKey" />
+                            <button class="btn btn-sm btn-outline-danger" type="submit">Remove dependency</button>
+                        </form>
+                    </div>
+                </article>
+            </div>
         }
-
-        var expectedValue = $"{scope}:{requirement.Role}";
-        if (context.User.HasClaim(AccountClaimTypes.ScopedRole, expectedValue))
-        {
-            context.Succeed(requirement);
-        }
-
-        return Task.CompletedTask;
-    }
+    </div>
 }

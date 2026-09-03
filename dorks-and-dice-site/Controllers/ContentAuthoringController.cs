@@ -1,226 +1,182 @@
 using dorks_and_dice_site.Models.Content;
+using dorks_and_dice_site.Models.Identity;
 using dorks_and_dice_site.Services.Content;
+using dorks_and_dice_site.Services.Content.Storage;
 using dorks_and_dice_site.Services.Identity;
 using dorks_and_dice_site.Services.Site;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.Text.Encodings.Web;
-using System.Text.RegularExpressions;
 
 namespace dorks_and_dice_site.Controllers;
 
-[Authorize(Policy = AuthorizationPolicies.DevAccess)]
-[Route("development/content")]
-[RequestSizeLimit(ContentInputPolicy.MaxAuthoringRequestBytes)]
-public sealed class ContentAuthoringController : Controller
+public sealed class ContentController : Controller
 {
-    private static readonly Regex DirectiveLinePattern = new(
-        @"^[\t ]*(?<directive>\{\{[a-z0-9-]+\}\})[\t ]*$",
-        RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.Multiline);
-    private readonly IContentAuthoringService _authoringService;
+    private readonly IContentCatalogService _catalog;
     private readonly IContentBodyRenderer _bodyRenderer;
+    private readonly IContentRedirectService _redirects;
+    private readonly IAuthorizationService _authorizationService;
+    private readonly IContentSourceRegistry _sourceRegistry;
 
-    public ContentAuthoringController(
-        IContentAuthoringService authoringService,
-        IContentBodyRenderer bodyRenderer)
+    public ContentController(
+        IContentCatalogService catalog,
+        IContentBodyRenderer bodyRenderer,
+        IContentRedirectService redirects,
+        IAuthorizationService authorizationService,
+        IContentSourceRegistry sourceRegistry)
     {
-        _authoringService = authoringService;
+        _catalog = catalog;
         _bodyRenderer = bodyRenderer;
+        _redirects = redirects;
+        _authorizationService = authorizationService;
+        _sourceRegistry = sourceRegistry;
     }
 
-    [HttpGet("")]
-    public async Task<IActionResult> Index(CancellationToken cancellationToken)
+    [HttpGet("/resume/{slug}")]
+    public Task<IActionResult> ResumeDetail(string slug, CancellationToken cancellationToken)
     {
-        if (!IsDevelopmentPreview())
-        {
-            return NotFound();
-        }
+        var requestedContext = string.Equals(
+            Request.Query["context"].FirstOrDefault(),
+            ContentTags.Experience,
+            StringComparison.OrdinalIgnoreCase)
+            ? ContentTags.Experience
+            : ContentTags.Project;
 
-        var sourceKey = Request.Query["source"].FirstOrDefault();
-        return View(await _authoringService.GetIndexAsync(sourceKey, cancellationToken));
+        return ResolveDetailAsync(
+            slug,
+            ContentRouteNamespaces.Resume,
+            requestedContext,
+            allowExperienceFallback: true,
+            cancellationToken);
     }
 
-    [HttpGet("new")]
-    public IActionResult New()
-    {
-        if (!IsDevelopmentPreview())
-        {
-            return NotFound();
-        }
+    [HttpGet("/articles/{slug}")]
+    public Task<IActionResult> ArticleDetail(string slug, CancellationToken cancellationToken) =>
+        ResolveDetailAsync(
+            slug,
+            ContentRouteNamespaces.Articles,
+            ContentTags.Article,
+            allowExperienceFallback: false,
+            cancellationToken);
 
-        var sourceKey = Request.Query["source"].FirstOrDefault();
-        return View("Edit", _authoringService.GetNew(sourceKey));
-    }
-
-    [HttpPost("new")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> New(
-        ContentAuthoringEditViewModel model,
-        CancellationToken cancellationToken)
-    {
-        if (!IsDevelopmentPreview())
-        {
-            return NotFound();
-        }
-
-        model.Document.IsNew = true;
-        try
-        {
-            var created = await _authoringService.CreateAsync(model.Document, cancellationToken);
-            return RedirectToAction(nameof(Edit), new { slug = created.Slug, source = model.Document.SourceKey });
-        }
-        catch (InvalidOperationException ex)
-        {
-            ModelState.AddModelError(string.Empty, ex.Message);
-            _authoringService.PopulateOptions(model);
-            return View("Edit", model);
-        }
-    }
-
-    [HttpGet("{slug}/edit")]
-    public async Task<IActionResult> Edit(string slug, CancellationToken cancellationToken)
-    {
-        if (!IsDevelopmentPreview())
-        {
-            return NotFound();
-        }
-
-        var sourceKey = Request.Query["source"].FirstOrDefault() ?? _authoringService.DefaultSourceKey;
-        try
-        {
-            var model = await _authoringService.GetEditAsync(sourceKey, slug, cancellationToken);
-            return model is null ? NotFound() : View(model);
-        }
-        catch (InvalidOperationException)
-        {
-            return BadRequest();
-        }
-    }
-
-    [HttpPost("{slug}/edit")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Edit(
+    private async Task<IActionResult> ResolveDetailAsync(
         string slug,
-        ContentAuthoringEditViewModel model,
+        string routeNamespace,
+        string requestedContext,
+        bool allowExperienceFallback,
         CancellationToken cancellationToken)
     {
-        if (!IsDevelopmentPreview())
+        var modeContext = HttpContext.GetSiteModeContext();
+        var item = await _catalog.GetForDetailAsync(
+            slug,
+            modeContext.SiteMode,
+            modeContext.IsDevelopmentPreview,
+            cancellationToken);
+
+        if (item is null)
+        {
+            var redirect = await _redirects.ResolveAsync(routeNamespace, slug, cancellationToken);
+            if (redirect is null)
+            {
+                return NotFound();
+            }
+
+            var targetItem = await _catalog.GetForDetailByIdAsync(
+                redirect.ContentKey,
+                modeContext.SiteMode,
+                modeContext.IsDevelopmentPreview,
+                cancellationToken);
+            if (targetItem is null
+                || ResolveContextTag(targetItem, requestedContext, allowExperienceFallback) is null
+                || string.Equals(targetItem.Slug, slug, StringComparison.Ordinal))
+            {
+                return NotFound();
+            }
+
+            return RedirectPermanent($"/{routeNamespace}/{targetItem.Slug}{Request.QueryString}");
+        }
+
+        var contextTag = ResolveContextTag(item, requestedContext, allowExperienceFallback);
+        if (contextTag is null)
         {
             return NotFound();
         }
 
-        try
+        if (!item.IsListed)
         {
-            ContentInputValidator.ValidateKey("Route slug", slug);
-            model.Document.IsNew = false;
-            var saved = await _authoringService.SaveRevisionAsync(model.Document, cancellationToken);
-            return RedirectToAction(nameof(Edit), new { slug = saved.Slug, source = model.Document.SourceKey });
+            ViewData["Robots"] = "noindex, nofollow";
         }
-        catch (InvalidOperationException ex)
+
+        ViewData["MetaTitle"] = item.MetaTitle ?? item.GetTitle(contextTag);
+        ViewData["MetaDescription"] = item.MetaDescription ?? item.GetSummary(contextTag);
+        if (!string.IsNullOrWhiteSpace(item.MetaImage))
         {
-            ModelState.AddModelError(string.Empty, ex.Message);
-            _authoringService.PopulateOptions(model);
-            return View(model);
+            ViewData["MetaImage"] = item.MetaImage;
         }
+
+        var editorAuthorization = await _authorizationService.AuthorizeAsync(
+            User,
+            AuthorizationPolicies.ModeEditor);
+        var canEdit = editorAuthorization.Succeeded
+            && string.Equals(
+                item.SourceKey,
+                _sourceRegistry.AuthoringSourceKey,
+                StringComparison.OrdinalIgnoreCase)
+            && (User.IsInRole(AccountRoles.Admin)
+                || (item.VisibleInModes.Count == 1
+                    && item.VisibleInModes[0] == modeContext.SiteMode));
+
+        var backLinks = BuildBackLinks(item, contextTag);
+        var viewModel = new ContentDetailViewModel
+        {
+            Item = item,
+            ContextTag = contextTag,
+            RenderedBodyHtml = _bodyRenderer.Render(item.BodyFormat, item.Body),
+            BackLinks = backLinks,
+            IsDevelopmentVisibilityOverride = modeContext.IsDevelopmentPreview
+                && !item.IsVisibleInMode(modeContext.SiteMode),
+            IsDevelopmentPreview = modeContext.IsDevelopmentPreview,
+            EditHref = canEdit
+                ? $"/editor/content/{item.Slug}/edit"
+                : null
+        };
+
+        return View("~/Views/Content/Details.cshtml", viewModel);
     }
 
-    [HttpPost("preview")]
-    [ValidateAntiForgeryToken]
-    public IActionResult Preview(ContentAuthoringEditViewModel model)
+    private static string? ResolveContextTag(
+        ContentItem item,
+        string requestedContext,
+        bool allowExperienceFallback)
     {
-        if (!IsDevelopmentPreview())
+        if (item.HasTag(requestedContext))
         {
-            return NotFound();
+            return requestedContext;
         }
 
-        try
-        {
-            model.RenderedPreviewHtml = _bodyRenderer.Render(model.Document.BodyFormat, model.Document.Body);
-        }
-        catch (Exception ex) when (ex is InvalidOperationException or NotSupportedException)
-        {
-            ModelState.AddModelError(string.Empty, ex.Message);
-        }
-
-        _authoringService.PopulateOptions(model);
-        return View("Edit", model);
+        return allowExperienceFallback && item.HasTag(ContentTags.Experience)
+            ? ContentTags.Experience
+            : null;
     }
 
-    [HttpPost("visual/render")]
-    [ValidateAntiForgeryToken]
-    public IActionResult RenderVisual([FromForm] string? body)
+    private static List<ContentNavigationLink> BuildBackLinks(ContentItem item, string contextTag)
     {
-        if (!IsDevelopmentPreview()) return NotFound();
-        body ??= string.Empty;
-
-        var directives = new List<string>();
-        var protectedMarkdown = DirectiveLinePattern.Replace(body, match =>
+        if (contextTag == ContentTags.Article)
         {
-            var index = directives.Count;
-            directives.Add(match.Groups["directive"].Value);
-            return $"VISUALDIRECTIVEPLACEHOLDER{index}END";
-        });
-
-        var html = _bodyRenderer.Render("markdown", protectedMarkdown);
-        for (var index = 0; index < directives.Count; index++)
-        {
-            var marker = $"VISUALDIRECTIVEPLACEHOLDER{index}END";
-            var directive = HtmlEncoder.Default.Encode(directives[index]);
-            html = html.Replace(
-                $"<p>{marker}</p>",
-                $"<div class=\"content-visual-directive\" contenteditable=\"false\" data-directive=\"{directive}\">{directive}</div>",
-                StringComparison.Ordinal);
+            return
+            [
+                new ContentNavigationLink { Text = "Back to articles", Href = "/articles" }
+            ];
         }
 
-        return Json(new { html });
+        var links = new List<ContentNavigationLink>();
+        if (item.HasTag(ContentTags.Project))
+        {
+            links.Add(new ContentNavigationLink { Text = "Back to projects", Href = "/resume#projects-section" });
+        }
+        if (item.HasTag(ContentTags.Experience))
+        {
+            links.Add(new ContentNavigationLink { Text = "Back to experience", Href = "/resume#experience-section" });
+        }
+        return links;
     }
-
-    [HttpPost("{slug}/move")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Move(
-        string slug,
-        string source,
-        string targetSource,
-        CancellationToken cancellationToken)
-    {
-        if (!IsDevelopmentPreview())
-        {
-            return NotFound();
-        }
-
-        try
-        {
-            await _authoringService.MoveAsync(source, targetSource, slug, cancellationToken);
-            return RedirectToAction(nameof(Index), new { source = targetSource });
-        }
-        catch (InvalidOperationException ex)
-        {
-            TempData["ContentAuthoringError"] = ex.Message;
-            return RedirectToAction(nameof(Index), new { source });
-        }
-    }
-
-    [HttpPost("push-all")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> PushAll(
-        string source,
-        string targetSource,
-        CancellationToken cancellationToken)
-    {
-        if (!IsDevelopmentPreview()) return NotFound();
-        try
-        {
-            var count = await _authoringService.MoveAllAsync(source, targetSource, cancellationToken);
-            TempData["ContentAuthoringSuccess"] = $"Pushed {count} content page(s) from {source} to {targetSource}.";
-            return RedirectToAction(nameof(Index), new { source = targetSource });
-        }
-        catch (InvalidOperationException ex)
-        {
-            TempData["ContentAuthoringError"] = ex.Message;
-            return RedirectToAction(nameof(Index), new { source });
-        }
-    }
-
-    private bool IsDevelopmentPreview() => HttpContext.GetSiteModeContext().IsDevelopmentPreview;
-
 }

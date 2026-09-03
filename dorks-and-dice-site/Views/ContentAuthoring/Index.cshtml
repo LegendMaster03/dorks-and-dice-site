@@ -1,156 +1,119 @@
-@model dorks_and_dice_site.Models.Content.ContentAuthoringIndexViewModel
-@using dorks_and_dice_site.Models.Content
+@model DevelopmentPreviewToolbarViewModel
 @{
-    ViewData["Title"] = "Content Authoring";
-    ViewData["Robots"] = "noindex, nofollow";
+    var host = Context.Request.Host.Host;
+    var isLoopbackLocalhost = string.Equals(host, "localhost", StringComparison.OrdinalIgnoreCase)
+        || string.Equals(host, "127.0.0.1", StringComparison.OrdinalIgnoreCase)
+        || string.Equals(host, "::1", StringComparison.OrdinalIgnoreCase);
+    var localSource = Model.ContentSources.FirstOrDefault(source =>
+        string.Equals(source.Key, "Local", StringComparison.OrdinalIgnoreCase));
+    var externalSource = Model.ContentSources.FirstOrDefault(source =>
+        string.Equals(source.Key, "External", StringComparison.OrdinalIgnoreCase));
+    var primarySources = new[] { localSource, externalSource }
+        .Where(source => source is not null)
+        .Where(source => isLoopbackLocalhost || !string.Equals(source!.Key, "Local", StringComparison.OrdinalIgnoreCase))
+        .Select(source => source!)
+        .ToList();
+    var additionalSources = Model.ContentSources
+        .Where(source => !string.Equals(source.Key, "Local", StringComparison.OrdinalIgnoreCase))
+        .Where(source => !string.Equals(source.Key, "External", StringComparison.OrdinalIgnoreCase))
+        .ToList();
 }
 
-<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
-    <div>
-        <p class="text-uppercase text-muted small mb-1">Development only</p>
-        <h1 class="h3 mb-0">Content Authoring</h1>
-    </div>
-    <div class="d-flex gap-2">
-        <a class="btn btn-outline-primary" href="/development/media?source=@Model.SelectedSourceKey">Media library</a>
-        <a class="btn btn-primary" href="/development/content/new?source=@Model.SelectedSourceKey">
-            @(Model.IsAuthoringWorkspace ? "New draft" : "New article")
-        </a>
-    </div>
-</div>
-
-<p class="text-muted">
-    @if (Model.IsAuthoringWorkspace)
-    {
-        <text>This is the Local authoring workspace. Draft, test, and revise content here, then promote it to Global for unlisted review or publication.</text>
-    }
-    else
-    {
-        <text>This is a Global or mode content database. Articles may be reviewed, edited, or created directly here.</text>
-    }
-</p>
-
-@if (TempData["ContentAuthoringSuccess"] is string successMessage)
-{
-    <div class="alert alert-success" role="status">@successMessage</div>
-}
-
-@if (TempData["ContentAuthoringError"] is string errorMessage)
-{
-    <div class="alert alert-warning" role="alert">@errorMessage</div>
-}
-
-<div class="row g-3 align-items-end mb-4">
-    <div class="col-sm-6 col-md-4">
-        <form method="get" action="/development/content" data-auto-submit="change">
-            <label class="form-label" for="source">Content database</label>
-            <select class="form-select" id="source" name="source">
-                @foreach (var source in Model.Sources)
-                {
-                    <option value="@source.Key" selected="@(string.Equals(source.Key, Model.SelectedSourceKey, StringComparison.OrdinalIgnoreCase))">
-                        @source.DisplayName
-                    </option>
-                }
-            </select>
-        </form>
-    </div>
-
-    @if (Model.IsAuthoringWorkspace && Model.MoveTargets.Count > 0)
-    {
-        <div class="col-sm-6 col-md-6">
-            <form class="d-flex gap-2 align-items-end" method="post" action="/development/content/push-all"
-                  onsubmit="return confirm('Push every Local article to Global and remove the Local copies?');">
-                @Html.AntiForgeryToken()
-                <input type="hidden" name="source" value="@Model.SelectedSourceKey" />
-                <div class="flex-grow-1">
-                    <label class="form-label" for="push-all-target">Global destination</label>
-                    <select class="form-select" id="push-all-target" name="targetSource">
-                        @foreach (var target in Model.MoveTargets)
-                        {
-                            <option value="@target.Key">@target.DisplayName</option>
-                        }
-                    </select>
-                </div>
-                <button class="btn btn-warning" type="submit">Push all</button>
+<div class="development-preview-toolbar border-bottom">
+    <div class="container-fluid py-2">
+        <div class="d-flex flex-wrap align-items-center gap-2">
+            <form class="d-flex flex-wrap align-items-center gap-2" method="post" action="/development-preview" data-auto-submit="change">
+                <input type="hidden" name="returnUrl" value="@Model.ReturnUrl" />
+                <span class="small fw-semibold text-uppercase">Trusted Preview</span>
+                <label class="small text-muted" for="siteMode">Mode</label>
+                <select class="form-select form-select-sm development-preview-select" id="siteMode" name="siteMode">
+                    <option value="dorks-and-dice" selected="@(Model.SelectedMode == SiteMode.DorksAndDice)">Dorks &amp; Dice</option>
+                    <option value="professional" selected="@(Model.SelectedMode == SiteMode.Professional)">Professional</option>
+                    <option value="development" selected="@(Model.SelectedMode == SiteMode.Development)">Development</option>
+                </select>
             </form>
-        </div>
-    }
-    else if (Model.IsAuthoringWorkspace)
-    {
-        <div class="col-sm-6 col-md-6">
-            <button class="btn btn-warning" type="button" disabled>Push all</button>
-            <div class="form-text">Configure a distinct Global database to enable promotion.</div>
-        </div>
-    }
 
-</div>
-
-<div class="table-responsive">
-    <table class="table align-middle">
-        <thead>
-            <tr>
-                <th scope="col">Title</th>
-                <th scope="col">Contexts</th>
-                <th scope="col">Slug</th>
-                <th scope="col">Revision</th>
-                <th scope="col">Listing</th>
-                <th scope="col">Workflow</th>
-                <th scope="col"></th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var item in Model.Items)
+            @if (Model.CanUseDeveloperTools)
             {
-                var contexts = item.Tags.Where(ContentTags.IsContext).ToList();
-                var detailHref = item.Tags.Contains(ContentTags.Article, StringComparer.OrdinalIgnoreCase)
-                    ? $"/articles/{item.Slug}"
-                    : $"/resume/{item.Slug}";
-                <tr>
-                    <th scope="row">@item.Title</th>
-                    <td>@string.Join(", ", contexts)</td>
-                    <td><code>@item.Slug</code></td>
-                    <td>@item.RevisionId</td>
-                    <td>@(item.IsListed ? "Listed" : "Unlisted")</td>
-                    <td>
-                        @if (Model.IsAuthoringWorkspace && Model.MoveTargets.Count > 0)
-                        {
-                            <div class="d-flex flex-column gap-2">
-                                @foreach (var target in Model.MoveTargets)
+                <div class="dropdown ms-auto">
+                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle"
+                            type="button"
+                            data-bs-toggle="dropdown"
+                            data-bs-auto-close="outside"
+                            aria-expanded="false">
+                        Content preview
+                    </button>
+                    <div class="dropdown-menu dropdown-menu-end p-3 development-preview-articles-menu">
+                        <form method="post" action="/development-preview" data-auto-submit="change">
+                            <input type="hidden" name="returnUrl" value="@Model.ReturnUrl" />
+                            <input type="hidden" name="articleSettings" value="true" />
+
+                            <div class="form-check form-switch mb-3">
+                                <input class="form-check-input"
+                                       type="checkbox"
+                                       role="switch"
+                                       id="includeUnlisted"
+                                       name="includeUnlisted"
+                                       value="true"
+                                       checked="@Model.IncludeUnlistedArticles">
+                                <label class="form-check-label small" for="includeUnlisted">Show unlisted articles</label>
+                            </div>
+
+                            <button class="btn btn-sm btn-outline-secondary w-100 disclosure-toggle"
+                                    type="button"
+                                    data-bs-toggle="collapse"
+                                    data-bs-target="#developmentContentSources"
+                                    aria-expanded="false"
+                                    aria-controls="developmentContentSources">
+                                Database sources
+                            </button>
+                            <div class="collapse mt-2" id="developmentContentSources">
+                                <p class="small text-muted mb-2">
+                                    Select which configured databases contribute to the trusted preview. This does not change the Editor authoring source.
+                                </p>
+                                @foreach (var source in primarySources)
                                 {
-                                    <form method="post" action="/development/content/@item.Slug/move">
-                                        @Html.AntiForgeryToken()
-                                        <input type="hidden" name="source" value="@Model.SelectedSourceKey" />
-                                        <input type="hidden" name="targetSource" value="@target.Key" />
-                                        <button class="btn btn-sm @(item.IsListed ? "btn-primary" : "btn-outline-primary")" type="submit">
-                                            @(item.IsListed ? $"Publish to {target.DisplayName}" : $"Send to {target.DisplayName} for review")
-                                        </button>
-                                    </form>
+                                    var sourceId = $"contentSource-{source.Key}";
+                                    <div class="form-check mb-2">
+                                        <input class="form-check-input"
+                                               type="checkbox"
+                                               id="@sourceId"
+                                               name="enabledContentSource"
+                                               value="@source.Key"
+                                               checked="@source.IsEnabled" />
+                                        <label class="form-check-label small" for="@sourceId">@source.DisplayName</label>
+                                    </div>
+                                }
+                                @if (additionalSources.Count > 0)
+                                {
+                                    <hr class="my-2" />
+                                    @foreach (var source in additionalSources)
+                                    {
+                                        var sourceId = $"contentSource-{source.Key}";
+                                        <div class="form-check mb-2">
+                                            <input class="form-check-input"
+                                                   type="checkbox"
+                                                   id="@sourceId"
+                                                   name="enabledContentSource"
+                                                   value="@source.Key"
+                                                   checked="@source.IsEnabled" />
+                                            <label class="form-check-label small" for="@sourceId">@source.DisplayName</label>
+                                        </div>
+                                    }
                                 }
                             </div>
-                        }
-                        else if (Model.IsAuthoringWorkspace)
-                        {
-                            <span class="text-muted small">No distinct Global destination configured</span>
-                        }
-                        else
-                        {
-                            <span class="badge text-bg-secondary">Global destination</span>
-                        }
-                    </td>
-                    <td class="text-end">
-                        @if (Model.IsAuthoringWorkspace)
-                        {
-                            <a class="btn btn-sm btn-outline-primary" href="/development/content/@item.Slug/edit?source=@Model.SelectedSourceKey">Edit draft</a>
-                        }
-                        else
-                        {
-                            <div class="d-flex gap-2 justify-content-end">
-                                <a class="btn btn-sm btn-outline-secondary" href="@detailHref">View</a>
-                                <a class="btn btn-sm btn-outline-primary" href="/development/content/@item.Slug/edit?source=@Model.SelectedSourceKey">Review / edit</a>
-                            </div>
-                        }
-                    </td>
-                </tr>
+                        </form>
+                    </div>
+                </div>
             }
-        </tbody>
-    </table>
+        </div>
+
+        @if (Model.RouteRestrictionMismatch)
+        {
+            <div class="development-preview-warning mt-2" role="alert">
+                This page is not available in the selected site mode. A live request would redirect to
+                <a asp-controller="Home" asp-action="Index">that mode's homepage</a>.
+            </div>
+        }
+    </div>
 </div>

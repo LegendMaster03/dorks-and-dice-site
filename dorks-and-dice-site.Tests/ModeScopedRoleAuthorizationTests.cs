@@ -13,27 +13,60 @@ public sealed class ModeScopedRoleAuthorizationTests
     [Fact]
     public async Task DorksAndDiceEditorIsAuthorizedOnlyInDorksAndDiceMode()
     {
-        var user = CreateUser($"{AccountRoleScopes.DorksAndDice}:{ScopedAccountRoles.Editor}");
+        var user = CreateScopedEditor($"{AccountRoleScopes.DorksAndDice}:{ScopedAccountRoles.Editor}");
 
         Assert.True(await IsAuthorizedAsync(user, SiteMode.DorksAndDice));
         Assert.False(await IsAuthorizedAsync(user, SiteMode.Professional));
+        Assert.False(await IsAuthorizedAsync(user, SiteMode.Development));
     }
 
     [Fact]
     public async Task ProfessionalEditorIsAuthorizedOnlyInProfessionalMode()
     {
-        var user = CreateUser($"{AccountRoleScopes.Professional}:{ScopedAccountRoles.Editor}");
+        var user = CreateScopedEditor($"{AccountRoleScopes.Professional}:{ScopedAccountRoles.Editor}");
 
         Assert.True(await IsAuthorizedAsync(user, SiteMode.Professional));
         Assert.False(await IsAuthorizedAsync(user, SiteMode.DorksAndDice));
+        Assert.False(await IsAuthorizedAsync(user, SiteMode.Development));
     }
 
-    private static ClaimsPrincipal CreateUser(string scopedRole)
+    [Fact]
+    public async Task AdminIsGlobalEditorAcrossSiteModes()
+    {
+        var user = CreateGlobalRoleUser(AccountRoles.Admin);
+
+        Assert.True(await IsAuthorizedAsync(user, SiteMode.DorksAndDice));
+        Assert.True(await IsAuthorizedAsync(user, SiteMode.Professional));
+        Assert.True(await IsAuthorizedAsync(user, SiteMode.Development));
+    }
+
+    [Fact]
+    public async Task DevRoleDoesNotImplyEditorAccess()
+    {
+        var user = CreateGlobalRoleUser(AccountRoles.Dev);
+
+        Assert.False(await IsAuthorizedAsync(user, SiteMode.DorksAndDice));
+        Assert.False(await IsAuthorizedAsync(user, SiteMode.Professional));
+        Assert.False(await IsAuthorizedAsync(user, SiteMode.Development));
+    }
+
+    private static ClaimsPrincipal CreateScopedEditor(string scopedRole)
     {
         var identity = new ClaimsIdentity(
         [
             new Claim(ClaimTypes.NameIdentifier, "test-user"),
             new Claim(AccountClaimTypes.ScopedRole, scopedRole)
+        ],
+        authenticationType: "test");
+        return new ClaimsPrincipal(identity);
+    }
+
+    private static ClaimsPrincipal CreateGlobalRoleUser(string role)
+    {
+        var identity = new ClaimsIdentity(
+        [
+            new Claim(ClaimTypes.NameIdentifier, "test-user"),
+            new Claim(ClaimTypes.Role, role)
         ],
         authenticationType: "test");
         return new ClaimsPrincipal(identity);

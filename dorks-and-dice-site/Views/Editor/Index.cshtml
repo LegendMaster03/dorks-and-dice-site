@@ -1,0 +1,92 @@
+@model dorks_and_dice_site.Models.Content.ContentAuthoringIndexViewModel
+@using dorks_and_dice_site.Models.Content
+@using dorks_and_dice_site.Models.Identity
+@using dorks_and_dice_site.Models.Site
+@using dorks_and_dice_site.Services.Identity
+@using dorks_and_dice_site.Services.Site
+@{
+    ViewData["Title"] = "Content Authoring";
+    ViewData["Robots"] = "noindex, nofollow";
+    var isGlobalEditor = User.IsInRole(AccountRoles.Admin);
+    var siteMode = Context.GetSiteModeContext().SiteMode;
+    var scopeLabel = isGlobalEditor
+        ? "All site scopes"
+        : siteMode switch
+        {
+            SiteMode.DorksAndDice => "Dorks & Dice",
+            SiteMode.Professional => "Professional",
+            _ => siteMode.ToString()
+        };
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+    <div>
+        <p class="text-uppercase text-muted small mb-1">Editor · @scopeLabel</p>
+        <h1 class="h3 mb-0">Content authoring</h1>
+    </div>
+    <div class="d-flex gap-2">
+        <a class="btn btn-outline-primary" href="/editor/media">Media library</a>
+        <a class="btn btn-primary" href="/editor/content/new">New content</a>
+    </div>
+</div>
+
+<p class="text-muted">
+    Create and revise content for the site scopes you are authorized to edit. Database placement and transfers are managed separately by Development.
+</p>
+
+@if (TempData["ContentAuthoringSuccess"] is string successMessage)
+{
+    <div class="alert alert-success" role="status">@successMessage</div>
+}
+
+@if (TempData["ContentAuthoringError"] is string errorMessage)
+{
+    <div class="alert alert-warning" role="alert">@errorMessage</div>
+}
+
+@if (Model.Items.Count == 0)
+{
+    <p class="text-muted">No editable content is available in this scope.</p>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table align-middle">
+            <thead>
+                <tr>
+                    <th scope="col">Title</th>
+                    <th scope="col">Contexts</th>
+                    <th scope="col">Slug</th>
+                    <th scope="col">Revision</th>
+                    <th scope="col">Listing</th>
+                    <th scope="col"></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Model.Items)
+                {
+                    var contexts = item.Tags.Where(ContentTags.IsContext).ToList();
+                    var detailHref = item.Tags.Contains(ContentTags.Article, StringComparer.OrdinalIgnoreCase)
+                        ? $"/articles/{item.Slug}"
+                        : item.Tags.Contains(ContentTags.Experience, StringComparer.OrdinalIgnoreCase)
+                            && !item.Tags.Contains(ContentTags.Project, StringComparer.OrdinalIgnoreCase)
+                                ? $"/resume/{item.Slug}?context=experience"
+                                : $"/resume/{item.Slug}";
+                    <tr>
+                        <th scope="row">@item.Title</th>
+                        <td>@string.Join(", ", contexts)</td>
+                        <td><code>@item.Slug</code></td>
+                        <td>@item.RevisionId</td>
+                        <td>@(item.IsListed ? "Listed" : "Unlisted")</td>
+                        <td class="text-end">
+                            <div class="d-flex gap-2 justify-content-end">
+                                <a class="btn btn-sm btn-outline-secondary" href="@detailHref">View</a>
+                                <a class="btn btn-sm btn-outline-primary" href="/editor/content/@item.Slug/edit">Edit</a>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
