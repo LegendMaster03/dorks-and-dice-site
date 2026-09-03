@@ -2,13 +2,13 @@ using dorks_and_dice_site.Models.Content;
 using dorks_and_dice_site.Services.Content;
 using dorks_and_dice_site.Services.Content.Storage;
 using dorks_and_dice_site.Services.Identity;
-using dorks_and_dice_site.Services.Site;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace dorks_and_dice_site.Controllers;
 
-[Authorize(Policy = AuthorizationPolicies.DevAccess)]
+[Authorize(Policy = AuthorizationPolicies.ModeEditor)]
+[Route("editor/content/{slug}/media")]
 [Route("development/content/{slug}/media")]
 [RequestSizeLimit(ContentInputPolicy.MaxAssetUploadBytes + 65_536)]
 public sealed class ContentMediaAuthoringController : Controller
@@ -27,16 +27,10 @@ public sealed class ContentMediaAuthoringController : Controller
     [HttpGet("")]
     public async Task<IActionResult> Index(
         string slug,
-        string? source,
         string? q,
         CancellationToken cancellationToken)
     {
-        if (!IsDevelopmentPreview())
-        {
-            return NotFound();
-        }
-
-        source ??= _sourceRegistry.AuthoringSourceKey;
+        var source = _sourceRegistry.AuthoringSourceKey;
         try
         {
             var localAssets = await _assets.GetForPageAsync(source, slug, cancellationToken);
@@ -48,8 +42,11 @@ public sealed class ContentMediaAuthoringController : Controller
             if (!string.IsNullOrWhiteSpace(q))
             {
                 foreach (var poolSource in poolSources)
+                {
                     pool.AddRange(await _assets.SearchSourceAsync(poolSource.Key, q, 24, cancellationToken));
+                }
             }
+
             var assets = localAssets.ToList();
             foreach (var dependencyKey in dependencyKeys.Where(key =>
                          localAssets.All(local => local.AssetKey != key)))
@@ -58,16 +55,21 @@ public sealed class ContentMediaAuthoringController : Controller
                 {
                     var globalAsset = await _assets.GetInfoFromSourceAsync(
                         globalSource.Key, dependencyKey, cancellationToken);
-                    if (globalAsset is null) continue;
+                    if (globalAsset is null)
+                    {
+                        continue;
+                    }
+
                     assets.Add(globalAsset);
                     break;
                 }
             }
+
             return View(new ContentAssetAuthoringViewModel
             {
                 SourceKey = source,
                 Slug = slug,
-                Assets = assets.ToList(),
+                Assets = assets,
                 AvailableAssets = pool
                     .Where(asset => !dependencyKeys.Contains(asset.AssetKey))
                     .Take(48)
@@ -85,16 +87,11 @@ public sealed class ContentMediaAuthoringController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Attach(
         string slug,
-        string source,
         string assetSource,
         string assetKey,
         CancellationToken cancellationToken)
     {
-        if (!IsDevelopmentPreview())
-        {
-            return NotFound();
-        }
-
+        var source = _sourceRegistry.AuthoringSourceKey;
         try
         {
             await _assets.AttachAsync(source, slug, assetSource, assetKey, cancellationToken);
@@ -105,14 +102,17 @@ public sealed class ContentMediaAuthoringController : Controller
             TempData["ContentMediaError"] = ex.Message;
         }
 
-        return RedirectToAction(nameof(Index), new { slug, source });
+        return RedirectToAction(nameof(Index), new { slug });
     }
 
     [HttpPost("detach")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Detach(string slug, string source, string assetKey, CancellationToken cancellationToken)
+    public async Task<IActionResult> Detach(
+        string slug,
+        string assetKey,
+        CancellationToken cancellationToken)
     {
-        if (!IsDevelopmentPreview()) return NotFound();
+        var source = _sourceRegistry.AuthoringSourceKey;
         try
         {
             await _assets.DetachAsync(source, slug, assetKey, cancellationToken);
@@ -122,7 +122,8 @@ public sealed class ContentMediaAuthoringController : Controller
         {
             TempData["ContentMediaError"] = ex.Message;
         }
-        return RedirectToAction(nameof(Index), new { slug, source });
+
+        return RedirectToAction(nameof(Index), new { slug });
     }
 
     [HttpGet("{assetKey}/preview")]
@@ -132,11 +133,6 @@ public sealed class ContentMediaAuthoringController : Controller
         string source,
         CancellationToken cancellationToken)
     {
-        if (!IsDevelopmentPreview())
-        {
-            return NotFound();
-        }
-
         try
         {
             var asset = await _assets.GetFromSourceAsync(source, assetKey, cancellationToken);
@@ -147,6 +143,4 @@ public sealed class ContentMediaAuthoringController : Controller
             return NotFound();
         }
     }
-
-    private bool IsDevelopmentPreview() => HttpContext.GetSiteModeContext().IsDevelopmentPreview;
 }
