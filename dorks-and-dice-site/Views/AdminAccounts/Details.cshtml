@@ -10,6 +10,7 @@
     var targetIsAdmin = Model.GlobalRoles.Contains(AccountRoles.Admin, StringComparer.Ordinal);
     var targetIsGlobalEditor = Model.GlobalRoles.Contains(AccountRoles.GlobalEditor, StringComparer.Ordinal);
     var currentUserIsOwner = User.IsInRole(AccountRoles.Owner);
+    var inheritedEditorRoles = AccountRoles.InheritedEditorRoles(AccountRoles.GlobalEditor);
     var inheritedEditorSource = targetIsOwner
         ? "Owner → Admin → Global Editor"
         : targetIsAdmin
@@ -84,8 +85,10 @@
                                 <li>
                                     @AccountRoles.GlobalEditor
                                     <ul>
-                                        <li>Dorks &amp; Dice @ScopedAccountRoles.Editor</li>
-                                        <li>Professional @ScopedAccountRoles.Editor</li>
+                                        @foreach (var editorRole in inheritedEditorRoles)
+                                        {
+                                            <li>@editorRole.RoleName</li>
+                                        }
                                     </ul>
                                 </li>
                             </ul>
@@ -141,8 +144,10 @@
                                 <li>
                                     @AccountRoles.GlobalEditor
                                     <ul>
-                                        <li>Dorks &amp; Dice @ScopedAccountRoles.Editor</li>
-                                        <li>Professional @ScopedAccountRoles.Editor</li>
+                                        @foreach (var editorRole in inheritedEditorRoles)
+                                        {
+                                            <li>@editorRole.RoleName</li>
+                                        }
                                     </ul>
                                 </li>
                             </ul>
@@ -153,8 +158,10 @@
                         <details class="small mt-2">
                             <summary>Inherited access</summary>
                             <ul class="mb-0 mt-1">
-                                <li>Dorks &amp; Dice @ScopedAccountRoles.Editor</li>
-                                <li>Professional @ScopedAccountRoles.Editor</li>
+                                @foreach (var editorRole in inheritedEditorRoles)
+                                {
+                                    <li>@editorRole.RoleName</li>
+                                }
                             </ul>
                         </details>
                     }
@@ -185,16 +192,16 @@
         <p class="text-body-secondary">Scoped roles apply only within the selected site mode.</p>
     }
 
-    @foreach (var scope in AccountRoleScopes.All)
+    @foreach (var editorRole in SiteModeEditorRoles.All)
     {
-        var scopeLabel = scope == AccountRoleScopes.DorksAndDice ? "Dorks & Dice" : "Professional";
+        var scope = editorRole.Scope;
         var enabled = Model.ScopedRoles.TryGetValue(scope, out var roles)
             && roles.Contains(ScopedAccountRoles.Editor, StringComparer.Ordinal);
         var showScopedRole = inheritedEditorSource is null || enabled;
 
         if (showScopedRole)
         {
-            <h3 class="h6 mt-2">@scopeLabel</h3>
+            <h3 class="h6 mt-2">@editorRole.DisplayName</h3>
             <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 border-top py-2">
                 <div>
                     <strong>@ScopedAccountRoles.Editor</strong>

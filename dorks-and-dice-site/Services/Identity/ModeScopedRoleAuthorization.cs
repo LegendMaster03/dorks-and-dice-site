@@ -1,5 +1,4 @@
 using dorks_and_dice_site.Models.Identity;
-using dorks_and_dice_site.Models.Site;
 using dorks_and_dice_site.Services.Site;
 using Microsoft.AspNetCore.Authorization;
 
@@ -26,21 +25,17 @@ public sealed class ModeScopedRoleAuthorizationHandler : AuthorizationHandler<Mo
             return Task.CompletedTask;
         }
 
-        if (string.Equals(requirement.Role, ScopedAccountRoles.Editor, StringComparison.Ordinal)
-            && context.User.IsInRole(AccountRoles.Admin))
+        var siteMode = httpContext.GetSiteModeContext().SiteMode;
+        if (!AccountRoleScopes.TryGetScope(siteMode, out var scope) || scope is null)
         {
-            context.Succeed(requirement);
             return Task.CompletedTask;
         }
 
-        var scope = httpContext.GetSiteModeContext().SiteMode switch
+        if (string.Equals(requirement.Role, ScopedAccountRoles.Editor, StringComparison.Ordinal)
+            && (context.User.IsInRole(AccountRoles.GlobalEditor)
+                || context.User.IsInRole(AccountRoles.Admin)))
         {
-            SiteMode.DorksAndDice => AccountRoleScopes.DorksAndDice,
-            SiteMode.Professional => AccountRoleScopes.Professional,
-            _ => null
-        };
-        if (scope is null)
-        {
+            context.Succeed(requirement);
             return Task.CompletedTask;
         }
 

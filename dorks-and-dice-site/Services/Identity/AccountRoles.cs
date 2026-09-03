@@ -29,4 +29,9 @@ public static class AccountRoles
         Admin => [GlobalEditor],
         _ => []
     };
+
+    public static IReadOnlyList<ScopedEditorRoleDefinition> InheritedEditorRoles(string role) =>
+        string.Equals(role, GlobalEditor, StringComparison.Ordinal)
+            ? SiteModeEditorRoles.All
+            : [];
 }

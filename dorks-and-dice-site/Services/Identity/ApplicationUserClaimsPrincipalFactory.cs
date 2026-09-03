@@ -37,14 +37,14 @@ public sealed class ApplicationUserClaimsPrincipalFactory
             }
         }
 
-        // Global Editor is an explicit global content-authoring role. Represent its
-        // inherited editor authority as scoped Editor claims so all existing editor
-        // authorization paths continue to respect the selected site mode.
+        // Global Editor inherits every generated site-mode Editor role. The catalog is
+        // derived from SiteMode, so adding a new content mode automatically adds its
+        // scoped Editor claim without another Identity-specific registration step.
         if (await _userManager.IsInRoleAsync(user, AccountRoles.GlobalEditor))
         {
-            foreach (var scope in AccountRoleScopes.All)
+            foreach (var editorRole in AccountRoles.InheritedEditorRoles(AccountRoles.GlobalEditor))
             {
-                var value = $"{scope}:{ScopedAccountRoles.Editor}";
+                var value = $"{editorRole.Scope}:{ScopedAccountRoles.Editor}";
                 if (!identity.HasClaim(AccountClaimTypes.ScopedRole, value))
                 {
                     identity.AddClaim(new Claim(AccountClaimTypes.ScopedRole, value));

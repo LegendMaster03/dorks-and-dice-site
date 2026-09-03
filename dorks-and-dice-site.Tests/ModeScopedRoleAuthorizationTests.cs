@@ -28,33 +28,57 @@ public sealed class ModeScopedRoleAuthorizationTests
         Assert.False(await IsAuthorizedAsync(user, SiteMode.DorksAndDice));
     }
 
-    [Theory]
-    [InlineData(SiteMode.DorksAndDice)]
-    [InlineData(SiteMode.Professional)]
-    [InlineData(SiteMode.Development)]
-    public async Task AdminSatisfiesEditorRequirementGlobally(SiteMode siteMode)
+    [Fact]
+    public async Task AdminSatisfiesEveryGeneratedEditorModeButNotDevelopment()
     {
-        var identity = new ClaimsIdentity(
-        [
-            new Claim(ClaimTypes.NameIdentifier, "admin-user"),
-            new Claim(ClaimTypes.Role, AccountRoles.Admin)
-        ],
-        authenticationType: "test");
+        var user = CreateGlobalRoleUser(AccountRoles.Admin);
 
-        Assert.True(await IsAuthorizedAsync(new ClaimsPrincipal(identity), siteMode));
+        foreach (var editorRole in SiteModeEditorRoles.All)
+        {
+            Assert.True(await IsAuthorizedAsync(user, editorRole.SiteMode));
+        }
+
+        Assert.False(await IsAuthorizedAsync(user, SiteMode.Development));
+    }
+
+    [Fact]
+    public async Task GlobalEditorSatisfiesEveryGeneratedEditorModeButNotDevelopment()
+    {
+        var user = CreateGlobalRoleUser(AccountRoles.GlobalEditor);
+
+        foreach (var editorRole in SiteModeEditorRoles.All)
+        {
+            Assert.True(await IsAuthorizedAsync(user, editorRole.SiteMode));
+        }
+
+        Assert.False(await IsAuthorizedAsync(user, SiteMode.Development));
+    }
+
+    [Fact]
+    public void EveryContentSiteModeAutomaticallyDefinesAChildEditorRole()
+    {
+        var expectedModes = Enum.GetValues<SiteMode>()
+            .Where(SiteModeValues.IsEditorMode)
+            .ToArray();
+
+        Assert.Equal(expectedModes, SiteModeEditorRoles.All.Select(role => role.SiteMode));
+        Assert.Equal(
+            SiteModeValues.DorksAndDiceModeValue,
+            SiteModeEditorRoles.All.Single(role => role.SiteMode == SiteMode.DorksAndDice).Scope);
+        Assert.Equal(
+            SiteModeValues.ProfessionalModeValue,
+            SiteModeEditorRoles.All.Single(role => role.SiteMode == SiteMode.Professional).Scope);
+
+        var inherited = AccountRoles.InheritedEditorRoles(AccountRoles.GlobalEditor);
+        Assert.Equal(SiteModeEditorRoles.All, inherited);
     }
 
     [Fact]
     public async Task DevRoleDoesNotSatisfyEditorRequirement()
     {
-        var identity = new ClaimsIdentity(
-        [
-            new Claim(ClaimTypes.NameIdentifier, "dev-user"),
-            new Claim(ClaimTypes.Role, AccountRoles.Dev)
-        ],
-        authenticationType: "test");
+        var user = CreateGlobalRoleUser(AccountRoles.Dev);
 
-        Assert.False(await IsAuthorizedAsync(new ClaimsPrincipal(identity), SiteMode.DorksAndDice));
+        Assert.False(await IsAuthorizedAsync(user, SiteMode.DorksAndDice));
     }
 
     private static ClaimsPrincipal CreateScopedEditor(string scopedRole)
@@ -63,6 +87,17 @@ public sealed class ModeScopedRoleAuthorizationTests
         [
             new Claim(ClaimTypes.NameIdentifier, "test-user"),
             new Claim(AccountClaimTypes.ScopedRole, scopedRole)
+        ],
+        authenticationType: "test");
+        return new ClaimsPrincipal(identity);
+    }
+
+    private static ClaimsPrincipal CreateGlobalRoleUser(string role)
+    {
+        var identity = new ClaimsIdentity(
+        [
+            new Claim(ClaimTypes.NameIdentifier, "global-role-user"),
+            new Claim(ClaimTypes.Role, role)
         ],
         authenticationType: "test");
         return new ClaimsPrincipal(identity);
