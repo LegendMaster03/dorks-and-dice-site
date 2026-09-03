@@ -15,3 +15,4 @@ obj/
 # Local development databases
 dorks-and-dice-site/Content/identity-development.db*
 dorks-and-dice-site/Content/content.db
+dorks-and-dice-site/Content/content.db
