@@ -365,9 +365,9 @@ public sealed class SiteModeIntegrationTests
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Contains("This content is not available in the selected site mode.", html);
         Assert.Contains("Freeing the Bees: Solving ConsoleVariations", html);
-        Assert.Contains("Development preview", html);
-        Assert.Contains("Edit content", html);
-        Assert.Contains("/development/content/freeing-the-bees-consolevariations-puzzle/edit?source=", html);
+        Assert.Contains("Trusted Preview", html);
+        Assert.DoesNotContain("Edit content", html);
+        Assert.DoesNotContain("/editor/content/", html);
     }
 
     [Fact]
