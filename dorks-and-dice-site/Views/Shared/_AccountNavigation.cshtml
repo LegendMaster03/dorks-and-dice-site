@@ -1,17 +1,38 @@
 @using dorks_and_dice_site.Models.Identity
+@using dorks_and_dice_site.Models.Site
 @using dorks_and_dice_site.Services.Identity
 @using dorks_and_dice_site.Services.Site
 @{
     var displayName = User.FindFirst(AccountClaimTypes.DisplayName)?.Value;
     var returnUrl = $"{Context.Request.Path}{Context.Request.QueryString}";
     var siteModeContext = Context.GetSiteModeContext();
-    var showAnonymousLogin = siteModeContext.SiteMode != dorks_and_dice_site.Models.Site.SiteMode.Professional;
+    var showAnonymousLogin = siteModeContext.SiteMode != SiteMode.Professional;
     var hasTrustedAccess = siteModeContext.HasTrustedAccess;
-    var hasScopedEditorRole = User.Claims.Any(claim =>
-        string.Equals(claim.Type, AccountClaimTypes.ScopedRole, StringComparison.Ordinal)
-        && claim.Value.EndsWith($":{ScopedAccountRoles.Editor}", StringComparison.Ordinal));
-    var canUseEditor = hasScopedEditorRole || User.IsInRole(AccountRoles.Admin);
-    var canAdminister = hasTrustedAccess && User.IsInRole(AccountRoles.Admin);
+    var isAdmin = User.IsInRole(AccountRoles.Admin);
+    var editorScopes = User.Claims
+        .Where(claim => string.Equals(claim.Type, AccountClaimTypes.ScopedRole, StringComparison.Ordinal))
+        .Select(claim => claim.Value)
+        .Where(value => value.EndsWith($":{ScopedAccountRoles.Editor}", StringComparison.Ordinal))
+        .Select(value => value[..value.LastIndexOf(':')])
+        .Distinct(StringComparer.Ordinal)
+        .ToList();
+    var canUseEditor = editorScopes.Count > 0 || isAdmin;
+    var singleEditorScope = !isAdmin && editorScopes.Count == 1 ? editorScopes[0] : null;
+    var singleEditorModeValue = singleEditorScope switch
+    {
+        AccountRoleScopes.DorksAndDice => SiteModeValues.DorksAndDiceModeValue,
+        AccountRoleScopes.Professional => SiteModeValues.ProfessionalModeValue,
+        _ => null
+    };
+    var singleEditorHref = singleEditorScope switch
+    {
+        AccountRoleScopes.DorksAndDice when siteModeContext.SiteMode == SiteMode.DorksAndDice => "/editor/content",
+        AccountRoleScopes.DorksAndDice => $"https://{SiteModeOptions.CanonicalDorksAndDiceHost}/editor/content",
+        AccountRoleScopes.Professional when siteModeContext.SiteMode == SiteMode.Professional => "/editor/content",
+        AccountRoleScopes.Professional => $"https://{SiteModeOptions.CanonicalProfessionalHost}/editor/content",
+        _ => "/editor"
+    };
+    var canAdminister = hasTrustedAccess && isAdmin;
     var canUseDevelopmentTools = hasTrustedAccess && User.IsInRole(AccountRoles.Dev);
 }
 @if (User.Identity?.IsAuthenticated == true)
@@ -30,7 +51,18 @@
             @if (canUseEditor)
             {
                 <li>
-                    <a class="dropdown-item" href="/editor">Editor</a>
+                    @if (hasTrustedAccess && singleEditorModeValue is not null)
+                    {
+                        <form method="post" action="/development-preview">
+                            <input type="hidden" name="siteMode" value="@singleEditorModeValue" />
+                            <input type="hidden" name="returnUrl" value="/editor/content" />
+                            <button type="submit" class="dropdown-item">Editor</button>
+                        </form>
+                    }
+                    else
+                    {
+                        <a class="dropdown-item" href="@(singleEditorScope is null ? "/editor" : singleEditorHref)">Editor</a>
+                    }
                 </li>
             }
             @if (canAdminister)
