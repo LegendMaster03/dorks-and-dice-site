@@ -10,7 +10,6 @@ namespace dorks_and_dice_site.Controllers;
 
 [Authorize(Policy = AuthorizationPolicies.ModeEditor)]
 [Route("editor/content")]
-[Route("development/content")]
 [RequestSizeLimit(ContentInputPolicy.MaxAuthoringRequestBytes)]
 public sealed class ContentAuthoringController : Controller
 {
