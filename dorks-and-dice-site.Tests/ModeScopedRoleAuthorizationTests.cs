@@ -29,7 +29,7 @@ public sealed class ModeScopedRoleAuthorizationTests
     }
 
     [Fact]
-    public async Task AdminSatisfiesEveryGeneratedEditorModeButNotDevelopment()
+    public async Task AdminInheritsGlobalEditorAuthorizationFromHierarchy()
     {
         var user = CreateGlobalRoleUser(AccountRoles.Admin);
 
@@ -38,11 +38,11 @@ public sealed class ModeScopedRoleAuthorizationTests
             Assert.True(await IsAuthorizedAsync(user, editorRole.SiteMode));
         }
 
-        Assert.False(await IsAuthorizedAsync(user, SiteMode.Development));
+        Assert.True(await IsAuthorizedAsync(user, SiteMode.Development));
     }
 
     [Fact]
-    public async Task GlobalEditorSatisfiesEveryGeneratedEditorModeButNotDevelopment()
+    public async Task GlobalEditorAuthorizesSharedEditorRoutesInEveryPreviewMode()
     {
         var user = CreateGlobalRoleUser(AccountRoles.GlobalEditor);
 
@@ -51,7 +51,7 @@ public sealed class ModeScopedRoleAuthorizationTests
             Assert.True(await IsAuthorizedAsync(user, editorRole.SiteMode));
         }
 
-        Assert.False(await IsAuthorizedAsync(user, SiteMode.Development));
+        Assert.True(await IsAuthorizedAsync(user, SiteMode.Development));
     }
 
     [Fact]
@@ -62,15 +62,27 @@ public sealed class ModeScopedRoleAuthorizationTests
             .ToArray();
 
         Assert.Equal(expectedModes, SiteModeEditorRoles.All.Select(role => role.SiteMode));
+        var globalEditor = AccountRoleHierarchy.GetGlobalRole(AccountRoles.GlobalEditor);
         Assert.Equal(
-            SiteModeValues.DorksAndDiceModeValue,
-            SiteModeEditorRoles.All.Single(role => role.SiteMode == SiteMode.DorksAndDice).Scope);
-        Assert.Equal(
-            SiteModeValues.ProfessionalModeValue,
-            SiteModeEditorRoles.All.Single(role => role.SiteMode == SiteMode.Professional).Scope);
+            SiteModeEditorRoles.All.Select(role => role.RoleName),
+            globalEditor.Children.Select(child => child.DisplayName));
+    }
 
-        var inherited = AccountRoles.InheritedEditorRoles(AccountRoles.GlobalEditor);
-        Assert.Equal(SiteModeEditorRoles.All, inherited);
+    [Fact]
+    public void RoleHierarchyIsRecursiveAndIsTheInheritanceSourceOfTruth()
+    {
+        var owner = AccountRoleHierarchy.GetGlobalRole(AccountRoles.Owner);
+        var admin = owner.Children.Single(child => child.GlobalRole == AccountRoles.Admin);
+        var dev = owner.Children.Single(child => child.GlobalRole == AccountRoles.Dev);
+        var globalEditor = admin.Children.Single(child => child.GlobalRole == AccountRoles.GlobalEditor);
+
+        Assert.Empty(dev.Children);
+        Assert.Equal(
+            SiteModeEditorRoles.All.Select(role => role.RoleName),
+            globalEditor.Children.Select(child => child.DisplayName));
+        Assert.Contains(AccountRoles.Admin, AccountRoleHierarchy.GetInheritedGlobalRoles(AccountRoles.Owner));
+        Assert.Contains(AccountRoles.GlobalEditor, AccountRoleHierarchy.GetInheritedGlobalRoles(AccountRoles.Owner));
+        Assert.Contains(AccountRoles.Dev, AccountRoleHierarchy.GetInheritedGlobalRoles(AccountRoles.Owner));
     }
 
     [Fact]

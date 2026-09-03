@@ -1,0 +1,21 @@
+@using dorks_and_dice_site.Services.Identity
+@model AccountRoleInheritanceNode
+
+<li class="mt-1">
+    @if (Model.Children.Count > 0)
+    {
+        <details aria-label="Inherited access: @Model.DisplayName">
+            <summary>@Model.DisplayName</summary>
+            <ul class="mb-0 mt-1">
+                @foreach (var child in Model.Children)
+                {
+                    <partial name="_RoleInheritanceNode" model="child" />
+                }
+            </ul>
+        </details>
+    }
+    else
+    {
+        <span>@Model.DisplayName</span>
+    }
+</li>

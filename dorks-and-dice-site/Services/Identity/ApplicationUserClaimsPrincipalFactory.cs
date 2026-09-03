@@ -24,27 +24,37 @@ public sealed class ApplicationUserClaimsPrincipalFactory
         var identity = await base.GenerateClaimsAsync(user);
         identity.AddClaim(new Claim(AccountClaimTypes.DisplayName, user.DisplayName));
 
-        if (await _userManager.IsInRoleAsync(user, AccountRoles.Owner))
-        {
-            if (!identity.HasClaim(identity.RoleClaimType, AccountRoles.Admin))
-            {
-                identity.AddClaim(new Claim(identity.RoleClaimType, AccountRoles.Admin));
-            }
+        var directRoles = await _userManager.GetRolesAsync(user);
 
-            if (!identity.HasClaim(identity.RoleClaimType, AccountRoles.Dev))
+        // Materialize only inherited Trusted Access roles that existing ASP.NET
+        // authorization policies require as role claims. Non-trusted descendants are
+        // resolved from AccountRoleHierarchy at authorization time so a trusted parent
+        // can not leak editor authority onto an untrusted request.
+        foreach (var directRole in directRoles)
+        {
+            foreach (var inheritedRole in AccountRoleHierarchy.GetInheritedGlobalRoles(directRole))
             {
-                identity.AddClaim(new Claim(identity.RoleClaimType, AccountRoles.Dev));
+                if (AccountRoles.TrustedPrivileged.Contains(inheritedRole, StringComparer.Ordinal)
+                    && !identity.HasClaim(identity.RoleClaimType, inheritedRole))
+                {
+                    identity.AddClaim(new Claim(identity.RoleClaimType, inheritedRole));
+                }
             }
         }
 
-        // Global Editor inherits every generated site-mode Editor role. The catalog is
-        // derived from SiteMode, so adding a new content mode automatically adds its
-        // scoped Editor claim without another Identity-specific registration step.
-        if (await _userManager.IsInRoleAsync(user, AccountRoles.GlobalEditor))
+        // Directly assigned non-trusted global roles may safely materialize their
+        // inherited scoped capabilities. The hierarchy is the source of truth.
+        foreach (var directRole in directRoles.Where(role =>
+                     !AccountRoles.TrustedPrivileged.Contains(role, StringComparer.Ordinal)))
         {
-            foreach (var editorRole in AccountRoles.InheritedEditorRoles(AccountRoles.GlobalEditor))
+            foreach (var inheritedRole in AccountRoleHierarchy.GetInheritedScopedRoles(directRole))
             {
-                var value = $"{editorRole.Scope}:{ScopedAccountRoles.Editor}";
+                if (inheritedRole.Scope is null || inheritedRole.ScopedRole is null)
+                {
+                    continue;
+                }
+
+                var value = $"{inheritedRole.Scope}:{inheritedRole.ScopedRole}";
                 if (!identity.HasClaim(AccountClaimTypes.ScopedRole, value))
                 {
                     identity.AddClaim(new Claim(AccountClaimTypes.ScopedRole, value));
