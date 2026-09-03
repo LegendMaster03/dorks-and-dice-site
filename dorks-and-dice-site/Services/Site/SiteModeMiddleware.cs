@@ -1,3 +1,4 @@
+using dorks_and_dice_site.Models.Identity;
 using dorks_and_dice_site.Models.Site;
 using dorks_and_dice_site.Services.Identity;
 
@@ -24,9 +25,10 @@ public sealed class SiteModeMiddleware
             && context.User.Identity?.IsAuthenticated == true
             && context.User.IsInRole(AccountRoles.Dev);
         var previewModeValue = GetDevelopmentPreviewModeValue(context);
-        var includeUnlistedArticles = GetIncludeUnlistedArticles(context, hasDeveloperAccess);
-        var sourceSelection = GetEnabledContentSources(context, hasDeveloperAccess);
         var siteMode = ResolveSiteMode(isProfessionalDomain, isDorksAndDiceDomain, hasTrustedAccess, previewModeValue);
+        var hasEditorPreviewAccess = hasTrustedAccess && CanPreviewUnlisted(context.User, siteMode);
+        var includeUnlistedArticles = GetIncludeUnlistedArticles(context, hasEditorPreviewAccess);
+        var sourceSelection = GetEnabledContentSources(context, hasDeveloperAccess);
         var isAllowedInMode = SiteRouteOwnership.IsAllowedInMode(context.Request.Path, siteMode);
 
         context.Items[SiteModeContext.HttpContextItemKey] = new SiteModeContext
@@ -92,9 +94,9 @@ public sealed class SiteModeMiddleware
         return previewModeValue;
     }
 
-    private static bool GetIncludeUnlistedArticles(HttpContext context, bool hasDeveloperAccess)
+    private static bool GetIncludeUnlistedArticles(HttpContext context, bool hasEditorPreviewAccess)
     {
-        return hasDeveloperAccess
+        return hasEditorPreviewAccess
             && string.Equals(context.Request.Cookies[SiteModeValues.IncludeUnlistedCookie], "true", StringComparison.OrdinalIgnoreCase);
     }
 
@@ -123,6 +125,34 @@ public sealed class SiteModeMiddleware
             new HashSet<string>(
                 rawValue.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),
                 StringComparer.OrdinalIgnoreCase));
+    }
+
+    private static bool CanPreviewUnlisted(System.Security.Claims.ClaimsPrincipal user, SiteMode siteMode)
+    {
+        if (user.Identity?.IsAuthenticated != true)
+        {
+            return false;
+        }
+
+        if (user.IsInRole(AccountRoles.Admin))
+        {
+            return siteMode is SiteMode.DorksAndDice or SiteMode.Professional;
+        }
+
+        var scope = siteMode switch
+        {
+            SiteMode.DorksAndDice => AccountRoleScopes.DorksAndDice,
+            SiteMode.Professional => AccountRoleScopes.Professional,
+            _ => null
+        };
+        if (scope is null)
+        {
+            return false;
+        }
+
+        return user.HasClaim(
+            AccountClaimTypes.ScopedRole,
+            $"{scope}:{ScopedAccountRoles.Editor}");
     }
 
     private static bool IsKnownDevelopmentPreviewModeValue(string? value)

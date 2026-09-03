@@ -28,7 +28,7 @@
         <tbody>
         @foreach (var account in Model.Accounts)
         {
-            var isLocked = account.LockoutEnd is not null && account.LockoutEnd > DateTimeOffset.UtcNow;
+            var isDisabled = account.LockoutEnd is not null && account.LockoutEnd > DateTimeOffset.UtcNow;
             <tr>
                 <td>
                     <div>@account.DisplayName</div>
@@ -41,9 +41,9 @@
                     {
                         <span class="badge text-bg-secondary">Deleted</span>
                     }
-                    else if (isLocked)
+                    else if (isDisabled)
                     {
-                        <span class="badge text-bg-danger">Locked</span>
+                        <span class="badge text-bg-danger">Disabled</span>
                     }
                     else if (!account.EmailConfirmed)
                     {

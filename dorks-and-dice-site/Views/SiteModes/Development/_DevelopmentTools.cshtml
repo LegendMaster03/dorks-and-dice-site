@@ -1,3 +1,6 @@
+@using dorks_and_dice_site.Models.Identity
+@using dorks_and_dice_site.Models.Site
+@using dorks_and_dice_site.Services.Identity
 @model DevelopmentPreviewToolbarViewModel
 @{
     var host = Context.Request.Host.Host;
@@ -17,6 +20,19 @@
         .Where(source => !string.Equals(source.Key, "Local", StringComparison.OrdinalIgnoreCase))
         .Where(source => !string.Equals(source.Key, "External", StringComparison.OrdinalIgnoreCase))
         .ToList();
+    var editorScope = Model.SelectedMode switch
+    {
+        SiteMode.DorksAndDice => AccountRoleScopes.DorksAndDice,
+        SiteMode.Professional => AccountRoleScopes.Professional,
+        _ => null
+    };
+    var canPreviewUnlisted = User.Identity?.IsAuthenticated == true
+        && editorScope is not null
+        && (User.IsInRole(AccountRoles.Admin)
+            || User.HasClaim(
+                AccountClaimTypes.ScopedRole,
+                $"{editorScope}:{ScopedAccountRoles.Editor}"));
+    var showPreviewSettings = canPreviewUnlisted || Model.CanUseDeveloperTools;
 }
 
 <div class="development-preview-toolbar border-bottom">
@@ -33,7 +49,7 @@
                 </select>
             </form>
 
-            @if (Model.CanUseDeveloperTools)
+            @if (showPreviewSettings)
             {
                 <div class="dropdown ms-auto flex-shrink-0">
                     <button class="btn btn-sm btn-outline-secondary dropdown-toggle"
@@ -44,50 +60,44 @@
                         Preview settings
                     </button>
                     <div class="dropdown-menu dropdown-menu-end p-3 development-preview-articles-menu">
-                        <form method="post" action="/development-preview" data-auto-submit="change">
-                            <input type="hidden" name="returnUrl" value="@Model.ReturnUrl" />
-                            <input type="hidden" name="articleSettings" value="true" />
+                        @if (canPreviewUnlisted)
+                        {
+                            <form method="post" action="/development-preview" data-auto-submit="change" class="mb-3">
+                                <input type="hidden" name="returnUrl" value="@Model.ReturnUrl" />
+                                <input type="hidden" name="editorPreviewSettings" value="true" />
 
-                            <div class="form-check form-switch mb-3">
-                                <input class="form-check-input"
-                                       type="checkbox"
-                                       role="switch"
-                                       id="includeUnlisted"
-                                       name="includeUnlisted"
-                                       value="true"
-                                       checked="@Model.IncludeUnlistedArticles">
-                                <label class="form-check-label small" for="includeUnlisted">Show unlisted articles</label>
-                            </div>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input"
+                                           type="checkbox"
+                                           role="switch"
+                                           id="includeUnlisted"
+                                           name="includeUnlisted"
+                                           value="true"
+                                           checked="@Model.IncludeUnlistedArticles">
+                                    <label class="form-check-label small" for="includeUnlisted">Show unlisted articles</label>
+                                </div>
+                            </form>
+                        }
 
-                            <button class="btn btn-sm btn-outline-secondary w-100 disclosure-toggle"
-                                    type="button"
-                                    data-bs-toggle="collapse"
-                                    data-bs-target="#developmentContentSources"
-                                    aria-expanded="false"
-                                    aria-controls="developmentContentSources">
-                                Database sources
-                            </button>
-                            <div class="collapse mt-2" id="developmentContentSources">
-                                <p class="small text-muted mb-2">
-                                    External is the production source boundary. Local is exposed here for localhost authoring and testing.
-                                </p>
-                                @foreach (var source in primarySources)
-                                {
-                                    var sourceId = $"contentSource-{source.Key}";
-                                    <div class="form-check mb-2">
-                                        <input class="form-check-input"
-                                               type="checkbox"
-                                               id="@sourceId"
-                                               name="enabledContentSource"
-                                               value="@source.Key"
-                                               checked="@source.IsEnabled" />
-                                        <label class="form-check-label small" for="@sourceId">@source.DisplayName</label>
-                                    </div>
-                                }
-                                @if (additionalSources.Count > 0)
-                                {
-                                    <hr class="my-2" />
-                                    @foreach (var source in additionalSources)
+                        @if (Model.CanUseDeveloperTools)
+                        {
+                            <form method="post" action="/development-preview" data-auto-submit="change">
+                                <input type="hidden" name="returnUrl" value="@Model.ReturnUrl" />
+                                <input type="hidden" name="developerPreviewSettings" value="true" />
+
+                                <button class="btn btn-sm btn-outline-secondary w-100 disclosure-toggle"
+                                        type="button"
+                                        data-bs-toggle="collapse"
+                                        data-bs-target="#developmentContentSources"
+                                        aria-expanded="false"
+                                        aria-controls="developmentContentSources">
+                                    Database sources
+                                </button>
+                                <div class="collapse mt-2" id="developmentContentSources">
+                                    <p class="small text-muted mb-2">
+                                        External is the production source boundary. Local is exposed here for localhost authoring and testing.
+                                    </p>
+                                    @foreach (var source in primarySources)
                                     {
                                         var sourceId = $"contentSource-{source.Key}";
                                         <div class="form-check mb-2">
@@ -100,9 +110,26 @@
                                             <label class="form-check-label small" for="@sourceId">@source.DisplayName</label>
                                         </div>
                                     }
-                                }
-                            </div>
-                        </form>
+                                    @if (additionalSources.Count > 0)
+                                    {
+                                        <hr class="my-2" />
+                                        @foreach (var source in additionalSources)
+                                        {
+                                            var sourceId = $"contentSource-{source.Key}";
+                                            <div class="form-check mb-2">
+                                                <input class="form-check-input"
+                                                       type="checkbox"
+                                                       id="@sourceId"
+                                                       name="enabledContentSource"
+                                                       value="@source.Key"
+                                                       checked="@source.IsEnabled" />
+                                                <label class="form-check-label small" for="@sourceId">@source.DisplayName</label>
+                                            </div>
+                                        }
+                                    }
+                                </div>
+                            </form>
+                        }
                     </div>
                 </div>
             }

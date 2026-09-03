@@ -170,9 +170,9 @@ public sealed class AdminAccountsController : Controller
         return RedirectToAction(nameof(Details), new { userId });
     }
 
-    [HttpPost("{userId:guid}/lock")]
+    [HttpPost("{userId:guid}/disable")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Lock(Guid userId)
+    public async Task<IActionResult> Disable(Guid userId)
     {
         var user = await FindMutableUserAsync(userId);
         if (user is null)
@@ -182,35 +182,35 @@ public sealed class AdminAccountsController : Controller
 
         if (IsCurrentUser(user))
         {
-            TempData["AdminAccountError"] = "The current administrator can not lock its own account.";
+            TempData["AdminAccountError"] = "The current administrator can not disable its own account.";
             return RedirectToAction(nameof(Details), new { userId });
         }
 
         if (await _userManager.IsInRoleAsync(user, AccountRoles.Admin)
             && await IsLastActiveAdministratorAsync(user))
         {
-            TempData["AdminAccountError"] = "The final active administrator account can not be locked.";
+            TempData["AdminAccountError"] = "The final active administrator account can not be disabled.";
             return RedirectToAction(nameof(Details), new { userId });
         }
 
         var enableResult = await _userManager.SetLockoutEnabledAsync(user, true);
-        var lockResult = enableResult.Succeeded
+        var disableResult = enableResult.Succeeded
             ? await _userManager.SetLockoutEndDateAsync(user, DateTimeOffset.MaxValue)
             : enableResult;
-        if (!lockResult.Succeeded)
+        if (!disableResult.Succeeded)
         {
-            TempData["AdminAccountError"] = string.Join(" ", lockResult.Errors.Select(error => error.Description));
+            TempData["AdminAccountError"] = string.Join(" ", disableResult.Errors.Select(error => error.Description));
             return RedirectToAction(nameof(Details), new { userId });
         }
 
         await _userManager.UpdateSecurityStampAsync(user);
-        TempData["AdminAccountMessage"] = "Account locked and existing sessions invalidated.";
+        TempData["AdminAccountMessage"] = "Account disabled and existing sessions invalidated.";
         return RedirectToAction(nameof(Details), new { userId });
     }
 
-    [HttpPost("{userId:guid}/unlock")]
+    [HttpPost("{userId:guid}/enable")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Unlock(Guid userId)
+    public async Task<IActionResult> Enable(Guid userId)
     {
         var user = await FindMutableUserAsync(userId);
         if (user is null)
@@ -225,7 +225,7 @@ public sealed class AdminAccountsController : Controller
             return RedirectToAction(nameof(Details), new { userId });
         }
 
-        TempData["AdminAccountMessage"] = "Account unlocked.";
+        TempData["AdminAccountMessage"] = "Account enabled.";
         return RedirectToAction(nameof(Details), new { userId });
     }
 

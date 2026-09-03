@@ -5,7 +5,7 @@
     ViewData["Title"] = "Manage account";
     ViewData["Robots"] = "noindex,nofollow";
     var isDeleted = Model.DeletedAt is not null;
-    var isLocked = Model.LockoutEnd is not null && Model.LockoutEnd > DateTimeOffset.UtcNow;
+    var isDisabled = Model.LockoutEnd is not null && Model.LockoutEnd > DateTimeOffset.UtcNow;
 }
 
 <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
@@ -42,9 +42,9 @@
             {
                 <span>Deleted @Model.DeletedAt?.ToString("u")</span>
             }
-            else if (isLocked)
+            else if (isDisabled)
             {
-                <span>Locked</span>
+                <span>Disabled</span>
             }
             else
             {
@@ -116,16 +116,16 @@
     <div class="card card-body shadow-sm mb-4">
         <h2 class="h5">Security controls</h2>
         <div class="d-flex flex-wrap gap-2">
-            @if (isLocked)
+            @if (isDisabled)
             {
-                <form asp-action="Unlock" asp-route-userId="@Model.UserId" method="post">
-                    <button type="submit" class="btn btn-outline-primary">Unlock account</button>
+                <form asp-action="Enable" asp-route-userId="@Model.UserId" method="post">
+                    <button type="submit" class="btn btn-outline-primary">Enable account</button>
                 </form>
             }
             else
             {
-                <form asp-action="Lock" asp-route-userId="@Model.UserId" method="post">
-                    <button type="submit" class="btn btn-outline-danger" disabled="@Model.IsCurrentUser">Lock account</button>
+                <form asp-action="Disable" asp-route-userId="@Model.UserId" method="post">
+                    <button type="submit" class="btn btn-outline-danger" disabled="@Model.IsCurrentUser">Disable account</button>
                 </form>
             }
             <form asp-action="InvalidateSessions" asp-route-userId="@Model.UserId" method="post">
@@ -134,7 +134,7 @@
         </div>
         @if (Model.IsCurrentUser)
         {
-            <div class="form-text mt-2">The current administrator can not lock its own account. Invalidating your own sessions will require you to sign in again.</div>
+            <div class="form-text mt-2">The current administrator can not disable its own account. Invalidating your own sessions will require you to sign in again.</div>
         }
     </div>
 }
