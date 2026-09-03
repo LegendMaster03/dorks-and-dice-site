@@ -1,10 +1,12 @@
 @using dorks_and_dice_site.Models.Site
+@using dorks_and_dice_site.Services.Site
 @{
     ViewData["Title"] = "Editor";
     ViewData["Robots"] = "noindex,nofollow";
     var canEditDorksAndDice = ViewData["CanEditDorksAndDice"] as bool? ?? false;
     var canEditProfessional = ViewData["CanEditProfessional"] as bool? ?? false;
-    var siteMode = Context.GetSiteModeContext().SiteMode;
+    var siteModeContext = Context.GetSiteModeContext();
+    var isTrustedPreview = siteModeContext.HasTrustedAccess;
 }
 
 <div class="mb-4">
@@ -21,13 +23,17 @@
                 <div class="card-body d-flex flex-column">
                     <h2 class="h5">Dorks &amp; Dice</h2>
                     <p class="text-body-secondary">Create and edit Dorks &amp; Dice content.</p>
-                    @if (siteMode == SiteMode.DorksAndDice)
+                    @if (isTrustedPreview)
                     {
-                        <a class="btn btn-primary mt-auto align-self-start" href="/editor/content">Open content editor</a>
+                        <form class="mt-auto" method="post" action="/development-preview">
+                            <input type="hidden" name="siteMode" value="@SiteModeValues.DorksAndDiceModeValue" />
+                            <input type="hidden" name="returnUrl" value="/editor/content" />
+                            <button class="btn btn-primary" type="submit">Open content editor</button>
+                        </form>
                     }
                     else
                     {
-                        <p class="small text-body-secondary mt-auto mb-0">Switch the active site mode to Dorks &amp; Dice, then reopen Editor.</p>
+                        <a class="btn btn-primary mt-auto align-self-start" href="https://@SiteModeOptions.CanonicalDorksAndDiceHost/editor/content">Open content editor</a>
                     }
                 </div>
             </section>
@@ -41,13 +47,17 @@
                 <div class="card-body d-flex flex-column">
                     <h2 class="h5">Professional</h2>
                     <p class="text-body-secondary">Create and edit professional-site content.</p>
-                    @if (siteMode == SiteMode.Professional)
+                    @if (isTrustedPreview)
                     {
-                        <a class="btn btn-primary mt-auto align-self-start" href="/editor/content">Open content editor</a>
+                        <form class="mt-auto" method="post" action="/development-preview">
+                            <input type="hidden" name="siteMode" value="@SiteModeValues.ProfessionalModeValue" />
+                            <input type="hidden" name="returnUrl" value="/editor/content" />
+                            <button class="btn btn-primary" type="submit">Open content editor</button>
+                        </form>
                     }
                     else
                     {
-                        <p class="small text-body-secondary mt-auto mb-0">Switch the active site mode to Professional, then reopen Editor.</p>
+                        <a class="btn btn-primary mt-auto align-self-start" href="https://@SiteModeOptions.CanonicalProfessionalHost/editor/content">Open content editor</a>
                     }
                 </div>
             </section>
