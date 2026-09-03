@@ -26,6 +26,13 @@ public sealed class ModeScopedRoleAuthorizationHandler : AuthorizationHandler<Mo
             return Task.CompletedTask;
         }
 
+        if (string.Equals(requirement.Role, ScopedAccountRoles.Editor, StringComparison.Ordinal)
+            && context.User.IsInRole(AccountRoles.Admin))
+        {
+            context.Succeed(requirement);
+            return Task.CompletedTask;
+        }
+
         var scope = httpContext.GetSiteModeContext().SiteMode switch
         {
             SiteMode.DorksAndDice => AccountRoleScopes.DorksAndDice,
