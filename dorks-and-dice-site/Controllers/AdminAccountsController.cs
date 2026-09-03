@@ -77,10 +77,23 @@ public sealed class AdminAccountsController : Controller
             return BadRequest();
         }
 
+        // Admin may manage accounts and scoped Editor access, but only Owner may
+        // delegate or revoke the global Admin and Dev roles.
+        if (!User.IsInRole(AccountRoles.Owner))
+        {
+            return Forbid();
+        }
+
         var user = await FindMutableUserAsync(userId);
         if (user is null)
         {
             return NotFound();
+        }
+
+        if (await _userManager.IsInRoleAsync(user, AccountRoles.Owner))
+        {
+            TempData["AdminAccountError"] = "Owner accounts inherit Admin and Dev. Their global role assignment is server-managed.";
+            return RedirectToAction(nameof(Details), new { userId });
         }
 
         var currentlyEnabled = await _userManager.IsInRoleAsync(user, role);
@@ -180,14 +193,18 @@ public sealed class AdminAccountsController : Controller
             return NotFound();
         }
 
+        if (await IsOwnerTargetRestrictedAsync(user))
+        {
+            return Forbid();
+        }
+
         if (IsCurrentUser(user))
         {
             TempData["AdminAccountError"] = "The current administrator can not lock its own account.";
             return RedirectToAction(nameof(Details), new { userId });
         }
 
-        if (await _userManager.IsInRoleAsync(user, AccountRoles.Admin)
-            && await IsLastActiveAdministratorAsync(user))
+        if (await IsLastActiveAdministratorAsync(user))
         {
             TempData["AdminAccountError"] = "The final active administrator account can not be locked.";
             return RedirectToAction(nameof(Details), new { userId });
@@ -218,6 +235,11 @@ public sealed class AdminAccountsController : Controller
             return NotFound();
         }
 
+        if (await IsOwnerTargetRestrictedAsync(user))
+        {
+            return Forbid();
+        }
+
         var result = await _userManager.SetLockoutEndDateAsync(user, null);
         if (!result.Succeeded)
         {
@@ -237,6 +259,11 @@ public sealed class AdminAccountsController : Controller
         if (user is null)
         {
             return NotFound();
+        }
+
+        if (await IsOwnerTargetRestrictedAsync(user))
+        {
+            return Forbid();
         }
 
         var result = await _userManager.UpdateSecurityStampAsync(user);
@@ -286,9 +313,15 @@ public sealed class AdminAccountsController : Controller
     private bool IsCurrentUser(ApplicationUser user) =>
         _userManager.GetUserId(User) == user.Id.ToString();
 
+    private async Task<bool> IsOwnerTargetRestrictedAsync(ApplicationUser user) =>
+        await _userManager.IsInRoleAsync(user, AccountRoles.Owner)
+        && !User.IsInRole(AccountRoles.Owner);
+
     private async Task<bool> IsLastActiveAdministratorAsync(ApplicationUser user)
     {
-        if (!await _userManager.IsInRoleAsync(user, AccountRoles.Admin))
+        var isAdministrator = await _userManager.IsInRoleAsync(user, AccountRoles.Admin)
+            || await _userManager.IsInRoleAsync(user, AccountRoles.Owner);
+        if (!isAdministrator)
         {
             return false;
         }
@@ -298,13 +331,22 @@ public sealed class AdminAccountsController : Controller
             return false;
         }
 
-        if (!await _roleManager.RoleExistsAsync(AccountRoles.Admin))
+        var candidates = new Dictionary<Guid, ApplicationUser>();
+        foreach (var role in new[] { AccountRoles.Owner, AccountRoles.Admin })
         {
-            return false;
+            if (!await _roleManager.RoleExistsAsync(role))
+            {
+                continue;
+            }
+
+            foreach (var candidate in await _userManager.GetUsersInRoleAsync(role))
+            {
+                candidates[candidate.Id] = candidate;
+            }
         }
 
         var activeAdministratorCount = 0;
-        foreach (var candidate in await _userManager.GetUsersInRoleAsync(AccountRoles.Admin))
+        foreach (var candidate in candidates.Values)
         {
             if (candidate.DeletedAt is not null
                 || !await _signInManager.CanSignInAsync(candidate)
