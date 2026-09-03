@@ -1,0 +1,104 @@
+@model dorks_and_dice_site.Models.Content.ContentAuthoringIndexViewModel
+@{
+    ViewData["Title"] = "Content Databases";
+    ViewData["Robots"] = "noindex,nofollow";
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+    <div>
+        <p class="text-uppercase text-muted small mb-1">Development</p>
+        <h1 class="h3 mb-0">Content Databases</h1>
+    </div>
+    <a class="btn btn-outline-secondary" href="/development">Back to Development</a>
+</div>
+
+<p class="text-body-secondary">Database/source selection and movement are development operations. Content editing is handled separately by Editor.</p>
+
+@if (TempData["ContentDatabaseSuccess"] is string successMessage)
+{
+    <div class="alert alert-success" role="status">@successMessage</div>
+}
+@if (TempData["ContentDatabaseError"] is string errorMessage)
+{
+    <div class="alert alert-warning" role="alert">@errorMessage</div>
+}
+
+<div class="row g-3 align-items-end mb-4">
+    <div class="col-sm-6 col-lg-4">
+        <form method="get" action="/development/databases" data-auto-submit="change">
+            <label class="form-label" for="source">Content database</label>
+            <select class="form-select" id="source" name="source">
+                @foreach (var source in Model.Sources)
+                {
+                    <option value="@source.Key" selected="@(string.Equals(source.Key, Model.SelectedSourceKey, StringComparison.OrdinalIgnoreCase))">@source.DisplayName</option>
+                }
+            </select>
+        </form>
+    </div>
+
+    @if (Model.IsAuthoringWorkspace && Model.MoveTargets.Count > 0)
+    {
+        <div class="col-sm-6 col-lg-6">
+            <form class="d-flex gap-2 align-items-end" method="post" action="/development/databases/push-all"
+                  onsubmit="return confirm('Move every page from this source to the selected destination and remove the source copies?');">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="source" value="@Model.SelectedSourceKey" />
+                <div class="flex-grow-1">
+                    <label class="form-label" for="push-all-target">Destination</label>
+                    <select class="form-select" id="push-all-target" name="targetSource">
+                        @foreach (var target in Model.MoveTargets)
+                        {
+                            <option value="@target.Key">@target.DisplayName</option>
+                        }
+                    </select>
+                </div>
+                <button class="btn btn-warning" type="submit">Move all</button>
+            </form>
+        </div>
+    }
+</div>
+
+<div class="table-responsive">
+    <table class="table align-middle">
+        <thead>
+            <tr>
+                <th scope="col">Title</th>
+                <th scope="col">Slug</th>
+                <th scope="col">Revision</th>
+                <th scope="col">Listing</th>
+                <th scope="col">Move</th>
+            </tr>
+        </thead>
+        <tbody>
+        @foreach (var item in Model.Items)
+        {
+            <tr>
+                <th scope="row">@item.Title</th>
+                <td><code>@item.Slug</code></td>
+                <td>@item.RevisionId</td>
+                <td>@(item.IsListed ? "Listed" : "Unlisted")</td>
+                <td>
+                    @if (Model.IsAuthoringWorkspace && Model.MoveTargets.Count > 0)
+                    {
+                        <div class="d-flex flex-wrap gap-2">
+                            @foreach (var target in Model.MoveTargets)
+                            {
+                                <form method="post" action="/development/databases/@item.Slug/move">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="source" value="@Model.SelectedSourceKey" />
+                                    <input type="hidden" name="targetSource" value="@target.Key" />
+                                    <button class="btn btn-sm btn-outline-primary" type="submit">Move to @target.DisplayName</button>
+                                </form>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <span class="text-body-secondary small">No move target from this source</span>
+                    }
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table>
+</div>
