@@ -29,17 +29,17 @@ public sealed class ContentSourceIntegrationTests
     }
 
     [Fact]
-    public async Task DeveloperArticlesMenuListsAllConfiguredSources()
+    public async Task DeveloperPreviewSettingsListAllConfiguredSources()
     {
         var response = await SendAsync("localhost", "/articles");
         var html = await response.Content.ReadAsStringAsync();
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.Contains(">Articles<", html);
         Assert.Contains("Show unlisted articles", html);
         Assert.Contains("External content", html);
         Assert.Contains("Local content", html);
-        Assert.Contains("Content editor", html);
+        Assert.Contains("Database sources", html);
+        Assert.DoesNotContain("Content editor", html);
     }
 
     [Fact]
