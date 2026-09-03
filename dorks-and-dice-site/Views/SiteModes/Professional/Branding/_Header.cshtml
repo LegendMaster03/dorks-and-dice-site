@@ -6,7 +6,7 @@
             <span class="navbar-toggler-icon"></span>
         </button>
         <div class="navbar-collapse collapse" id="siteNavbar">
-            <ul class="navbar-nav ms-auto">
+            <ul class="navbar-nav ms-auto align-items-lg-center">
                 <li class="nav-item">
                     <a class="nav-link" asp-area="" asp-controller="Home" asp-action="Index">Home</a>
                 </li>
@@ -16,6 +16,7 @@
                 <li class="nav-item">
                     <a class="nav-link" asp-area="" asp-controller="Home" asp-action="Index" asp-fragment="contact">Contact</a>
                 </li>
+                @await Html.PartialAsync("~/Views/Shared/_AccountNavigation.cshtml")
             </ul>
             <button id="themeToggle" class="btn btn-outline-secondary btn-sm ms-lg-3 mt-2 mt-lg-0" type="button" aria-label="Toggle dark mode">
                 Dark Mode

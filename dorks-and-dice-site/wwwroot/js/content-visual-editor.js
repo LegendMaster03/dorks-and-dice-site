@@ -96,7 +96,7 @@
     if (token) data.append("__RequestVerificationToken", token);
     visualTab.disabled = true;
     try {
-      const response = await fetch("/development/content/visual/render", { method: "POST", body: data });
+      const response = await fetch("/editor/content/visual/render", { method: "POST", body: data });
       if (!response.ok) throw new Error("Visual rendering failed.");
       surface.innerHTML = (await response.json()).html;
       visualActive = true;

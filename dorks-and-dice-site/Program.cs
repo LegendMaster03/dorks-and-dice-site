@@ -2,6 +2,7 @@ using System.Net;
 using System.Security;
 using System.Threading.RateLimiting;
 using dorks_and_dice_site.Models.Identity;
+using dorks_and_dice_site.Models.Site;
 using dorks_and_dice_site.Services.Resume;
 using dorks_and_dice_site.Services.Content.Storage;
 using dorks_and_dice_site.Services.GameServers.Minecraft;
@@ -50,7 +51,9 @@ var identityStorageProvider = builder.Configuration[$"{IdentityStorageOptions.Se
 builder.Services.AddDbContext<IdentityDbContext>((serviceProvider, options) =>
 {
     var configuration = serviceProvider.GetRequiredService<IConfiguration>();
-    var connectionString = IdentityConnectionStringResolver.Resolve(configuration);
+    var connectionString = IdentityConnectionStringResolver.Resolve(
+        configuration,
+        builder.Environment.ContentRootPath);
 
     if (string.Equals(identityStorageProvider, "Sqlite", StringComparison.OrdinalIgnoreCase)
         || string.Equals(identityStorageProvider, "SQLite", StringComparison.OrdinalIgnoreCase))
@@ -293,8 +296,8 @@ app.MapGet("/sitemap.xml", (HttpContext context) =>
     var siteMode = context.GetSiteModeContext().SiteMode;
     var paths = siteMode switch
     {
-        dorks_and_dice_site.Models.Site.SiteMode.Professional => new[] { "/", "/resume", "/articles" },
-        dorks_and_dice_site.Models.Site.SiteMode.DorksAndDice => new[] { "/", "/articles" },
+        SiteMode.Professional => new[] { "/", "/resume", "/articles" },
+        SiteMode.DorksAndDice => new[] { "/", "/articles" },
         _ => new[] { "/" }
     };
 
@@ -334,10 +337,9 @@ app.MapPost("/development-preview", async (
         context.Response.Cookies.Append(SiteModeValues.DevelopmentSiteModeCookie, requestedMode, cookieOptions);
     }
 
-    if (form.ContainsKey("articleSettings"))
+    if (form.ContainsKey("editorPreviewSettings"))
     {
-        if (context.User.Identity?.IsAuthenticated != true
-            || !context.User.IsInRole(AccountRoles.Dev))
+        if (!CanPreviewUnlisted(context.User, siteModeContext.SiteMode))
         {
             return Results.Forbid();
         }
@@ -346,6 +348,15 @@ app.MapPost("/development-preview", async (
             SiteModeValues.IncludeUnlistedCookie,
             form.ContainsKey("includeUnlisted") ? "true" : "false",
             cookieOptions);
+    }
+
+    if (form.ContainsKey("developerPreviewSettings"))
+    {
+        if (context.User.Identity?.IsAuthenticated != true
+            || !context.User.IsInRole(AccountRoles.Dev))
+        {
+            return Results.Forbid();
+        }
 
         var knownSources = contentSourceRegistry.GetKnownSourceKeys();
         var enabledSources = form["enabledContentSource"]
@@ -387,7 +398,7 @@ app.Run();
 static string BuildAbsoluteUrl(HttpContext context, string path)
 {
     var siteMode = context.GetSiteModeContext().SiteMode;
-    var host = siteMode == dorks_and_dice_site.Models.Site.SiteMode.Professional
+    var host = siteMode == SiteMode.Professional
         ? SiteModeOptions.CanonicalProfessionalHost
         : context.Request.Host.Value;
     return $"{context.Request.Scheme}://{host}{context.Request.PathBase}{path}";
@@ -399,6 +410,34 @@ static string NormalizeHost(string host)
     return normalizedHost.StartsWith("www.", StringComparison.Ordinal)
         ? normalizedHost[4..]
         : normalizedHost;
+}
+
+static bool CanPreviewUnlisted(System.Security.Claims.ClaimsPrincipal user, SiteMode siteMode)
+{
+    if (user.Identity?.IsAuthenticated != true)
+    {
+        return false;
+    }
+
+    if (user.IsInRole(AccountRoles.Admin))
+    {
+        return siteMode is SiteMode.DorksAndDice or SiteMode.Professional;
+    }
+
+    var scope = siteMode switch
+    {
+        SiteMode.DorksAndDice => AccountRoleScopes.DorksAndDice,
+        SiteMode.Professional => AccountRoleScopes.Professional,
+        _ => null
+    };
+    if (scope is null)
+    {
+        return false;
+    }
+
+    return user.HasClaim(
+        AccountClaimTypes.ScopedRole,
+        $"{scope}:{ScopedAccountRoles.Editor}");
 }
 
 static bool IsLocalUrl(string url)

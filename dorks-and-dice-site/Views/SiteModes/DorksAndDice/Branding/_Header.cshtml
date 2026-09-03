@@ -1,8 +1,3 @@
-@using dorks_and_dice_site.Models.Identity
-@{
-    var displayName = User.FindFirst(AccountClaimTypes.DisplayName)?.Value;
-    var returnUrl = $"{Context.Request.Path}{Context.Request.QueryString}";
-}
 <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom shadow-sm">
     <div class="container-fluid">
         <a class="navbar-brand fw-semibold" asp-area="" asp-controller="Home" asp-action="Index">Dorks &amp; Dice</a>
@@ -18,34 +13,7 @@
                 <li class="nav-item">
                     <a class="nav-link" asp-area="" asp-controller="Articles" asp-action="Index">Articles</a>
                 </li>
-                @if (User.Identity?.IsAuthenticated == true)
-                {
-                    <li class="nav-item dropdown">
-                        <button class="btn btn-link nav-link dropdown-toggle"
-                                type="button"
-                                data-bs-toggle="dropdown"
-                                aria-expanded="false">
-                            @(string.IsNullOrWhiteSpace(displayName) ? "Account" : displayName)
-                        </button>
-                        <ul class="dropdown-menu dropdown-menu-end">
-                            <li>
-                                <a class="dropdown-item" asp-controller="Account" asp-action="Index">Account settings</a>
-                            </li>
-                            <li><hr class="dropdown-divider" /></li>
-                            <li>
-                                <form asp-controller="Account" asp-action="Logout" method="post">
-                                    <button type="submit" class="dropdown-item">Log out</button>
-                                </form>
-                            </li>
-                        </ul>
-                    </li>
-                }
-                else
-                {
-                    <li class="nav-item">
-                        <a class="nav-link" asp-controller="Account" asp-action="Login" asp-route-returnUrl="@returnUrl">Log in</a>
-                    </li>
-                }
+                @await Html.PartialAsync("~/Views/Shared/_AccountNavigation.cshtml")
             </ul>
             <button id="themeToggle" class="btn btn-outline-secondary btn-sm ms-lg-3 mt-2 mt-lg-0" type="button" aria-label="Toggle dark mode">
                 Dark Mode

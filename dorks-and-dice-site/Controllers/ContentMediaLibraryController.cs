@@ -2,13 +2,13 @@ using dorks_and_dice_site.Models.Content;
 using dorks_and_dice_site.Services.Content;
 using dorks_and_dice_site.Services.Content.Storage;
 using dorks_and_dice_site.Services.Identity;
-using dorks_and_dice_site.Services.Site;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace dorks_and_dice_site.Controllers;
 
-[Authorize(Policy = AuthorizationPolicies.DevAccess)]
+[Authorize(Policy = AuthorizationPolicies.ModeEditor)]
+[Route("editor/media")]
 [Route("development/media")]
 [RequestSizeLimit(ContentInputPolicy.MaxAssetUploadBytes + 65_536)]
 public sealed class ContentMediaLibraryController : Controller
@@ -23,53 +23,47 @@ public sealed class ContentMediaLibraryController : Controller
     }
 
     [HttpGet("")]
-    public async Task<IActionResult> Index(string? source, CancellationToken cancellationToken)
+    public async Task<IActionResult> Index(CancellationToken cancellationToken)
     {
-        if (!IsDevelopmentPreview()) return NotFound();
-        source ??= _sources.AuthoringSourceKey;
+        var source = _sources.AuthoringSourceKey;
         return View(new ContentAssetLibraryViewModel
         {
             SourceKey = source,
-            Sources = _sources.GetAllSources().Select(item => new ContentAuthoringSourceOption
-            {
-                Key = item.Key,
-                DisplayName = item.DisplayName
-            }).ToList(),
+            Sources = [],
             Assets = (await _assets.GetForSourceAsync(source, cancellationToken)).ToList()
         });
     }
 
     [HttpPost("upload")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Upload(string source, IFormFile? file, CancellationToken cancellationToken)
+    public async Task<IActionResult> Upload(IFormFile? file, CancellationToken cancellationToken)
     {
-        if (!IsDevelopmentPreview()) return NotFound();
+        var source = _sources.AuthoringSourceKey;
         if (file is null)
         {
             TempData["ContentMediaError"] = "Choose an image to upload.";
-            return RedirectToAction(nameof(Index), new { source });
+            return RedirectToAction(nameof(Index));
         }
+
         try
         {
             await using var stream = file.OpenReadStream();
             var asset = await _assets.UploadAsync(
                 source, file.FileName, file.ContentType, stream, file.Length, cancellationToken);
-            TempData["ContentMediaSuccess"] = $"Stored '{asset.FileName}' in {source}.";
+            TempData["ContentMediaSuccess"] = $"Stored '{asset.FileName}'.";
         }
         catch (InvalidOperationException ex)
         {
             TempData["ContentMediaError"] = ex.Message;
         }
-        return RedirectToAction(nameof(Index), new { source });
+
+        return RedirectToAction(nameof(Index));
     }
 
     [HttpGet("{assetKey}/preview")]
-    public async Task<IActionResult> Preview(string assetKey, string source, CancellationToken cancellationToken)
+    public async Task<IActionResult> Preview(string assetKey, CancellationToken cancellationToken)
     {
-        if (!IsDevelopmentPreview()) return NotFound();
-        var asset = await _assets.GetFromSourceAsync(source, assetKey, cancellationToken);
+        var asset = await _assets.GetFromSourceAsync(_sources.AuthoringSourceKey, assetKey, cancellationToken);
         return asset is null ? NotFound() : File(asset.Data, asset.MediaType);
     }
-
-    private bool IsDevelopmentPreview() => HttpContext.GetSiteModeContext().IsDevelopmentPreview;
 }

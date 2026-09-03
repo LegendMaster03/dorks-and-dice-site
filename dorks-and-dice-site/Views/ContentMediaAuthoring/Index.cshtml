@@ -6,14 +6,14 @@
 
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
     <div>
-        <p class="text-uppercase text-muted small mb-1">Development only</p>
+        <p class="text-uppercase text-muted small mb-1">Editor</p>
         <h1 class="h3 mb-0">Content media</h1>
-        <p class="text-muted mb-0"><code>@Model.Slug</code> · @Model.SourceKey</p>
+        <p class="text-muted mb-0"><code>@Model.Slug</code></p>
     </div>
-    <a class="btn btn-outline-secondary" href="/development/content/@Model.Slug/edit?source=@Model.SourceKey">Back to editor</a>
+    <a class="btn btn-outline-secondary" href="/editor/content/@Model.Slug/edit">Back to editor</a>
 </div>
 
-<p>Attach media from this database before referencing its stable URL in the article. Existing owned media remains attached and travels with the page.</p>
+<p>Attach media before referencing its stable URL in the content body. Database/source management remains a Development responsibility.</p>
 
 @if (TempData["ContentMediaSuccess"] is string successMessage)
 {
@@ -25,12 +25,11 @@
 }
 
 <form method="get" class="card card-body mb-4">
-    <input type="hidden" name="source" value="@Model.SourceKey" />
     <div class="row g-3 align-items-end">
         <div class="col-md-8">
             <label class="form-label" for="q">Search available media</label>
             <input class="form-control" id="q" name="q" value="@Model.SearchQuery" placeholder="File name or media key" required />
-            <div class="form-text">Searches this article's database and Global media. Results are limited for fast browsing.</div>
+            <div class="form-text">Searches available authoring and global media. Results are limited for fast browsing.</div>
         </div>
         <div class="col-md-4">
             <button class="btn btn-primary w-100" type="submit">Search media</button>
@@ -48,14 +47,14 @@
     <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-3 mb-4">
         @foreach (var asset in Model.AvailableAssets)
         {
+            var previewUrl = $"/editor/content/{Model.Slug}/media/{asset.AssetKey}/preview?source={Uri.EscapeDataString(asset.SourceKey)}";
             <div class="col"><article class="card h-100">
-                <img src="/development/media/@asset.AssetKey/preview?source=@Uri.EscapeDataString(asset.SourceKey)" class="card-img-top content-media-preview" alt="Preview of @asset.FileName" />
+                <img src="@previewUrl" class="card-img-top content-media-preview" alt="Preview of @asset.FileName" />
                 <div class="card-body">
                     <h3 class="h6">@asset.FileName</h3>
-                    <p class="small text-muted">@asset.SourceKey · <code>@asset.AssetKey</code></p>
-                    <form method="post" action="/development/content/@Model.Slug/media/attach">
+                    <p class="small text-muted"><code>@asset.AssetKey</code></p>
+                    <form method="post" action="/editor/content/@Model.Slug/media/attach">
                         @Html.AntiForgeryToken()
-                        <input type="hidden" name="source" value="@Model.SourceKey" />
                         <input type="hidden" name="assetSource" value="@asset.SourceKey" />
                         <input type="hidden" name="assetKey" value="@asset.AssetKey" />
                         <button class="btn btn-sm btn-primary" type="submit">Add dependency</button>
@@ -75,13 +74,13 @@ else
     <div class="row row-cols-1 row-cols-lg-2 g-4">
         @foreach (var asset in Model.Assets)
         {
-            var previewUrl = $"/development/media/{asset.AssetKey}/preview?source={Uri.EscapeDataString(asset.SourceKey)}";
+            var previewUrl = $"/editor/content/{Model.Slug}/media/{asset.AssetKey}/preview?source={Uri.EscapeDataString(asset.SourceKey)}";
             <div class="col">
                 <article class="card h-100">
                     <img src="@previewUrl" class="card-img-top content-media-preview" alt="Preview of @asset.FileName" />
                     <div class="card-body">
                         <h2 class="h6">@asset.FileName</h2>
-                        <p class="badge text-bg-secondary">@(asset.Relationship ?? "global") · @asset.SourceKey</p>
+                        <p class="badge text-bg-secondary">@(asset.Relationship ?? "global")</p>
                         <dl class="row small mb-3">
                             <dt class="col-4">Type</dt>
                             <dd class="col-8">@asset.MediaType</dd>
@@ -95,9 +94,8 @@ else
                         <div class="form-text">Replace <code>Alt text</code> with a meaningful description before inserting it into the body.</div>
                         <label class="form-label mt-3" for="url-@asset.AssetKey">Stable media URL</label>
                         <input id="url-@asset.AssetKey" class="form-control font-monospace" value="@asset.Url" readonly />
-                        <form method="post" action="/development/content/@Model.Slug/media/detach" class="mt-3">
+                        <form method="post" action="/editor/content/@Model.Slug/media/detach" class="mt-3">
                             @Html.AntiForgeryToken()
-                            <input type="hidden" name="source" value="@Model.SourceKey" />
                             <input type="hidden" name="assetKey" value="@asset.AssetKey" />
                             <button class="btn btn-sm btn-outline-danger" type="submit">Remove dependency</button>
                         </form>

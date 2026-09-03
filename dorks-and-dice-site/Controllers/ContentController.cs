@@ -1,6 +1,8 @@
 using dorks_and_dice_site.Models.Content;
 using dorks_and_dice_site.Services.Content;
+using dorks_and_dice_site.Services.Identity;
 using dorks_and_dice_site.Services.Site;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace dorks_and_dice_site.Controllers;
@@ -10,15 +12,18 @@ public sealed class ContentController : Controller
     private readonly IContentCatalogService _catalog;
     private readonly IContentBodyRenderer _bodyRenderer;
     private readonly IContentRedirectService _redirects;
+    private readonly IAuthorizationService _authorizationService;
 
     public ContentController(
         IContentCatalogService catalog,
         IContentBodyRenderer bodyRenderer,
-        IContentRedirectService redirects)
+        IContentRedirectService redirects,
+        IAuthorizationService authorizationService)
     {
         _catalog = catalog;
         _bodyRenderer = bodyRenderer;
         _redirects = redirects;
+        _authorizationService = authorizationService;
     }
 
     [HttpGet("/resume/{slug}")]
@@ -103,6 +108,9 @@ public sealed class ContentController : Controller
             ViewData["MetaImage"] = item.MetaImage;
         }
 
+        var canEdit = (await _authorizationService.AuthorizeAsync(
+            User,
+            AuthorizationPolicies.ModeEditor)).Succeeded;
         var backLinks = BuildBackLinks(item, contextTag);
         var viewModel = new ContentDetailViewModel
         {
@@ -113,9 +121,7 @@ public sealed class ContentController : Controller
             IsDevelopmentVisibilityOverride = modeContext.IsDevelopmentPreview
                 && !item.IsVisibleInMode(modeContext.SiteMode),
             IsDevelopmentPreview = modeContext.IsDevelopmentPreview,
-            EditHref = modeContext.IsDevelopmentPreview
-                ? $"/development/content/{item.Slug}/edit?source={Uri.EscapeDataString(item.SourceKey)}"
-                : null
+            EditHref = canEdit ? $"/editor/content/{item.Slug}/edit" : null
         };
 
         return View("~/Views/Content/Details.cshtml", viewModel);

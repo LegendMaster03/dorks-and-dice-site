@@ -31,9 +31,11 @@ public sealed class AdminAccountsController : Controller
     [HttpGet("")]
     public async Task<IActionResult> Index()
     {
-        var users = await _userManager.Users
+        // SQLite can not translate ORDER BY for DateTimeOffset. Materialize first so
+        // local account management uses the same ordering without provider-specific SQL.
+        var users = (await _userManager.Users.ToListAsync())
             .OrderByDescending(user => user.CreatedAt)
-            .ToListAsync();
+            .ToList();
         var accounts = new List<AdminAccountListItemViewModel>(users.Count);
 
         foreach (var user in users)
@@ -75,10 +77,21 @@ public sealed class AdminAccountsController : Controller
             return BadRequest();
         }
 
+        if (!User.IsInRole(AccountRoles.Owner))
+        {
+            return Forbid();
+        }
+
         var user = await FindMutableUserAsync(userId);
         if (user is null)
         {
             return NotFound();
+        }
+
+        if (await _userManager.IsInRoleAsync(user, AccountRoles.Owner))
+        {
+            TempData["AdminAccountError"] = "Owner accounts inherit Admin and Dev. Their global role assignment is server-managed.";
+            return RedirectToAction(nameof(Details), new { userId });
         }
 
         var currentlyEnabled = await _userManager.IsInRoleAsync(user, role);
@@ -132,11 +145,7 @@ public sealed class AdminAccountsController : Controller
 
     [HttpPost("{userId:guid}/scoped-role")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> SetScopedRole(
-        Guid userId,
-        string scope,
-        string role,
-        bool enabled)
+    public async Task<IActionResult> SetScopedRole(Guid userId, string scope, string role, bool enabled)
     {
         if (!AccountRoleScopes.All.Contains(scope, StringComparer.Ordinal)
             || !ScopedAccountRoles.All.Contains(role, StringComparer.Ordinal))
@@ -178,14 +187,18 @@ public sealed class AdminAccountsController : Controller
             return NotFound();
         }
 
+        if (await IsOwnerTargetRestrictedAsync(user))
+        {
+            return Forbid();
+        }
+
         if (IsCurrentUser(user))
         {
             TempData["AdminAccountError"] = "The current administrator can not lock its own account.";
             return RedirectToAction(nameof(Details), new { userId });
         }
 
-        if (await _userManager.IsInRoleAsync(user, AccountRoles.Admin)
-            && await IsLastActiveAdministratorAsync(user))
+        if (await IsLastActiveAdministratorAsync(user))
         {
             TempData["AdminAccountError"] = "The final active administrator account can not be locked.";
             return RedirectToAction(nameof(Details), new { userId });
@@ -216,6 +229,11 @@ public sealed class AdminAccountsController : Controller
             return NotFound();
         }
 
+        if (await IsOwnerTargetRestrictedAsync(user))
+        {
+            return Forbid();
+        }
+
         var result = await _userManager.SetLockoutEndDateAsync(user, null);
         if (!result.Succeeded)
         {
@@ -237,6 +255,11 @@ public sealed class AdminAccountsController : Controller
             return NotFound();
         }
 
+        if (await IsOwnerTargetRestrictedAsync(user))
+        {
+            return Forbid();
+        }
+
         var result = await _userManager.UpdateSecurityStampAsync(user);
         if (!result.Succeeded)
         {
@@ -248,6 +271,61 @@ public sealed class AdminAccountsController : Controller
         return IsCurrentUser(user)
             ? RedirectToAction("Login", "Account")
             : RedirectToAction(nameof(Details), new { userId });
+    }
+
+    [HttpPost("{userId:guid}/delete")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> DeleteAccount(Guid userId)
+    {
+        var user = await FindMutableUserAsync(userId);
+        if (user is null)
+        {
+            return NotFound();
+        }
+
+        if (await _userManager.IsInRoleAsync(user, AccountRoles.Owner))
+        {
+            return Forbid();
+        }
+
+        if (IsCurrentUser(user))
+        {
+            TempData["AdminAccountError"] = "Use Account settings to delete your own account.";
+            return RedirectToAction(nameof(Details), new { userId });
+        }
+
+        if (await IsLastActiveAdministratorAsync(user))
+        {
+            TempData["AdminAccountError"] = "The final active administrator account can not be deleted.";
+            return RedirectToAction(nameof(Details), new { userId });
+        }
+
+        var deletedAt = DateTimeOffset.UtcNow;
+        var tombstoneIdentity = $"deleted-{user.Id:N}@deleted.invalid";
+        user.DeletedAt = deletedAt;
+        user.DisplayName = "Deleted account";
+        user.Email = tombstoneIdentity;
+        user.NormalizedEmail = _userManager.NormalizeEmail(tombstoneIdentity);
+        user.EmailConfirmed = false;
+        user.UserName = tombstoneIdentity;
+        user.NormalizedUserName = _userManager.NormalizeName(tombstoneIdentity);
+        user.PhoneNumber = null;
+        user.PhoneNumberConfirmed = false;
+        user.PasswordHash = null;
+        user.TwoFactorEnabled = false;
+        user.LockoutEnabled = true;
+        user.LockoutEnd = deletedAt.AddYears(100);
+        user.SecurityStamp = Guid.NewGuid().ToString("N");
+
+        var result = await _userManager.UpdateAsync(user);
+        if (!result.Succeeded)
+        {
+            TempData["AdminAccountError"] = string.Join(" ", result.Errors.Select(error => error.Description));
+            return RedirectToAction(nameof(Details), new { userId });
+        }
+
+        TempData["AdminAccountMessage"] = "Account deleted.";
+        return RedirectToAction(nameof(Index));
     }
 
     private async Task<AdminAccountDetailViewModel> BuildDetailsAsync(ApplicationUser user)
@@ -284,9 +362,15 @@ public sealed class AdminAccountsController : Controller
     private bool IsCurrentUser(ApplicationUser user) =>
         _userManager.GetUserId(User) == user.Id.ToString();
 
+    private async Task<bool> IsOwnerTargetRestrictedAsync(ApplicationUser user) =>
+        await _userManager.IsInRoleAsync(user, AccountRoles.Owner)
+        && !User.IsInRole(AccountRoles.Owner);
+
     private async Task<bool> IsLastActiveAdministratorAsync(ApplicationUser user)
     {
-        if (!await _userManager.IsInRoleAsync(user, AccountRoles.Admin))
+        var isAdministrator = await _userManager.IsInRoleAsync(user, AccountRoles.Admin)
+            || await _userManager.IsInRoleAsync(user, AccountRoles.Owner);
+        if (!isAdministrator)
         {
             return false;
         }
@@ -296,13 +380,22 @@ public sealed class AdminAccountsController : Controller
             return false;
         }
 
-        if (!await _roleManager.RoleExistsAsync(AccountRoles.Admin))
+        var candidates = new Dictionary<Guid, ApplicationUser>();
+        foreach (var role in new[] { AccountRoles.Owner, AccountRoles.Admin })
         {
-            return false;
+            if (!await _roleManager.RoleExistsAsync(role))
+            {
+                continue;
+            }
+
+            foreach (var candidate in await _userManager.GetUsersInRoleAsync(role))
+            {
+                candidates[candidate.Id] = candidate;
+            }
         }
 
         var activeAdministratorCount = 0;
-        foreach (var candidate in await _userManager.GetUsersInRoleAsync(AccountRoles.Admin))
+        foreach (var candidate in candidates.Values)
         {
             if (candidate.DeletedAt is not null
                 || !await _signInManager.CanSignInAsync(candidate)

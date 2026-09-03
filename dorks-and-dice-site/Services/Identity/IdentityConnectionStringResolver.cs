@@ -1,25 +1,27 @@
+using Microsoft.Data.Sqlite;
 using Npgsql;
 
 namespace dorks_and_dice_site.Services.Identity;
 
 public static class IdentityConnectionStringResolver
 {
-    public static string Resolve(IConfiguration configuration)
+    public static string Resolve(IConfiguration configuration, string? contentRootPath = null)
     {
+        var section = configuration.GetSection(IdentityStorageOptions.SectionName);
+        var provider = section["Provider"] ?? "PostgreSQL";
+
         var configuredConnectionString = configuration.GetConnectionString("IdentityDatabase");
         if (!string.IsNullOrWhiteSpace(configuredConnectionString))
         {
-            return configuredConnectionString;
+            return ResolveConfiguredConnectionString(configuredConnectionString, provider, contentRootPath);
         }
 
-        var section = configuration.GetSection(IdentityStorageOptions.SectionName);
         var directConnectionString = section["ConnectionString"];
         if (!string.IsNullOrWhiteSpace(directConnectionString))
         {
-            return directConnectionString;
+            return ResolveConfiguredConnectionString(directConnectionString, provider, contentRootPath);
         }
 
-        var provider = section["Provider"] ?? "PostgreSQL";
         if (!string.Equals(provider, "PostgreSQL", StringComparison.OrdinalIgnoreCase)
             && !string.Equals(provider, "Postgres", StringComparison.OrdinalIgnoreCase))
         {
@@ -61,5 +63,25 @@ public static class IdentityConnectionStringResolver
         };
 
         return builder.ConnectionString;
+    }
+
+    private static string ResolveConfiguredConnectionString(
+        string connectionString,
+        string provider,
+        string? contentRootPath)
+    {
+        if (!string.Equals(provider, "Sqlite", StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(provider, "SQLite", StringComparison.OrdinalIgnoreCase))
+        {
+            return connectionString;
+        }
+
+        var sqlite = new SqliteConnectionStringBuilder(connectionString);
+        if (!Path.IsPathRooted(sqlite.DataSource) && !string.IsNullOrWhiteSpace(contentRootPath))
+        {
+            sqlite.DataSource = Path.GetFullPath(Path.Combine(contentRootPath, sqlite.DataSource));
+        }
+
+        return sqlite.ConnectionString;
     }
 }

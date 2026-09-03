@@ -8,7 +8,7 @@ namespace dorks_and_dice_site.Services.Identity;
 /// Removes privileged global role claims from the request principal when the
 /// request does not pass Trusted Access. The underlying Identity role assignments
 /// remain unchanged, so the account can still sign in and use ordinary account
-/// features publicly while Admin and Dev authority stays unavailable.
+/// features publicly while Owner, Admin, and Dev authority stays unavailable.
 /// </summary>
 public sealed class TrustedPrivilegeClaimsTransformation : IClaimsTransformation
 {
@@ -39,7 +39,7 @@ public sealed class TrustedPrivilegeClaimsTransformation : IClaimsTransformation
         {
             var privilegedRoleClaims = identity.Claims
                 .Where(claim => string.Equals(claim.Type, identity.RoleClaimType, StringComparison.Ordinal)
-                    && AccountRoles.Privileged.Contains(claim.Value, StringComparer.Ordinal))
+                    && AccountRoles.TrustedPrivileged.Contains(claim.Value, StringComparer.Ordinal))
                 .ToList();
 
             foreach (var claim in privilegedRoleClaims)

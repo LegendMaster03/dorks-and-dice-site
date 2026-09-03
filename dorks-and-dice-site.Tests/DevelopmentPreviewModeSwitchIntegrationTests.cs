@@ -26,6 +26,17 @@ public sealed class DevelopmentPreviewModeSwitchIntegrationTests
     }
 
     [Theory]
+    [InlineData(SiteMode.Development)]
+    [InlineData(SiteMode.Professional)]
+    [InlineData(SiteMode.DorksAndDice)]
+    [InlineData(SiteMode.Unassigned)]
+    public void DevelopmentWorkspaceRoutesAreSharedAcrossModes(SiteMode mode)
+    {
+        Assert.True(SiteRouteOwnership.IsAllowedInMode("/development", mode));
+        Assert.True(SiteRouteOwnership.IsAllowedInMode("/development/databases", mode));
+    }
+
+    [Theory]
     [InlineData("development", "professional")]
     [InlineData("professional", "dorks-and-dice")]
     [InlineData("dorks-and-dice", "development")]

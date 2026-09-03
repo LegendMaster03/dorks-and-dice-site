@@ -13,7 +13,7 @@ public sealed class ModeScopedRoleAuthorizationTests
     [Fact]
     public async Task DorksAndDiceEditorIsAuthorizedOnlyInDorksAndDiceMode()
     {
-        var user = CreateUser($"{AccountRoleScopes.DorksAndDice}:{ScopedAccountRoles.Editor}");
+        var user = CreateScopedEditor($"{AccountRoleScopes.DorksAndDice}:{ScopedAccountRoles.Editor}");
 
         Assert.True(await IsAuthorizedAsync(user, SiteMode.DorksAndDice));
         Assert.False(await IsAuthorizedAsync(user, SiteMode.Professional));
@@ -22,13 +22,42 @@ public sealed class ModeScopedRoleAuthorizationTests
     [Fact]
     public async Task ProfessionalEditorIsAuthorizedOnlyInProfessionalMode()
     {
-        var user = CreateUser($"{AccountRoleScopes.Professional}:{ScopedAccountRoles.Editor}");
+        var user = CreateScopedEditor($"{AccountRoleScopes.Professional}:{ScopedAccountRoles.Editor}");
 
         Assert.True(await IsAuthorizedAsync(user, SiteMode.Professional));
         Assert.False(await IsAuthorizedAsync(user, SiteMode.DorksAndDice));
     }
 
-    private static ClaimsPrincipal CreateUser(string scopedRole)
+    [Theory]
+    [InlineData(SiteMode.DorksAndDice)]
+    [InlineData(SiteMode.Professional)]
+    [InlineData(SiteMode.Development)]
+    public async Task AdminSatisfiesEditorRequirementGlobally(SiteMode siteMode)
+    {
+        var identity = new ClaimsIdentity(
+        [
+            new Claim(ClaimTypes.NameIdentifier, "admin-user"),
+            new Claim(ClaimTypes.Role, AccountRoles.Admin)
+        ],
+        authenticationType: "test");
+
+        Assert.True(await IsAuthorizedAsync(new ClaimsPrincipal(identity), siteMode));
+    }
+
+    [Fact]
+    public async Task DevRoleDoesNotSatisfyEditorRequirement()
+    {
+        var identity = new ClaimsIdentity(
+        [
+            new Claim(ClaimTypes.NameIdentifier, "dev-user"),
+            new Claim(ClaimTypes.Role, AccountRoles.Dev)
+        ],
+        authenticationType: "test");
+
+        Assert.False(await IsAuthorizedAsync(new ClaimsPrincipal(identity), SiteMode.DorksAndDice));
+    }
+
+    private static ClaimsPrincipal CreateScopedEditor(string scopedRole)
     {
         var identity = new ClaimsIdentity(
         [

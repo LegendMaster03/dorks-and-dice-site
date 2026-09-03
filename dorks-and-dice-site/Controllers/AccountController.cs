@@ -372,6 +372,14 @@ public sealed class AccountController : Controller
             return View(model);
         }
 
+        if (await _userManager.IsInRoleAsync(user, AccountRoles.Owner))
+        {
+            ModelState.AddModelError(
+                string.Empty,
+                "Owner accounts can not be deleted through the UI. Remove the Owner role server-side first.");
+            return View(model);
+        }
+
         if (await IsLastActiveAdministratorAsync(user))
         {
             ModelState.AddModelError(
@@ -433,8 +441,9 @@ public sealed class AccountController : Controller
         ApplicationUser user,
         string? displayName = null)
     {
-        var isAdministrator = await _userManager.IsInRoleAsync(user, AccountRoles.Admin);
-        var isDeveloper = await _userManager.IsInRoleAsync(user, AccountRoles.Dev);
+        var isOwner = await _userManager.IsInRoleAsync(user, AccountRoles.Owner);
+        var isAdministrator = isOwner || await _userManager.IsInRoleAsync(user, AccountRoles.Admin);
+        var isDeveloper = isOwner || await _userManager.IsInRoleAsync(user, AccountRoles.Dev);
         var hasTrustedAccess = TrustedAccessEvaluator.IsAuthorized(HttpContext, _siteModeOptions);
 
         return new AccountViewModel
@@ -450,7 +459,9 @@ public sealed class AccountController : Controller
 
     private async Task<bool> IsLastActiveAdministratorAsync(ApplicationUser user)
     {
-        if (!await _userManager.IsInRoleAsync(user, AccountRoles.Admin))
+        var isAdministrator = await _userManager.IsInRoleAsync(user, AccountRoles.Admin)
+            || await _userManager.IsInRoleAsync(user, AccountRoles.Owner);
+        if (!isAdministrator)
         {
             return false;
         }
@@ -460,13 +471,22 @@ public sealed class AccountController : Controller
             return false;
         }
 
-        if (!await _roleManager.RoleExistsAsync(AccountRoles.Admin))
+        var candidates = new Dictionary<Guid, ApplicationUser>();
+        foreach (var role in new[] { AccountRoles.Owner, AccountRoles.Admin })
         {
-            return false;
+            if (!await _roleManager.RoleExistsAsync(role))
+            {
+                continue;
+            }
+
+            foreach (var candidate in await _userManager.GetUsersInRoleAsync(role))
+            {
+                candidates[candidate.Id] = candidate;
+            }
         }
 
         var activeAdministratorCount = 0;
-        foreach (var candidate in await _userManager.GetUsersInRoleAsync(AccountRoles.Admin))
+        foreach (var candidate in candidates.Values)
         {
             if (candidate.DeletedAt is not null
                 || !await _signInManager.CanSignInAsync(candidate)

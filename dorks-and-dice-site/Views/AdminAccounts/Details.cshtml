@@ -6,6 +6,8 @@
     ViewData["Robots"] = "noindex,nofollow";
     var isDeleted = Model.DeletedAt is not null;
     var isLocked = Model.LockoutEnd is not null && Model.LockoutEnd > DateTimeOffset.UtcNow;
+    var targetIsOwner = Model.GlobalRoles.Contains(AccountRoles.Owner, StringComparer.Ordinal);
+    var currentUserIsOwner = User.IsInRole(AccountRoles.Owner);
 }
 
 <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
@@ -56,22 +58,32 @@
 
 <div class="card card-body shadow-sm mb-4">
     <h2 class="h5">Global roles</h2>
-    <p class="text-body-secondary">Admin and Dev are global roles. Their privileged functions require Trusted Access in addition to the role.</p>
+    <p class="text-body-secondary">Owner is the server-managed super-administrator role and inherits Admin, Dev, and global Editor authority. Only an Owner can assign or remove Admin and Dev through this UI.</p>
+
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 border-top py-2">
+        <div>
+            <strong>@AccountRoles.Owner</strong>
+            <div class="small text-body-secondary">@(targetIsOwner ? "Assigned — server-managed" : "Not assigned — server-managed")</div>
+        </div>
+    </div>
+
     @foreach (var role in AccountRoles.Privileged)
     {
-        var enabled = Model.GlobalRoles.Contains(role, StringComparer.Ordinal);
+        var assigned = Model.GlobalRoles.Contains(role, StringComparer.Ordinal);
         <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 border-top py-2">
             <div>
                 <strong>@role</strong>
-                <div class="small text-body-secondary">@(enabled ? "Assigned" : "Not assigned")</div>
+                <div class="small text-body-secondary">
+                    @(targetIsOwner ? "Inherited from Owner" : assigned ? "Assigned" : "Not assigned")
+                </div>
             </div>
-            @if (!isDeleted)
+            @if (!isDeleted && currentUserIsOwner && !targetIsOwner)
             {
                 <form asp-action="SetGlobalRole" asp-route-userId="@Model.UserId" method="post">
                     <input type="hidden" name="role" value="@role" />
-                    <input type="hidden" name="enabled" value="@(enabled ? "false" : "true")" />
-                    <button type="submit" class="btn btn-sm @(enabled ? "btn-outline-danger" : "btn-outline-primary")">
-                        @(enabled ? "Remove" : "Assign")
+                    <input type="hidden" name="enabled" value="@(assigned ? "false" : "true")" />
+                    <button type="submit" class="btn btn-sm @(assigned ? "btn-outline-danger" : "btn-outline-primary")">
+                        @(assigned ? "Remove" : "Assign")
                     </button>
                 </form>
             }
@@ -93,9 +105,9 @@
             <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 border-top py-2">
                 <div>
                     <strong>@role</strong>
-                    <div class="small text-body-secondary">@(enabled ? "Assigned" : "Not assigned")</div>
+                    <div class="small text-body-secondary">@(targetIsOwner ? "Inherited globally from Owner" : enabled ? "Assigned" : "Not assigned")</div>
                 </div>
-                @if (!isDeleted)
+                @if (!isDeleted && !targetIsOwner)
                 {
                     <form asp-action="SetScopedRole" asp-route-userId="@Model.UserId" method="post">
                         <input type="hidden" name="scope" value="@scope" />
@@ -115,26 +127,54 @@
 {
     <div class="card card-body shadow-sm mb-4">
         <h2 class="h5">Security controls</h2>
-        <div class="d-flex flex-wrap gap-2">
-            @if (isLocked)
-            {
-                <form asp-action="Unlock" asp-route-userId="@Model.UserId" method="post">
-                    <button type="submit" class="btn btn-outline-primary">Unlock account</button>
-                </form>
-            }
-            else
-            {
-                <form asp-action="Lock" asp-route-userId="@Model.UserId" method="post">
-                    <button type="submit" class="btn btn-outline-danger" disabled="@Model.IsCurrentUser">Lock account</button>
-                </form>
-            }
-            <form asp-action="InvalidateSessions" asp-route-userId="@Model.UserId" method="post">
-                <button type="submit" class="btn btn-outline-warning">Invalidate sessions</button>
-            </form>
-        </div>
-        @if (Model.IsCurrentUser)
+        @if (targetIsOwner && !currentUserIsOwner)
         {
-            <div class="form-text mt-2">The current administrator can not lock its own account. Invalidating your own sessions will require you to sign in again.</div>
+            <p class="text-body-secondary mb-0">Owner account security controls require an Owner account.</p>
+        }
+        else
+        {
+            <div class="d-flex flex-wrap gap-2">
+                @if (isLocked)
+                {
+                    <form asp-action="Unlock" asp-route-userId="@Model.UserId" method="post">
+                        <button type="submit" class="btn btn-outline-primary">Unlock account</button>
+                    </form>
+                }
+                else
+                {
+                    <form asp-action="Lock" asp-route-userId="@Model.UserId" method="post">
+                        <button type="submit" class="btn btn-outline-danger" disabled="@Model.IsCurrentUser">Lock account</button>
+                    </form>
+                }
+                <form asp-action="InvalidateSessions" asp-route-userId="@Model.UserId" method="post">
+                    <button type="submit" class="btn btn-outline-warning">Invalidate sessions</button>
+                </form>
+            </div>
+            @if (Model.IsCurrentUser)
+            {
+                <div class="form-text mt-2">The current administrator can not lock its own account. Invalidating your own sessions will require you to sign in again.</div>
+            }
+        }
+    </div>
+
+    <div class="card card-body border-danger shadow-sm mb-4">
+        <h2 class="h5 text-danger">Danger zone</h2>
+        @if (targetIsOwner)
+        {
+            <p class="text-body-secondary mb-0">Owner accounts are server-managed and can not be deleted through the UI.</p>
+        }
+        else if (Model.IsCurrentUser)
+        {
+            <p class="text-body-secondary">Delete your own account from Account settings. You will be required to confirm your password.</p>
+            <a asp-controller="Account" asp-action="Delete" class="btn btn-outline-danger align-self-start">Delete my account</a>
+        }
+        else
+        {
+            <p class="text-body-secondary">Deleting an account revokes sign-in, frees its email address, and keeps only a tombstone record. This action is not reversible through the UI.</p>
+            <form asp-action="DeleteAccount" asp-route-userId="@Model.UserId" method="post"
+                  onsubmit="return confirm('Delete this account? This action can not be reversed through the UI.');">
+                <button type="submit" class="btn btn-danger">Delete account</button>
+            </form>
         }
     </div>
 }
