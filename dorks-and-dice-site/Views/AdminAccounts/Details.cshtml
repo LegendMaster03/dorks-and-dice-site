@@ -67,7 +67,7 @@
 
 <div class="card card-body shadow-sm mb-4">
     <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
-        <h2 class="h5 mb-0">Global roles</h2>
+        <h2 class="h5 mb-0">Roles</h2>
         @if (canOpenRoleManager)
         {
             <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#manageRolesModal">
@@ -75,97 +75,90 @@
             </button>
         }
     </div>
-    <p class="text-body-secondary mt-2">Only roles directly assigned to this account are listed. Expand a role to see inherited access.</p>
+    <p class="text-body-secondary mt-2">Only roles directly assigned to this account are listed. Expand a global role to see inherited access.</p>
 
-    @if (directlyAssignedGlobalRoles.Length == 0)
-    {
-        <p class="text-body-secondary mb-0">No global roles assigned.</p>
-    }
-    else
-    {
-        @foreach (var role in directlyAssignedGlobalRoles)
+    <section class="mt-2" aria-labelledby="globalRolesHeading">
+        <h3 class="h6 mb-1" id="globalRolesHeading">Global roles</h3>
+        @if (directlyAssignedGlobalRoles.Length == 0)
         {
-            var inheritedFrom = AccountRoleHierarchy.GetGlobalInheritanceSources(Model.GlobalRoles, role);
-            var hierarchyNode = AccountRoleHierarchy.GetGlobalRole(role);
-
-            <div class="d-flex flex-wrap align-items-start justify-content-between gap-2 border-top py-2">
-                <div>
-                    <strong>@role</strong>
-                    <div class="small text-body-secondary">
-                        @if (role == AccountRoles.Owner)
-                        {
-                            <span>Assigned — server-managed</span>
-                        }
-                        else if (inheritedFrom.Count > 0)
-                        {
-                            <span>Assigned directly — also inherited through @string.Join(", ", inheritedFrom)</span>
-                        }
-                        else
-                        {
-                            <span>Assigned directly</span>
-                        }
-                    </div>
-                    @if (hierarchyNode.Children.Count > 0)
-                    {
-                        <details class="small mt-2">
-                            <summary>Inherited access</summary>
-                            <ul class="mb-0 mt-1">
-                                @foreach (var child in hierarchyNode.Children)
-                                {
-                                    <partial name="_RoleInheritanceNode" model="child" />
-                                }
-                            </ul>
-                        </details>
-                    }
-                </div>
-            </div>
+            <p class="text-body-secondary mb-0">No global roles assigned.</p>
         }
-    }
-</div>
-
-<div class="card card-body shadow-sm mb-4">
-    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
-        <h2 class="h5 mb-0">Scoped roles</h2>
-        @if (canOpenRoleManager)
+        else
         {
-            <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#manageRolesModal">
-                Manage roles
-            </button>
-        }
-    </div>
-    <p class="text-body-secondary mt-2">Only scoped roles directly assigned to this account are listed. Inherited-only access remains visible through the hierarchy above.</p>
+            @foreach (var role in directlyAssignedGlobalRoles)
+            {
+                var inheritedFrom = AccountRoleHierarchy.GetGlobalInheritanceSources(Model.GlobalRoles, role);
+                var hierarchyNode = AccountRoleHierarchy.GetGlobalRole(role);
 
-    @if (directlyAssignedScopedRoles.Length == 0)
-    {
-        <p class="text-body-secondary mb-0">No scoped roles assigned.</p>
-    }
-    else
-    {
-        @foreach (var editorRole in directlyAssignedScopedRoles)
-        {
-            var inheritedFrom = AccountRoleHierarchy.GetScopedInheritanceSources(
-                Model.GlobalRoles,
-                editorRole.Scope,
-                ScopedAccountRoles.Editor);
-
-            <div class="border-top py-2">
-                <div class="small text-body-secondary mb-1">@editorRole.DisplayName</div>
-                <div>
-                    <strong>@ScopedAccountRoles.Editor</strong>
-                    <div class="small text-body-secondary">
-                        @if (inheritedFrom.Count > 0)
+                <div class="d-flex flex-wrap align-items-start justify-content-between gap-2 border-top py-2">
+                    <div>
+                        <strong>@role</strong>
+                        <div class="small text-body-secondary">
+                            @if (role == AccountRoles.Owner)
+                            {
+                                <span>Assigned — server-managed</span>
+                            }
+                            else if (inheritedFrom.Count > 0)
+                            {
+                                <span>Assigned directly — also inherited through @string.Join(", ", inheritedFrom)</span>
+                            }
+                            else
+                            {
+                                <span>Assigned directly</span>
+                            }
+                        </div>
+                        @if (hierarchyNode.Children.Count > 0)
                         {
-                            <span>Assigned directly — also inherited through @string.Join(", ", inheritedFrom)</span>
-                        }
-                        else
-                        {
-                            <span>Assigned directly</span>
+                            <details class="small mt-2">
+                                <summary>Inherited access</summary>
+                                <ul class="mb-0 mt-1">
+                                    @foreach (var child in hierarchyNode.Children)
+                                    {
+                                        <partial name="_RoleInheritanceNode" model="child" />
+                                    }
+                                </ul>
+                            </details>
                         }
                     </div>
                 </div>
-            </div>
+            }
         }
-    }
+    </section>
+
+    <section class="mt-4" aria-labelledby="scopedRolesHeading">
+        <h3 class="h6 mb-1" id="scopedRolesHeading">Scoped roles</h3>
+        @if (directlyAssignedScopedRoles.Length == 0)
+        {
+            <p class="text-body-secondary mb-0">No scoped roles assigned.</p>
+        }
+        else
+        {
+            @foreach (var editorRole in directlyAssignedScopedRoles)
+            {
+                var inheritedFrom = AccountRoleHierarchy.GetScopedInheritanceSources(
+                    Model.GlobalRoles,
+                    editorRole.Scope,
+                    ScopedAccountRoles.Editor);
+
+                <div class="border-top py-2">
+                    <div class="small text-body-secondary mb-1">@editorRole.DisplayName</div>
+                    <div>
+                        <strong>@ScopedAccountRoles.Editor</strong>
+                        <div class="small text-body-secondary">
+                            @if (inheritedFrom.Count > 0)
+                            {
+                                <span>Assigned directly — also inherited through @string.Join(", ", inheritedFrom)</span>
+                            }
+                            else
+                            {
+                                <span>Assigned directly</span>
+                            }
+                        </div>
+                    </div>
+                </div>
+            }
+        }
+    </section>
 </div>
 
 @if (canOpenRoleManager)
