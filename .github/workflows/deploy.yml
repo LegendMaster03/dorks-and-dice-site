@@ -30,7 +30,7 @@ jobs:
           ready=false
           for i in {1..30}; do
             if docker exec dorks-and-dice-content-test-postgres \
-              pg_isready -U content_test -d content_test; then
+              createdb -U content_test -O content_test identity_test; then
               ready=true
               break
             fi
@@ -41,9 +41,6 @@ jobs:
             docker logs dorks-and-dice-content-test-postgres
             exit 1
           fi
-
-          docker exec dorks-and-dice-content-test-postgres \
-            createdb -U content_test -O content_test identity_test
 
       - name: Run tests
         run: |
