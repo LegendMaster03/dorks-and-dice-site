@@ -50,7 +50,9 @@ var identityStorageProvider = builder.Configuration[$"{IdentityStorageOptions.Se
 builder.Services.AddDbContext<IdentityDbContext>((serviceProvider, options) =>
 {
     var configuration = serviceProvider.GetRequiredService<IConfiguration>();
-    var connectionString = IdentityConnectionStringResolver.Resolve(configuration);
+    var connectionString = IdentityConnectionStringResolver.Resolve(
+        configuration,
+        builder.Environment.ContentRootPath);
 
     if (string.Equals(identityStorageProvider, "Sqlite", StringComparison.OrdinalIgnoreCase)
         || string.Equals(identityStorageProvider, "SQLite", StringComparison.OrdinalIgnoreCase))
