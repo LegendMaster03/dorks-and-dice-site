@@ -5,6 +5,10 @@
     var displayName = User.FindFirst(AccountClaimTypes.DisplayName)?.Value;
     var returnUrl = $"{Context.Request.Path}{Context.Request.QueryString}";
     var hasTrustedAccess = Context.GetSiteModeContext().HasTrustedAccess;
+    var hasScopedEditorRole = User.Claims.Any(claim =>
+        string.Equals(claim.Type, AccountClaimTypes.ScopedRole, StringComparison.Ordinal)
+        && claim.Value.EndsWith($":{ScopedAccountRoles.Editor}", StringComparison.Ordinal));
+    var canUseEditor = hasScopedEditorRole || User.IsInRole(AccountRoles.Admin);
     var canAdminister = hasTrustedAccess && User.IsInRole(AccountRoles.Admin);
     var canUseDevelopmentTools = hasTrustedAccess && User.IsInRole(AccountRoles.Dev);
 }
@@ -21,16 +25,22 @@
             <li>
                 <a class="dropdown-item" asp-controller="Account" asp-action="Index">Account settings</a>
             </li>
+            @if (canUseEditor)
+            {
+                <li>
+                    <a class="dropdown-item" href="/editor">Editor</a>
+                </li>
+            }
             @if (canAdminister)
             {
                 <li>
-                    <a class="dropdown-item" asp-controller="AdminAccounts" asp-action="Index">Admin</a>
+                    <a class="dropdown-item" href="/admin">Admin</a>
                 </li>
             }
             @if (canUseDevelopmentTools)
             {
                 <li>
-                    <a class="dropdown-item" href="/development/content">Development tools</a>
+                    <a class="dropdown-item" href="/development">Development</a>
                 </li>
             }
             <li><hr class="dropdown-divider" /></li>
