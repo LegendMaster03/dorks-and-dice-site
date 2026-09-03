@@ -12,3 +12,4 @@ obj/
 .env
 .env.*
 !.env.example
+dorks-and-dice-site/Content/identity-development.db
