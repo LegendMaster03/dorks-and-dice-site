@@ -1,16 +1,15 @@
+using System.Text.Encodings.Web;
+using System.Text.RegularExpressions;
 using dorks_and_dice_site.Models.Content;
 using dorks_and_dice_site.Services.Content;
 using dorks_and_dice_site.Services.Identity;
-using dorks_and_dice_site.Services.Site;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.Text.Encodings.Web;
-using System.Text.RegularExpressions;
 
 namespace dorks_and_dice_site.Controllers;
 
-[Authorize(Policy = AuthorizationPolicies.DevAccess)]
-[Route("development/content")]
+[Authorize(Policy = AuthorizationPolicies.ModeEditor)]
+[Route("editor/content")]
 [RequestSizeLimit(ContentInputPolicy.MaxAuthoringRequestBytes)]
 public sealed class ContentAuthoringController : Controller
 {
@@ -31,25 +30,13 @@ public sealed class ContentAuthoringController : Controller
     [HttpGet("")]
     public async Task<IActionResult> Index(CancellationToken cancellationToken)
     {
-        if (!IsDevelopmentPreview())
-        {
-            return NotFound();
-        }
-
-        var sourceKey = Request.Query["source"].FirstOrDefault();
-        return View(await _authoringService.GetIndexAsync(sourceKey, cancellationToken));
+        return View(await _authoringService.GetIndexAsync(_authoringService.DefaultSourceKey, cancellationToken));
     }
 
     [HttpGet("new")]
     public IActionResult New()
     {
-        if (!IsDevelopmentPreview())
-        {
-            return NotFound();
-        }
-
-        var sourceKey = Request.Query["source"].FirstOrDefault();
-        return View("Edit", _authoringService.GetNew(sourceKey));
+        return View("Edit", _authoringService.GetNew(_authoringService.DefaultSourceKey));
     }
 
     [HttpPost("new")]
@@ -58,16 +45,12 @@ public sealed class ContentAuthoringController : Controller
         ContentAuthoringEditViewModel model,
         CancellationToken cancellationToken)
     {
-        if (!IsDevelopmentPreview())
-        {
-            return NotFound();
-        }
-
         model.Document.IsNew = true;
+        model.Document.SourceKey = _authoringService.DefaultSourceKey;
         try
         {
             var created = await _authoringService.CreateAsync(model.Document, cancellationToken);
-            return RedirectToAction(nameof(Edit), new { slug = created.Slug, source = model.Document.SourceKey });
+            return RedirectToAction(nameof(Edit), new { slug = created.Slug });
         }
         catch (InvalidOperationException ex)
         {
@@ -80,15 +63,12 @@ public sealed class ContentAuthoringController : Controller
     [HttpGet("{slug}/edit")]
     public async Task<IActionResult> Edit(string slug, CancellationToken cancellationToken)
     {
-        if (!IsDevelopmentPreview())
-        {
-            return NotFound();
-        }
-
-        var sourceKey = Request.Query["source"].FirstOrDefault() ?? _authoringService.DefaultSourceKey;
         try
         {
-            var model = await _authoringService.GetEditAsync(sourceKey, slug, cancellationToken);
+            var model = await _authoringService.GetEditAsync(
+                _authoringService.DefaultSourceKey,
+                slug,
+                cancellationToken);
             return model is null ? NotFound() : View(model);
         }
         catch (InvalidOperationException)
@@ -104,17 +84,13 @@ public sealed class ContentAuthoringController : Controller
         ContentAuthoringEditViewModel model,
         CancellationToken cancellationToken)
     {
-        if (!IsDevelopmentPreview())
-        {
-            return NotFound();
-        }
-
+        model.Document.SourceKey = _authoringService.DefaultSourceKey;
         try
         {
             ContentInputValidator.ValidateKey("Route slug", slug);
             model.Document.IsNew = false;
             var saved = await _authoringService.SaveRevisionAsync(model.Document, cancellationToken);
-            return RedirectToAction(nameof(Edit), new { slug = saved.Slug, source = model.Document.SourceKey });
+            return RedirectToAction(nameof(Edit), new { slug = saved.Slug });
         }
         catch (InvalidOperationException ex)
         {
@@ -128,11 +104,7 @@ public sealed class ContentAuthoringController : Controller
     [ValidateAntiForgeryToken]
     public IActionResult Preview(ContentAuthoringEditViewModel model)
     {
-        if (!IsDevelopmentPreview())
-        {
-            return NotFound();
-        }
-
+        model.Document.SourceKey = _authoringService.DefaultSourceKey;
         try
         {
             model.RenderedPreviewHtml = _bodyRenderer.Render(model.Document.BodyFormat, model.Document.Body);
@@ -150,7 +122,6 @@ public sealed class ContentAuthoringController : Controller
     [ValidateAntiForgeryToken]
     public IActionResult RenderVisual([FromForm] string? body)
     {
-        if (!IsDevelopmentPreview()) return NotFound();
         body ??= string.Empty;
 
         var directives = new List<string>();
@@ -174,53 +145,4 @@ public sealed class ContentAuthoringController : Controller
 
         return Json(new { html });
     }
-
-    [HttpPost("{slug}/move")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Move(
-        string slug,
-        string source,
-        string targetSource,
-        CancellationToken cancellationToken)
-    {
-        if (!IsDevelopmentPreview())
-        {
-            return NotFound();
-        }
-
-        try
-        {
-            await _authoringService.MoveAsync(source, targetSource, slug, cancellationToken);
-            return RedirectToAction(nameof(Index), new { source = targetSource });
-        }
-        catch (InvalidOperationException ex)
-        {
-            TempData["ContentAuthoringError"] = ex.Message;
-            return RedirectToAction(nameof(Index), new { source });
-        }
-    }
-
-    [HttpPost("push-all")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> PushAll(
-        string source,
-        string targetSource,
-        CancellationToken cancellationToken)
-    {
-        if (!IsDevelopmentPreview()) return NotFound();
-        try
-        {
-            var count = await _authoringService.MoveAllAsync(source, targetSource, cancellationToken);
-            TempData["ContentAuthoringSuccess"] = $"Pushed {count} content page(s) from {source} to {targetSource}.";
-            return RedirectToAction(nameof(Index), new { source = targetSource });
-        }
-        catch (InvalidOperationException ex)
-        {
-            TempData["ContentAuthoringError"] = ex.Message;
-            return RedirectToAction(nameof(Index), new { source });
-        }
-    }
-
-    private bool IsDevelopmentPreview() => HttpContext.GetSiteModeContext().IsDevelopmentPreview;
-
 }
