@@ -31,9 +31,11 @@ public sealed class AdminAccountsController : Controller
     [HttpGet("")]
     public async Task<IActionResult> Index()
     {
-        var users = await _userManager.Users
+        // SQLite can not translate ORDER BY for DateTimeOffset. Materialize first so
+        // local account management uses the same ordering without provider-specific SQL.
+        var users = (await _userManager.Users.ToListAsync())
             .OrderByDescending(user => user.CreatedAt)
-            .ToListAsync();
+            .ToList();
         var accounts = new List<AdminAccountListItemViewModel>(users.Count);
 
         foreach (var user in users)
