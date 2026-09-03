@@ -53,6 +53,8 @@ public static class SiteRouteOwnership
             || path == "/development-preview"
             || path == "/account"
             || path.StartsWith("/account/", StringComparison.Ordinal)
+            || path == "/editor"
+            || path.StartsWith("/editor/", StringComparison.Ordinal)
             || path == "/admin"
             || path.StartsWith("/admin/", StringComparison.Ordinal)
             || path == "/home/notfoundpage"
