@@ -7,7 +7,16 @@
     var isDeleted = Model.DeletedAt is not null;
     var isLocked = Model.LockoutEnd is not null && Model.LockoutEnd > DateTimeOffset.UtcNow;
     var targetIsOwner = Model.GlobalRoles.Contains(AccountRoles.Owner, StringComparer.Ordinal);
+    var targetIsAdmin = Model.GlobalRoles.Contains(AccountRoles.Admin, StringComparer.Ordinal);
+    var targetIsGlobalEditor = Model.GlobalRoles.Contains(AccountRoles.GlobalEditor, StringComparer.Ordinal);
     var currentUserIsOwner = User.IsInRole(AccountRoles.Owner);
+    var inheritedEditorSource = targetIsOwner
+        ? "Owner → Admin → Global Editor"
+        : targetIsAdmin
+            ? "Admin → Global Editor"
+            : targetIsGlobalEditor
+                ? "Global Editor"
+                : null;
 }
 
 <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
@@ -58,60 +67,153 @@
 
 <div class="card card-body shadow-sm mb-4">
     <h2 class="h5">Global roles</h2>
-    <p class="text-body-secondary">Owner is the server-managed super-administrator role and inherits Admin, Dev, and global Editor authority. Only an Owner can assign or remove Admin and Dev through this UI.</p>
+    <p class="text-body-secondary">Only directly assigned roles are listed as assignments. Expand a role to see the access it inherits.</p>
 
-    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 border-top py-2">
+    <div class="d-flex flex-wrap align-items-start justify-content-between gap-2 border-top py-2">
         <div>
             <strong>@AccountRoles.Owner</strong>
             <div class="small text-body-secondary">@(targetIsOwner ? "Assigned — server-managed" : "Not assigned — server-managed")</div>
+            @if (targetIsOwner)
+            {
+                <details class="small mt-2">
+                    <summary>Inherited access</summary>
+                    <ul class="mb-0 mt-1">
+                        <li>
+                            @AccountRoles.Admin
+                            <ul>
+                                <li>
+                                    @AccountRoles.GlobalEditor
+                                    <ul>
+                                        <li>Dorks &amp; Dice @ScopedAccountRoles.Editor</li>
+                                        <li>Professional @ScopedAccountRoles.Editor</li>
+                                    </ul>
+                                </li>
+                            </ul>
+                        </li>
+                        <li>@AccountRoles.Dev</li>
+                    </ul>
+                </details>
+            }
         </div>
     </div>
 
-    @foreach (var role in AccountRoles.Privileged)
+    @foreach (var role in AccountRoles.UiAssignable)
     {
         var assigned = Model.GlobalRoles.Contains(role, StringComparer.Ordinal);
-        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 border-top py-2">
-            <div>
-                <strong>@role</strong>
-                <div class="small text-body-secondary">
-                    @(targetIsOwner ? "Inherited from Owner" : assigned ? "Assigned" : "Not assigned")
+        var inheritedFrom = role switch
+        {
+            AccountRoles.Admin when targetIsOwner => AccountRoles.Owner,
+            AccountRoles.Dev when targetIsOwner => AccountRoles.Owner,
+            AccountRoles.GlobalEditor when targetIsOwner => $"{AccountRoles.Owner} → {AccountRoles.Admin}",
+            AccountRoles.GlobalEditor when targetIsAdmin => AccountRoles.Admin,
+            _ => null
+        };
+        var showRole = assigned || inheritedFrom is null;
+        var ownerManaged = AccountRoles.OwnerManaged.Contains(role, StringComparer.Ordinal);
+        var canManageRole = !isDeleted
+            && (!ownerManaged || currentUserIsOwner)
+            && (!targetIsOwner || currentUserIsOwner);
+
+        if (showRole)
+        {
+            <div class="d-flex flex-wrap align-items-start justify-content-between gap-2 border-top py-2">
+                <div>
+                    <strong>@role</strong>
+                    <div class="small text-body-secondary">
+                        @if (assigned && inheritedFrom is not null)
+                        {
+                            <span>Assigned directly — also inherited through @inheritedFrom</span>
+                        }
+                        else if (assigned)
+                        {
+                            <span>Assigned directly</span>
+                        }
+                        else
+                        {
+                            <span>Not assigned</span>
+                        }
+                    </div>
+                    @if (assigned && role == AccountRoles.Admin)
+                    {
+                        <details class="small mt-2">
+                            <summary>Inherited access</summary>
+                            <ul class="mb-0 mt-1">
+                                <li>
+                                    @AccountRoles.GlobalEditor
+                                    <ul>
+                                        <li>Dorks &amp; Dice @ScopedAccountRoles.Editor</li>
+                                        <li>Professional @ScopedAccountRoles.Editor</li>
+                                    </ul>
+                                </li>
+                            </ul>
+                        </details>
+                    }
+                    else if (assigned && role == AccountRoles.GlobalEditor)
+                    {
+                        <details class="small mt-2">
+                            <summary>Inherited access</summary>
+                            <ul class="mb-0 mt-1">
+                                <li>Dorks &amp; Dice @ScopedAccountRoles.Editor</li>
+                                <li>Professional @ScopedAccountRoles.Editor</li>
+                            </ul>
+                        </details>
+                    }
                 </div>
+                @if (canManageRole)
+                {
+                    <form asp-action="SetGlobalRole" asp-route-userId="@Model.UserId" method="post">
+                        <input type="hidden" name="role" value="@role" />
+                        <input type="hidden" name="enabled" value="@(assigned ? "false" : "true")" />
+                        <button type="submit" class="btn btn-sm @(assigned ? "btn-outline-danger" : "btn-outline-primary")">
+                            @(assigned ? "Remove" : "Assign")
+                        </button>
+                    </form>
+                }
             </div>
-            @if (!isDeleted && currentUserIsOwner && !targetIsOwner)
-            {
-                <form asp-action="SetGlobalRole" asp-route-userId="@Model.UserId" method="post">
-                    <input type="hidden" name="role" value="@role" />
-                    <input type="hidden" name="enabled" value="@(assigned ? "false" : "true")" />
-                    <button type="submit" class="btn btn-sm @(assigned ? "btn-outline-danger" : "btn-outline-primary")">
-                        @(assigned ? "Remove" : "Assign")
-                    </button>
-                </form>
-            }
-        </div>
+        }
     }
 </div>
 
 <div class="card card-body shadow-sm mb-4">
     <h2 class="h5">Scoped roles</h2>
-    <p class="text-body-secondary">Scoped roles apply only within the selected site mode. Individual capabilities can impose additional Trusted Access requirements.</p>
+    @if (inheritedEditorSource is not null)
+    {
+        <p class="text-body-secondary">Editor access for all site scopes is inherited through @inheritedEditorSource. Only redundant direct scoped assignments are shown below.</p>
+    }
+    else
+    {
+        <p class="text-body-secondary">Scoped roles apply only within the selected site mode.</p>
+    }
+
     @foreach (var scope in AccountRoleScopes.All)
     {
         var scopeLabel = scope == AccountRoleScopes.DorksAndDice ? "Dorks & Dice" : "Professional";
-        <h3 class="h6 mt-2">@scopeLabel</h3>
-        @foreach (var role in ScopedAccountRoles.All)
+        var enabled = Model.ScopedRoles.TryGetValue(scope, out var roles)
+            && roles.Contains(ScopedAccountRoles.Editor, StringComparer.Ordinal);
+        var showScopedRole = inheritedEditorSource is null || enabled;
+
+        if (showScopedRole)
         {
-            var enabled = Model.ScopedRoles.TryGetValue(scope, out var roles)
-                && roles.Contains(role, StringComparer.Ordinal);
+            <h3 class="h6 mt-2">@scopeLabel</h3>
             <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 border-top py-2">
                 <div>
-                    <strong>@role</strong>
-                    <div class="small text-body-secondary">@(targetIsOwner ? "Inherited globally from Owner" : enabled ? "Assigned" : "Not assigned")</div>
+                    <strong>@ScopedAccountRoles.Editor</strong>
+                    <div class="small text-body-secondary">
+                        @if (enabled && inheritedEditorSource is not null)
+                        {
+                            <span>Assigned directly — also inherited through @inheritedEditorSource</span>
+                        }
+                        else
+                        {
+                            <span>@(enabled ? "Assigned directly" : "Not assigned")</span>
+                        }
+                    </div>
                 </div>
-                @if (!isDeleted && !targetIsOwner)
+                @if (!isDeleted && (!targetIsOwner || currentUserIsOwner))
                 {
                     <form asp-action="SetScopedRole" asp-route-userId="@Model.UserId" method="post">
                         <input type="hidden" name="scope" value="@scope" />
-                        <input type="hidden" name="role" value="@role" />
+                        <input type="hidden" name="role" value="@ScopedAccountRoles.Editor" />
                         <input type="hidden" name="enabled" value="@(enabled ? "false" : "true")" />
                         <button type="submit" class="btn btn-sm @(enabled ? "btn-outline-danger" : "btn-outline-primary")">
                             @(enabled ? "Remove" : "Assign")
@@ -170,9 +272,9 @@
         }
         else
         {
-            <p class="text-body-secondary">Deleting an account revokes sign-in, frees its email address, and keeps only a tombstone record. This action is not reversible through the UI.</p>
+            <p class="text-body-secondary">Deleting an account revokes sign-in, frees its email address, and keeps only a tombstone record. This action can not be undone through the UI. Manual database recovery may be possible but is not guaranteed.</p>
             <form asp-action="DeleteAccount" asp-route-userId="@Model.UserId" method="post"
-                  onsubmit="return confirm('Delete this account? This action can not be reversed through the UI.');">
+                  onsubmit="return confirm('Delete this account? This action can not be undone through the UI.');">
                 <button type="submit" class="btn btn-danger">Delete account</button>
             </form>
         }

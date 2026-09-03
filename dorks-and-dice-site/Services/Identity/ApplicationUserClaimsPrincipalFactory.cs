@@ -37,6 +37,21 @@ public sealed class ApplicationUserClaimsPrincipalFactory
             }
         }
 
+        // Global Editor is an explicit global content-authoring role. Represent its
+        // inherited editor authority as scoped Editor claims so all existing editor
+        // authorization paths continue to respect the selected site mode.
+        if (await _userManager.IsInRoleAsync(user, AccountRoles.GlobalEditor))
+        {
+            foreach (var scope in AccountRoleScopes.All)
+            {
+                var value = $"{scope}:{ScopedAccountRoles.Editor}";
+                if (!identity.HasClaim(AccountClaimTypes.ScopedRole, value))
+                {
+                    identity.AddClaim(new Claim(AccountClaimTypes.ScopedRole, value));
+                }
+            }
+        }
+
         return identity;
     }
 }

@@ -31,8 +31,6 @@ public sealed class AdminAccountsController : Controller
     [HttpGet("")]
     public async Task<IActionResult> Index()
     {
-        // SQLite can not translate ORDER BY for DateTimeOffset. Materialize first so
-        // local account management uses the same ordering without provider-specific SQL.
         var users = (await _userManager.Users.ToListAsync())
             .OrderByDescending(user => user.CreatedAt)
             .ToList();
@@ -72,14 +70,9 @@ public sealed class AdminAccountsController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SetGlobalRole(Guid userId, string role, bool enabled)
     {
-        if (!AccountRoles.Privileged.Contains(role, StringComparer.Ordinal))
+        if (!AccountRoles.UiAssignable.Contains(role, StringComparer.Ordinal))
         {
             return BadRequest();
-        }
-
-        if (!User.IsInRole(AccountRoles.Owner))
-        {
-            return Forbid();
         }
 
         var user = await FindMutableUserAsync(userId);
@@ -88,10 +81,16 @@ public sealed class AdminAccountsController : Controller
             return NotFound();
         }
 
-        if (await _userManager.IsInRoleAsync(user, AccountRoles.Owner))
+        var targetIsOwner = await _userManager.IsInRoleAsync(user, AccountRoles.Owner);
+        var currentUserIsOwner = User.IsInRole(AccountRoles.Owner);
+        if (targetIsOwner && !currentUserIsOwner)
         {
-            TempData["AdminAccountError"] = "Owner accounts inherit Admin and Dev. Their global role assignment is server-managed.";
-            return RedirectToAction(nameof(Details), new { userId });
+            return Forbid();
+        }
+
+        if (AccountRoles.OwnerManaged.Contains(role, StringComparer.Ordinal) && !currentUserIsOwner)
+        {
+            return Forbid();
         }
 
         var currentlyEnabled = await _userManager.IsInRoleAsync(user, role);
@@ -101,6 +100,7 @@ public sealed class AdminAccountsController : Controller
         }
 
         if (!enabled
+            && !targetIsOwner
             && string.Equals(role, AccountRoles.Admin, StringComparison.Ordinal)
             && await IsLastActiveAdministratorAsync(user))
         {
@@ -134,6 +134,7 @@ public sealed class AdminAccountsController : Controller
             : $"{role} role removed.";
 
         if (IsCurrentUser(user)
+            && !targetIsOwner
             && !enabled
             && string.Equals(role, AccountRoles.Admin, StringComparison.Ordinal))
         {
@@ -157,6 +158,12 @@ public sealed class AdminAccountsController : Controller
         if (user is null)
         {
             return NotFound();
+        }
+
+        if (await _userManager.IsInRoleAsync(user, AccountRoles.Owner)
+            && !User.IsInRole(AccountRoles.Owner))
+        {
+            return Forbid();
         }
 
         var result = await _scopedRoleService.SetRoleAsync(user, scope, role, enabled);
