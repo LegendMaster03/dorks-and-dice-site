@@ -1,0 +1,56 @@
+@using dorks_and_dice_site.Models.Site
+@{
+    ViewData["Title"] = "Editor";
+    ViewData["Robots"] = "noindex,nofollow";
+    var canEditDorksAndDice = ViewData["CanEditDorksAndDice"] as bool? ?? false;
+    var canEditProfessional = ViewData["CanEditProfessional"] as bool? ?? false;
+    var siteMode = Context.GetSiteModeContext().SiteMode;
+}
+
+<div class="mb-4">
+    <p class="text-uppercase text-muted small mb-1">Content tools</p>
+    <h1 class="h2 mb-2">Editor</h1>
+    <p class="text-body-secondary mb-0">Choose a site you are authorized to edit. Administration and database management are separate tools.</p>
+</div>
+
+<div class="row g-3">
+    @if (canEditDorksAndDice)
+    {
+        <div class="col-md-6">
+            <section class="card h-100">
+                <div class="card-body d-flex flex-column">
+                    <h2 class="h5">Dorks &amp; Dice</h2>
+                    <p class="text-body-secondary">Create and edit Dorks &amp; Dice content.</p>
+                    @if (siteMode == SiteMode.DorksAndDice)
+                    {
+                        <a class="btn btn-primary mt-auto align-self-start" href="/editor/content">Open content editor</a>
+                    }
+                    else
+                    {
+                        <p class="small text-body-secondary mt-auto mb-0">Switch the active site mode to Dorks &amp; Dice, then reopen Editor.</p>
+                    }
+                </div>
+            </section>
+        </div>
+    }
+
+    @if (canEditProfessional)
+    {
+        <div class="col-md-6">
+            <section class="card h-100">
+                <div class="card-body d-flex flex-column">
+                    <h2 class="h5">Professional</h2>
+                    <p class="text-body-secondary">Create and edit professional-site content.</p>
+                    @if (siteMode == SiteMode.Professional)
+                    {
+                        <a class="btn btn-primary mt-auto align-self-start" href="/editor/content">Open content editor</a>
+                    }
+                    else
+                    {
+                        <p class="small text-body-secondary mt-auto mb-0">Switch the active site mode to Professional, then reopen Editor.</p>
+                    }
+                </div>
+            </section>
+        </div>
+    }
+</div>
