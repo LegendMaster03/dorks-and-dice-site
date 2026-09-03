@@ -1,21 +1,75 @@
-@{
-    ViewData["Title"] = "Admin";
-    ViewData["Robots"] = "noindex,nofollow";
+using dorks_and_dice_site.Models.Content;
+using dorks_and_dice_site.Services.Content;
+using dorks_and_dice_site.Services.Content.Storage;
+using dorks_and_dice_site.Services.Identity;
+using dorks_and_dice_site.Services.Site;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+
+namespace dorks_and_dice_site.Controllers;
+
+[Authorize(Policy = AuthorizationPolicies.DevAccess)]
+[Route("development/media")]
+[RequestSizeLimit(ContentInputPolicy.MaxAssetUploadBytes + 65_536)]
+public sealed class ContentMediaLibraryController : Controller
+{
+    private readonly IContentAssetService _assets;
+    private readonly IContentSourceRegistry _sources;
+
+    public ContentMediaLibraryController(IContentAssetService assets, IContentSourceRegistry sources)
+    {
+        _assets = assets;
+        _sources = sources;
+    }
+
+    [HttpGet("")]
+    public async Task<IActionResult> Index(string? source, CancellationToken cancellationToken)
+    {
+        if (!IsDevelopmentPreview()) return NotFound();
+        source ??= _sources.AuthoringSourceKey;
+        return View(new ContentAssetLibraryViewModel
+        {
+            SourceKey = source,
+            Sources = _sources.GetAllSources().Select(item => new ContentAuthoringSourceOption
+            {
+                Key = item.Key,
+                DisplayName = item.DisplayName
+            }).ToList(),
+            Assets = (await _assets.GetForSourceAsync(source, cancellationToken)).ToList()
+        });
+    }
+
+    [HttpPost("upload")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Upload(string source, IFormFile? file, CancellationToken cancellationToken)
+    {
+        if (!IsDevelopmentPreview()) return NotFound();
+        if (file is null)
+        {
+            TempData["ContentMediaError"] = "Choose an image to upload.";
+            return RedirectToAction(nameof(Index), new { source });
+        }
+        try
+        {
+            await using var stream = file.OpenReadStream();
+            var asset = await _assets.UploadAsync(
+                source, file.FileName, file.ContentType, stream, file.Length, cancellationToken);
+            TempData["ContentMediaSuccess"] = $"Stored '{asset.FileName}' in {source}.";
+        }
+        catch (InvalidOperationException ex)
+        {
+            TempData["ContentMediaError"] = ex.Message;
+        }
+        return RedirectToAction(nameof(Index), new { source });
+    }
+
+    [HttpGet("{assetKey}/preview")]
+    public async Task<IActionResult> Preview(string assetKey, string source, CancellationToken cancellationToken)
+    {
+        if (!IsDevelopmentPreview()) return NotFound();
+        var asset = await _assets.GetFromSourceAsync(source, assetKey, cancellationToken);
+        return asset is null ? NotFound() : File(asset.Data, asset.MediaType);
+    }
+
+    private bool IsDevelopmentPreview() => HttpContext.GetSiteModeContext().IsDevelopmentPreview;
 }
-
-<div class="mb-4">
-    <p class="text-uppercase text-muted small mb-1">Trusted administration</p>
-    <h1 class="h2 mb-1">Admin</h1>
-    <p class="text-body-secondary mb-0">Manage accounts and authorization. Content editing is available separately through the Editor area.</p>
-</div>
-
-<div class="row row-cols-1 row-cols-md-2 g-4">
-    <div class="col">
-        <a class="card h-100 text-decoration-none" href="/admin/accounts">
-            <div class="card-body">
-                <h2 class="h5">Account management</h2>
-                <p class="text-body-secondary mb-0">Review accounts, assign global and scoped roles, lock accounts, and invalidate sessions.</p>
-            </div>
-        </a>
-    </div>
-</div>

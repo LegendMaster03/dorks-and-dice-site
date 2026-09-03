@@ -1,13 +1,52 @@
-using dorks_and_dice_site.Services.Identity;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
-
-namespace dorks_and_dice_site.Controllers;
-
-[Authorize(Policy = AuthorizationPolicies.DevAccess)]
-[Route("development")]
-public sealed class DevelopmentController : Controller
-{
-    [HttpGet("")]
-    public IActionResult Index() => View();
+@model dorks_and_dice_site.Models.Content.ContentAssetLibraryViewModel
+@{
+    ViewData["Title"] = "Media Library";
+    ViewData["Robots"] = "noindex, nofollow";
 }
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+    <div>
+        <p class="text-uppercase text-muted small mb-1">Development only</p>
+        <h1 class="h3 mb-0">Media library</h1>
+    </div>
+    <a class="btn btn-outline-secondary" href="/development/content?source=@Model.SourceKey">Back to content</a>
+</div>
+
+<form method="get" class="mb-4">
+    <label class="form-label" for="source">Database</label>
+    <select class="form-select" id="source" name="source" data-auto-submit="change">
+        @foreach (var source in Model.Sources)
+        {
+            <option value="@source.Key" selected="@(source.Key.Equals(Model.SourceKey, StringComparison.OrdinalIgnoreCase))">@source.DisplayName</option>
+        }
+    </select>
+</form>
+
+@if (TempData["ContentMediaSuccess"] is string success) { <div class="alert alert-success">@success</div> }
+@if (TempData["ContentMediaError"] is string error) { <div class="alert alert-warning">@error</div> }
+
+<form method="post" action="/development/media/upload" enctype="multipart/form-data" class="card card-body mb-4">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="source" value="@Model.SourceKey" />
+    <div class="row g-3 align-items-end">
+        <div class="col-md-8">
+            <label class="form-label" for="file">Upload image to @Model.SourceKey</label>
+            <input class="form-control" id="file" name="file" type="file" accept="image/jpeg,image/png,image/webp,image/gif" required />
+        </div>
+        <div class="col-md-4"><button class="btn btn-primary w-100" type="submit">Upload media</button></div>
+    </div>
+</form>
+
+<div class="row row-cols-1 row-cols-lg-3 g-4">
+@foreach (var asset in Model.Assets)
+{
+    <div class="col"><article class="card h-100">
+        <img class="card-img-top content-media-preview" src="/development/media/@asset.AssetKey/preview?source=@Uri.EscapeDataString(Model.SourceKey)" alt="Preview of @asset.FileName" />
+        <div class="card-body">
+            <h2 class="h6">@asset.FileName</h2>
+            <code class="small text-break">@asset.AssetKey</code>
+            <input class="form-control font-monospace mt-3" value="@asset.MarkdownReference" readonly />
+        </div>
+    </article></div>
+}
+</div>
