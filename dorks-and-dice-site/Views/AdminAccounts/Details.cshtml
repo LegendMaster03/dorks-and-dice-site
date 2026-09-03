@@ -76,24 +76,29 @@
         {
             <div class="d-flex flex-wrap align-items-start justify-content-between gap-2 border-top py-2">
                 <div>
+                    <strong>@role</strong>
+                    <div class="small text-body-secondary">
+                        @if (role == AccountRoles.Owner)
+                        {
+                            <span>@(assigned ? "Assigned — server-managed" : "Not assigned — server-managed")</span>
+                        }
+                        else if (assigned && inheritedFrom.Count > 0)
+                        {
+                            <span>Assigned directly — also inherited through @string.Join(", ", inheritedFrom)</span>
+                        }
+                        else if (assigned)
+                        {
+                            <span>Assigned directly</span>
+                        }
+                        else
+                        {
+                            <span>Not assigned</span>
+                        }
+                    </div>
                     @if (assigned && hierarchyNode.Children.Count > 0)
                     {
-                        <details class="small">
-                            <summary><strong>@role</strong></summary>
-                            <div class="text-body-secondary mt-1">
-                                @if (role == AccountRoles.Owner)
-                                {
-                                    <span>Assigned — server-managed</span>
-                                }
-                                else if (inheritedFrom.Count > 0)
-                                {
-                                    <span>Assigned directly — also inherited through @string.Join(", ", inheritedFrom)</span>
-                                }
-                                else
-                                {
-                                    <span>Assigned directly</span>
-                                }
-                            </div>
+                        <details class="small mt-2">
+                            <summary>Inherited access</summary>
                             <ul class="mb-0 mt-1">
                                 @foreach (var child in hierarchyNode.Children)
                                 {
@@ -101,28 +106,6 @@
                                 }
                             </ul>
                         </details>
-                    }
-                    else
-                    {
-                        <strong>@role</strong>
-                        <div class="small text-body-secondary">
-                            @if (role == AccountRoles.Owner)
-                            {
-                                <span>@(assigned ? "Assigned — server-managed" : "Not assigned — server-managed")</span>
-                            }
-                            else if (assigned && inheritedFrom.Count > 0)
-                            {
-                                <span>Assigned directly — also inherited through @string.Join(", ", inheritedFrom)</span>
-                            }
-                            else if (assigned)
-                            {
-                                <span>Assigned directly</span>
-                            }
-                            else
-                            {
-                                <span>Not assigned</span>
-                            }
-                        </div>
                     }
                 </div>
                 @if (canManageRole)
