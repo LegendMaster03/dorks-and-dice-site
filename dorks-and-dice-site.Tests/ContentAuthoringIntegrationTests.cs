@@ -43,6 +43,70 @@ public sealed class ContentAuthoringIntegrationTests
     }
 
     [Fact]
+    public async Task SingleScopedEditorNavigationTargetsItsEditorDirectly()
+    {
+        var matchingResponse = await SendAsync(
+            "kylebarnett.com",
+            "/",
+            scopedRoles: $"{AccountRoleScopes.Professional}:{ScopedAccountRoles.Editor}");
+        var matchingHtml = await matchingResponse.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, matchingResponse.StatusCode);
+        Assert.Contains("href=\"/editor/content\"", matchingHtml);
+
+        var otherModeResponse = await SendAsync(
+            "dorks-and-dice.com",
+            "/",
+            scopedRoles: $"{AccountRoleScopes.Professional}:{ScopedAccountRoles.Editor}");
+        var otherModeHtml = await otherModeResponse.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, otherModeResponse.StatusCode);
+        Assert.Contains("https://kylebarnett.com/editor/content", otherModeHtml);
+    }
+
+    [Fact]
+    public async Task EditorDashboardShowsOnlyAuthorizedSitesAndDirectPublicActions()
+    {
+        var professionalOnly = await SendAsync(
+            "kylebarnett.com",
+            "/editor",
+            scopedRoles: $"{AccountRoleScopes.Professional}:{ScopedAccountRoles.Editor}");
+        var professionalOnlyHtml = await professionalOnly.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, professionalOnly.StatusCode);
+        Assert.Contains("Professional", professionalOnlyHtml);
+        Assert.Contains("https://kylebarnett.com/editor/content", professionalOnlyHtml);
+        Assert.DoesNotContain("Create and edit Dorks &amp; Dice content.", professionalOnlyHtml);
+        Assert.DoesNotContain("Switch the active site mode", professionalOnlyHtml);
+
+        var both = await SendAsync(
+            "kylebarnett.com",
+            "/editor",
+            scopedRoles: $"{AccountRoleScopes.Professional}:{ScopedAccountRoles.Editor},{AccountRoleScopes.DorksAndDice}:{ScopedAccountRoles.Editor}");
+        var bothHtml = await both.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, both.StatusCode);
+        Assert.Contains("https://kylebarnett.com/editor/content", bothHtml);
+        Assert.Contains("https://dorks-and-dice.com/editor/content", bothHtml);
+    }
+
+    [Fact]
+    public async Task TrustedEditorDashboardSwitchesPreviewModeAsPartOfOpeningEditor()
+    {
+        var response = await SendAsync(
+            "localhost",
+            "/editor",
+            scopedRoles: $"{AccountRoleScopes.Professional}:{ScopedAccountRoles.Editor},{AccountRoleScopes.DorksAndDice}:{ScopedAccountRoles.Editor}");
+        var html = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("action=\"/development-preview\"", html);
+        Assert.Contains($"name=\"siteMode\" value=\"{dorks_and_dice_site.Services.Site.SiteModeValues.DorksAndDiceModeValue}\"", html);
+        Assert.Contains($"name=\"siteMode\" value=\"{dorks_and_dice_site.Services.Site.SiteModeValues.ProfessionalModeValue}\"", html);
+        Assert.Contains("name=\"returnUrl\" value=\"/editor/content\"", html);
+    }
+
+    [Fact]
     public async Task AdminActsAsGlobalEditorOnTrustedHost()
     {
         var response = await SendAsync("localhost", "/editor/content", roles: AccountRoles.Admin);
