@@ -2,6 +2,7 @@ namespace dorks_and_dice_site.Services.Site;
 
 public sealed class SiteModeOptions
 {
+    public const string CanonicalDorksAndDiceHost = "dorks-and-dice.com";
     public const string CanonicalProfessionalHost = "kylebarnett.com";
 
     public IReadOnlySet<string> ProfessionalDomains { get; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
@@ -16,7 +17,7 @@ public sealed class SiteModeOptions
 
     public IReadOnlySet<string> DorksAndDiceDomains { get; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
     {
-        "dorks-and-dice.com"
+        CanonicalDorksAndDiceHost
     };
 
     public IReadOnlySet<string> DevelopmentHosts { get; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase)

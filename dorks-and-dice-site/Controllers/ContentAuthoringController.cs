@@ -1,12 +1,15 @@
 using dorks_and_dice_site.Models.Content;
 using dorks_and_dice_site.Services.Content;
+using dorks_and_dice_site.Services.Identity;
 using dorks_and_dice_site.Services.Site;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Encodings.Web;
 using System.Text.RegularExpressions;
 
 namespace dorks_and_dice_site.Controllers;
 
+[Authorize(Policy = AuthorizationPolicies.DevAccess)]
 [Route("development/content")]
 [RequestSizeLimit(ContentInputPolicy.MaxAuthoringRequestBytes)]
 public sealed class ContentAuthoringController : Controller

@@ -1,5 +1,6 @@
 @using dorks_and_dice_site.Services.Site
 @using dorks_and_dice_site.Services.Content.Storage
+@using dorks_and_dice_site.Services.Identity
 @using dorks_and_dice_site.Models.Site
 @using System.Text.Json
 @inject ISiteModePartialResolver SiteModePartialResolver
@@ -7,7 +8,8 @@
 @inject IContentSourceRegistry ContentSourceRegistry
 @{
     var siteModeContext = Context.GetSiteModeContext();
-    var isDevelopmentPreview = siteModeContext.IsDevelopmentPreview;
+    var hasTrustedAccess = siteModeContext.HasTrustedAccess;
+    var canUseDeveloperTools = siteModeContext.IsDevelopmentPreview;
     var siteSuffix = SiteModePresentationService.GetTitleSuffix(siteModeContext.SiteMode);
     var faviconPath = Url.Content(SiteModePresentationService.GetFaviconPath(siteModeContext.SiteMode));
     var pageTitle = $"{ViewData["Title"]} - {siteSuffix}";
@@ -40,7 +42,7 @@
         siteModeContext.SiteMode,
         SiteModeBrandingPart.Footer);
     var developmentToolsPartialPath = "~/Views/SiteModes/Development/_DevelopmentTools.cshtml";
-    var defaultSourceKeys = isDevelopmentPreview
+    var defaultSourceKeys = canUseDeveloperTools
         ? ContentSourceRegistry.GetDefaultSources(siteModeContext.SiteMode)
             .Select(source => source.Key)
             .ToHashSet(StringComparer.OrdinalIgnoreCase)
@@ -53,8 +55,9 @@
         SelectedMode = siteModeContext.SiteMode,
         IncludeUnlistedArticles = siteModeContext.IncludeUnlistedArticles,
         RouteRestrictionMismatch = siteModeContext.DevelopmentPreviewRouteRestrictionMismatch,
+        CanUseDeveloperTools = canUseDeveloperTools,
         ReturnUrl = developmentPreviewReturnUrl,
-        ContentSources = isDevelopmentPreview
+        ContentSources = canUseDeveloperTools
             ? ContentSourceRegistry.GetAllSources()
                 .Select(source => new DevelopmentContentSourceToggleViewModel
                 {
@@ -127,7 +130,7 @@
 <body>
     <header>
         @await Html.PartialAsync(brandingHeaderPartialPath)
-        @if (isDevelopmentPreview)
+        @if (hasTrustedAccess)
         {
             @await Html.PartialAsync(developmentToolsPartialPath, developmentTools)
         }

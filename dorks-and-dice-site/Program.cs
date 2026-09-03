@@ -1,11 +1,19 @@
 using System.Net;
 using System.Security;
+using System.Threading.RateLimiting;
+using dorks_and_dice_site.Models.Identity;
 using dorks_and_dice_site.Services.Resume;
 using dorks_and_dice_site.Services.Content.Storage;
 using dorks_and_dice_site.Services.GameServers.Minecraft;
+using dorks_and_dice_site.Services.Identity;
 using dorks_and_dice_site.Services.Site;
 using dorks_and_dice_site.Services.Site.ModePresentation;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -25,6 +33,139 @@ builder.Services.AddSingleton<ISiteModePresentationModule, DorksAndDicePresentat
 builder.Services.AddSingleton<ISiteModePresentationModule, ProfessionalPresentationModule>();
 builder.Services.AddSingleton<ISiteModePresentationModule, DevelopmentPresentationModule>();
 builder.Services.AddSingleton<ISiteModePresentationModule, UnassignedPresentationModule>();
+
+builder.Services.Configure<AccountEmailOptions>(
+    builder.Configuration.GetSection(AccountEmailOptions.SectionName));
+builder.Services.AddScoped<IAccountEmailSender, SmtpAccountEmailSender>();
+
+var dataProtection = builder.Services.AddDataProtection()
+    .SetApplicationName("dorks-and-dice-site");
+var dataProtectionKeysPath = builder.Configuration["DataProtection:KeysPath"];
+if (!string.IsNullOrWhiteSpace(dataProtectionKeysPath))
+{
+    dataProtection.PersistKeysToFileSystem(new DirectoryInfo(dataProtectionKeysPath));
+}
+
+var identityStorageProvider = builder.Configuration[$"{IdentityStorageOptions.SectionName}:Provider"] ?? "PostgreSQL";
+builder.Services.AddDbContext<IdentityDbContext>((serviceProvider, options) =>
+{
+    var configuration = serviceProvider.GetRequiredService<IConfiguration>();
+    var connectionString = IdentityConnectionStringResolver.Resolve(configuration);
+
+    if (string.Equals(identityStorageProvider, "Sqlite", StringComparison.OrdinalIgnoreCase)
+        || string.Equals(identityStorageProvider, "SQLite", StringComparison.OrdinalIgnoreCase))
+    {
+        options.UseSqlite(connectionString);
+        return;
+    }
+
+    if (string.Equals(identityStorageProvider, "PostgreSQL", StringComparison.OrdinalIgnoreCase)
+        || string.Equals(identityStorageProvider, "Postgres", StringComparison.OrdinalIgnoreCase))
+    {
+        options.UseNpgsql(connectionString);
+        return;
+    }
+
+    throw new NotSupportedException($"Identity storage provider '{identityStorageProvider}' is not supported.");
+});
+
+builder.Services
+    .AddIdentity<ApplicationUser, IdentityRole<Guid>>(options =>
+    {
+        options.User.RequireUniqueEmail = true;
+        options.SignIn.RequireConfirmedAccount = true;
+
+        options.Password.RequiredLength = 8;
+        options.Password.RequireDigit = false;
+        options.Password.RequireLowercase = false;
+        options.Password.RequireUppercase = false;
+        options.Password.RequireNonAlphanumeric = false;
+
+        options.Lockout.AllowedForNewUsers = true;
+        options.Lockout.MaxFailedAccessAttempts = 5;
+        options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
+    })
+    .AddEntityFrameworkStores<IdentityDbContext>()
+    .AddDefaultTokenProviders();
+
+builder.Services.Configure<DataProtectionTokenProviderOptions>(options =>
+    options.TokenLifespan = TimeSpan.FromHours(24));
+builder.Services.Configure<SecurityStampValidatorOptions>(options =>
+    options.ValidationInterval = TimeSpan.Zero);
+builder.Services.AddScoped<IUserClaimsPrincipalFactory<ApplicationUser>, ApplicationUserClaimsPrincipalFactory>();
+builder.Services.AddScoped<IScopedRoleService, ScopedRoleService>();
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddTransient<Microsoft.AspNetCore.Authentication.IClaimsTransformation, TrustedPrivilegeClaimsTransformation>();
+builder.Services.AddSingleton<IAuthorizationHandler, TrustedAccessAuthorizationHandler>();
+builder.Services.AddSingleton<IAuthorizationHandler, ModeScopedRoleAuthorizationHandler>();
+
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy(AuthorizationPolicies.TrustedAccess, policy =>
+    {
+        policy.Requirements.Add(new TrustedAccessRequirement());
+    });
+    options.AddPolicy(AuthorizationPolicies.AdminAccess, policy =>
+    {
+        policy.RequireAuthenticatedUser();
+        policy.RequireRole(AccountRoles.Admin);
+        policy.Requirements.Add(new TrustedAccessRequirement());
+    });
+    options.AddPolicy(AuthorizationPolicies.DevAccess, policy =>
+    {
+        policy.RequireAuthenticatedUser();
+        policy.RequireRole(AccountRoles.Dev);
+        policy.Requirements.Add(new TrustedAccessRequirement());
+    });
+    options.AddPolicy(AuthorizationPolicies.PrivilegedAccess, policy =>
+    {
+        policy.RequireAuthenticatedUser();
+        policy.RequireRole(AccountRoles.Admin, AccountRoles.Dev);
+        policy.Requirements.Add(new TrustedAccessRequirement());
+    });
+    options.AddPolicy(AuthorizationPolicies.AdminAndDevAccess, policy =>
+    {
+        policy.RequireAuthenticatedUser();
+        policy.RequireRole(AccountRoles.Admin);
+        policy.RequireRole(AccountRoles.Dev);
+        policy.Requirements.Add(new TrustedAccessRequirement());
+    });
+    options.AddPolicy(AuthorizationPolicies.ModeEditor, policy =>
+    {
+        policy.RequireAuthenticatedUser();
+        policy.Requirements.Add(new ModeScopedRoleRequirement(ScopedAccountRoles.Editor));
+    });
+});
+
+builder.Services.ConfigureApplicationCookie(options =>
+{
+    options.Cookie.Name = "__Host-dorks-and-dice.auth";
+    options.Cookie.HttpOnly = true;
+    options.Cookie.SameSite = SameSiteMode.Lax;
+    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+    options.Cookie.Path = "/";
+    options.ExpireTimeSpan = TimeSpan.FromHours(12);
+    options.SlidingExpiration = true;
+    options.LoginPath = "/account/login";
+    options.AccessDeniedPath = "/account/access-denied";
+});
+
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddPolicy("authentication", context =>
+        RateLimitPartition.GetSlidingWindowLimiter(
+            context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new SlidingWindowRateLimiterOptions
+            {
+                PermitLimit = 10,
+                Window = TimeSpan.FromMinutes(5),
+                SegmentsPerWindow = 5,
+                QueueLimit = 0,
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                AutoReplenishment = true
+            }));
+});
 
 var trustedProxyAddresses = builder.Configuration
     .GetSection("ReverseProxy:KnownProxies")
@@ -67,6 +208,29 @@ using (var scope = app.Services.CreateScope())
     await contentStorageInitializer.InitializeAsync();
 }
 
+var applyIdentityMigrations = builder.Configuration.GetValue<bool>(
+    $"{IdentityStorageOptions.SectionName}:ApplyMigrationsOnStartup");
+var ensureIdentityCreated = builder.Configuration.GetValue<bool>(
+    $"{IdentityStorageOptions.SectionName}:EnsureCreatedOnStartup");
+if (applyIdentityMigrations && ensureIdentityCreated)
+{
+    throw new InvalidOperationException(
+        "IdentityStorage can not enable both ApplyMigrationsOnStartup and EnsureCreatedOnStartup.");
+}
+if (applyIdentityMigrations || ensureIdentityCreated)
+{
+    using var scope = app.Services.CreateScope();
+    var identityDbContext = scope.ServiceProvider.GetRequiredService<IdentityDbContext>();
+    if (applyIdentityMigrations)
+    {
+        await identityDbContext.Database.MigrateAsync();
+    }
+    else
+    {
+        await identityDbContext.Database.EnsureCreatedAsync();
+    }
+}
+
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Home/Error");
@@ -75,7 +239,7 @@ if (!app.Environment.IsDevelopment())
 
 app.Use(async (context, next) =>
 {
-    DevelopmentAccessEvaluator.CaptureOriginalConnection(context);
+    TrustedAccessEvaluator.CaptureOriginalConnection(context);
     await next();
 });
 app.UseForwardedHeaders();
@@ -108,9 +272,11 @@ app.Use(async (context, next) =>
     await next();
 });
 app.UseHttpsRedirection();
+app.UseAuthentication();
 app.UseMiddleware<SiteModeMiddleware>();
 app.UseRouting();
 app.UseStatusCodePagesWithReExecute("/Home/NotFoundPage");
+app.UseRateLimiter();
 app.UseAuthorization();
 
 app.MapStaticAssets();
@@ -143,7 +309,7 @@ app.MapPost("/development-preview", async (
     IContentSourceRegistry contentSourceRegistry) =>
 {
     var siteModeContext = context.GetSiteModeContext();
-    if (!siteModeContext.IsDevelopmentPreview)
+    if (!siteModeContext.HasTrustedAccess)
     {
         return Results.NotFound();
     }
@@ -170,6 +336,12 @@ app.MapPost("/development-preview", async (
 
     if (form.ContainsKey("articleSettings"))
     {
+        if (context.User.Identity?.IsAuthenticated != true
+            || !context.User.IsInRole(AccountRoles.Dev))
+        {
+            return Results.Forbid();
+        }
+
         context.Response.Cookies.Append(
             SiteModeValues.IncludeUnlistedCookie,
             form.ContainsKey("includeUnlisted") ? "true" : "false",

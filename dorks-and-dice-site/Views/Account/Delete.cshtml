@@ -1,0 +1,31 @@
+@model dorks_and_dice_site.Models.Identity.DeleteAccountViewModel
+@{
+    ViewData["Title"] = "Delete account";
+    ViewData["Robots"] = "noindex,nofollow";
+}
+
+<div class="row justify-content-center">
+    <div class="col-md-7 col-lg-5">
+        <h1 class="h2 mb-3">Delete account</h1>
+        <div class="alert alert-danger" role="alert">
+            This removes your sign-in credentials and personal account details. Your internal user ID is retained only as a stable reference for historical records and ownership relationships.
+        </div>
+        <form asp-action="Delete" method="post" class="card card-body shadow-sm">
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+            <p>Enter your password to confirm account deletion.</p>
+            <div class="mb-3">
+                <label asp-for="Password" class="form-label"></label>
+                <input asp-for="Password" class="form-control" autocomplete="current-password" />
+                <span asp-validation-for="Password" class="text-danger"></span>
+            </div>
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-danger">Delete account</button>
+                <a asp-action="Index" class="btn btn-outline-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

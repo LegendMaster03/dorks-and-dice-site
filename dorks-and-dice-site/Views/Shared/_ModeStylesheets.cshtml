@@ -4,7 +4,7 @@
     var siteModeContext = Context.GetSiteModeContext();
     var stylesheetPaths = SiteModeStylesheetResolver.GetStylesheetPaths(
         siteModeContext.SiteMode,
-        siteModeContext.IsDevelopmentPreview);
+        siteModeContext.HasTrustedAccess);
 }
 @foreach (var stylesheetPath in stylesheetPaths)
 {

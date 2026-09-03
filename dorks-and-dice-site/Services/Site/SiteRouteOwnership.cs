@@ -20,7 +20,7 @@ public static class SiteRouteOwnership
 
         return siteMode switch
         {
-            SiteMode.Development => true,
+            SiteMode.Development => isSharedPath || IsDevelopmentAssetPath(normalizedPath),
             SiteMode.Professional => isSharedPath
                 || IsProfessionalOwnedPath(normalizedPath)
                 || IsProfessionalAssetPath(normalizedPath)
@@ -50,6 +50,11 @@ public static class SiteRouteOwnership
         return path == "/health"
             || path == "/robots.txt"
             || path == "/sitemap.xml"
+            || path == "/development-preview"
+            || path == "/account"
+            || path.StartsWith("/account/", StringComparison.Ordinal)
+            || path == "/admin"
+            || path.StartsWith("/admin/", StringComparison.Ordinal)
             || path == "/home/notfoundpage"
             || path == "/home/error"
             || path == "/home/routeresolutionissue";
@@ -87,6 +92,11 @@ public static class SiteRouteOwnership
     private static bool IsDorksAndDiceAssetPath(string path)
     {
         return path.StartsWith("/site-modes/dorks-and-dice/");
+    }
+
+    private static bool IsDevelopmentAssetPath(string path)
+    {
+        return path.StartsWith("/site-modes/development/");
     }
 
     private static bool IsAssetException(SiteMode siteMode, string path)

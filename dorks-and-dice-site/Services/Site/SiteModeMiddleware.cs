@@ -1,4 +1,5 @@
 using dorks_and_dice_site.Models.Site;
+using dorks_and_dice_site.Services.Identity;
 
 namespace dorks_and_dice_site.Services.Site;
 
@@ -18,11 +19,14 @@ public sealed class SiteModeMiddleware
         var host = NormalizeHost(context.Request.Host.Host);
         var isProfessionalDomain = _options.ProfessionalDomains.Contains(host);
         var isDorksAndDiceDomain = _options.DorksAndDiceDomains.Contains(host);
-        var isDevelopmentAccess = DevelopmentAccessEvaluator.IsAuthorized(context, _options);
+        var hasTrustedAccess = TrustedAccessEvaluator.IsAuthorized(context, _options);
+        var hasDeveloperAccess = hasTrustedAccess
+            && context.User.Identity?.IsAuthenticated == true
+            && context.User.IsInRole(AccountRoles.Dev);
         var previewModeValue = GetDevelopmentPreviewModeValue(context);
-        var includeUnlistedArticles = GetIncludeUnlistedArticles(context, isDevelopmentAccess);
-        var sourceSelection = GetEnabledContentSources(context, isDevelopmentAccess);
-        var siteMode = ResolveSiteMode(isProfessionalDomain, isDorksAndDiceDomain, isDevelopmentAccess, previewModeValue);
+        var includeUnlistedArticles = GetIncludeUnlistedArticles(context, hasDeveloperAccess);
+        var sourceSelection = GetEnabledContentSources(context, hasDeveloperAccess);
+        var siteMode = ResolveSiteMode(isProfessionalDomain, isDorksAndDiceDomain, hasTrustedAccess, previewModeValue);
         var isAllowedInMode = SiteRouteOwnership.IsAllowedInMode(context.Request.Path, siteMode);
 
         context.Items[SiteModeContext.HttpContextItemKey] = new SiteModeContext
@@ -30,14 +34,15 @@ public sealed class SiteModeMiddleware
             SiteMode = siteMode,
             IsProfessionalDomain = isProfessionalDomain,
             IsDorksAndDiceDomain = isDorksAndDiceDomain,
-            IsDevelopmentPreview = isDevelopmentAccess,
+            HasTrustedAccess = hasTrustedAccess,
+            IsDevelopmentPreview = hasDeveloperAccess,
             IncludeUnlistedArticles = includeUnlistedArticles,
             HasContentSourceOverride = sourceSelection.HasOverride,
             EnabledContentSources = sourceSelection.EnabledSources,
-            DevelopmentPreviewRouteRestrictionMismatch = isDevelopmentAccess && !isAllowedInMode
+            DevelopmentPreviewRouteRestrictionMismatch = hasDeveloperAccess && !isAllowedInMode
         };
 
-        if (!isDevelopmentAccess && !isAllowedInMode)
+        if (!hasDeveloperAccess && !isAllowedInMode)
         {
             context.Request.Path = "/Home/NotFoundPage";
             await _next(context);
@@ -55,9 +60,9 @@ public sealed class SiteModeMiddleware
             : normalizedHost;
     }
 
-    private static SiteMode ResolveSiteMode(bool isProfessionalDomain, bool isDorksAndDiceDomain, bool isDevelopmentAccess, string previewModeValue)
+    private static SiteMode ResolveSiteMode(bool isProfessionalDomain, bool isDorksAndDiceDomain, bool hasTrustedAccess, string previewModeValue)
     {
-        if (isDevelopmentAccess)
+        if (hasTrustedAccess)
         {
             return previewModeValue switch
             {
@@ -87,17 +92,17 @@ public sealed class SiteModeMiddleware
         return previewModeValue;
     }
 
-    private static bool GetIncludeUnlistedArticles(HttpContext context, bool isDevelopmentAccess)
+    private static bool GetIncludeUnlistedArticles(HttpContext context, bool hasDeveloperAccess)
     {
-        return isDevelopmentAccess
+        return hasDeveloperAccess
             && string.Equals(context.Request.Cookies[SiteModeValues.IncludeUnlistedCookie], "true", StringComparison.OrdinalIgnoreCase);
     }
 
     private static (bool HasOverride, IReadOnlySet<string> EnabledSources) GetEnabledContentSources(
         HttpContext context,
-        bool isDevelopmentAccess)
+        bool hasDeveloperAccess)
     {
-        if (!isDevelopmentAccess)
+        if (!hasDeveloperAccess)
         {
             return (false, new HashSet<string>(StringComparer.OrdinalIgnoreCase));
         }

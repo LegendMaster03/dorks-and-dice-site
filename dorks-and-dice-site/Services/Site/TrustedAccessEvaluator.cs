@@ -3,7 +3,7 @@ using System.Text.Json;
 
 namespace dorks_and_dice_site.Services.Site;
 
-public static class DevelopmentAccessEvaluator
+public static class TrustedAccessEvaluator
 {
     private static readonly object OriginalConnectionItemKey = new();
 

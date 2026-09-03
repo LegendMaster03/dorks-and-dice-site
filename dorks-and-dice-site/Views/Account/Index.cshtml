@@ -1,0 +1,93 @@
+@model dorks_and_dice_site.Models.Identity.AccountViewModel
+@{
+    ViewData["Title"] = "Account settings";
+    ViewData["Robots"] = "noindex,nofollow";
+}
+
+<div class="row justify-content-center">
+    <div class="col-lg-7">
+        <h1 class="h2 mb-3">Account settings</h1>
+
+        @if (TempData["AccountMessage"] is string message)
+        {
+            <div class="alert alert-success" role="status">@message</div>
+        }
+        @if (TempData["AccountError"] is string error)
+        {
+            <div class="alert alert-danger" role="alert">@error</div>
+        }
+
+        <form asp-action="Index" method="post" class="card card-body shadow-sm mb-4">
+            <h2 class="h5">Profile</h2>
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+            <div class="mb-3">
+                <label asp-for="DisplayName" class="form-label"></label>
+                <input asp-for="DisplayName" class="form-control" autocomplete="nickname" />
+                <span asp-validation-for="DisplayName" class="text-danger"></span>
+            </div>
+            <div class="mb-3">
+                <div class="form-label">Email</div>
+                <div>@Model.Email</div>
+                <div class="form-text">Email changes will use a separate verification workflow.</div>
+            </div>
+            <div class="mb-3">
+                <div class="form-label">User ID</div>
+                <div class="font-monospace text-body-secondary">@Model.UserId</div>
+                <div class="form-text">Stable internal account identifier. It can not be changed.</div>
+            </div>
+            <button type="submit" class="btn btn-primary align-self-start">Save profile</button>
+        </form>
+
+        @if (Model.IsAdministrator || Model.IsDeveloper)
+        {
+            <div class="card card-body shadow-sm mb-4">
+                <h2 class="h5">Privileged roles</h2>
+                <div class="mb-2">
+                    @if (Model.IsAdministrator)
+                    {
+                        <span class="badge text-bg-primary me-1">Admin</span>
+                    }
+                    @if (Model.IsDeveloper)
+                    {
+                        <span class="badge text-bg-secondary me-1">Dev</span>
+                    }
+                </div>
+                <p class="mb-2">These roles do not grant privileged functions unless the current request also passes Trusted Access.</p>
+                <div class="small text-body-secondary mb-3">Trusted Access: @(Model.HasTrustedAccess ? "available" : "not available")</div>
+                @if (Model.HasTrustedAccess)
+                {
+                    <div class="d-flex flex-wrap gap-2">
+                        @if (Model.IsAdministrator)
+                        {
+                            <a asp-controller="AdminAccounts" asp-action="Index" class="btn btn-outline-primary">Manage accounts</a>
+                        }
+                        @if (Model.IsDeveloper)
+                        {
+                            <a href="/development/content" class="btn btn-outline-secondary">Content editor</a>
+                        }
+                    </div>
+                }
+            </div>
+        }
+
+        <div class="card card-body shadow-sm mb-4">
+            <h2 class="h5">Security</h2>
+            <p>Change the password used to sign in to this account.</p>
+            <div>
+                <a asp-action="ChangePassword" class="btn btn-outline-primary">Change password</a>
+            </div>
+        </div>
+
+        <div class="card card-body border-danger shadow-sm">
+            <h2 class="h5 text-danger">Delete account</h2>
+            <p>Remove your sign-in credentials and personal account details. Historical references keep only the stable internal user ID.</p>
+            <div>
+                <a asp-action="Delete" class="btn btn-outline-danger">Delete account</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

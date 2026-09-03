@@ -1,0 +1,44 @@
+@model dorks_and_dice_site.Models.Identity.RegisterViewModel
+@inject Microsoft.Extensions.Options.IOptions<Microsoft.AspNetCore.Identity.IdentityOptions> IdentityOptions
+@{
+    ViewData["Title"] = "Create account";
+    ViewData["Robots"] = "noindex,nofollow";
+}
+
+<div class="row justify-content-center">
+    <div class="col-md-7 col-lg-5">
+        <h1 class="h2 mb-3">Create account</h1>
+        <form asp-action="Register" method="post" class="card card-body shadow-sm">
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+            <div class="mb-3">
+                <label asp-for="DisplayName" class="form-label"></label>
+                <input asp-for="DisplayName" class="form-control" autocomplete="nickname" />
+                <span asp-validation-for="DisplayName" class="text-danger"></span>
+                <div class="form-text">Display names are public-facing and do not need to be unique.</div>
+            </div>
+            <div class="mb-3">
+                <label asp-for="Email" class="form-label"></label>
+                <input asp-for="Email" class="form-control" autocomplete="email" />
+                <span asp-validation-for="Email" class="text-danger"></span>
+                <div class="form-text">You will need to confirm this address before logging in.</div>
+            </div>
+            <div class="mb-3">
+                <label asp-for="Password" class="form-label"></label>
+                <input asp-for="Password" class="form-control" autocomplete="new-password" />
+                <span asp-validation-for="Password" class="text-danger"></span>
+                <div class="form-text">Use at least @IdentityOptions.Value.Password.RequiredLength characters.</div>
+            </div>
+            <div class="mb-3">
+                <label asp-for="ConfirmPassword" class="form-label"></label>
+                <input asp-for="ConfirmPassword" class="form-control" autocomplete="new-password" />
+                <span asp-validation-for="ConfirmPassword" class="text-danger"></span>
+            </div>
+            <button type="submit" class="btn btn-primary">Create account</button>
+        </form>
+        <p class="mt-3 mb-0">Already have an account? <a asp-action="Login">Log in</a>.</p>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
