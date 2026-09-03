@@ -1,0 +1,31 @@
+@{
+    ViewData["Title"] = "Admin";
+    ViewData["Robots"] = "noindex,nofollow";
+}
+
+<div class="mb-4">
+    <p class="text-uppercase text-muted small mb-1">Administration</p>
+    <h1 class="h2 mb-2">Admin</h1>
+    <p class="text-body-secondary mb-0">Account and role administration. Content editing is available separately through Editor.</p>
+</div>
+
+<div class="row g-3">
+    <div class="col-md-6 col-lg-4">
+        <section class="card h-100">
+            <div class="card-body d-flex flex-column">
+                <h2 class="h5">Account management</h2>
+                <p class="text-body-secondary">Manage users, global roles, scoped Editor roles, locks, and sessions.</p>
+                <a class="btn btn-primary mt-auto align-self-start" href="/admin/accounts">Manage accounts</a>
+            </div>
+        </section>
+    </div>
+    <div class="col-md-6 col-lg-4">
+        <section class="card h-100">
+            <div class="card-body d-flex flex-column">
+                <h2 class="h5">Editor</h2>
+                <p class="text-body-secondary">Admins act as global/head editors across site scopes.</p>
+                <a class="btn btn-outline-primary mt-auto align-self-start" href="/editor">Open Editor</a>
+            </div>
+        </section>
+    </div>
+</div>
