@@ -39,6 +39,7 @@ public sealed class ToolHostingRuntimeTests
     [Theory]
     [InlineData("/tools/test-tool")]
     [InlineData("/tool-modules/test-tool/app.js")]
+    [InlineData("/tool-host/test-tool/context")]
     public void ToolRoutesAreModeAdaptive(string path)
     {
         Assert.True(SiteRouteOwnership.IsAllowedInMode(path, SiteMode.DorksAndDice));
