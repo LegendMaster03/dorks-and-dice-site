@@ -14,19 +14,37 @@ public static class SiteModeValues
     public const string DevelopmentModeValue = "development";
 
     public static bool IsEditorMode(SiteMode mode) =>
-        BuiltInSiteModes.TryGetByLegacyMode(mode, out var definition)
-            ? definition!.SupportsScopedEditor
-            : mode is not SiteMode.Unassigned and not SiteMode.Development;
+        BuiltInSiteModes.TryGetByLegacyMode(mode, out _);
 
-    public static string ToModeValue(SiteMode mode) =>
-        BuiltInSiteModes.TryGetByLegacyMode(mode, out var definition)
-            ? definition!.Id
-            : ToKebabCase(mode.ToString());
+    public static string ToModeValue(SiteMode mode)
+    {
+        if (BuiltInSiteModes.TryGetByLegacyMode(mode, out var modeDefinition))
+        {
+            return modeDefinition!.Id;
+        }
 
-    public static string ToDisplayName(SiteMode mode) =>
-        BuiltInSiteModes.TryGetByLegacyMode(mode, out var definition)
-            ? definition!.DisplayName
-            : SplitPascalCase(mode.ToString());
+        if (FrameworkRuntimeStates.TryGetByLegacyMode(mode, out var runtimeState))
+        {
+            return runtimeState!.Id;
+        }
+
+        return ToKebabCase(mode.ToString());
+    }
+
+    public static string ToDisplayName(SiteMode mode)
+    {
+        if (BuiltInSiteModes.TryGetByLegacyMode(mode, out var modeDefinition))
+        {
+            return modeDefinition!.DisplayName;
+        }
+
+        if (FrameworkRuntimeStates.TryGetByLegacyMode(mode, out var runtimeState))
+        {
+            return runtimeState!.DisplayName;
+        }
+
+        return SplitPascalCase(mode.ToString());
+    }
 
     private static string ToKebabCase(string value)
     {
