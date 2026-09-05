@@ -36,16 +36,18 @@ public sealed class SiteModeMiddleware
             isDorksAndDiceDomain,
             hasTrustedAccess,
             previewModeValue);
-        var legacySiteMode = ToLegacySiteMode(resolution.ActiveMode, resolution.FrameworkState);
         var hasEditorPreviewAccess = hasTrustedAccess
             && CanPreviewUnlisted(context.User, resolution.ActiveMode);
         var includeUnlistedArticles = GetIncludeUnlistedArticles(context, hasEditorPreviewAccess);
         var sourceSelection = GetEnabledContentSources(context, hasDeveloperAccess);
 
-        // Route ownership is still an enum-based compatibility boundary. A newly registered
-        // mode without a legacy mapping therefore projects to Unassigned and fails closed
-        // until route ownership is migrated to stable mode ids.
-        var isAllowedInMode = SiteRouteOwnership.IsAllowedInMode(context.Request.Path, legacySiteMode);
+        var isAllowedInRequest = SiteRouteOwnership.IsAllowedInRequest(
+            context.Request.Path,
+            resolution.ActiveMode,
+            resolution.FrameworkState);
+        var isAllowedInSelectedLiveMode = resolution.ActiveMode is not null
+            ? SiteRouteOwnership.IsAllowedInMode(context.Request.Path, resolution.ActiveMode)
+            : SiteRouteOwnership.IsAllowedInFrameworkFallback(context.Request.Path);
 
         context.Items[SiteModeContext.HttpContextItemKey] = new SiteModeContext
         {
@@ -58,10 +60,14 @@ public sealed class SiteModeMiddleware
             IncludeUnlistedArticles = includeUnlistedArticles,
             HasContentSourceOverride = sourceSelection.HasOverride,
             EnabledContentSources = sourceSelection.EnabledSources,
-            DevelopmentPreviewRouteRestrictionMismatch = hasDeveloperAccess && !isAllowedInMode
+            DevelopmentPreviewRouteRestrictionMismatch = hasDeveloperAccess && !isAllowedInSelectedLiveMode
         };
 
-        if (!hasDeveloperAccess && !isAllowedInMode)
+        // Developers intentionally retain the ability to inspect a route that the selected
+        // live mode would reject; the preview UI surfaces that mismatch. Other callers,
+        // including trusted non-Dev editors, remain bounded by the selected mode plus the
+        // Trusted Preview framework surface.
+        if (!hasDeveloperAccess && !isAllowedInRequest)
         {
             context.Request.Path = "/Home/NotFoundPage";
             await _next(context);
@@ -126,18 +132,6 @@ public sealed class SiteModeMiddleware
         return _siteModeRegistry.TryGetById(previewModeValue, out _)
             ? previewModeValue
             : FrameworkRuntimeStates.TrustedPreview.Id;
-    }
-
-    private static SiteMode ToLegacySiteMode(
-        SiteModeDefinition? activeMode,
-        FrameworkRuntimeStateDefinition? frameworkState)
-    {
-        if (activeMode is not null)
-        {
-            return activeMode.LegacyMode ?? SiteMode.Unassigned;
-        }
-
-        return frameworkState?.LegacyMode ?? SiteMode.Unassigned;
     }
 
     private static bool GetIncludeUnlistedArticles(HttpContext context, bool hasEditorPreviewAccess)
