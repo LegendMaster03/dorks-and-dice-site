@@ -1,3 +1,4 @@
+using System.Text.Json;
 using dorks_and_dice_site.Models.Articles;
 
 namespace dorks_and_dice_site.Services.Site.ModePresentation;
@@ -19,6 +20,33 @@ public sealed class ProfessionalPresentationModule : ISiteModePresentationModule
     public string GetFaviconPath()
     {
         return "~/site-modes/professional/images/favicon.svg";
+    }
+
+    public string? GetDefaultMetaImagePath()
+    {
+        return "/site-modes/professional/images/profile/kyle-headshot.jpg";
+    }
+
+    public string? GetStructuredDataJson(string canonicalOrigin)
+    {
+        return JsonSerializer.Serialize(new
+        {
+            @context = "https://schema.org",
+            @type = "ProfilePage",
+            mainEntity = new
+            {
+                @type = "Person",
+                name = "Kyle W. Barnett",
+                url = $"{canonicalOrigin}/",
+                image = $"{canonicalOrigin}/site-modes/professional/images/profile/kyle-headshot.jpg",
+                jobTitle = "Information Science Graduate",
+                sameAs = new[]
+                {
+                    "https://www.linkedin.com/in/kyle-barnett03/",
+                    "https://github.com/LegendMaster03"
+                }
+            }
+        });
     }
 
     public ArticlesIndexPresentationViewModel GetArticlesIndexPresentation()
