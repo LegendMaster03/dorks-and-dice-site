@@ -1,6 +1,5 @@
 @model dorks_and_dice_site.Models.Articles.ArticlesIndexViewModel
 @using dorks_and_dice_site.Models.Content
-@using dorks_and_dice_site.Services.Site
 @{
     ViewData["Title"] = "Articles";
     ViewData["MetaTitle"] = Model.Presentation.MetaTitle;
@@ -29,8 +28,7 @@
              data-content-list="articleList"
              data-content-status="articleFilterStatus"
              data-content-empty="articleEmptyState"
-             data-content-label="article"
-             data-content-professional-only="@(Model.Presentation.ForceProfessionalFilter ? "true" : "false")">
+             data-content-label="article">
             @if (Model.ShouldShowSearchFilter)
             {
                 <label class="form-label visually-hidden" for="articleSearch">Search articles</label>
@@ -77,8 +75,7 @@
              data-content-list="articleList"
              data-content-status="articleFilterStatus"
              data-content-empty="articleEmptyState"
-             data-content-label="article"
-             data-content-professional-only="@(Model.Presentation.ForceProfessionalFilter ? "true" : "false")"></div>
+             data-content-label="article"></div>
     }
     <p id="articleFilterStatus" class="visually-hidden" role="status" aria-live="polite"></p>
 
@@ -97,7 +94,6 @@
                 <div class="col article-card"
                      data-content-card
                      data-content-category="@category"
-                     data-content-professional="@(article.IsVisibleInMode(BuiltInSiteModes.Professional.Id) ? "true" : "false")"
                      data-content-listed="@(article.IsListed ? "true" : "false")"
                      data-content-date="@dateText.ToLowerInvariant()"
                      data-content-tags="@string.Join(' ', publicTags)"
