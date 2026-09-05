@@ -7,10 +7,7 @@
     var displayName = User.FindFirst(AccountClaimTypes.DisplayName)?.Value;
     var returnUrl = $"{Context.Request.Path}{Context.Request.QueryString}";
     var siteModeContext = Context.GetSiteModeContext();
-    var showAnonymousLogin = !string.Equals(
-        siteModeContext.ActiveModeId,
-        BuiltInSiteModes.Professional.Id,
-        StringComparison.OrdinalIgnoreCase);
+    var showAnonymousLogin = siteModeContext.ActiveMode?.ShowAnonymousLoginInNavigation ?? true;
     var hasTrustedAccess = siteModeContext.HasTrustedAccess;
     var isAdmin = User.IsInRole(AccountRoles.Admin);
     var hasGlobalEditor = AccountRoleHierarchy.PrincipalHasGlobalRole(User, AccountRoles.GlobalEditor);
