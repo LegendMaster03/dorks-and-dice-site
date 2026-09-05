@@ -16,9 +16,10 @@ public interface IContentPageComposer
 }
 
 /// <summary>
-/// Splits authored Markdown into ordered Markdown and installed-component fragments. Components
-/// must occupy their own line and use quoted key/value parameters so authored content can select
-/// installed capabilities without becoming executable HTML or code.
+/// Parses application-owned page components from authored Markdown while rendering the Markdown
+/// document only once. Components are replaced with inert paragraph markers before Markdown
+/// rendering, then the sanitized HTML is split back around those markers. This preserves custom
+/// containers, grids, cards, and other Markdown structure that surrounds a component.
 /// </summary>
 public sealed class ContentPageComposer : IContentPageComposer
 {
@@ -50,16 +51,11 @@ public sealed class ContentPageComposer : IContentPageComposer
 
     public IReadOnlyList<ContentPageFragment> Compose(string format, string body)
     {
-        var fragments = new List<ContentPageFragment>();
-        var currentIndex = 0;
+        var invocations = new List<ContentPageComponentInvocation>();
+        var markerPrefix = $"CONTENTPAGECOMPONENT{Guid.NewGuid():N}";
 
-        foreach (Match match in ComponentPattern.Matches(body))
+        var protectedMarkdown = ComponentPattern.Replace(body, match =>
         {
-            if (match.Index > currentIndex)
-            {
-                AddMarkdownFragment(fragments, format, body[currentIndex..match.Index]);
-            }
-
             var sourceName = match.Groups["name"].Value;
             if (!_definitions.TryGetValue(sourceName, out var definition))
             {
@@ -69,40 +65,50 @@ public sealed class ContentPageComposer : IContentPageComposer
 
             var parameters = ParseParameters(sourceName, match.Groups["arguments"].Value);
             definition.Validate(parameters);
-            fragments.Add(ContentPageFragment.ComponentInvocation(new ContentPageComponentInvocation
+            var index = invocations.Count;
+            invocations.Add(new ContentPageComponentInvocation
             {
                 Name = definition.Name,
                 ViewComponentName = definition.ViewComponentName,
                 Parameters = parameters
-            }));
+            });
 
-            currentIndex = match.Index + match.Length;
+            return $"{markerPrefix}{index}END{Environment.NewLine}";
+        });
+
+        var renderedHtml = _bodyRenderer.Render(format, protectedMarkdown);
+        if (invocations.Count == 0)
+        {
+            return [ContentPageFragment.Html(renderedHtml)];
         }
 
-        if (currentIndex < body.Length)
+        var fragments = new List<ContentPageFragment>();
+        var currentIndex = 0;
+        for (var index = 0; index < invocations.Count; index++)
         {
-            AddMarkdownFragment(fragments, format, body[currentIndex..]);
+            var markerHtml = $"<p>{markerPrefix}{index}END</p>";
+            var markerIndex = renderedHtml.IndexOf(markerHtml, currentIndex, StringComparison.Ordinal);
+            if (markerIndex < 0)
+            {
+                throw new InvalidOperationException(
+                    "Rendered page component marker could not be resolved. The component must occupy its own Markdown line.");
+            }
+
+            if (markerIndex > currentIndex)
+            {
+                fragments.Add(ContentPageFragment.Html(renderedHtml[currentIndex..markerIndex]));
+            }
+
+            fragments.Add(ContentPageFragment.ComponentInvocation(invocations[index]));
+            currentIndex = markerIndex + markerHtml.Length;
         }
 
-        if (fragments.Count == 0)
+        if (currentIndex < renderedHtml.Length)
         {
-            AddMarkdownFragment(fragments, format, body);
+            fragments.Add(ContentPageFragment.Html(renderedHtml[currentIndex..]));
         }
 
         return fragments;
-    }
-
-    private void AddMarkdownFragment(
-        ICollection<ContentPageFragment> fragments,
-        string format,
-        string markdown)
-    {
-        if (string.IsNullOrWhiteSpace(markdown))
-        {
-            return;
-        }
-
-        fragments.Add(ContentPageFragment.Html(_bodyRenderer.Render(format, markdown)));
     }
 
     private static IReadOnlyDictionary<string, string> ParseParameters(string componentName, string arguments)
