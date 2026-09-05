@@ -23,14 +23,6 @@ public sealed class SiteModeMiddleware
     {
         var host = NormalizeHost(context.Request.Host.Host);
         var hostedModeId = _options.ResolveModeId(host);
-        var isProfessionalDomain = string.Equals(
-            hostedModeId,
-            BuiltInSiteModes.Professional.Id,
-            StringComparison.OrdinalIgnoreCase);
-        var isDorksAndDiceDomain = string.Equals(
-            hostedModeId,
-            BuiltInSiteModes.DorksAndDice.Id,
-            StringComparison.OrdinalIgnoreCase);
         var hasTrustedAccess = TrustedAccessEvaluator.IsAuthorized(context, _options);
         var hasDeveloperAccess = hasTrustedAccess
             && context.User.Identity?.IsAuthenticated == true
@@ -58,8 +50,6 @@ public sealed class SiteModeMiddleware
         {
             ActiveMode = resolution.ActiveMode,
             FrameworkState = resolution.FrameworkState,
-            IsProfessionalDomain = isProfessionalDomain,
-            IsDorksAndDiceDomain = isDorksAndDiceDomain,
             HasTrustedAccess = hasTrustedAccess,
             IsDevelopmentPreview = hasDeveloperAccess,
             IncludeUnlistedArticles = includeUnlistedArticles,
