@@ -5,6 +5,9 @@ public static class SiteModeHttpContextExtensions
     public static SiteModeContext GetSiteModeContext(this HttpContext context)
     {
         return context.Items[SiteModeContext.HttpContextItemKey] as SiteModeContext
-            ?? new SiteModeContext();
+            ?? new SiteModeContext
+            {
+                FrameworkState = FrameworkRuntimeStates.Fallback
+            };
     }
 }
