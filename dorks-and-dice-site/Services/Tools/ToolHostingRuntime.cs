@@ -103,10 +103,14 @@ public interface IToolHealthService
 public sealed class ToolHealthService : IToolHealthService
 {
     private readonly IHttpClientFactory _httpClientFactory;
+    private readonly IToolUpstreamPolicy _upstreamPolicy;
 
-    public ToolHealthService(IHttpClientFactory httpClientFactory)
+    public ToolHealthService(
+        IHttpClientFactory httpClientFactory,
+        IToolUpstreamPolicy upstreamPolicy)
     {
         _httpClientFactory = httpClientFactory;
+        _upstreamPolicy = upstreamPolicy;
     }
 
     public async Task<ToolHealthResult> CheckAsync(
@@ -123,12 +127,17 @@ public sealed class ToolHealthService : IToolHealthService
                 null);
         }
 
-        if (!ToolUpstreamUri.TryBuild(tool, tool.HealthPath, QueryString.Empty, out var healthUri)
+        if (!_upstreamPolicy.TryBuild(
+                tool,
+                tool.HealthPath,
+                QueryString.Empty,
+                out var healthUri,
+                out var policyReason)
             || healthUri is null)
         {
             return new ToolHealthResult(
                 ToolHealthStatus.Unhealthy,
-                "Health endpoint configuration is invalid.",
+                policyReason ?? "Health endpoint configuration is invalid.",
                 null,
                 null);
         }
