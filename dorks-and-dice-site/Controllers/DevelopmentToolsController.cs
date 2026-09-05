@@ -174,8 +174,8 @@ public sealed partial class DevelopmentToolsController : Controller
 
     private static void Normalize(ToolRegistrationEditViewModel model)
     {
-        model.Slug = model.Slug.Trim().ToLowerInvariant();
-        model.DisplayName = model.DisplayName.Trim();
+        model.Slug = (model.Slug ?? string.Empty).Trim().ToLowerInvariant();
+        model.DisplayName = (model.DisplayName ?? string.Empty).Trim();
         model.Description = NullIfWhiteSpace(model.Description);
         model.UpstreamBaseUrl = NullIfWhiteSpace(model.UpstreamBaseUrl)?.TrimEnd('/');
         model.FrontendEntryPoint = NullIfWhiteSpace(model.FrontendEntryPoint);
