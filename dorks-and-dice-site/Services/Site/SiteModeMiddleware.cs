@@ -8,11 +8,16 @@ public sealed class SiteModeMiddleware
 {
     private readonly RequestDelegate _next;
     private readonly SiteModeOptions _options;
+    private readonly ISiteModeRegistry _siteModeRegistry;
 
-    public SiteModeMiddleware(RequestDelegate next, SiteModeOptions options)
+    public SiteModeMiddleware(
+        RequestDelegate next,
+        SiteModeOptions options,
+        ISiteModeRegistry siteModeRegistry)
     {
         _next = next;
         _options = options;
+        _siteModeRegistry = siteModeRegistry;
     }
 
     public async Task InvokeAsync(HttpContext context)
@@ -24,16 +29,28 @@ public sealed class SiteModeMiddleware
         var hasDeveloperAccess = hasTrustedAccess
             && context.User.Identity?.IsAuthenticated == true
             && context.User.IsInRole(AccountRoles.Dev);
-        var previewModeValue = GetDevelopmentPreviewModeValue(context);
-        var siteMode = ResolveSiteMode(isProfessionalDomain, isDorksAndDiceDomain, hasTrustedAccess, previewModeValue);
-        var hasEditorPreviewAccess = hasTrustedAccess && CanPreviewUnlisted(context.User, siteMode);
+
+        var previewModeValue = GetTrustedPreviewModeValue(context);
+        var resolution = ResolveRequestMode(
+            isProfessionalDomain,
+            isDorksAndDiceDomain,
+            hasTrustedAccess,
+            previewModeValue);
+        var legacySiteMode = ToLegacySiteMode(resolution.ActiveMode, resolution.FrameworkState);
+        var hasEditorPreviewAccess = hasTrustedAccess
+            && CanPreviewUnlisted(context.User, resolution.ActiveMode);
         var includeUnlistedArticles = GetIncludeUnlistedArticles(context, hasEditorPreviewAccess);
         var sourceSelection = GetEnabledContentSources(context, hasDeveloperAccess);
-        var isAllowedInMode = SiteRouteOwnership.IsAllowedInMode(context.Request.Path, siteMode);
+
+        // Route ownership is still an enum-based compatibility boundary. A newly registered
+        // mode without a legacy mapping therefore projects to Unassigned and fails closed
+        // until route ownership is migrated to stable mode ids.
+        var isAllowedInMode = SiteRouteOwnership.IsAllowedInMode(context.Request.Path, legacySiteMode);
 
         context.Items[SiteModeContext.HttpContextItemKey] = new SiteModeContext
         {
-            SiteMode = siteMode,
+            ActiveMode = resolution.ActiveMode,
+            FrameworkState = resolution.FrameworkState,
             IsProfessionalDomain = isProfessionalDomain,
             IsDorksAndDiceDomain = isDorksAndDiceDomain,
             HasTrustedAccess = hasTrustedAccess,
@@ -62,36 +79,65 @@ public sealed class SiteModeMiddleware
             : normalizedHost;
     }
 
-    private static SiteMode ResolveSiteMode(bool isProfessionalDomain, bool isDorksAndDiceDomain, bool hasTrustedAccess, string previewModeValue)
+    private RequestModeResolution ResolveRequestMode(
+        bool isProfessionalDomain,
+        bool isDorksAndDiceDomain,
+        bool hasTrustedAccess,
+        string previewModeValue)
     {
         if (hasTrustedAccess)
         {
-            return previewModeValue switch
-            {
-                SiteModeValues.DorksAndDiceModeValue => SiteMode.DorksAndDice,
-                SiteModeValues.ProfessionalModeValue => SiteMode.Professional,
-                SiteModeValues.DevelopmentModeValue => SiteMode.Development,
-                _ => SiteMode.Development
-            };
+            _siteModeRegistry.TryGetById(previewModeValue, out var previewMode);
+            return new RequestModeResolution(previewMode, FrameworkRuntimeStates.TrustedPreview);
         }
 
         if (isProfessionalDomain)
         {
-            return SiteMode.Professional;
+            return new RequestModeResolution(
+                _siteModeRegistry.GetByLegacyMode(SiteMode.Professional),
+                FrameworkState: null);
         }
 
-        return isDorksAndDiceDomain ? SiteMode.DorksAndDice : SiteMode.Unassigned;
+        if (isDorksAndDiceDomain)
+        {
+            return new RequestModeResolution(
+                _siteModeRegistry.GetByLegacyMode(SiteMode.DorksAndDice),
+                FrameworkState: null);
+        }
+
+        return new RequestModeResolution(
+            ActiveMode: null,
+            FrameworkRuntimeStates.Fallback);
     }
 
-    private static string GetDevelopmentPreviewModeValue(HttpContext context)
+    private string GetTrustedPreviewModeValue(HttpContext context)
     {
-        var previewModeValue = context.Request.Cookies[SiteModeValues.DevelopmentSiteModeCookie] ?? SiteModeValues.DevelopmentModeValue;
-        if (!IsKnownDevelopmentPreviewModeValue(previewModeValue))
+        var previewModeValue = context.Request.Cookies[SiteModeValues.DevelopmentSiteModeCookie]
+            ?? FrameworkRuntimeStates.TrustedPreview.Id;
+
+        if (string.Equals(
+                previewModeValue,
+                FrameworkRuntimeStates.TrustedPreview.Id,
+                StringComparison.Ordinal))
         {
-            previewModeValue = SiteModeValues.DevelopmentModeValue;
+            return previewModeValue;
         }
 
-        return previewModeValue;
+        return _siteModeRegistry.TryGetById(previewModeValue, out _)
+            ? previewModeValue
+            : FrameworkRuntimeStates.TrustedPreview.Id;
+    }
+
+    private static SiteMode ToLegacySiteMode(
+        SiteModeDefinition? activeMode,
+        FrameworkRuntimeStateDefinition? frameworkState)
+    {
+        if (activeMode is not null)
+        {
+            return activeMode.LegacyMode ?? SiteMode.Unassigned;
+        }
+
+        return frameworkState?.LegacyMode ?? SiteMode.Unassigned;
     }
 
     private static bool GetIncludeUnlistedArticles(HttpContext context, bool hasEditorPreviewAccess)
@@ -127,38 +173,26 @@ public sealed class SiteModeMiddleware
                 StringComparer.OrdinalIgnoreCase));
     }
 
-    private static bool CanPreviewUnlisted(System.Security.Claims.ClaimsPrincipal user, SiteMode siteMode)
+    private static bool CanPreviewUnlisted(
+        System.Security.Claims.ClaimsPrincipal user,
+        SiteModeDefinition? activeMode)
     {
-        if (user.Identity?.IsAuthenticated != true)
+        if (user.Identity?.IsAuthenticated != true || activeMode is null)
         {
             return false;
         }
 
         if (user.IsInRole(AccountRoles.Admin))
         {
-            return siteMode is SiteMode.DorksAndDice or SiteMode.Professional;
-        }
-
-        var scope = siteMode switch
-        {
-            SiteMode.DorksAndDice => AccountRoleScopes.DorksAndDice,
-            SiteMode.Professional => AccountRoleScopes.Professional,
-            _ => null
-        };
-        if (scope is null)
-        {
-            return false;
+            return true;
         }
 
         return user.HasClaim(
             AccountClaimTypes.ScopedRole,
-            $"{scope}:{ScopedAccountRoles.Editor}");
+            $"{activeMode.Id}:{ScopedAccountRoles.Editor}");
     }
 
-    private static bool IsKnownDevelopmentPreviewModeValue(string? value)
-    {
-        return value is SiteModeValues.DorksAndDiceModeValue
-            or SiteModeValues.ProfessionalModeValue
-            or SiteModeValues.DevelopmentModeValue;
-    }
+    private readonly record struct RequestModeResolution(
+        SiteModeDefinition? ActiveMode,
+        FrameworkRuntimeStateDefinition? FrameworkState);
 }
