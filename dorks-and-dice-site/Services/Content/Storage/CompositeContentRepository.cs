@@ -1,5 +1,4 @@
 using dorks_and_dice_site.Models.Content;
-using dorks_and_dice_site.Models.Site;
 using dorks_and_dice_site.Services.Site;
 using Microsoft.EntityFrameworkCore;
 
@@ -21,9 +20,7 @@ public sealed class CompositeContentRepository : IContentRepository
     public async Task<IReadOnlyList<ContentItem>> GetAllAsync(CancellationToken cancellationToken = default)
     {
         var siteModeContext = GetSiteModeContext();
-        var sources = siteModeContext.IsDevelopmentPreview && siteModeContext.HasContentSourceOverride
-            ? _sourceRegistry.GetSourcesByKeys(siteModeContext.EnabledContentSources)
-            : _sourceRegistry.GetDefaultSources(siteModeContext.SiteMode);
+        var sources = _sourceRegistry.GetSourcesForContext(siteModeContext);
 
         var itemsById = new Dictionary<string, ContentItem>(StringComparer.OrdinalIgnoreCase);
         var slugOwners = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -78,7 +75,7 @@ public sealed class CompositeContentRepository : IContentRepository
 
         return new SiteModeContext
         {
-            SiteMode = SiteMode.Development,
+            FrameworkState = FrameworkRuntimeStates.TrustedPreview,
             IsDevelopmentPreview = true
         };
     }
