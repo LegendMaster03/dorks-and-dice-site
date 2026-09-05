@@ -10,6 +10,7 @@ using dorks_and_dice_site.Services.Identity;
 using dorks_and_dice_site.Services.Site;
 using dorks_and_dice_site.Services.Site.ModePresentation;
 using dorks_and_dice_site.Services.Tools;
+using dorks_and_dice_site.Services.Campaigns;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
@@ -27,6 +28,7 @@ builder.Services.AddSingleton<IMinecraftServerStatusService, MinecraftServerStat
 builder.Services.AddContentStorage(builder.Configuration, builder.Environment.ContentRootPath);
 builder.Services.AddScoped<IResumeContentService, ResumeContentService>();
 builder.Services.AddSingleton<IToolRegistry, JsonToolRegistry>();
+builder.Services.AddSingleton<ICampaignAccessStore, JsonCampaignAccessStore>();
 builder.Services.AddSingleton<IToolUpstreamPolicy, ToolUpstreamPolicy>();
 builder.Services.AddSingleton<IToolHealthService, ToolHealthService>();
 builder.Services.AddSingleton<IToolProxyService, ToolProxyService>();
@@ -37,7 +39,8 @@ builder.Services
     })
     .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
     {
-        AllowAutoRedirect = false
+        AllowAutoRedirect = false,
+        UseCookies = false
     });
 builder.Services
     .AddHttpClient(ToolHttpClientNames.Proxy, client =>
@@ -46,7 +49,8 @@ builder.Services
     })
     .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
     {
-        AllowAutoRedirect = false
+        AllowAutoRedirect = false,
+        UseCookies = false
     });
 builder.Services.AddSingleton<SiteModeOptions>();
 builder.Services.AddSingleton<ISiteModePartialResolver, SiteModePartialResolver>();
