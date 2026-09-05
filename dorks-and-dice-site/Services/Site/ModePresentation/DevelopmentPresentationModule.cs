@@ -25,6 +25,10 @@ public sealed class DevelopmentPresentationModule : ISiteModePresentationModule
         return "~/site-modes/development/images/favicon.svg";
     }
 
+    public string? GetDefaultMetaImagePath() => null;
+
+    public string? GetStructuredDataJson(string canonicalOrigin) => null;
+
     public ArticlesIndexPresentationViewModel GetArticlesIndexPresentation()
     {
         return new ArticlesIndexPresentationViewModel
