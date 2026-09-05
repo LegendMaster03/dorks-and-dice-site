@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 using dorks_and_dice_site.Models.Content;
 using dorks_and_dice_site.Models.Site;
 using dorks_and_dice_site.Services.Content.Storage;
+using dorks_and_dice_site.Services.Site;
 using Microsoft.EntityFrameworkCore;
 
 namespace dorks_and_dice_site.Services.Content;
@@ -12,10 +13,14 @@ public sealed class ContentAuthoringService : IContentAuthoringService
     private static readonly JsonSerializerOptions MetadataJsonOptions = CreateMetadataJsonOptions();
 
     private readonly IContentSourceRegistry _sourceRegistry;
+    private readonly ISiteModeRegistry _siteModeRegistry;
 
-    public ContentAuthoringService(IContentSourceRegistry sourceRegistry)
+    public ContentAuthoringService(
+        IContentSourceRegistry sourceRegistry,
+        ISiteModeRegistry siteModeRegistry)
     {
         _sourceRegistry = sourceRegistry;
+        _siteModeRegistry = siteModeRegistry;
     }
 
     public string DefaultSourceKey => _sourceRegistry.AuthoringSourceKey;
@@ -61,6 +66,7 @@ public sealed class ContentAuthoringService : IContentAuthoringService
         {
             Document = ToDocument(item, sourceKey),
             Sources = GetSourceOptions(),
+            Modes = GetModeOptions(),
             History = await GetHistoryAsync(context, item.Id, cancellationToken)
         };
     }
@@ -74,6 +80,7 @@ public sealed class ContentAuthoringService : IContentAuthoringService
             Summary = "Describe this content.",
             LinkText = "Open details"
         };
+        var defaultModeId = BuiltInSiteModes.Professional.Id;
 
         return new ContentAuthoringEditViewModel
         {
@@ -84,11 +91,12 @@ public sealed class ContentAuthoringService : IContentAuthoringService
                 IsListed = true,
                 MetadataJson = PrettyMetadata(ContentRecordMapper.SerializeMetadata(metadata)),
                 TagsText = ContentTags.Article,
-                VisibleModesText = SiteMode.Professional.ToString(),
-                VisibleModesSelection = [SiteMode.Professional.ToString()],
+                VisibleModesText = defaultModeId,
+                VisibleModesSelection = [defaultModeId],
                 BodyFormat = "markdown",
                 Body = "## Overview\n\nWrite the page body here."
-            }
+            },
+            Modes = GetModeOptions()
         };
     }
 
@@ -100,6 +108,7 @@ public sealed class ContentAuthoringService : IContentAuthoringService
         }
 
         model.Sources = GetSourceOptions();
+        model.Modes = GetModeOptions();
     }
 
     public async Task<ContentItem> CreateAsync(
@@ -360,7 +369,7 @@ public sealed class ContentAuthoringService : IContentAuthoringService
         };
 
         revision.Tags.AddRange(item.Tags.Select(tag => new ContentRevisionTagRecord { Tag = tag }));
-        revision.Modes.AddRange(item.VisibleInModes.Select(mode => new ContentRevisionModeRecord { SiteMode = mode.ToString() }));
+        revision.Modes.AddRange(item.VisibleInModes.Select(modeId => new ContentRevisionModeRecord { SiteMode = modeId }));
         revision.AssetReferences.AddRange(ContentAssetReferenceParser
             .FindAssetKeys(revision.Body, revision.MetadataJson)
             .Select(assetKey => new ContentRevisionAssetRecord
@@ -415,17 +424,16 @@ public sealed class ContentAuthoringService : IContentAuthoringService
             TagsText = string.Join(Environment.NewLine, item.Tags
                 .Where(tag => !string.Equals(tag, ContentTags.Unlisted, StringComparison.OrdinalIgnoreCase))
                 .Order(StringComparer.OrdinalIgnoreCase)),
-            VisibleModesText = string.Join(Environment.NewLine, item.VisibleInModes.OrderBy(mode => mode.ToString())),
+            VisibleModesText = string.Join(Environment.NewLine, item.VisibleInModes.Order(StringComparer.Ordinal)),
             VisibleModesSelection = item.VisibleInModes
-                .OrderBy(mode => mode.ToString())
-                .Select(mode => mode.ToString())
+                .Order(StringComparer.Ordinal)
                 .ToList(),
             BodyFormat = item.BodyFormat,
             Body = item.Body
         };
     }
 
-    private static ContentItem ParseAndValidate(ContentAuthoringDocument document, bool requireExistingRevision)
+    private ContentItem ParseAndValidate(ContentAuthoringDocument document, bool requireExistingRevision)
     {
         ContentInputValidator.ValidateDocumentShape(document);
 
@@ -452,15 +460,26 @@ public sealed class ContentAuthoringService : IContentAuthoringService
         {
             item.Tags.Add(ContentTags.Unlisted);
         }
+
         var selectedModes = document.VisibleModesSelection.Count > 0
-            ? string.Join(Environment.NewLine, document.VisibleModesSelection)
-            : document.VisibleModesText;
-        item.VisibleInModes = ContentInputValidator.ParseModes(selectedModes);
-        if (item.VisibleInModes.Any(mode => mode is SiteMode.Development or SiteMode.Unassigned))
+            ? document.VisibleModesSelection
+            : document.VisibleModesText
+                .Split([',', '\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .ToList();
+        var normalizedModeIds = selectedModes
+            .Select(NormalizeSubmittedModeId)
+            .ToList();
+        item.VisibleInModes = ContentInputValidator.ParseModes(
+            string.Join(Environment.NewLine, normalizedModeIds));
+
+        var unknownModeId = item.VisibleInModes.FirstOrDefault(modeId =>
+            !_siteModeRegistry.TryGetById(modeId, out _));
+        if (unknownModeId is not null)
         {
             throw new InvalidOperationException(
-                "Development and Unassigned are runtime modes and cannot be selected for article visibility.");
+                $"Unknown or non-hosted site mode '{unknownModeId}'. Content visibility may target only registered site modes.");
         }
+
         item.BodyFormat = document.BodyFormat.Trim().ToLowerInvariant();
         item.Body = document.Body;
 
@@ -477,6 +496,25 @@ public sealed class ContentAuthoringService : IContentAuthoringService
         }
 
         return item;
+    }
+
+    private string NormalizeSubmittedModeId(string value)
+    {
+        if (_siteModeRegistry.TryGetById(value, out var registeredMode))
+        {
+            return registeredMode!.Id;
+        }
+
+        // Compatibility bridge for an editor form opened before stable ids replaced enum
+        // names. Newly rendered forms submit stable registered ids directly.
+        if (Enum.TryParse<SiteMode>(value, ignoreCase: true, out var legacyMode)
+            && Enum.IsDefined(legacyMode)
+            && _siteModeRegistry.TryGetByLegacyMode(legacyMode, out var legacyDefinition))
+        {
+            return legacyDefinition!.Id;
+        }
+
+        return value;
     }
 
     private ContentDbContext CreateContext(string sourceKey)
@@ -502,6 +540,14 @@ public sealed class ContentAuthoringService : IContentAuthoringService
         {
             Key = source.Key,
             DisplayName = source.DisplayName
+        })
+        .ToList();
+
+    private List<ContentAuthoringModeOption> GetModeOptions() => _siteModeRegistry.All
+        .Select(mode => new ContentAuthoringModeOption
+        {
+            Id = mode.Id,
+            DisplayName = mode.DisplayName
         })
         .ToList();
 
