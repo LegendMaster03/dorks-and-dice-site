@@ -50,6 +50,7 @@ public sealed class PublishedContentWebApplicationFactory : WebApplicationFactor
         builder.UseSetting("IdentityStorage:ApplyMigrationsOnStartup", "false");
         builder.UseSetting("IdentityStorage:EnsureCreatedOnStartup", "true");
         builder.UseSetting("ToolHosting:RegistryPath", ToolRegistryPath);
+        builder.UseSetting("CampaignStorage:Path", Path.Combine(_directory, "campaign-access.json"));
         builder.ConfigureServices(services =>
         {
             services.AddAuthentication(options =>
