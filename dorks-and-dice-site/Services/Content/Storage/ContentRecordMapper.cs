@@ -1,6 +1,7 @@
 using System.Text.Json;
 using dorks_and_dice_site.Models.Content;
 using dorks_and_dice_site.Models.Site;
+using dorks_and_dice_site.Services.Site;
 
 namespace dorks_and_dice_site.Services.Content.Storage;
 
@@ -13,17 +14,10 @@ internal static class ContentRecordMapper
         var metadata = JsonSerializer.Deserialize<ContentRevisionMetadata>(revision.MetadataJson, JsonOptions)
             ?? throw new InvalidOperationException($"Revision {revision.Id} contains invalid content metadata.");
 
-        var modes = new List<SiteMode>();
-        foreach (var modeRecord in revision.Modes)
-        {
-            if (!Enum.TryParse<SiteMode>(modeRecord.SiteMode, true, out var mode))
-            {
-                throw new InvalidOperationException(
-                    $"Revision {revision.Id} contains invalid site mode '{modeRecord.SiteMode}'.");
-            }
-
-            modes.Add(mode);
-        }
+        var modes = revision.Modes
+            .Select(modeRecord => NormalizeStoredModeId(revision.Id, modeRecord.SiteMode))
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
 
         return new ContentItem
         {
@@ -74,6 +68,39 @@ internal static class ContentRecordMapper
         };
 
         return JsonSerializer.Serialize(metadata, JsonOptions);
+    }
+
+    private static string NormalizeStoredModeId(long revisionId, string storedValue)
+    {
+        if (string.IsNullOrWhiteSpace(storedValue))
+        {
+            throw new InvalidOperationException($"Revision {revisionId} contains an empty site mode.");
+        }
+
+        var value = storedValue.Trim();
+        var registeredBuiltIn = BuiltInSiteModes.All.FirstOrDefault(mode =>
+            string.Equals(mode.Id, value, StringComparison.OrdinalIgnoreCase));
+        if (registeredBuiltIn is not null)
+        {
+            return registeredBuiltIn.Id;
+        }
+
+        // Revisions created before stable ids were introduced stored SiteMode enum names.
+        // Convert those built-in legacy values at the storage boundary while preserving any
+        // already-stable deployment-defined id without requiring an enum member.
+        if (Enum.TryParse<SiteMode>(value, ignoreCase: true, out var legacyMode)
+            && Enum.IsDefined(legacyMode))
+        {
+            if (BuiltInSiteModes.TryGetByLegacyMode(legacyMode, out var definition))
+            {
+                return definition!.Id;
+            }
+
+            throw new InvalidOperationException(
+                $"Revision {revisionId} contains framework runtime state '{value}' as a content visibility mode.");
+        }
+
+        return value;
     }
 
     private sealed class ContentRevisionMetadata
