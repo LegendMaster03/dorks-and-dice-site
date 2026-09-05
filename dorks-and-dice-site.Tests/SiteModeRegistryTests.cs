@@ -45,6 +45,7 @@ public sealed class SiteModeRegistryTests
         Assert.Null(registered.LegacyMode);
         Assert.True(registered.SupportsContent);
         Assert.True(registered.SupportsScopedEditor);
+        Assert.Equal(["/", "/articles"], registered.SitemapPaths);
     }
 
     [Fact]
