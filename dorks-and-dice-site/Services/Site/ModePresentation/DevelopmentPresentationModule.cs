@@ -1,11 +1,14 @@
 using dorks_and_dice_site.Models.Articles;
-using dorks_and_dice_site.Models.Site;
 
 namespace dorks_and_dice_site.Services.Site.ModePresentation;
 
+/// <summary>
+/// Compatibility presentation for Trusted Preview when no normal site mode is selected.
+/// The class/file name remains legacy until physical ownership consolidation.
+/// </summary>
 public sealed class DevelopmentPresentationModule : ISiteModePresentationModule
 {
-    public SiteMode SiteMode => SiteMode.Development;
+    public string PresentationKey => FrameworkRuntimeStates.TrustedPreview.Id;
 
     public string GetTitleSuffix()
     {
