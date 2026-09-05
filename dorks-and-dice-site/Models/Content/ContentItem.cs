@@ -7,10 +7,11 @@ public static class ContentTags
     public const string Project = "project";
     public const string Experience = "experience";
     public const string Article = "article";
+    public const string Homepage = "homepage";
     public const string Unlisted = "_internal:unlisted";
 
     public static readonly IReadOnlySet<string> ContextTags = new HashSet<string>(
-        [Project, Experience, Article],
+        [Project, Experience, Article, Homepage],
         StringComparer.OrdinalIgnoreCase);
 
     public static bool IsContext(string tag) => ContextTags.Contains(tag);
