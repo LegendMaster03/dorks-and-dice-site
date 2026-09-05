@@ -30,21 +30,30 @@ public sealed class SiteModeRegistryTests
 
         Assert.Same(syntheticMode, registered);
         Assert.Null(registered.LegacyMode);
+        Assert.Equal(SiteModeKind.Standard, registered.Kind);
+        Assert.True(registered.IsStandardMode);
         Assert.True(registered.SupportsContent);
         Assert.True(registered.SupportsScopedEditor);
-        Assert.True(registered.IsPreviewable);
     }
 
     [Fact]
-    public void SpecialModesCanOptOutOfNormalModeBehavior()
+    public void UnassignedIsFrameworkFallbackRatherThanNormalSiteMode()
     {
+        Assert.Equal(SiteModeKind.Fallback, BuiltInSiteModes.Unassigned.Kind);
+        Assert.True(BuiltInSiteModes.Unassigned.IsFallback);
+        Assert.False(BuiltInSiteModes.Unassigned.IsStandardMode);
         Assert.False(BuiltInSiteModes.Unassigned.SupportsContent);
         Assert.False(BuiltInSiteModes.Unassigned.SupportsScopedEditor);
-        Assert.False(BuiltInSiteModes.Unassigned.IsPreviewable);
+    }
 
+    [Fact]
+    public void DevelopmentRepresentsGlobalTrustedPreviewRatherThanNormalSiteMode()
+    {
+        Assert.Equal(SiteModeKind.TrustedPreview, BuiltInSiteModes.Development.Kind);
+        Assert.True(BuiltInSiteModes.Development.IsTrustedPreview);
+        Assert.False(BuiltInSiteModes.Development.IsStandardMode);
         Assert.False(BuiltInSiteModes.Development.SupportsContent);
         Assert.False(BuiltInSiteModes.Development.SupportsScopedEditor);
-        Assert.True(BuiltInSiteModes.Development.IsPreviewable);
     }
 
     [Fact]
