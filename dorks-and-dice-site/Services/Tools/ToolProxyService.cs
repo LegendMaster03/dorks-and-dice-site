@@ -27,7 +27,11 @@ public sealed class ToolProxyService : IToolProxyService
     {
         "Authorization",
         "Cookie",
-        "Host"
+        "Host",
+        "X-Forwarded-Host",
+        "X-Forwarded-Proto",
+        "X-Forwarded-Prefix",
+        "X-Dorks-Tool-Context-Url"
     };
 
     private static readonly HashSet<string> BlockedResponseHeaders = new(StringComparer.OrdinalIgnoreCase)
@@ -67,7 +71,7 @@ public sealed class ToolProxyService : IToolProxyService
                 upstreamRequest.Content = new StreamContent(context.Request.Body);
             }
 
-            CopyRequestHeaders(context, upstreamRequest);
+            CopyRequestHeaders(context, upstreamRequest, tool.Slug);
 
             using var upstreamResponse = await _httpClientFactory
                 .CreateClient(ToolHttpClientNames.Proxy)
@@ -104,7 +108,10 @@ public sealed class ToolProxyService : IToolProxyService
         || HttpMethods.IsPut(request.Method)
         || HttpMethods.IsPatch(request.Method);
 
-    private static void CopyRequestHeaders(HttpContext context, HttpRequestMessage upstreamRequest)
+    private static void CopyRequestHeaders(
+        HttpContext context,
+        HttpRequestMessage upstreamRequest,
+        string toolSlug)
     {
         foreach (var header in context.Request.Headers)
         {
@@ -121,7 +128,8 @@ public sealed class ToolProxyService : IToolProxyService
 
         upstreamRequest.Headers.TryAddWithoutValidation("X-Forwarded-Host", context.Request.Host.Value);
         upstreamRequest.Headers.TryAddWithoutValidation("X-Forwarded-Proto", context.Request.Scheme);
-        upstreamRequest.Headers.TryAddWithoutValidation("X-Forwarded-Prefix", $"/tools/{context.Request.RouteValues["slug"]}");
+        upstreamRequest.Headers.TryAddWithoutValidation("X-Forwarded-Prefix", $"/tools/{toolSlug}");
+        upstreamRequest.Headers.TryAddWithoutValidation("X-Dorks-Tool-Context-Url", $"/tool-host/{toolSlug}/context");
     }
 
     private static void CopyResponseHeaders(HttpResponse response, HttpResponseMessage upstreamResponse)
