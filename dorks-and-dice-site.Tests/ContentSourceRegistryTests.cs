@@ -1,5 +1,6 @@
 using dorks_and_dice_site.Models.Site;
 using dorks_and_dice_site.Services.Content.Storage;
+using dorks_and_dice_site.Services.Site;
 using Microsoft.Extensions.Configuration;
 
 namespace dorks_and_dice_site.Tests;
@@ -25,12 +26,12 @@ public sealed class ContentSourceRegistryTests
             ["ContentStorage:Sources:CommunityOnly:Provider"] = "Sqlite",
             ["ContentStorage:Sources:CommunityOnly:ConnectionString"] = "CommunityDb",
             ["ContentStorage:GlobalSources:0"] = "Global",
-            ["ContentStorage:Modes:Professional:InheritGlobal"] = "true",
-            ["ContentStorage:Modes:Professional:Add:0"] = "ProfessionalOnly",
-            ["ContentStorage:Modes:DorksAndDice:InheritGlobal"] = "true",
-            ["ContentStorage:Modes:DorksAndDice:Remove:0"] = "Global",
-            ["ContentStorage:Modes:DorksAndDice:Add:0"] = "CommunityOnly",
-            // Development and fall-through mode settings must be ignored by design.
+            ["ContentStorage:Modes:professional:InheritGlobal"] = "true",
+            ["ContentStorage:Modes:professional:Add:0"] = "ProfessionalOnly",
+            ["ContentStorage:Modes:dorks-and-dice:InheritGlobal"] = "true",
+            ["ContentStorage:Modes:dorks-and-dice:Remove:0"] = "Global",
+            ["ContentStorage:Modes:dorks-and-dice:Add:0"] = "CommunityOnly",
+            // Framework states are not normal mode source-composition targets.
             ["ContentStorage:Modes:Development:Add:0"] = "ProfessionalOnly",
             ["ContentStorage:Modes:Unassigned:Add:0"] = "CommunityOnly"
         };
@@ -42,14 +43,71 @@ public sealed class ContentSourceRegistryTests
 
         Assert.Equal(
             ["Global", "ProfessionalOnly"],
-            registry.GetDefaultSources(SiteMode.Professional).Select(source => source.Key));
+            registry.GetDefaultSources(BuiltInSiteModes.Professional.Id).Select(source => source.Key));
         Assert.Equal(
             ["CommunityOnly"],
-            registry.GetDefaultSources(SiteMode.DorksAndDice).Select(source => source.Key));
+            registry.GetDefaultSources(BuiltInSiteModes.DorksAndDice.Id).Select(source => source.Key));
+
+        // Legacy enum callers remain a temporary compatibility path.
+        Assert.Equal(
+            ["Global", "ProfessionalOnly"],
+            registry.GetDefaultSources(SiteMode.Professional).Select(source => source.Key));
         Assert.Empty(registry.GetDefaultSources(SiteMode.Development));
         Assert.Equal(
             ["Global"],
             registry.GetDefaultSources(SiteMode.Unassigned).Select(source => source.Key));
+    }
+
+    [Fact]
+    public void SyntheticModeCanComposeContentSourcesWithoutLegacyEnum()
+    {
+        var settings = new Dictionary<string, string?>
+        {
+            ["ConnectionStrings:GlobalDb"] = "Data Source=global.db",
+            ["ConnectionStrings:SyntheticDb"] = "Data Source=synthetic.db",
+            ["ContentStorage:AuthoringSource"] = "Global",
+            ["ContentStorage:Sources:Global:Provider"] = "Sqlite",
+            ["ContentStorage:Sources:Global:ConnectionString"] = "GlobalDb",
+            ["ContentStorage:Sources:Synthetic:Provider"] = "Sqlite",
+            ["ContentStorage:Sources:Synthetic:ConnectionString"] = "SyntheticDb",
+            ["ContentStorage:GlobalSources:0"] = "Global",
+            ["ContentStorage:Modes:test-mode:Add:0"] = "Synthetic"
+        };
+
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(settings)
+            .Build();
+        var registry = new ContentSourceRegistry(configuration, Path.GetTempPath());
+
+        Assert.Equal(
+            ["Global", "Synthetic"],
+            registry.GetDefaultSources("test-mode").Select(source => source.Key));
+    }
+
+    [Fact]
+    public void LegacyBuiltInModeConfigurationRemainsReadableDuringMigration()
+    {
+        var settings = new Dictionary<string, string?>
+        {
+            ["ConnectionStrings:GlobalDb"] = "Data Source=global.db",
+            ["ConnectionStrings:CommunityDb"] = "Data Source=community.db",
+            ["ContentStorage:AuthoringSource"] = "Global",
+            ["ContentStorage:Sources:Global:Provider"] = "Sqlite",
+            ["ContentStorage:Sources:Global:ConnectionString"] = "GlobalDb",
+            ["ContentStorage:Sources:Community:Provider"] = "Sqlite",
+            ["ContentStorage:Sources:Community:ConnectionString"] = "CommunityDb",
+            ["ContentStorage:GlobalSources:0"] = "Global",
+            ["ContentStorage:Modes:DorksAndDice:Add:0"] = "Community"
+        };
+
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(settings)
+            .Build();
+        var registry = new ContentSourceRegistry(configuration, Path.GetTempPath());
+
+        Assert.Equal(
+            ["Global", "Community"],
+            registry.GetDefaultSources(BuiltInSiteModes.DorksAndDice.Id).Select(source => source.Key));
     }
 
     [Fact]
