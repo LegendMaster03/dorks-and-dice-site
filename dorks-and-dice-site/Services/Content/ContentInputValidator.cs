@@ -1,6 +1,5 @@
 using System.Text.RegularExpressions;
 using dorks_and_dice_site.Models.Content;
-using dorks_and_dice_site.Models.Site;
 
 namespace dorks_and_dice_site.Services.Content;
 
@@ -62,24 +61,20 @@ internal static class ContentInputValidator
         return values;
     }
 
-    public static List<SiteMode> ParseModes(string rawModes)
+    public static List<string> ParseModes(string rawModes)
     {
         ValidateLength("Visible modes", rawModes, ContentInputPolicy.MaxModesTextLength);
         var values = SplitValues(rawModes, lowercase: false);
-        var modes = new List<SiteMode>();
         foreach (var value in values)
         {
-            if (!Enum.TryParse<SiteMode>(value, ignoreCase: true, out var mode)
-                || !Enum.IsDefined(mode)
-                || int.TryParse(value, out _))
+            if (value.Length > ContentInputPolicy.MaxKeyLength || !KeyPattern.IsMatch(value))
             {
-                throw new InvalidOperationException($"Unknown site mode '{value}'.");
+                throw new InvalidOperationException(
+                    $"Site mode id '{value}' is invalid. Mode ids may contain lowercase letters, numbers, and hyphens.");
             }
-
-            modes.Add(mode);
         }
 
-        return modes.Distinct().ToList();
+        return values.Distinct(StringComparer.Ordinal).ToList();
     }
 
     public static void ValidateItem(ContentItem item)
