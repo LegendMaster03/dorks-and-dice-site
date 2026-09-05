@@ -24,6 +24,16 @@ public sealed class ContentSecurityTests
     }
 
     [Fact]
+    public void RendererAllowsTelephoneLinks()
+    {
+        var renderer = new ContentBodyRenderer(Array.Empty<IContentDirectiveRenderer>());
+
+        var html = renderer.Render("markdown", "[Call](tel:+19048038980)");
+
+        Assert.Contains("href=\"tel:+19048038980\"", html, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void RendererRejectsUnknownApplicationDirective()
     {
         var renderer = new ContentBodyRenderer(Array.Empty<IContentDirectiveRenderer>());
