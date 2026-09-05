@@ -9,6 +9,8 @@ namespace dorks_and_dice_site.Tests;
 public sealed class IdentityWebApplicationFactory : WebApplicationFactory<Program>
 {
     private readonly string _identityConnectionString;
+    private readonly string _toolDirectory = Path.Combine(
+        Path.GetTempPath(), $"dorks-and-dice-identity-tools-{Guid.NewGuid():N}");
 
     public IdentityWebApplicationFactory(string identityConnectionString)
     {
@@ -28,6 +30,8 @@ public sealed class IdentityWebApplicationFactory : WebApplicationFactory<Progra
         // Avoid appsettings.Development.json adding the Local SQLite source. Identity integration
         // tests intentionally exercise both content initialization and Identity against PostgreSQL.
         builder.UseEnvironment("Testing");
+        builder.UseSetting("ToolHosting:RegistryPath", Path.Combine(_toolDirectory, "tool-registry.json"));
+        builder.UseSetting("CampaignStorage:Path", Path.Combine(_toolDirectory, "campaign-access.json"));
         builder.UseSetting("ConnectionStrings:IdentityDatabase", _identityConnectionString);
         builder.UseSetting("IdentityStorage:ApplyMigrationsOnStartup", "true");
         builder.UseSetting("ConnectionStrings:IdentityTestContent", contentConnectionString);
@@ -41,5 +45,12 @@ public sealed class IdentityWebApplicationFactory : WebApplicationFactory<Progra
             services.RemoveAll<IAccountEmailSender>();
             services.AddSingleton<IAccountEmailSender>(EmailSender);
         });
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        base.Dispose(disposing);
+        if (disposing && Directory.Exists(_toolDirectory))
+            Directory.Delete(_toolDirectory, recursive: true);
     }
 }
