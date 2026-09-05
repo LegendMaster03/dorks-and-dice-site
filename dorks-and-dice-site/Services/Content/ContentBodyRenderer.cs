@@ -112,6 +112,7 @@ public sealed class ContentBodyRenderer : IContentBodyRenderer
         sanitizer.AllowedSchemes.Add("http");
         sanitizer.AllowedSchemes.Add("https");
         sanitizer.AllowedSchemes.Add("mailto");
+        sanitizer.AllowedSchemes.Add("tel");
 
         return sanitizer;
     }
