@@ -4,6 +4,7 @@ using System.Threading.RateLimiting;
 using dorks_and_dice_site.Framework.Plugins;
 using dorks_and_dice_site.Models.Identity;
 using dorks_and_dice_site.Models.Site;
+using dorks_and_dice_site.Plugins.DiscordWidget;
 using dorks_and_dice_site.Plugins.ProfessionalPortfolio;
 using dorks_and_dice_site.Services.Resume;
 using dorks_and_dice_site.Services.Content.Storage;
@@ -29,7 +30,8 @@ builder.Services.AddSingleton<IMinecraftServerStatusService, MinecraftServerStat
 builder.Services.AddContentStorage(builder.Configuration, builder.Environment.ContentRootPath);
 builder.Services.AddSitePlugins(
 [
-    new ProfessionalPortfolioPlugin()
+    new ProfessionalPortfolioPlugin(),
+    new DiscordWidgetPlugin()
 ]);
 builder.Services.AddScoped<IResumeContentService, ResumeContentService>();
 builder.Services.AddSingleton<IToolRegistry, JsonToolRegistry>();
