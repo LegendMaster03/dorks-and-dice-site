@@ -1,4 +1,5 @@
 using dorks_and_dice_site.Models.Site;
+using dorks_and_dice_site.Services.Site;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
@@ -14,6 +15,7 @@ public sealed record ContentSourceDefinition(
 public interface IContentSourceRegistry
 {
     string AuthoringSourceKey { get; }
+    IReadOnlyList<ContentSourceDefinition> GetDefaultSources(string modeId);
     IReadOnlyList<ContentSourceDefinition> GetDefaultSources(SiteMode siteMode);
     IReadOnlyList<ContentSourceDefinition> GetSourcesByKeys(IEnumerable<string> keys);
     IReadOnlyList<ContentSourceDefinition> GetAllSources();
@@ -47,18 +49,29 @@ public sealed class ContentSourceRegistry : IContentSourceRegistry
 
     public string AuthoringSourceKey { get; }
 
+    public IReadOnlyList<ContentSourceDefinition> GetDefaultSources(string modeId)
+    {
+        if (string.IsNullOrWhiteSpace(modeId))
+        {
+            return GetGlobalSources();
+        }
+
+        return GetSourcesByKeys(GetModeSources(modeId));
+    }
+
     public IReadOnlyList<ContentSourceDefinition> GetDefaultSources(SiteMode siteMode)
     {
-        var keys = siteMode switch
+        if (BuiltInSiteModes.TryGetByLegacyMode(siteMode, out var definition))
         {
-            SiteMode.Professional => GetModeSources(SiteMode.Professional),
-            SiteMode.DorksAndDice => GetModeSources(SiteMode.DorksAndDice),
-            SiteMode.Development => [],
-            SiteMode.Unassigned => new List<string>(_globalSources),
-            _ => new List<string>(_globalSources)
-        };
+            return GetDefaultSources(definition!.Id);
+        }
 
-        return GetSourcesByKeys(keys);
+        return siteMode switch
+        {
+            SiteMode.Development => [],
+            SiteMode.Unassigned => GetGlobalSources(),
+            _ => GetGlobalSources()
+        };
     }
 
     public IReadOnlyList<ContentSourceDefinition> GetSourcesByKeys(IEnumerable<string> keys)
@@ -111,9 +124,9 @@ public sealed class ContentSourceRegistry : IContentSourceRegistry
         }
     }
 
-    private List<string> GetModeSources(SiteMode siteMode)
+    private List<string> GetModeSources(string modeId)
     {
-        var modeSection = _configuration.GetSection($"ContentStorage:Modes:{siteMode}");
+        var modeSection = GetModeSection(modeId);
         var inheritGlobal = !bool.TryParse(modeSection["InheritGlobal"], out var configuredInheritance)
             || configuredInheritance;
         var keys = inheritGlobal ? new List<string>(_globalSources) : [];
@@ -128,9 +141,34 @@ public sealed class ContentSourceRegistry : IContentSourceRegistry
             AddDistinct(keys, key);
         }
 
-        ValidateSourceKeys(keys, $"ContentStorage:Modes:{siteMode}");
+        ValidateSourceKeys(keys, modeSection.Path);
         return keys;
     }
+
+    private IConfigurationSection GetModeSection(string modeId)
+    {
+        var canonical = _configuration.GetSection($"ContentStorage:Modes:{modeId}");
+        if (HasConfiguration(canonical))
+        {
+            return canonical;
+        }
+
+        var builtIn = BuiltInSiteModes.All.FirstOrDefault(candidate =>
+            string.Equals(candidate.Id, modeId, StringComparison.OrdinalIgnoreCase));
+        if (builtIn?.LegacyMode is not null)
+        {
+            var legacy = _configuration.GetSection($"ContentStorage:Modes:{builtIn.LegacyMode.Value}");
+            if (HasConfiguration(legacy))
+            {
+                return legacy;
+            }
+        }
+
+        return canonical;
+    }
+
+    private static bool HasConfiguration(IConfigurationSection section) =>
+        section.Value is not null || section.GetChildren().Any();
 
     private Dictionary<string, ContentSourceDefinition> LoadSources()
     {
