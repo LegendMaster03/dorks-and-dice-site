@@ -1,5 +1,4 @@
 using System.Text.Json.Serialization;
-using dorks_and_dice_site.Models.Site;
 
 namespace dorks_and_dice_site.Models.Content;
 
@@ -40,7 +39,13 @@ public sealed class ContentItem
     public ContentDetailHeader Header { get; set; } = new();
     public List<string> Highlights { get; set; } = [];
     public Dictionary<string, ContentPresentation> Presentations { get; set; } = new(StringComparer.OrdinalIgnoreCase);
-    public List<SiteMode> VisibleInModes { get; set; } = [];
+
+    /// <summary>
+    /// Stable registered mode ids in which this revision is eligible. Framework runtime
+    /// states such as fallback and Trusted Preview are not valid values here.
+    /// </summary>
+    public List<string> VisibleInModes { get; set; } = [];
+
     public List<string> Tags { get; set; } = [];
 
     [JsonIgnore]
@@ -63,7 +68,9 @@ public sealed class ContentItem
 
     public bool HasTag(string tag) => Tags.Any(existing => string.Equals(existing, tag, StringComparison.OrdinalIgnoreCase));
 
-    public bool IsVisibleInMode(SiteMode siteMode) => siteMode == SiteMode.Development || VisibleInModes.Contains(siteMode);
+    public bool IsVisibleInMode(string? modeId) =>
+        !string.IsNullOrWhiteSpace(modeId)
+        && VisibleInModes.Contains(modeId, StringComparer.Ordinal);
 
     public ContentPresentation? GetPresentation(string contextTag)
     {
