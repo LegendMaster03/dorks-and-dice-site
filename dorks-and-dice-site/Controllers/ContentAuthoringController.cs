@@ -3,7 +3,9 @@ using System.Text.Encodings.Web;
 using System.Text.RegularExpressions;
 using dorks_and_dice_site.Models.Content;
 using dorks_and_dice_site.Services.Content;
+using dorks_and_dice_site.Services.Content.Storage;
 using dorks_and_dice_site.Services.Identity;
+using dorks_and_dice_site.Services.Site;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -20,21 +22,60 @@ public sealed class ContentAuthoringController : Controller
     private readonly IContentAuthoringService _authoringService;
     private readonly IContentBodyRenderer _bodyRenderer;
     private readonly IContentPageComposer _pageComposer;
+    private readonly IContentSourceRegistry _sourceRegistry;
 
     public ContentAuthoringController(
         IContentAuthoringService authoringService,
         IContentBodyRenderer bodyRenderer,
-        IContentPageComposer pageComposer)
+        IContentPageComposer pageComposer,
+        IContentSourceRegistry sourceRegistry)
     {
         _authoringService = authoringService;
         _bodyRenderer = bodyRenderer;
         _pageComposer = pageComposer;
+        _sourceRegistry = sourceRegistry;
     }
 
     [HttpGet("")]
     public async Task<IActionResult> Index(CancellationToken cancellationToken)
     {
-        return View(await _authoringService.GetIndexAsync(_authoringService.DefaultSourceKey, cancellationToken));
+        var sources = ContentAuthoringSourceAccess.GetAccessibleSources(
+            _sourceRegistry,
+            HttpContext.GetSiteModeContext());
+        var sourceModels = await Task.WhenAll(sources.Select(async source => new
+        {
+            Source = source,
+            Model = await _authoringService.GetIndexAsync(source.Key, cancellationToken)
+        }));
+
+        var entries = sourceModels
+            .SelectMany(sourceModel => sourceModel.Model.Items.Select(item =>
+                new ContentAuthoringIndexEntryViewModel
+                {
+                    Item = item,
+                    SourceKey = sourceModel.Source.Key,
+                    SourceDisplayName = sourceModel.Source.DisplayName,
+                    IsAuthoringSource = string.Equals(
+                        sourceModel.Source.Key,
+                        _authoringService.DefaultSourceKey,
+                        StringComparison.OrdinalIgnoreCase)
+                }))
+            .OrderBy(entry => entry.Item.Title, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(entry => entry.SourceDisplayName, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        return View(new ContentAuthoringIndexViewModel
+        {
+            Entries = entries,
+            Items = entries.Select(entry => entry.Item).ToList(),
+            SelectedSourceKey = _authoringService.DefaultSourceKey,
+            AuthoringSourceKey = _authoringService.DefaultSourceKey,
+            Sources = sources.Select(source => new ContentAuthoringSourceOption
+            {
+                Key = source.Key,
+                DisplayName = source.DisplayName
+            }).ToList()
+        });
     }
 
     [HttpGet("new")]
@@ -54,7 +95,11 @@ public sealed class ContentAuthoringController : Controller
         try
         {
             var created = await _authoringService.CreateAsync(model.Document, cancellationToken);
-            return RedirectToAction(nameof(Edit), new { slug = created.Slug });
+            return RedirectToAction(nameof(Edit), new
+            {
+                slug = created.Slug,
+                source = model.Document.SourceKey
+            });
         }
         catch (InvalidOperationException ex)
         {
@@ -65,14 +110,15 @@ public sealed class ContentAuthoringController : Controller
     }
 
     [HttpGet("{slug}/edit")]
-    public async Task<IActionResult> Edit(string slug, CancellationToken cancellationToken)
+    public async Task<IActionResult> Edit(
+        string slug,
+        string? source,
+        CancellationToken cancellationToken)
     {
         try
         {
-            var model = await _authoringService.GetEditAsync(
-                _authoringService.DefaultSourceKey,
-                slug,
-                cancellationToken);
+            var sourceKey = ResolveAccessibleSource(source);
+            var model = await _authoringService.GetEditAsync(sourceKey, slug, cancellationToken);
             return model is null ? NotFound() : View(model);
         }
         catch (InvalidOperationException)
@@ -88,13 +134,17 @@ public sealed class ContentAuthoringController : Controller
         ContentAuthoringEditViewModel model,
         CancellationToken cancellationToken)
     {
-        model.Document.SourceKey = _authoringService.DefaultSourceKey;
         try
         {
+            model.Document.SourceKey = ResolveAccessibleSource(model.Document.SourceKey);
             ContentInputValidator.ValidateKey("Route slug", slug);
             model.Document.IsNew = false;
             var saved = await _authoringService.SaveRevisionAsync(model.Document, cancellationToken);
-            return RedirectToAction(nameof(Edit), new { slug = saved.Slug });
+            return RedirectToAction(nameof(Edit), new
+            {
+                slug = saved.Slug,
+                source = model.Document.SourceKey
+            });
         }
         catch (InvalidOperationException ex)
         {
@@ -108,9 +158,9 @@ public sealed class ContentAuthoringController : Controller
     [ValidateAntiForgeryToken]
     public IActionResult Preview(ContentAuthoringEditViewModel model)
     {
-        model.Document.SourceKey = _authoringService.DefaultSourceKey;
         try
         {
+            model.Document.SourceKey = ResolveAccessibleSource(model.Document.SourceKey);
             var fragments = _pageComposer.Compose(model.Document.BodyFormat, model.Document.Body);
             var preview = new StringBuilder();
             foreach (var fragment in fragments)
@@ -176,4 +226,10 @@ public sealed class ContentAuthoringController : Controller
 
         return Json(new { html });
     }
+
+    private string ResolveAccessibleSource(string? source) =>
+        ContentAuthoringSourceAccess.ResolveAccessibleSourceKey(
+            _sourceRegistry,
+            HttpContext.GetSiteModeContext(),
+            source);
 }
