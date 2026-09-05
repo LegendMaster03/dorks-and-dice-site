@@ -75,10 +75,12 @@ public sealed class ToolProxyServiceTests
     [Fact]
     public async Task ProxyRejectsUpstreamRedirects()
     {
-        var handler = new RecordingHandler(_ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.Found)
+        var handler = new RecordingHandler(_ =>
         {
-            Headers = { Location = new Uri("http://proxy-service:8080/login") }
-        }));
+            var response = new HttpResponseMessage(HttpStatusCode.Found);
+            response.Headers.Location = new Uri("http://proxy-service:8080/login");
+            return Task.FromResult(response);
+        });
         var service = CreateService(handler);
         var context = CreateContext("GET", "/tools/proxy-test", string.Empty);
         context.Request.RouteValues["slug"] = "proxy-test";
