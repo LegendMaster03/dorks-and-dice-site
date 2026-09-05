@@ -42,6 +42,7 @@ public static class SiteRouteOwnership
             || path.StartsWith("/articles/")
             || path == "/tools"
             || path.StartsWith("/tools/", StringComparison.Ordinal)
+            || path == "/tool-modules"
             || path.StartsWith("/tool-modules/", StringComparison.Ordinal);
     }
 
@@ -71,6 +72,8 @@ public static class SiteRouteOwnership
 
     private static bool IsContentMediaPath(string path)
     {
+        // Route ownership only permits the request to reach the controller. ContentAssetService
+        // still requires a current revision reference from a page visible in the active mode.
         return path.StartsWith("/content/media/", StringComparison.Ordinal);
     }
 
