@@ -51,6 +51,7 @@ public sealed class PublishedContentWebApplicationFactory : WebApplicationFactor
         builder.UseSetting("IdentityStorage:EnsureCreatedOnStartup", "true");
         builder.UseSetting("ToolHosting:RegistryPath", ToolRegistryPath);
         builder.UseSetting("CampaignStorage:Path", Path.Combine(_directory, "campaign-access.json"));
+        builder.UseSetting("Discord:WidgetUrl", "https://discord.com/widget?id=123456789&theme=dark");
         builder.ConfigureServices(services =>
         {
             services.AddAuthentication(options =>
@@ -166,6 +167,42 @@ public sealed class PublishedContentWebApplicationFactory : WebApplicationFactor
             LinkText = "View experience"
         };
         await CreateAsync(authoring, seniorProject);
+
+        await CreateAsync(authoring, new ContentItem
+        {
+            Id = "professional-home",
+            Slug = "professional-home",
+            Title = "Resume",
+            Summary = "Professional homepage fixture.",
+            Tags = [ContentTags.Homepage],
+            VisibleInModes = [BuiltInSiteModes.Professional.Id],
+            Body = """
+                # Professional Fixture
+
+                ## Experience {#experience}
+
+                {{content-collection context="experience" presentation="professional-experience" order="seniorproject,experiencecybersecurityteam"}}
+
+                ## Projects {#projects}
+
+                {{content-collection context="project" presentation="professional-projects" order="xngine,personalmultimodewebsite" featured-first="true"}}
+                """
+        });
+
+        await CreateAsync(authoring, new ContentItem
+        {
+            Id = "dorks-and-dice-home",
+            Slug = "dorks-and-dice-home",
+            Title = "Home",
+            Summary = "Dorks & Dice homepage fixture.",
+            Tags = [ContentTags.Homepage],
+            VisibleInModes = [BuiltInSiteModes.DorksAndDice.Id],
+            Body = """
+                # Dorks & Dice Fixture
+
+                {{discord-widget}}
+                """
+        });
     }
 
     private static ContentItem Project(
