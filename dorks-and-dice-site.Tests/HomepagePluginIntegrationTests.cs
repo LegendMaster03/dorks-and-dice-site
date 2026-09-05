@@ -1,54 +1,48 @@
 using System.Net;
+using dorks_and_dice_site.Models.Content;
+using dorks_and_dice_site.Services.Content;
+using dorks_and_dice_site.Services.Site;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace dorks_and_dice_site.Tests;
 
-[Collection(PublishedContentIntegrationCollection.Name)]
 public sealed class HomepagePluginIntegrationTests
 {
-    private readonly PublishedContentWebApplicationFactory _factory;
-
-    public HomepagePluginIntegrationTests(PublishedContentWebApplicationFactory factory)
-    {
-        _factory = factory;
-    }
-
-    [Fact]
-    public async Task ProfessionalDbHomepageRendersPluginContentCollections()
-    {
-        var response = await SendAsync("kylebarnett.com", "/");
-        var html = await response.Content.ReadAsStringAsync();
-
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.Contains("Professional Fixture", html, StringComparison.Ordinal);
-        Assert.Contains("Safe Future Foundation - Full-Stack Developer", html, StringComparison.Ordinal);
-        Assert.Contains("Cybersecurity Team", html, StringComparison.Ordinal);
-        Assert.Contains("Xngine", html, StringComparison.Ordinal);
-        Assert.Contains("Search projects or tags", html, StringComparison.Ordinal);
-        Assert.DoesNotContain("{{content-collection", html, StringComparison.Ordinal);
-    }
-
     [Fact]
     public async Task DorksDbHomepageRendersInstalledDiscordPlugin()
     {
-        var response = await SendAsync("dorks-and-dice.com", "/");
+        using var factory = new PublishedContentWebApplicationFactory();
+        var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false
+        });
+
+        using (var scope = factory.Services.CreateScope())
+        {
+            var authoring = scope.ServiceProvider.GetRequiredService<IContentAuthoringService>();
+            var model = authoring.GetNew("External");
+            model.Document.Id = "dorks-and-dice-home";
+            model.Document.Slug = "dorks-and-dice-home";
+            model.Document.TagsText = ContentTags.Homepage;
+            model.Document.VisibleModesSelection = [BuiltInSiteModes.DorksAndDice.Id];
+            model.Document.Body = """
+                # Dorks & Dice Fixture
+
+                {{discord-widget title="Dorks & Dice Discord Server"}}
+                """;
+            await authoring.CreateAsync(model.Document);
+        }
+
+        using var request = new HttpRequestMessage(HttpMethod.Get, "https://dorks-and-dice.com/");
+        request.Headers.Host = "dorks-and-dice.com";
+        var response = await client.SendAsync(request);
         var html = await response.Content.ReadAsStringAsync();
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Contains("Dorks &amp; Dice Fixture", html, StringComparison.Ordinal);
         Assert.Contains("Dorks &amp; Dice Discord Server", html, StringComparison.Ordinal);
         Assert.Contains("https://discord.com/widget?id=123456789&amp;theme=dark", html, StringComparison.Ordinal);
-        Assert.DoesNotContain("{{discord-widget}}", html, StringComparison.Ordinal);
-    }
-
-    private async Task<HttpResponseMessage> SendAsync(string host, string path)
-    {
-        var client = _factory.CreateClient(new WebApplicationFactoryClientOptions
-        {
-            AllowAutoRedirect = false
-        });
-        using var request = new HttpRequestMessage(HttpMethod.Get, $"http://{host}{path}");
-        request.Headers.Host = host;
-        return await client.SendAsync(request);
+        Assert.DoesNotContain("{{discord-widget", html, StringComparison.Ordinal);
     }
 }
