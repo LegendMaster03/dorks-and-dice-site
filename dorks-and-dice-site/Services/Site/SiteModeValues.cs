@@ -14,25 +14,19 @@ public static class SiteModeValues
     public const string DevelopmentModeValue = "development";
 
     public static bool IsEditorMode(SiteMode mode) =>
-        mode is not SiteMode.Unassigned and not SiteMode.Development;
+        BuiltInSiteModes.TryGetByLegacyMode(mode, out var definition)
+            ? definition!.SupportsScopedEditor
+            : mode is not SiteMode.Unassigned and not SiteMode.Development;
 
-    public static string ToModeValue(SiteMode mode) => mode switch
-    {
-        SiteMode.DorksAndDice => DorksAndDiceModeValue,
-        SiteMode.Professional => ProfessionalModeValue,
-        SiteMode.Development => DevelopmentModeValue,
-        SiteMode.Unassigned => "unassigned",
-        _ => ToKebabCase(mode.ToString())
-    };
+    public static string ToModeValue(SiteMode mode) =>
+        BuiltInSiteModes.TryGetByLegacyMode(mode, out var definition)
+            ? definition!.Id
+            : ToKebabCase(mode.ToString());
 
-    public static string ToDisplayName(SiteMode mode) => mode switch
-    {
-        SiteMode.DorksAndDice => "Dorks & Dice",
-        SiteMode.Professional => "Professional",
-        SiteMode.Development => "Development",
-        SiteMode.Unassigned => "Unassigned",
-        _ => SplitPascalCase(mode.ToString())
-    };
+    public static string ToDisplayName(SiteMode mode) =>
+        BuiltInSiteModes.TryGetByLegacyMode(mode, out var definition)
+            ? definition!.DisplayName
+            : SplitPascalCase(mode.ToString());
 
     private static string ToKebabCase(string value)
     {
