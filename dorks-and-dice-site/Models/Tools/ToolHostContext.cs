@@ -5,6 +5,7 @@ public sealed class ToolHostContext
     public int ContractVersion { get; init; } = 1;
     public required string ToolSlug { get; init; }
     public required string SiteMode { get; init; }
+    public required string ApiBaseUrl { get; init; }
     public ToolHostUserContext? User { get; init; }
 }
 
