@@ -49,10 +49,13 @@ public sealed class ToolsController : Controller
 
         if (tool.IntegrationType == ToolIntegrationType.ProxiedApplication)
         {
-            // A trailing slash makes browser-relative URLs stay inside the tool subtree.
-            // Without it, "second.html" from /tools/example resolves to /tools/second.html.
-            var target = $"/tools/{tool.Slug}/{Request.QueryString}";
-            return RedirectPreserveMethod(target);
+            if (!Request.Path.Value?.EndsWith('/', StringComparison.Ordinal) == true)
+            {
+                return RedirectPreserveMethod($"/tools/{tool.Slug}/{Request.QueryString}");
+            }
+
+            await _toolProxyService.ProxyAsync(HttpContext, tool, "/", cancellationToken);
+            return new EmptyResult();
         }
 
         return View(tool);
