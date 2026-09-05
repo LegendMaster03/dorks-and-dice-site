@@ -1,6 +1,7 @@
+using dorks_and_dice_site.Framework.Fallback;
+using dorks_and_dice_site.Framework.TrustedPreview;
 using dorks_and_dice_site.Models.Articles;
 using dorks_and_dice_site.Services.Site;
-using dorks_and_dice_site.Services.Site.ModePresentation;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.FileProviders;
 
@@ -18,7 +19,7 @@ public sealed class SiteModePresentationServiceTests
             ViewFolder: "TestMode",
             AssetFolder: "test-mode");
         var service = CreateService(
-            new UnassignedPresentationModule(),
+            new FallbackPresentationModule(),
             new SyntheticPresentationModule("test-mode", "Synthetic Site"));
 
         var title = service.GetTitleSuffix(new SiteModeContext
@@ -32,7 +33,7 @@ public sealed class SiteModePresentationServiceTests
     [Fact]
     public void MissingModePresentationFallsBackToFrameworkPresentation()
     {
-        var service = CreateService(new UnassignedPresentationModule());
+        var service = CreateService(new FallbackPresentationModule());
 
         var title = service.GetTitleSuffix(new SiteModeContext
         {
@@ -52,8 +53,8 @@ public sealed class SiteModePresentationServiceTests
             ViewFolder: "TestMode",
             AssetFolder: "test-mode");
         var service = CreateService(
-            new UnassignedPresentationModule(),
-            new DevelopmentPresentationModule(),
+            new FallbackPresentationModule(),
+            new TrustedPreviewPresentationModule(),
             new SyntheticPresentationModule("test-mode", "Synthetic Site"));
 
         var selectedModeTitle = service.GetTitleSuffix(new SiteModeContext
@@ -74,7 +75,7 @@ public sealed class SiteModePresentationServiceTests
     public void DuplicatePresentationKeysAreRejected()
     {
         var exception = Assert.Throws<InvalidOperationException>(() => CreateService(
-            new UnassignedPresentationModule(),
+            new FallbackPresentationModule(),
             new SyntheticPresentationModule("test-mode", "First"),
             new SyntheticPresentationModule("test-mode", "Second")));
 
