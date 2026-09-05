@@ -1,5 +1,4 @@
 using dorks_and_dice_site.Models.Identity;
-using dorks_and_dice_site.Models.Site;
 using dorks_and_dice_site.Services.Identity;
 
 namespace dorks_and_dice_site.Services.Site;
@@ -23,8 +22,15 @@ public sealed class SiteModeMiddleware
     public async Task InvokeAsync(HttpContext context)
     {
         var host = NormalizeHost(context.Request.Host.Host);
-        var isProfessionalDomain = _options.ProfessionalDomains.Contains(host);
-        var isDorksAndDiceDomain = _options.DorksAndDiceDomains.Contains(host);
+        var hostedModeId = _options.ResolveModeId(host);
+        var isProfessionalDomain = string.Equals(
+            hostedModeId,
+            BuiltInSiteModes.Professional.Id,
+            StringComparison.OrdinalIgnoreCase);
+        var isDorksAndDiceDomain = string.Equals(
+            hostedModeId,
+            BuiltInSiteModes.DorksAndDice.Id,
+            StringComparison.OrdinalIgnoreCase);
         var hasTrustedAccess = TrustedAccessEvaluator.IsAuthorized(context, _options);
         var hasDeveloperAccess = hasTrustedAccess
             && context.User.Identity?.IsAuthenticated == true
@@ -32,8 +38,7 @@ public sealed class SiteModeMiddleware
 
         var previewModeValue = GetTrustedPreviewModeValue(context);
         var resolution = ResolveRequestMode(
-            isProfessionalDomain,
-            isDorksAndDiceDomain,
+            hostedModeId,
             hasTrustedAccess,
             previewModeValue);
         var hasEditorPreviewAccess = hasTrustedAccess
@@ -86,8 +91,7 @@ public sealed class SiteModeMiddleware
     }
 
     private RequestModeResolution ResolveRequestMode(
-        bool isProfessionalDomain,
-        bool isDorksAndDiceDomain,
+        string? hostedModeId,
         bool hasTrustedAccess,
         string previewModeValue)
     {
@@ -97,18 +101,10 @@ public sealed class SiteModeMiddleware
             return new RequestModeResolution(previewMode, FrameworkRuntimeStates.TrustedPreview);
         }
 
-        if (isProfessionalDomain)
+        if (hostedModeId is not null
+            && _siteModeRegistry.TryGetById(hostedModeId, out var hostedMode))
         {
-            return new RequestModeResolution(
-                _siteModeRegistry.GetByLegacyMode(SiteMode.Professional),
-                FrameworkState: null);
-        }
-
-        if (isDorksAndDiceDomain)
-        {
-            return new RequestModeResolution(
-                _siteModeRegistry.GetByLegacyMode(SiteMode.DorksAndDice),
-                FrameworkState: null);
+            return new RequestModeResolution(hostedMode, FrameworkState: null);
         }
 
         return new RequestModeResolution(
