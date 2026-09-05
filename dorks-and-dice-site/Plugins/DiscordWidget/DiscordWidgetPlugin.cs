@@ -25,14 +25,26 @@ public sealed class DiscordWidgetPlugin : ISitePlugin
 
         public void Validate(IReadOnlyDictionary<string, string> parameters)
         {
-            if (parameters.Count != 0)
+            foreach (var key in parameters.Keys)
+            {
+                if (!string.Equals(key, "title", StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new InvalidOperationException(
+                        $"The discord-widget page component does not support parameter '{key}'.");
+                }
+            }
+
+            if (parameters.TryGetValue("title", out var title)
+                && title.Length > ContentInputPolicy.MaxTitleLength)
             {
                 throw new InvalidOperationException(
-                    "The discord-widget page component does not accept authored parameters. Its URL is deployment configuration.");
+                    $"The discord-widget title exceeds {ContentInputPolicy.MaxTitleLength:N0} characters.");
             }
         }
     }
 }
+
+public sealed record DiscordWidgetViewModel(string? WidgetUrl, string Title);
 
 public sealed class DiscordWidgetViewComponent : ViewComponent
 {
@@ -49,7 +61,15 @@ public sealed class DiscordWidgetViewComponent : ViewComponent
 
         var configuredUrl = _configuration["Discord:WidgetUrl"];
         var widgetUrl = TryGetSafeWidgetUrl(configuredUrl);
-        return View("~/Views/Plugins/DiscordWidget/Default.cshtml", widgetUrl);
+        var title = request.GetOptionalParameter("title");
+        if (string.IsNullOrWhiteSpace(title))
+        {
+            title = "Discord Server";
+        }
+
+        return View(
+            "~/Views/Plugins/DiscordWidget/Default.cshtml",
+            new DiscordWidgetViewModel(widgetUrl, title));
     }
 
     private static string? TryGetSafeWidgetUrl(string? configuredUrl)
