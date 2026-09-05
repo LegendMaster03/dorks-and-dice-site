@@ -26,6 +26,8 @@ public sealed class PublishedContentWebApplicationFactory : WebApplicationFactor
         Path.GetTempPath(), $"dorks-and-dice-integration-{Guid.NewGuid():N}");
     private int _seeded;
 
+    public string ToolRegistryPath => Path.Combine(_directory, "tool-registry.json");
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         Directory.CreateDirectory(_directory);
@@ -47,6 +49,7 @@ public sealed class PublishedContentWebApplicationFactory : WebApplicationFactor
         builder.UseSetting("IdentityStorage:Provider", "Sqlite");
         builder.UseSetting("IdentityStorage:ApplyMigrationsOnStartup", "false");
         builder.UseSetting("IdentityStorage:EnsureCreatedOnStartup", "true");
+        builder.UseSetting("ToolHosting:RegistryPath", ToolRegistryPath);
         builder.ConfigureServices(services =>
         {
             services.AddAuthentication(options =>
