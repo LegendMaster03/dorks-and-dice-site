@@ -1,7 +1,6 @@
 using System.Net;
 using System.Text;
 using dorks_and_dice_site.Models.Identity;
-using dorks_and_dice_site.Models.Site;
 using dorks_and_dice_site.Services.Identity;
 using dorks_and_dice_site.Services.Site;
 using Microsoft.AspNetCore.Authorization;
@@ -19,6 +18,7 @@ public sealed class AccountController : Controller
     private readonly SignInManager<ApplicationUser> _signInManager;
     private readonly RoleManager<IdentityRole<Guid>> _roleManager;
     private readonly SiteModeOptions _siteModeOptions;
+    private readonly ISiteModePresentationService _siteModePresentationService;
     private readonly IAccountEmailSender _emailSender;
     private readonly ILogger<AccountController> _logger;
 
@@ -27,6 +27,7 @@ public sealed class AccountController : Controller
         SignInManager<ApplicationUser> signInManager,
         RoleManager<IdentityRole<Guid>> roleManager,
         SiteModeOptions siteModeOptions,
+        ISiteModePresentationService siteModePresentationService,
         IAccountEmailSender emailSender,
         ILogger<AccountController> logger)
     {
@@ -34,6 +35,7 @@ public sealed class AccountController : Controller
         _signInManager = signInManager;
         _roleManager = roleManager;
         _siteModeOptions = siteModeOptions;
+        _siteModePresentationService = siteModePresentationService;
         _emailSender = emailSender;
         _logger = logger;
     }
@@ -520,8 +522,16 @@ public sealed class AccountController : Controller
             Request.Scheme)
             ?? throw new InvalidOperationException("Could not generate an email confirmation URL.");
 
-        var siteMode = HttpContext.GetSiteModeContext().SiteMode;
-        var siteName = siteMode == SiteMode.Professional ? "Kyle Barnett" : "Dorks & Dice";
+        var modeContext = HttpContext.GetSiteModeContext();
+        var modeId = modeContext.ActiveModeId
+            ?? throw new InvalidOperationException("Account email requires an active hosted site mode.");
+        if (!_siteModeOptions.TryGetCanonicalHost(modeId, out var senderDomain))
+        {
+            throw new InvalidOperationException($"No canonical host is configured for site mode '{modeId}'.");
+        }
+
+        var siteName = _siteModePresentationService.GetTitleSuffix(modeContext);
+        var senderIdentity = new AccountEmailSenderIdentity(senderDomain!, siteName);
         var encodedUrl = WebUtility.HtmlEncode(confirmationUrl);
         var htmlBody = $"<p>Confirm your email address for your {WebUtility.HtmlEncode(siteName)} account.</p>"
             + $"<p><a href=\"{encodedUrl}\">Confirm email</a></p>"
@@ -530,7 +540,7 @@ public sealed class AccountController : Controller
             + "This link expires in 24 hours.";
 
         await _emailSender.SendAsync(
-            siteMode,
+            senderIdentity,
             email,
             $"Confirm your {siteName} account",
             htmlBody,
