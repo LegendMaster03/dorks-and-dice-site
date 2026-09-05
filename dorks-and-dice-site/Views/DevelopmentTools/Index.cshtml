@@ -1,4 +1,5 @@
-@model IReadOnlyList<dorks_and_dice_site.Models.Tools.ToolRegistration>
+@model IReadOnlyList<dorks_and_dice_site.Models.Tools.DevelopmentToolListItemViewModel>
+@using dorks_and_dice_site.Models.Tools
 @using dorks_and_dice_site.Services.Site
 @{
     ViewData["Title"] = "Tool Hosting";
@@ -28,8 +29,9 @@
 else
 {
     <div class="row g-3">
-        @foreach (var tool in Model)
+        @foreach (var item in Model)
         {
+            var tool = item.Tool;
             var modes = new List<string>();
             if (tool.Modes.Contains(SiteModeValues.DorksAndDiceModeValue, StringComparer.Ordinal))
             {
@@ -43,6 +45,18 @@ else
             {
                 modes.Add("Dorks & Dice");
             }
+
+            var healthClass = item.Health.Status switch
+            {
+                ToolHealthStatus.Healthy => "text-bg-success",
+                ToolHealthStatus.Unhealthy => "text-bg-danger",
+                _ => "text-bg-secondary"
+            };
+            var healthLabel = item.Health.Status switch
+            {
+                ToolHealthStatus.NotConfigured => "Not configured",
+                _ => item.Health.Status.ToString()
+            };
 
             <div class="col-lg-6">
                 <section class="card h-100">
@@ -69,6 +83,15 @@ else
                             <dd class="col-sm-8">@(tool.AllowAnonymous ? "Allowed" : "Account required")</dd>
                             <dt class="col-sm-4">Upstream</dt>
                             <dd class="col-sm-8 text-break">@(tool.UpstreamBaseUrl ?? "Not configured")</dd>
+                            <dt class="col-sm-4">Health</dt>
+                            <dd class="col-sm-8">
+                                <span class="badge @healthClass">@healthLabel</span>
+                                <span class="text-body-secondary ms-1">@item.Health.Detail</span>
+                                @if (item.Health.DurationMilliseconds.HasValue)
+                                {
+                                    <span class="text-body-secondary">(@item.Health.DurationMilliseconds ms)</span>
+                                }
+                            </dd>
                         </dl>
                         <div class="mt-auto d-flex flex-wrap gap-2">
                             <a class="btn btn-outline-primary btn-sm" href="/development/tools/@tool.Id">Edit</a>
