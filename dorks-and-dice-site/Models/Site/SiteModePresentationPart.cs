@@ -5,5 +5,7 @@ public enum SiteModePresentationPart
     TitleSuffix,
     DefaultMetaDescription,
     ArticlesIndex,
-    Favicon
+    Favicon,
+    DefaultMetaImage,
+    StructuredData
 }
