@@ -57,6 +57,24 @@ public sealed class ContentPageComposerTests
     }
 
     [Fact]
+    public void InstalledParameterlessPageComponentBecomesInvocation()
+    {
+        var composer = new ContentPageComposer(
+            new ContentBodyRenderer(Array.Empty<IContentDirectiveRenderer>()),
+            [
+                new ContentCollectionPageComponentDefinition(),
+                new TestPageComponentDefinition("discord-widget", "DiscordWidget")
+            ]);
+
+        var fragments = composer.Compose("markdown", "Before\n\n{{discord-widget}}\n\nAfter");
+
+        Assert.Equal(3, fragments.Count);
+        Assert.Equal("discord-widget", fragments[1].Component?.Name);
+        Assert.Equal("DiscordWidget", fragments[1].Component?.ViewComponentName);
+        Assert.Empty(fragments[1].Component!.Parameters);
+    }
+
+    [Fact]
     public void UnknownParameterizedComponentIsRejected()
     {
         var composer = CreateComposer();
@@ -102,4 +120,19 @@ public sealed class ContentPageComposerTests
     private static ContentPageComposer CreateComposer() => new(
         new ContentBodyRenderer(Array.Empty<IContentDirectiveRenderer>()),
         [new ContentCollectionPageComponentDefinition()]);
+
+    private sealed class TestPageComponentDefinition(string name, string viewComponentName)
+        : IContentPageComponentDefinition
+    {
+        public string Name { get; } = name;
+        public string ViewComponentName { get; } = viewComponentName;
+
+        public void Validate(IReadOnlyDictionary<string, string> parameters)
+        {
+            if (parameters.Count != 0)
+            {
+                throw new InvalidOperationException("No parameters are supported.");
+            }
+        }
+    }
 }
