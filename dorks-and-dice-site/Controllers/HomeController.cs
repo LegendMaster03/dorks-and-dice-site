@@ -1,7 +1,4 @@
 using dorks_and_dice_site.Models;
-using dorks_and_dice_site.Models.Site;
-using dorks_and_dice_site.Services.GameServers.Minecraft;
-using dorks_and_dice_site.Services.Resume;
 using dorks_and_dice_site.Services.Site;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
@@ -11,41 +8,35 @@ namespace dorks_and_dice_site.Controllers
 {
     public class HomeController : Controller
     {
-        private readonly IConfiguration _configuration;
-        private readonly IMinecraftServerStatusService _minecraftServerStatusService;
-        private readonly IResumeContentService _resumeContentService;
+        private readonly ISiteModeHomeService _siteModeHomeService;
 
-        public HomeController(
-            IConfiguration configuration,
-            IMinecraftServerStatusService minecraftServerStatusService,
-            IResumeContentService resumeContentService)
+        public HomeController(ISiteModeHomeService siteModeHomeService)
         {
-            _configuration = configuration;
-            _minecraftServerStatusService = minecraftServerStatusService;
-            _resumeContentService = resumeContentService;
+            _siteModeHomeService = siteModeHomeService;
         }
 
         public async Task<IActionResult> Index(CancellationToken cancellationToken)
         {
-            switch (GetSiteMode())
+            var modeContext = HttpContext.GetSiteModeContext();
+            if (modeContext.IsTrustedPreview && modeContext.ActiveMode is null)
             {
-                case SiteMode.Professional:
-                    return View(
-                        "~/Views/SiteModes/Professional/Home.cshtml",
-                        await _resumeContentService.GetResumePageAsync(cancellationToken));
-                case SiteMode.Development:
-                    return RouteResolutionIssue(
-                        "Development mode cannot resolve this shared route",
-                        "This shared route is available to multiple site modes, but it does not have explicit Development-mode handling.");
-                case SiteMode.Unassigned:
-                    return View("~/Views/SiteModes/Unassigned/Home.cshtml");
-                case SiteMode.DorksAndDice:
-                    ViewData["DiscordWidgetUrl"] = _configuration["Discord:WidgetUrl"];
-                    ViewData["MinecraftServerStatus"] = await _minecraftServerStatusService.GetStatusAsync(cancellationToken);
-                    return View("~/Views/SiteModes/DorksAndDice/Home.cshtml");
-                default:
-                    throw new InvalidOperationException($"Unhandled site mode: {GetSiteMode()}");
+                return RouteResolutionIssue(
+                    "Trusted Preview cannot resolve this shared route",
+                    "This shared route is available to normal site modes, but Trusted Preview does not currently have a site mode selected.");
             }
+
+            var home = await _siteModeHomeService.GetHomeAsync(modeContext, cancellationToken);
+            if (home.ViewData is not null)
+            {
+                foreach (var (key, value) in home.ViewData)
+                {
+                    ViewData[key] = value;
+                }
+            }
+
+            return home.Model is null
+                ? View(home.ViewPath)
+                : View(home.ViewPath, home.Model);
         }
 
         public IActionResult NotFoundPage()
@@ -84,11 +75,6 @@ namespace dorks_and_dice_site.Controllers
         public IActionResult Error()
         {
             return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
-        }
-
-        private SiteMode GetSiteMode()
-        {
-            return HttpContext.GetSiteModeContext().SiteMode;
         }
 
         private string GetCurrentReturnUrl()
