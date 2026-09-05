@@ -2,47 +2,26 @@ using dorks_and_dice_site.Models.Site;
 
 namespace dorks_and_dice_site.Services.Site;
 
-public enum SiteModeKind
-{
-    Standard,
-    Fallback,
-    TrustedPreview
-}
-
+/// <summary>
+/// Describes a normal hosted site mode. Framework fallback behavior and Trusted Preview
+/// are intentionally not represented by this type.
+/// </summary>
 public sealed record SiteModeDefinition(
     string Id,
     string DisplayName,
     SiteMode? LegacyMode,
     string ViewFolder,
-    string AssetFolder,
-    SiteModeKind Kind = SiteModeKind.Standard)
+    string AssetFolder)
 {
-    public bool IsStandardMode => Kind == SiteModeKind.Standard;
-    public bool IsFallback => Kind == SiteModeKind.Fallback;
-    public bool IsTrustedPreview => Kind == SiteModeKind.TrustedPreview;
-
     // Normal site modes participate in the shared content and scoped-capability model.
-    // Fallback and Trusted Preview are framework/global-system concerns rather than
-    // independently scoped content sites.
-    public bool SupportsContent => IsStandardMode;
-    public bool SupportsScopedEditor => IsStandardMode;
+    // These properties remain during migration so existing consumers can move to the
+    // registry without introducing per-mode opt-in flags.
+    public bool SupportsContent => true;
+    public bool SupportsScopedEditor => true;
 }
 
 public static class BuiltInSiteModes
 {
-    // Unassigned is the framework fallback used when a mode-owned presentation or other
-    // overridable behavior is unavailable. It is not a normal independently hosted site.
-    public static SiteModeDefinition Unassigned { get; } = new(
-        Id: "unassigned",
-        DisplayName: "Unassigned",
-        LegacyMode: SiteMode.Unassigned,
-        ViewFolder: "Unassigned",
-        AssetFolder: "unassigned",
-        Kind: SiteModeKind.Fallback);
-
-    // Dorks & Dice and Professional represent the normal site-mode shape. Future normal
-    // modes inherit content and scoped-editor behavior without declaring those capabilities
-    // individually.
     public static SiteModeDefinition DorksAndDice { get; } = new(
         Id: "dorks-and-dice",
         DisplayName: "Dorks & Dice",
@@ -57,23 +36,14 @@ public static class BuiltInSiteModes
         ViewFolder: "Professional",
         AssetFolder: "professional");
 
-    // Development is the legacy runtime name for Trusted Preview: a global administrative
-    // and development surface for inspecting and previewing the composed system. It is not
-    // a tenant/site mode and therefore does not receive mode-scoped content permissions.
-    public static SiteModeDefinition Development { get; } = new(
-        Id: "development",
-        DisplayName: "Development",
-        LegacyMode: SiteMode.Development,
-        ViewFolder: "Development",
-        AssetFolder: "development",
-        Kind: SiteModeKind.TrustedPreview);
-
+    /// <summary>
+    /// The normal site modes shipped by this deployment. Framework fallback and Trusted
+    /// Preview are deliberately absent because they are not site modes.
+    /// </summary>
     public static IReadOnlyList<SiteModeDefinition> All { get; } =
     [
-        Unassigned,
         DorksAndDice,
-        Professional,
-        Development
+        Professional
     ];
 
     public static bool TryGetByLegacyMode(SiteMode mode, out SiteModeDefinition? definition)
