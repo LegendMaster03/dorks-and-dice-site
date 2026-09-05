@@ -116,6 +116,78 @@ public sealed class ToolProxyServiceTests
         Assert.Equal(StatusCodes.Status502BadGateway, context.Response.StatusCode);
     }
 
+    [Fact]
+    public async Task ProxyRemovesConnectionNominatedHeadersInBothDirections()
+    {
+        var handler = new RecordingHandler(request =>
+        {
+            Assert.False(request.Headers.Contains("X-Private-Hop"));
+            // A browser cannot suppress the host's context discovery header either.
+            Assert.Equal("/tool-host/proxy-test/context", request.Headers.GetValues("X-Dorks-Tool-Context-Url").Single());
+            var response = new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("ok") };
+            response.Headers.TryAddWithoutValidation("Connection", "X-Upstream-Hop");
+            response.Headers.TryAddWithoutValidation("X-Upstream-Hop", "private");
+            return Task.FromResult(response);
+        });
+        var context = CreateContext("GET", "/tools/proxy-test/", "");
+        context.Request.Headers.Connection = "X-Private-Hop, X-Dorks-Tool-Context-Url";
+        context.Request.Headers["X-Private-Hop"] = "private";
+        await CreateService(handler).ProxyAsync(context, Tool("http://proxy-service:8080"), "/");
+        Assert.False(context.Response.Headers.ContainsKey("X-Upstream-Hop"));
+    }
+
+    [Fact]
+    public async Task ProxyPreservesConditionalNotModifiedResponse()
+    {
+        var handler = new RecordingHandler(request =>
+        {
+            Assert.Equal("\"v1\"", request.Headers.IfNoneMatch.Single().Tag);
+            var response = new HttpResponseMessage(HttpStatusCode.NotModified);
+            response.Headers.TryAddWithoutValidation("ETag", "\"v1\"");
+            response.Headers.TryAddWithoutValidation("Vary", "Accept-Encoding");
+            return Task.FromResult(response);
+        });
+        var context = CreateContext("GET", "/tools/proxy-test/", "");
+        context.Request.Headers.IfNoneMatch = "\"v1\"";
+        await CreateService(handler).ProxyAsync(context, Tool("http://proxy-service:8080"), "/");
+        Assert.Equal(304, context.Response.StatusCode);
+        Assert.Equal("\"v1\"", context.Response.Headers.ETag.ToString());
+        Assert.Equal("Accept-Encoding", context.Response.Headers.Vary.ToString());
+        Assert.Equal(0, context.Response.Body.Length);
+    }
+
+    [Theory]
+    [InlineData("GET")]
+    [InlineData("HEAD")]
+    [InlineData("POST")]
+    [InlineData("PUT")]
+    [InlineData("PATCH")]
+    [InlineData("DELETE")]
+    [InlineData("OPTIONS")]
+    public async Task ProxyPreservesSupportedMethodsAndEncodedResponse(string method)
+    {
+        var bytes = new byte[] { 1, 2, 3 };
+        var handler = new RecordingHandler(request =>
+        {
+            Assert.Equal(method, request.Method.Method);
+            var response = new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(bytes) };
+            response.Content.Headers.ContentEncoding.Add("gzip");
+            response.Content.Headers.ContentLength = bytes.Length;
+            response.Headers.TryAddWithoutValidation("Cache-Control", "private, max-age=60");
+            response.Headers.TryAddWithoutValidation("Vary", "Accept-Encoding");
+            return Task.FromResult(response);
+        });
+        var context = CreateContext(method, "/tools/proxy-test/", "");
+        await CreateService(handler).ProxyAsync(context, Tool("http://proxy-service:8080"), "/");
+        Assert.Equal("gzip", context.Response.Headers.ContentEncoding.ToString());
+        Assert.Equal(3, context.Response.ContentLength);
+        var cache = System.Net.Http.Headers.CacheControlHeaderValue.Parse(context.Response.Headers.CacheControl.ToString());
+        Assert.True(cache.Private);
+        Assert.Equal(TimeSpan.FromSeconds(60), cache.MaxAge);
+        Assert.Equal("Accept-Encoding", context.Response.Headers.Vary.ToString());
+        Assert.Equal(method == "HEAD" ? [] : bytes, ((MemoryStream)context.Response.Body).ToArray());
+    }
+
     private static ToolProxyService CreateService(HttpMessageHandler handler)
     {
         var client = new HttpClient(handler);
