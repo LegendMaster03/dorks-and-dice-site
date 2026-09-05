@@ -20,11 +20,13 @@ public interface IContentPageComposer
 /// document only once. Components are replaced with inert paragraph markers before Markdown
 /// rendering, then the sanitized HTML is split back around those markers. This preserves custom
 /// containers, grids, cards, and other Markdown structure that surrounds a component.
+/// Parameterless lines remain available to the existing directive renderer unless an installed
+/// page-component definition claims the name.
 /// </summary>
 public sealed class ContentPageComposer : IContentPageComposer
 {
     private static readonly Regex ComponentPattern = new(
-        "^[\\t ]*\\{\\{(?<name>[a-z0-9-]+)(?<arguments>(?:[\\t ]+[a-z][a-z0-9-]*=\"[^\"\\r\\n]*\")+)[\\t ]*\\}\\}[\\t ]*(?:\\r?\\n|$)",
+        "^[\\t ]*\\{\\{(?<name>[a-z0-9-]+)(?<arguments>(?:[\\t ]+[a-z][a-z0-9-]*=\"[^\"\\r\\n]*\")*)[\\t ]*\\}\\}[\\t ]*(?:\\r?\\n|$)",
         RegexOptions.Compiled
         | RegexOptions.CultureInvariant
         | RegexOptions.IgnoreCase
@@ -57,13 +59,21 @@ public sealed class ContentPageComposer : IContentPageComposer
         var protectedMarkdown = ComponentPattern.Replace(body, match =>
         {
             var sourceName = match.Groups["name"].Value;
+            var arguments = match.Groups["arguments"].Value;
             if (!_definitions.TryGetValue(sourceName, out var definition))
             {
+                // Parameterless application directives are an older, still-supported Markdown
+                // extension point and remain the body renderer's responsibility.
+                if (string.IsNullOrWhiteSpace(arguments))
+                {
+                    return match.Value;
+                }
+
                 throw new InvalidOperationException(
                     $"Content page component '{sourceName}' is not installed.");
             }
 
-            var parameters = ParseParameters(sourceName, match.Groups["arguments"].Value);
+            var parameters = ParseParameters(sourceName, arguments);
             definition.Validate(parameters);
             var index = invocations.Count;
             invocations.Add(new ContentPageComponentInvocation
