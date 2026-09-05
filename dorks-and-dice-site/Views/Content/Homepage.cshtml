@@ -1,0 +1,14 @@
+@model dorks_and_dice_site.Models.Content.HomepageContentViewModel
+@{
+    ViewData["Title"] = Model.Item.Title;
+    ViewData["MetaTitle"] = Model.Item.MetaTitle ?? Model.Item.Title;
+    ViewData["MetaDescription"] = Model.Item.MetaDescription ?? Model.Item.Summary;
+    if (!string.IsNullOrWhiteSpace(Model.Item.MetaImage))
+    {
+        ViewData["MetaImage"] = Model.Item.MetaImage;
+    }
+}
+
+<div class="content-homepage-body content-detail-body">
+    @Html.Raw(Model.RenderedBodyHtml)
+</div>
