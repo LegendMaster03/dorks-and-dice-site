@@ -200,7 +200,7 @@ public sealed class PublishedContentWebApplicationFactory : WebApplicationFactor
             Body = """
                 # Dorks & Dice Fixture
 
-                {{discord-widget}}
+                {{discord-widget title="Dorks & Dice Discord Server"}}
                 """
         });
     }
