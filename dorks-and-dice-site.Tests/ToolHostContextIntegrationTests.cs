@@ -31,6 +31,7 @@ public sealed class ToolHostContextIntegrationTests
             Assert.Equal(1, json.RootElement.GetProperty("contractVersion").GetInt32());
             Assert.Equal(tool.Slug, json.RootElement.GetProperty("toolSlug").GetString());
             Assert.Equal(SiteModeValues.DorksAndDiceModeValue, json.RootElement.GetProperty("siteMode").GetString());
+            Assert.Equal($"/tool-host/{tool.Slug}/api", json.RootElement.GetProperty("apiBaseUrl").GetString());
             Assert.Equal(JsonValueKind.Null, json.RootElement.GetProperty("user").ValueKind);
             Assert.Equal("no-store", response.Headers.CacheControl?.ToString());
         }
@@ -87,6 +88,66 @@ public sealed class ToolHostContextIntegrationTests
         try
         {
             using var response = await SendAsync("dorks-and-dice.com", $"/tool-host/{tool.Slug}/context");
+
+            Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        }
+        finally
+        {
+            await DeleteToolAsync(tool.Id);
+        }
+    }
+
+    [Fact]
+    public async Task AuthoritativeSessionApiRequiresAuthenticationEvenForAnonymousTool()
+    {
+        var tool = await RegisterToolAsync(allowAnonymous: true, SiteModeValues.DorksAndDiceModeValue);
+        try
+        {
+            using var response = await SendAsync("dorks-and-dice.com", $"/tool-host/{tool.Slug}/api/session");
+
+            Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        }
+        finally
+        {
+            await DeleteToolAsync(tool.Id);
+        }
+    }
+
+    [Fact]
+    public async Task AuthoritativeSessionApiUsesHostAuthenticatedIdentity()
+    {
+        var tool = await RegisterToolAsync(allowAnonymous: true, SiteModeValues.DorksAndDiceModeValue);
+        try
+        {
+            using var request = CreateRequest("dorks-and-dice.com", $"/tool-host/{tool.Slug}/api/session?userId=spoofed-user");
+            request.Headers.Add(TestRoleAuthenticationHandler.RolesHeader, "Member");
+            request.Headers.Add("X-User-Id", "spoofed-user");
+            using var response = await SendAsync(request);
+            var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+            var user = json.RootElement.GetProperty("user");
+
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            Assert.Equal(tool.Slug, json.RootElement.GetProperty("toolSlug").GetString());
+            Assert.Equal(SiteModeValues.DorksAndDiceModeValue, json.RootElement.GetProperty("siteMode").GetString());
+            Assert.Equal("integration-test-user", user.GetProperty("id").GetString());
+            Assert.Equal("Integration Test User", user.GetProperty("displayName").GetString());
+            Assert.Equal("no-store", response.Headers.CacheControl?.ToString());
+        }
+        finally
+        {
+            await DeleteToolAsync(tool.Id);
+        }
+    }
+
+    [Fact]
+    public async Task AuthoritativeSessionApiHonorsToolModeVisibility()
+    {
+        var tool = await RegisterToolAsync(allowAnonymous: true, SiteModeValues.ProfessionalModeValue);
+        try
+        {
+            using var request = CreateRequest("dorks-and-dice.com", $"/tool-host/{tool.Slug}/api/session");
+            request.Headers.Add(TestRoleAuthenticationHandler.RolesHeader, "Member");
+            using var response = await SendAsync(request);
 
             Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
         }
