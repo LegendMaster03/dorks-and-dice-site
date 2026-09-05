@@ -74,7 +74,7 @@ public sealed class ToolUpstreamPolicy : IToolUpstreamPolicy
         }
 
         // Docker Compose and similar internal service discovery normally use a single-label DNS name.
-        if (!host.Contains('.', StringComparison.Ordinal))
+        if (!host.Contains(".", StringComparison.Ordinal))
         {
             return true;
         }
