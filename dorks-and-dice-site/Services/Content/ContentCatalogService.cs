@@ -1,4 +1,5 @@
 using dorks_and_dice_site.Models.Content;
+using dorks_and_dice_site.Models.Site;
 using dorks_and_dice_site.Services.Site;
 
 namespace dorks_and_dice_site.Services.Content;
@@ -56,6 +57,37 @@ public sealed class ContentCatalogService : IContentCatalogService
         return CanInspectDetail(item, modeContext) ? item : null;
     }
 
+    public Task<IReadOnlyList<ContentItem>> GetByContextAsync(
+        string contextTag,
+        SiteMode siteMode,
+        bool includeUnlisted = false,
+        CancellationToken cancellationToken = default) =>
+        GetByContextAsync(
+            contextTag,
+            FromLegacyMode(siteMode, isDevelopmentPreview: siteMode == SiteMode.Development),
+            includeUnlisted,
+            cancellationToken);
+
+    public Task<ContentItem?> GetForDetailAsync(
+        string slug,
+        SiteMode siteMode,
+        bool isDevelopmentPreview,
+        CancellationToken cancellationToken = default) =>
+        GetForDetailAsync(
+            slug,
+            FromLegacyMode(siteMode, isDevelopmentPreview),
+            cancellationToken);
+
+    public Task<ContentItem?> GetForDetailByIdAsync(
+        string contentKey,
+        SiteMode siteMode,
+        bool isDevelopmentPreview,
+        CancellationToken cancellationToken = default) =>
+        GetForDetailByIdAsync(
+            contentKey,
+            FromLegacyMode(siteMode, isDevelopmentPreview),
+            cancellationToken);
+
     private static bool IsEligibleForListing(ContentItem item, SiteModeContext modeContext)
     {
         if (modeContext.ActiveModeId is not null)
@@ -77,5 +109,32 @@ public sealed class ContentCatalogService : IContentCatalogService
         }
 
         return IsEligibleForListing(item, modeContext);
+    }
+
+    private static SiteModeContext FromLegacyMode(SiteMode siteMode, bool isDevelopmentPreview)
+    {
+        if (BuiltInSiteModes.TryGetByLegacyMode(siteMode, out var mode))
+        {
+            return new SiteModeContext
+            {
+                ActiveMode = mode,
+                IsDevelopmentPreview = isDevelopmentPreview
+            };
+        }
+
+        if (siteMode == SiteMode.Development)
+        {
+            return new SiteModeContext
+            {
+                FrameworkState = FrameworkRuntimeStates.TrustedPreview,
+                IsDevelopmentPreview = isDevelopmentPreview
+            };
+        }
+
+        return new SiteModeContext
+        {
+            FrameworkState = FrameworkRuntimeStates.Fallback,
+            IsDevelopmentPreview = isDevelopmentPreview
+        };
     }
 }
