@@ -90,6 +90,14 @@ public sealed class ToolModulesController : ControllerBase
             {
                 Response.ContentLength = upstreamResponse.Content.Headers.ContentLength.Value;
             }
+            if (upstreamResponse.Content.Headers.ContentEncoding.Count > 0)
+            {
+                Response.Headers.ContentEncoding = upstreamResponse.Content.Headers.ContentEncoding.ToArray();
+            }
+            if (upstreamResponse.Headers.Vary.Count > 0)
+            {
+                Response.Headers.Vary = upstreamResponse.Headers.Vary.ToArray();
+            }
             if (upstreamResponse.Headers.CacheControl is not null)
             {
                 Response.Headers["Cache-Control"] = upstreamResponse.Headers.CacheControl.ToString();
