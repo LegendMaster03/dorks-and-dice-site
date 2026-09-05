@@ -15,6 +15,13 @@ public sealed class ContentAuthoringService : IContentAuthoringService
     private readonly IContentSourceRegistry _sourceRegistry;
     private readonly ISiteModeRegistry _siteModeRegistry;
 
+    // Temporary constructor bridge for unit fixtures and non-DI callers that predate the
+    // composed site-mode registry. Runtime DI uses the two-argument constructor below.
+    public ContentAuthoringService(IContentSourceRegistry sourceRegistry)
+        : this(sourceRegistry, new SiteModeRegistry(BuiltInSiteModes.All))
+    {
+    }
+
     public ContentAuthoringService(
         IContentSourceRegistry sourceRegistry,
         ISiteModeRegistry siteModeRegistry)
