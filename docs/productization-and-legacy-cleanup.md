@@ -45,12 +45,20 @@ Legacy behavior that exists only because of earlier site implementations should 
 Each item should be classified as one of:
 
 1. **generalize** - the behavior represents a legitimate reusable need and should become a supported framework/content feature;
-2. **isolate** - compatibility must remain for existing content, but it should live behind a clearly named legacy/compatibility boundary;
+2. **isolate** - compatibility must remain for existing data that can not yet be migrated, but it should live behind a clearly named legacy/compatibility boundary;
 3. **migrate and remove** - existing data/content can be converted to the modern representation and the compatibility code deleted.
 
 Legacy compatibility must not remain embedded in otherwise generic framework or mode code without an explicit reason.
 
-## Known legacy article-specific CSS
+## Retired legacy article format
+
+The former article system used individual HTML pages. All articles from that format have been converted to the current Markdown-backed content system, and the old article versions have been removed.
+
+The legacy HTML article format therefore has no compatibility requirement. Any renderer, parser, route, view, migration shim, test fixture, or other implementation that exists solely to support the retired HTML article format should be deleted when identified rather than generalized or preserved behind a compatibility layer.
+
+Markdown-backed content is the supported article representation going forward. Normal Markdown rendering and sanitization are part of the current content system and are not legacy HTML compatibility merely because the resulting rendered output is HTML.
+
+## ConsoleVariations presentation holdover
 
 The Professional mode stylesheet currently contains an article-specific rule for the ConsoleVariations "Free the Bees" icon:
 
@@ -61,13 +69,9 @@ The Professional mode stylesheet currently contains an article-specific rule for
 }
 ```
 
-This is a holdover from the former article system where articles were individual HTML pages. The modern content system uses Markdown, and this special CSS exists to preserve the presentation of one logo that could not be represented directly by the migrated Markdown content.
+This selector is a remaining presentation artifact from the old article implementation, not a reason to preserve support for the retired HTML article format. The current Markdown article itself is already the authoritative content representation.
 
-This named selector must not become part of the reusable framework or remain indefinitely in the global Professional stylesheet merely because the old article depended on it.
-
-During the content-architecture portion of the refactor, determine the smallest generic mechanism that can represent the required presentation. Possible outcomes include a supported content/logo presentation option, a constrained Markdown/content directive, or another content-owned presentation hook. The exact mechanism should be chosen from actual content requirements rather than by introducing arbitrary per-article CSS execution.
-
-After that article is migrated to the generic mechanism, remove the `consolevariations-bee` compatibility rule.
+The selector may remain temporarily while the presentation/theme boundary is being refactored, but it must not become part of the reusable framework or remain an unexplained article-specific exception indefinitely. When the constrained content-presentation/theme mechanism is revisited, migrate this treatment to that supported mechanism and remove the named selector. Do not add arbitrary per-article CSS execution to preserve it.
 
 ## One-rebuild principle
 
