@@ -11,13 +11,16 @@ public sealed class ToolModulesController : ControllerBase
 {
     private readonly IToolRegistry _toolRegistry;
     private readonly IHttpClientFactory _httpClientFactory;
+    private readonly IToolUpstreamPolicy _upstreamPolicy;
 
     public ToolModulesController(
         IToolRegistry toolRegistry,
-        IHttpClientFactory httpClientFactory)
+        IHttpClientFactory httpClientFactory,
+        IToolUpstreamPolicy upstreamPolicy)
     {
         _toolRegistry = toolRegistry;
         _httpClientFactory = httpClientFactory;
+        _upstreamPolicy = upstreamPolicy;
     }
 
     [AllowAnonymous]
@@ -48,7 +51,12 @@ public sealed class ToolModulesController : ControllerBase
             return Challenge();
         }
 
-        if (!ToolUpstreamUri.TryBuild(tool, $"/{assetPath}", Request.QueryString, out var upstreamUri)
+        if (!_upstreamPolicy.TryBuild(
+                tool,
+                $"/{assetPath}",
+                Request.QueryString,
+                out var upstreamUri,
+                out _)
             || upstreamUri is null)
         {
             return StatusCode(StatusCodes.Status502BadGateway);
