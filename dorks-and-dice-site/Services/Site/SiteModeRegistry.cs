@@ -1,18 +1,20 @@
+using dorks_and_dice_site.Models.Site;
+
 namespace dorks_and_dice_site.Services.Site;
 
 public interface ISiteModeRegistry
 {
     IReadOnlyList<SiteModeDefinition> All { get; }
     bool TryGetById(string id, out SiteModeDefinition? definition);
-    bool TryGetByLegacyMode(Models.Site.SiteMode mode, out SiteModeDefinition? definition);
+    bool TryGetByLegacyMode(SiteMode mode, out SiteModeDefinition? definition);
     SiteModeDefinition GetById(string id);
-    SiteModeDefinition GetByLegacyMode(Models.Site.SiteMode mode);
+    SiteModeDefinition GetByLegacyMode(SiteMode mode);
 }
 
 public sealed class SiteModeRegistry : ISiteModeRegistry
 {
     private readonly IReadOnlyDictionary<string, SiteModeDefinition> _byId;
-    private readonly IReadOnlyDictionary<Models.Site.SiteMode, SiteModeDefinition> _byLegacyMode;
+    private readonly IReadOnlyDictionary<SiteMode, SiteModeDefinition> _byLegacyMode;
 
     public SiteModeRegistry(IEnumerable<SiteModeDefinition> definitions)
     {
@@ -72,7 +74,7 @@ public sealed class SiteModeRegistry : ISiteModeRegistry
         return _byId.TryGetValue(id, out definition);
     }
 
-    public bool TryGetByLegacyMode(Models.Site.SiteMode mode, out SiteModeDefinition? definition) =>
+    public bool TryGetByLegacyMode(SiteMode mode, out SiteModeDefinition? definition) =>
         _byLegacyMode.TryGetValue(mode, out definition);
 
     public SiteModeDefinition GetById(string id) =>
@@ -80,7 +82,7 @@ public sealed class SiteModeRegistry : ISiteModeRegistry
             ? definition!
             : throw new KeyNotFoundException($"Unknown site mode id '{id}'.");
 
-    public SiteModeDefinition GetByLegacyMode(Models.Site.SiteMode mode) =>
+    public SiteModeDefinition GetByLegacyMode(SiteMode mode) =>
         TryGetByLegacyMode(mode, out var definition)
             ? definition!
             : throw new KeyNotFoundException($"Unknown legacy site mode '{mode}'.");
