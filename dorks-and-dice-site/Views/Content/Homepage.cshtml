@@ -10,5 +10,17 @@
 }
 
 <div class="content-homepage-body content-detail-body">
-    @Html.Raw(Model.RenderedBodyHtml)
+    @foreach (var fragment in Model.Fragments)
+    {
+        if (fragment.RenderedHtml is not null)
+        {
+            @Html.Raw(fragment.RenderedHtml)
+        }
+        else if (fragment.Component is not null)
+        {
+            @await Component.InvokeAsync(
+                fragment.Component.ViewComponentName,
+                new { request = fragment.Component })
+        }
+    }
 </div>
