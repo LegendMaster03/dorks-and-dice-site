@@ -40,11 +40,17 @@ Content collection querying stays framework-owned. Specialized presentation can 
 
 ### `professional-portfolio`
 
-Provides the `professional-experience` and `professional-projects` content-collection presentations. It does not own the Experience or Project records; those remain normal database content queried through the core content catalog.
+Provides the `professional-experience` and `professional-projects` content-collection presentations. It does not own the Experience or Project records; those remain normal database content queried through the core content catalog. The experience/project card partials used by these presentations are plugin-owned so the plugin does not depend on the Professional mode folder for its primary rendering behavior.
 
 ### `discord-widget`
 
-Provides the parameterless `{{discord-widget}}` page component. The iframe URL comes from deployment configuration (`Discord:WidgetUrl`), not from authored Markdown, so editors do not gain arbitrary iframe capability.
+Provides the `discord-widget` page component. The iframe URL comes from deployment configuration (`Discord:WidgetUrl`), not from authored Markdown, so editors do not gain arbitrary iframe capability. Authored content may supply only the accessibility/display title, for example:
+
+```markdown
+{{discord-widget title="Dorks & Dice Discord Server"}}
+```
+
+The default title is `Discord Server`; no deployment-specific site name is embedded in the plugin implementation.
 
 ## Tools versus plugins
 
