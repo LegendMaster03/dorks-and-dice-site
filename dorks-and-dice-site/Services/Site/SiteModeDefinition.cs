@@ -30,6 +30,12 @@ public sealed record SiteModeDefinition(
     /// narrow compatibility exceptions, not general cross-mode asset sharing.
     /// </summary>
     public IReadOnlyList<string> AdditionalAssetPaths { get; init; } = [];
+
+    /// <summary>
+    /// Public framework routes emitted by this mode's sitemap. Every normal content-capable
+    /// mode exposes the shared home and article surfaces unless it explicitly replaces this list.
+    /// </summary>
+    public IReadOnlyList<string> SitemapPaths { get; init; } = ["/", "/articles"];
 }
 
 public static class BuiltInSiteModes
@@ -49,7 +55,8 @@ public static class BuiltInSiteModes
         AssetFolder: "professional")
     {
         OwnedRoutePrefixes = ["/resume"],
-        AdditionalAssetPaths = ["/site-modes/dorks-and-dice/images/favicon.svg"]
+        AdditionalAssetPaths = ["/site-modes/dorks-and-dice/images/favicon.svg"],
+        SitemapPaths = ["/", "/resume", "/articles"]
     };
 
     /// <summary>
