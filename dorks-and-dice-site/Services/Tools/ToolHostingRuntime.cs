@@ -8,6 +8,7 @@ namespace dorks_and_dice_site.Services.Tools;
 public static class ToolHttpClientNames
 {
     public const string Hosting = "tool-hosting";
+    public const string Proxy = "tool-proxy";
 }
 
 public static class ToolVisibility
@@ -127,17 +128,12 @@ public sealed class ToolHealthService : IToolHealthService
                 null);
         }
 
-        if (!_upstreamPolicy.TryBuild(
-                tool,
-                tool.HealthPath,
-                QueryString.Empty,
-                out var healthUri,
-                out var policyReason)
+        if (!_upstreamPolicy.TryBuild(tool, tool.HealthPath, QueryString.Empty, out var healthUri, out _)
             || healthUri is null)
         {
             return new ToolHealthResult(
                 ToolHealthStatus.Unhealthy,
-                policyReason ?? "Health endpoint configuration is invalid.",
+                "Health endpoint configuration is invalid or disallowed.",
                 null,
                 null);
         }
