@@ -1,6 +1,7 @@
 @model IReadOnlyList<dorks_and_dice_site.Models.Tools.DevelopmentToolListItemViewModel>
 @using dorks_and_dice_site.Models.Tools
 @using dorks_and_dice_site.Services.Site
+@inject ISiteModeRegistry SiteModeRegistry
 @{
     ViewData["Title"] = "Tool Hosting";
     ViewData["Robots"] = "noindex,nofollow";
@@ -32,19 +33,14 @@ else
         @foreach (var item in Model)
         {
             var tool = item.Tool;
-            var modes = new List<string>();
-            if (tool.Modes.Contains(SiteModeValues.DorksAndDiceModeValue, StringComparer.Ordinal))
-            {
-                modes.Add("Dorks & Dice");
-            }
-            if (tool.Modes.Contains(SiteModeValues.ProfessionalModeValue, StringComparer.Ordinal))
-            {
-                modes.Add("Professional");
-            }
-            if (modes.Count == 0)
-            {
-                modes.Add("Dorks & Dice");
-            }
+            var modeIds = tool.Modes is { Count: > 0 }
+                ? tool.Modes
+                : [SiteModeValues.DorksAndDiceModeValue];
+            var modes = modeIds
+                .Select(modeId => SiteModeRegistry.TryGetById(modeId, out var definition)
+                    ? definition!.DisplayName
+                    : modeId)
+                .ToList();
 
             var healthClass = item.Health.Status switch
             {
