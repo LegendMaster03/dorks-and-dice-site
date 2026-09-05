@@ -15,15 +15,18 @@ public sealed partial class DevelopmentToolsController : Controller
     private readonly IToolRegistry _toolRegistry;
     private readonly IToolHealthService _toolHealthService;
     private readonly IToolUpstreamPolicy _upstreamPolicy;
+    private readonly ISiteModeRegistry _siteModeRegistry;
 
     public DevelopmentToolsController(
         IToolRegistry toolRegistry,
         IToolHealthService toolHealthService,
-        IToolUpstreamPolicy upstreamPolicy)
+        IToolUpstreamPolicy upstreamPolicy,
+        ISiteModeRegistry siteModeRegistry)
     {
         _toolRegistry = toolRegistry;
         _toolHealthService = toolHealthService;
         _upstreamPolicy = upstreamPolicy;
+        _siteModeRegistry = siteModeRegistry;
     }
 
     [HttpGet("")]
@@ -39,7 +42,8 @@ public sealed partial class DevelopmentToolsController : Controller
     }
 
     [HttpGet("new")]
-    public IActionResult Create() => View("Edit", new ToolRegistrationEditViewModel());
+    public IActionResult Create() =>
+        View("Edit", PopulateModeOptions(new ToolRegistrationEditViewModel()));
 
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> Edit(Guid id, CancellationToken cancellationToken)
@@ -50,7 +54,7 @@ public sealed partial class DevelopmentToolsController : Controller
             return NotFound();
         }
 
-        return View(new ToolRegistrationEditViewModel
+        return View(PopulateModeOptions(new ToolRegistrationEditViewModel
         {
             Id = tool.Id,
             Slug = tool.Slug,
@@ -60,11 +64,10 @@ public sealed partial class DevelopmentToolsController : Controller
             UpstreamBaseUrl = tool.UpstreamBaseUrl,
             FrontendEntryPoint = tool.FrontendEntryPoint,
             HealthPath = tool.HealthPath,
-            DorksAndDiceMode = tool.Modes.Contains(SiteModeValues.DorksAndDiceModeValue, StringComparer.Ordinal),
-            ProfessionalMode = tool.Modes.Contains(SiteModeValues.ProfessionalModeValue, StringComparer.Ordinal),
+            Modes = tool.Modes?.ToList() ?? [],
             AllowAnonymous = tool.AllowAnonymous,
             Enabled = tool.Enabled
-        });
+        }));
     }
 
     [HttpPost("save")]
@@ -72,6 +75,7 @@ public sealed partial class DevelopmentToolsController : Controller
     public async Task<IActionResult> Save(ToolRegistrationEditViewModel model, CancellationToken cancellationToken)
     {
         Normalize(model);
+        PopulateModeOptions(model);
         Validate(model);
         if (!ModelState.IsValid)
         {
@@ -93,15 +97,11 @@ public sealed partial class DevelopmentToolsController : Controller
             return View("Edit", model);
         }
 
-        var modes = new List<string>(2);
-        if (model.DorksAndDiceMode)
-        {
-            modes.Add(SiteModeValues.DorksAndDiceModeValue);
-        }
-        if (model.ProfessionalMode)
-        {
-            modes.Add(SiteModeValues.ProfessionalModeValue);
-        }
+        var selectedModes = model.Modes.ToHashSet(StringComparer.Ordinal);
+        var modes = _siteModeRegistry.All
+            .Where(mode => selectedModes.Contains(mode.Id))
+            .Select(mode => mode.Id)
+            .ToList();
 
         var now = DateTimeOffset.UtcNow;
         var registration = new ToolRegistration
@@ -135,6 +135,18 @@ public sealed partial class DevelopmentToolsController : Controller
         return RedirectToAction(nameof(Index));
     }
 
+    private ToolRegistrationEditViewModel PopulateModeOptions(ToolRegistrationEditViewModel model)
+    {
+        model.ModeOptions = _siteModeRegistry.All
+            .Select(mode => new ToolModeOptionViewModel
+            {
+                Id = mode.Id,
+                DisplayName = mode.DisplayName
+            })
+            .ToList();
+        return model;
+    }
+
     private void Validate(ToolRegistrationEditViewModel model)
     {
         if (string.IsNullOrWhiteSpace(model.DisplayName))
@@ -147,9 +159,19 @@ public sealed partial class DevelopmentToolsController : Controller
             ModelState.AddModelError(nameof(model.Slug), "Slug must contain only lowercase letters, numbers, and hyphens.");
         }
 
-        if (!model.DorksAndDiceMode && !model.ProfessionalMode)
+        if (model.Modes.Count == 0)
         {
-            ModelState.AddModelError(string.Empty, "Select at least one site mode for this tool.");
+            ModelState.AddModelError(nameof(model.Modes), "Select at least one site mode for this tool.");
+        }
+        else
+        {
+            var unknownModes = model.Modes
+                .Where(modeId => !_siteModeRegistry.TryGetById(modeId, out _))
+                .ToArray();
+            if (unknownModes.Length > 0)
+            {
+                ModelState.AddModelError(nameof(model.Modes), "One or more selected site modes are not registered.");
+            }
         }
 
         if (!_upstreamPolicy.IsAllowed(model.UpstreamBaseUrl, out var upstreamReason))
@@ -180,6 +202,11 @@ public sealed partial class DevelopmentToolsController : Controller
         model.UpstreamBaseUrl = NullIfWhiteSpace(model.UpstreamBaseUrl)?.TrimEnd('/');
         model.FrontendEntryPoint = NullIfWhiteSpace(model.FrontendEntryPoint);
         model.HealthPath = NullIfWhiteSpace(model.HealthPath);
+        model.Modes = (model.Modes ?? [])
+            .Where(mode => !string.IsNullOrWhiteSpace(mode))
+            .Select(mode => mode.Trim())
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
     }
 
     private static string? NullIfWhiteSpace(string? value) =>
