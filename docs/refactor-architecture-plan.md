@@ -9,8 +9,8 @@ The refactor is intentionally staged. Existing behavior and security boundaries 
 ## Primary acceptance criteria
 
 1. A developer can locate the primary implementation of a mode, tool, content subsystem, identity subsystem, or deployment concern by browsing the directory tree without repository-wide search.
-2. Adding a normal content mode does not require editing shared identity code, presentation switches, stylesheet switches, tool-visibility switches, or preview-mode allowlists.
-3. Scoped capabilities such as `Editor` are defined once. Mode-specific editor assignments are derived from registered modes.
+2. Adding a normal site mode does not require editing shared identity code, presentation switches, stylesheet switches, tool-visibility switches, or preview-mode allowlists.
+3. Scoped capabilities such as `Editor` are defined once. Mode-specific editor assignments are derived from registered normal modes.
 4. Tools remain a first-class subsystem. Plugins may become an integration/packaging option for tools, but plugins do not replace the tool abstraction.
 5. Tool availability is expressed against registered mode identifiers rather than compile-time mode booleans.
 6. Deployment-specific values such as production domains, canonical hosts, database topology, runtime storage paths, reverse-proxy assumptions, and server configuration do not become intrinsic mode definitions.
@@ -25,19 +25,23 @@ The refactor is intentionally staged. Existing behavior and security boundaries 
 Reusable application mechanics that can eventually live in a public framework repository:
 
 - mode registration and resolution contracts
+- fallback behavior for unavailable mode-owned presentation/functionality
 - content and revision architecture
 - identity capability/scoping mechanics
 - routing and ownership contracts
 - tool contracts and hosting abstractions
 - plugin contracts if introduced
 - shared presentation infrastructure
+- Trusted Preview/global administration infrastructure where reusable
 - test contracts for framework modules
 
 Framework code must not assume the existence of `Professional` or `DorksAndDice`.
 
-### Modes
+### Standard modes
 
-A mode defines intrinsic site identity and mode-owned behavior. A mode may provide:
+Professional and Dorks & Dice represent the normal site-mode shape. Future modes are expected to look much more like these than like the special framework states.
+
+A standard mode defines intrinsic site identity and mode-owned behavior. A standard mode may provide:
 
 - stable identifier
 - display name
@@ -46,10 +50,25 @@ A mode defines intrinsic site identity and mode-owned behavior. A mode may provi
 - static assets
 - mode-owned routes/features
 - content participation/policies
-- capability participation
 - tool availability defaults or contributions where appropriate
 
+Normal modes participate in the shared content system and automatically receive mode-scoped capabilities such as `Editor`. A normal mode should not need to opt into these baseline behaviors individually.
+
 A mode must not contain production hostnames, TrueNAS details, Tailscale details, production database addresses, or other environment-specific deployment knowledge.
+
+### Framework fallback (`Unassigned`)
+
+`Unassigned` is not a peer site identity. It is the framework fallback used when a mode-owned presentation component or other overridable behavior is unavailable or can not be resolved.
+
+Its purpose is graceful degradation and safe fallback for the rest of the system. It does not receive its own content scope or mode-scoped editor role.
+
+### Trusted Preview (`Development` legacy runtime mode)
+
+`Development` is the existing runtime name for the global administrative/development surface referred to as Trusted Preview.
+
+Trusted Preview is not a peer site/tenant mode. It is a control-plane feature for the composed system that can inspect, administer, and preview normal modes and shared resources under trusted-access rules.
+
+It therefore does not receive a normal content scope or automatically generated mode-scoped editor role. Its authorization is global and security-sensitive.
 
 ### Tools
 
@@ -60,11 +79,11 @@ A tool is an application capability. The current merged hosting models remain va
 
 Future integration mechanisms may include in-process modules/plugins or other hosting providers. Hosting mechanism is not the tool's identity.
 
-Tools may be enabled for one or more registered modes. A tool may optionally integrate with another tool without making that other tool a required dependency.
+Tools may be enabled for one or more registered standard modes. A tool may optionally integrate with another tool without making that other tool a required dependency.
 
 ### Deployment
 
-Deployment composes framework, modes, and tools for a specific installation. It owns:
+Deployment composes framework, standard modes, and tools for a specific installation. It owns:
 
 - domain/host to mode mappings
 - canonical-host behavior
@@ -100,7 +119,7 @@ Patterns to avoid copying blindly:
 
 ## Target mode-registration model
 
-The first implementation milestone is a registry/descriptor abstraction that becomes the shared source of truth for normal mode metadata.
+The first implementation milestone is a registry/descriptor abstraction that becomes the shared source of truth for normal mode metadata while explicitly distinguishing framework/control-plane states.
 
 Conceptually:
 
@@ -108,18 +127,19 @@ Conceptually:
 SiteModeDefinition
     Id
     DisplayName
-    IsContentMode
-    IsPreviewable
+    Kind
+        Standard
+        Fallback
+        TrustedPreview
     ViewRoot
     AssetRoot
     Presentation
     RouteOwnershipContribution
-    Capabilities
 ```
 
-Exact API shape will be determined from the existing call sites before implementation.
+For a `Standard` mode, content participation and scoped capabilities are baseline behavior rather than repeated per-mode flags.
 
-The registry must support synthetic/test modes so extensibility can be tested without adding another production mode.
+The registry must support synthetic/test standard modes so extensibility can be tested without adding another production mode or editing identity code.
 
 ## Scoped capability model
 
@@ -129,7 +149,7 @@ The framework defines a capability once:
 Editor
 ```
 
-Registered content/editable modes generate scoped assignments:
+Registered standard modes generate scoped assignments:
 
 ```text
 Editor @ dorks-and-dice
@@ -137,15 +157,17 @@ Editor @ professional
 Editor @ future-mode
 ```
 
-`Global Editor` inherits `Editor` for every applicable registered mode. `Admin` and `Owner` continue to inherit according to the account-role hierarchy.
+`Global Editor` inherits `Editor` for every applicable registered standard mode. `Admin` and `Owner` continue to inherit according to the account-role hierarchy.
 
-Adding a mode must not require a new `AccountRoleScopes.<Mode>` constant or a new identity authorization branch.
+`Unassigned` and Trusted Preview do not receive generated editor scopes because they are framework/control-plane states rather than normal content sites.
+
+Adding a normal mode must not require a new `AccountRoleScopes.<Mode>` constant or a new identity authorization branch.
 
 ## Tool-mode composition
 
 Current `ToolRegistration.Modes` is already structurally close to the target because it stores stable mode strings. The refactor should remove explicit edit-model booleans and visibility switches for named modes.
 
-The management UI should enumerate registered modes and bind selected stable IDs.
+The management UI should enumerate registered standard modes and bind selected stable IDs.
 
 Legacy behavior for registrations with no mode list must be migrated or isolated behind an explicit compatibility policy rather than silently hard-coding Dorks & Dice in the generic tool runtime forever.
 
@@ -160,6 +182,7 @@ The tool-hosting closure document remains authoritative during migration unless 
 - mode/tool visibility must fail closed
 - route ownership remains explicit
 - tool-private and Identity storage remain isolated
+- Trusted Preview remains a trusted global control plane rather than inheriting normal mode permissions
 
 Security-sensitive decisions must not be converted into arbitrary editable metadata merely for modularity.
 
@@ -179,18 +202,19 @@ No behavior changes.
 ### Stage 1 - Mode registry
 
 - introduce mode definition/registry contracts
-- register current modes through the new registry
+- distinguish standard modes, fallback behavior, and Trusted Preview explicitly
+- register current runtime states through the new registry during compatibility migration
 - keep the existing `SiteMode` enum temporarily where necessary for compatibility
-- add tests using a synthetic mode
+- add tests using a synthetic standard mode
 - migrate value/display-name/editor-scope consumers to registry lookup
 
-Goal: adding a synthetic normal mode proves that identity/editor derivation works without named-mode identity changes.
+Goal: adding a synthetic standard mode proves that identity/editor derivation works without named-mode identity changes.
 
 ### Stage 2 - Replace mode-specific shared switches
 
 Migrate shared consumers incrementally, including:
 
-- preview-mode enumeration
+- Trusted Preview target enumeration
 - tool visibility and management UI
 - stylesheet and presentation resolution
 - partial/view-root resolution
@@ -200,11 +224,16 @@ Migrate shared consumers incrementally, including:
 
 Security-sensitive route ownership is migrated behind an explicit contract rather than made implicitly permissive.
 
-### Stage 3 - Physical mode consolidation
+### Stage 3 - Physical ownership consolidation
 
-Consolidate mode-owned code so the repository tree communicates ownership. A likely logical shape is:
+Consolidate mode-owned code so the repository tree communicates ownership. Standard site modes should be visibly separate from framework fallback and global Trusted Preview concerns. A likely logical shape is:
 
 ```text
+Framework/
+    Modes/
+        Fallback/
+    TrustedPreview/
+
 Modes/
     Professional/
         Definition/
@@ -218,8 +247,6 @@ Modes/
         Services/
         Views/
         Assets/
-    Development/
-    Unassigned/
 ```
 
 The exact Razor/static-asset mechanics may require an intermediate layout before eventual Razor Class Library extraction.
@@ -229,7 +256,7 @@ The exact Razor/static-asset mechanics may require an intermediate layout before
 - move host/domain mappings to deployment composition
 - isolate production-only configuration and infrastructure assumptions
 - separate reusable framework registration from this installation's composition
-- ensure a mode can be hosted under a different domain without modifying the mode module
+- ensure a standard mode can be hosted under a different domain without modifying the mode module
 
 ### Stage 5 - Tool/plugin architecture review
 
@@ -247,21 +274,21 @@ Do not add multi-content revisions solely because MediaWiki supports them.
 ### Stage 7 - Test-suite restructuring
 
 - use existing integration tests as characterization coverage during migration
-- separate framework contracts, mode tests, tool-hosting tests, deployment integration tests, and test support
+- separate framework contracts, standard-mode tests, tool-hosting tests, Trusted Preview/security tests, deployment integration tests, and test support
 - parameterize repeated mode matrices where that preserves intent
 - retain both focused policy tests and end-to-end security wiring tests where they protect different failure modes
 - remove tests only when equivalent coverage is demonstrable
 
 ### Stage 8 - Extraction proof
 
-Prove that at least one real mode has no inappropriate dependency on another real mode or this deployment's host configuration.
+Prove that at least one real standard mode has no inappropriate dependency on another standard mode or this deployment's host configuration.
 
 The likely later packaging target is Razor Class Libraries/projects, but project splitting occurs only after the logical boundaries are proven.
 
 ### Stage 9 - Security completion
 
 - perform architectural threat-model review against the final repository and deployment configuration
-- identify authentication, authorization, role escalation, mode isolation, route ownership, content/media access, tool-hosting, proxy, input-validation, and configuration/secrets attack surfaces
+- identify authentication, authorization, role escalation, mode isolation, Trusted Preview, route ownership, content/media access, tool-hosting, proxy, input-validation, and configuration/secrets attack surfaces
 - prepare a detailed authorized penetration-test prompt for a Work session
 - remediate findings and rerun regression/security tests
 
@@ -280,7 +307,7 @@ Known initial consumers include:
 - `SiteRouteOwnership`
 - `ContentSourceRegistry`
 - scoped editor-role derivation
-- development preview UI/validation
+- Trusted Preview UI/validation
 - sitemap generation
 - tool visibility and tool-management mode selection
 
