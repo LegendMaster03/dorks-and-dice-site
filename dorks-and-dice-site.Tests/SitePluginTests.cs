@@ -1,4 +1,5 @@
 using dorks_and_dice_site.Framework.Plugins;
+using dorks_and_dice_site.Plugins.DiscordWidget;
 using dorks_and_dice_site.Plugins.ProfessionalPortfolio;
 using dorks_and_dice_site.Services.Content;
 using Microsoft.Extensions.DependencyInjection;
@@ -8,19 +9,26 @@ namespace dorks_and_dice_site.Tests;
 public sealed class SitePluginTests
 {
     [Fact]
-    public void InstalledPluginPublishesManifestAndContributions()
+    public void InstalledPluginsPublishManifestsAndContributions()
     {
         var services = new ServiceCollection();
-        services.AddSitePlugins([new ProfessionalPortfolioPlugin()]);
+        services.AddSitePlugins(
+        [
+            new ProfessionalPortfolioPlugin(),
+            new DiscordWidgetPlugin()
+        ]);
 
         using var provider = services.BuildServiceProvider();
         var catalog = provider.GetRequiredService<ISitePluginCatalog>();
         var presentations = provider.GetServices<IContentCollectionPresentation>().ToList();
+        var pageComponents = provider.GetServices<IContentPageComponentDefinition>().ToList();
 
-        Assert.True(catalog.TryGetById("professional-portfolio", out var manifest));
-        Assert.Equal("1.0.0", manifest.Version);
+        Assert.True(catalog.TryGetById("professional-portfolio", out var portfolioManifest));
+        Assert.Equal("1.0.0", portfolioManifest.Version);
+        Assert.True(catalog.TryGetById("discord-widget", out _));
         Assert.Contains(presentations, presentation => presentation.Key == "professional-experience");
         Assert.Contains(presentations, presentation => presentation.Key == "professional-projects");
+        Assert.Contains(pageComponents, component => component.Name == "discord-widget");
     }
 
     [Fact]
