@@ -77,7 +77,8 @@ public sealed class ToolProxyService : IToolProxyService
                 .CreateClient(ToolHttpClientNames.Proxy)
                 .SendAsync(upstreamRequest, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
 
-            if ((int)upstreamResponse.StatusCode is >= 300 and < 400)
+            if ((int)upstreamResponse.StatusCode is >= 300 and < 400
+                && upstreamResponse.StatusCode != System.Net.HttpStatusCode.NotModified)
             {
                 context.Response.StatusCode = StatusCodes.Status502BadGateway;
                 return;
@@ -86,7 +87,8 @@ public sealed class ToolProxyService : IToolProxyService
             context.Response.StatusCode = (int)upstreamResponse.StatusCode;
             CopyResponseHeaders(context.Response, upstreamResponse);
 
-            if (!HttpMethods.IsHead(context.Request.Method))
+            if (!HttpMethods.IsHead(context.Request.Method)
+                && upstreamResponse.StatusCode != System.Net.HttpStatusCode.NotModified)
             {
                 await upstreamResponse.Content.CopyToAsync(context.Response.Body, cancellationToken);
             }
@@ -113,9 +115,11 @@ public sealed class ToolProxyService : IToolProxyService
         HttpRequestMessage upstreamRequest,
         string toolSlug)
     {
+        var connectionHeaders = ConnectionHeaderNames(context.Request.Headers.Connection.Select(value => value ?? string.Empty));
         foreach (var header in context.Request.Headers)
         {
-            if (HopByHopHeaders.Contains(header.Key) || BlockedRequestHeaders.Contains(header.Key))
+            if (HopByHopHeaders.Contains(header.Key) || BlockedRequestHeaders.Contains(header.Key)
+                || connectionHeaders.Contains(header.Key))
             {
                 continue;
             }
@@ -134,9 +138,11 @@ public sealed class ToolProxyService : IToolProxyService
 
     private static void CopyResponseHeaders(HttpResponse response, HttpResponseMessage upstreamResponse)
     {
+        var connectionHeaders = ConnectionHeaderNames(upstreamResponse.Headers.Connection);
         foreach (var header in upstreamResponse.Headers)
         {
-            if (HopByHopHeaders.Contains(header.Key) || BlockedResponseHeaders.Contains(header.Key))
+            if (HopByHopHeaders.Contains(header.Key) || BlockedResponseHeaders.Contains(header.Key)
+                || connectionHeaders.Contains(header.Key))
             {
                 continue;
             }
@@ -146,7 +152,8 @@ public sealed class ToolProxyService : IToolProxyService
 
         foreach (var header in upstreamResponse.Content.Headers)
         {
-            if (HopByHopHeaders.Contains(header.Key) || BlockedResponseHeaders.Contains(header.Key))
+            if (HopByHopHeaders.Contains(header.Key) || BlockedResponseHeaders.Contains(header.Key)
+                || connectionHeaders.Contains(header.Key))
             {
                 continue;
             }
@@ -156,4 +163,8 @@ public sealed class ToolProxyService : IToolProxyService
 
         response.Headers.Remove("transfer-encoding");
     }
+
+    private static HashSet<string> ConnectionHeaderNames(IEnumerable<string> values) =>
+        values.SelectMany(value => value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
 }
