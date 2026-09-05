@@ -1,6 +1,7 @@
 using System.Text.RegularExpressions;
 using dorks_and_dice_site.Models.Tools;
 using dorks_and_dice_site.Services.Identity;
+using dorks_and_dice_site.Services.Site;
 using dorks_and_dice_site.Services.Tools;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -46,6 +47,8 @@ public sealed partial class DevelopmentToolsController : Controller
             UpstreamBaseUrl = tool.UpstreamBaseUrl,
             FrontendEntryPoint = tool.FrontendEntryPoint,
             HealthPath = tool.HealthPath,
+            DorksAndDiceMode = tool.Modes.Contains(SiteModeValues.DorksAndDiceModeValue, StringComparer.Ordinal),
+            ProfessionalMode = tool.Modes.Contains(SiteModeValues.ProfessionalModeValue, StringComparer.Ordinal),
             AllowAnonymous = tool.AllowAnonymous,
             Enabled = tool.Enabled
         });
@@ -77,6 +80,16 @@ public sealed partial class DevelopmentToolsController : Controller
             return View("Edit", model);
         }
 
+        var modes = new List<string>(2);
+        if (model.DorksAndDiceMode)
+        {
+            modes.Add(SiteModeValues.DorksAndDiceModeValue);
+        }
+        if (model.ProfessionalMode)
+        {
+            modes.Add(SiteModeValues.ProfessionalModeValue);
+        }
+
         var now = DateTimeOffset.UtcNow;
         var registration = new ToolRegistration
         {
@@ -88,6 +101,7 @@ public sealed partial class DevelopmentToolsController : Controller
             UpstreamBaseUrl = model.UpstreamBaseUrl,
             FrontendEntryPoint = model.FrontendEntryPoint,
             HealthPath = model.HealthPath,
+            Modes = modes,
             AllowAnonymous = model.AllowAnonymous,
             Enabled = model.Enabled,
             CreatedAt = existing?.CreatedAt ?? now,
@@ -118,6 +132,11 @@ public sealed partial class DevelopmentToolsController : Controller
         if (string.IsNullOrWhiteSpace(model.Slug) || !ToolSlugRegex().IsMatch(model.Slug))
         {
             ModelState.AddModelError(nameof(model.Slug), "Slug must contain only lowercase letters, numbers, and hyphens.");
+        }
+
+        if (!model.DorksAndDiceMode && !model.ProfessionalMode)
+        {
+            ModelState.AddModelError(string.Empty, "Select at least one site mode for this tool.");
         }
 
         if (!string.IsNullOrWhiteSpace(model.UpstreamBaseUrl)
