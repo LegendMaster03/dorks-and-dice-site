@@ -10,6 +10,8 @@ The first migration boundary is now implemented: a content document tagged `home
 
 Exactly one visible `homepage` document may resolve for a normal mode. Multiple candidates are treated as an invalid composition instead of choosing one by incidental source/query order.
 
+Markdown migration inputs now live under `docs/homepage-migration/`. These files are temporary migration aids, not a second runtime content source. Dorks & Dice has an activation-ready Markdown draft. The Professional draft currently contains only the sections that can move without duplicating the database-backed Experience and Projects collections.
+
 ## Current systems being converged
 
 ### Professional
@@ -26,7 +28,9 @@ Content/Resume/resume.json
 
 Experience and project entries are already loaded from the shared database-backed content catalog using the `experience` and `project` contexts. This means the Professional homepage is already partly migrated to the general content system.
 
-The remaining resume JSON is strongly structured. Do not flatten it into Markdown merely to remove the JSON file if doing so would lose useful structure or make editing worse. Its eventual representation should be chosen as part of the general page/content model.
+The remaining resume JSON is strongly structured. The first Markdown migration draft converts the parts that are naturally authored page content while intentionally leaving Experience and Projects out until the page-composition mechanism can consume their existing database records directly.
+
+Do not copy Experience or Project records into homepage Markdown merely to make the compiled view disappear. That would create duplicate editable sources of truth.
 
 ### Dorks & Dice
 
@@ -39,7 +43,11 @@ The Dorks & Dice homepage is currently a Razor view containing both authored tex
 
 The authored copy should migrate into database-backed content.
 
-Minecraft status and Discord integration are behavior, not authored content storage. They should become reusable installed components/capabilities that a homepage can compose rather than remaining a reason for Dorks & Dice to have a separate homepage content system.
+The initial Dorks & Dice Markdown conversion is now staged in `docs/homepage-migration/dorks-and-dice.md`. It preserves the authored community/campaign/server-history copy while omitting the live Minecraft status and Discord iframe from the authored body.
+
+Minecraft/Hytale monitoring should be extracted as a Tool rather than rebuilt as a homepage-specific component. The host can expose that Tool through the existing tool registration/security boundaries, and ordinary Markdown can link to it once the Tool exists. This keeps server monitoring operational behavior out of the page-content system.
+
+The Discord widget remains a separate runtime-integration question. It should not force the homepage itself back into a mode-specific Razor implementation.
 
 ## Shared homepage contract
 
@@ -81,9 +89,11 @@ IContentDirectiveRenderer
     Render()
 ```
 
-That is sufficient for static application-owned markup but not yet a complete general page-component system. Dynamic components such as Minecraft status, tool surfaces, or other request-aware/async blocks should not be forced into this interface without first defining their lifecycle, authorization, configuration, sanitization, and failure behavior.
+That is sufficient for static application-owned markup but not yet a complete general page-component system. Dynamic components, tool surfaces, or other request-aware/async blocks should not be forced into this interface without first defining their lifecycle, authorization, configuration, sanitization, and failure behavior.
 
 The next page-composition design should remain compatible with both possible mode-definition strategies. A page should compose installed capabilities; it should not require a mode-specific Razor homepage solely to access those capabilities.
+
+For Professional, this composition problem is specifically required to retain the existing database-backed Experience and Projects collections without duplicating them into Markdown.
 
 ## Resume migration constraint
 
@@ -98,12 +108,12 @@ The existing resume JSON contains structured records such as:
 
 Projects and experience have already demonstrated that structured Professional homepage sections can consume the general content catalog.
 
-Before removing `resume.json`, determine which of the remaining structures should become:
+The current migration approach is:
 
-1. ordinary page Markdown;
-2. reusable structured content records/components;
-3. media/asset metadata;
-4. presentation/theme configuration.
+1. move directly authored identity/summary/contact/education/awards/skills/leadership copy into Markdown;
+2. preserve Experience and Projects in their current database records;
+3. add a general composition path for those existing collections;
+4. remove `resume.json` only when every remaining field has either moved into Markdown, become structured content, become media metadata, or become presentation/theme configuration.
 
 Do not preserve a special file-driven resume subsystem solely for compatibility, but also do not discard useful structured data merely to make the homepage one Markdown blob.
 
@@ -115,6 +125,7 @@ The homepage convergence work is complete when:
 - ordinary homepage edits are possible through the site editor and require no application restart;
 - no mode needs a separate file-backed authored homepage store;
 - shared homepage selection is stable-ID/mode-context based and works with per-mode content databases;
-- dynamic homepage behavior is supplied through reusable installed capabilities rather than hard-coded authored text in mode-specific Razor;
+- dynamic homepage behavior is supplied through reusable installed capabilities or Tools rather than hard-coded authored text in mode-specific Razor;
+- game-server monitoring no longer depends on the Dorks & Dice homepage implementation;
 - existing Professional and Dorks & Dice presentation remains functionally equivalent after migration;
 - the design does not require deciding whether the normal mode definition itself is compiled or persisted runtime data.
