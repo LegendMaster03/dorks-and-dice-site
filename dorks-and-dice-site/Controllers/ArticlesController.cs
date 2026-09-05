@@ -33,7 +33,7 @@ public class ArticlesController : Controller
         var model = new ArticlesIndexViewModel
         {
             Articles = articles,
-            Presentation = _siteModePresentationService.GetArticlesIndexPresentation(modeContext.SiteMode),
+            Presentation = _siteModePresentationService.GetArticlesIndexPresentation(modeContext),
             SiteMode = modeContext.SiteMode,
             IsDevelopmentPreview = modeContext.IsDevelopmentPreview,
             IncludeUnlistedActive = modeContext.IncludeUnlistedArticles,
