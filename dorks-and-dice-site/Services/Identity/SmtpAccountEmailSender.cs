@@ -1,8 +1,6 @@
 using System.Net;
 using System.Net.Mail;
 using System.Net.Mime;
-using dorks_and_dice_site.Models.Site;
-using dorks_and_dice_site.Services.Site;
 using Microsoft.Extensions.Options;
 
 namespace dorks_and_dice_site.Services.Identity;
@@ -24,15 +22,21 @@ public sealed class SmtpAccountEmailSender : IAccountEmailSender
     }
 
     public async Task SendAsync(
-        SiteMode siteMode,
+        AccountEmailSenderIdentity senderIdentity,
         string recipient,
         string subject,
         string htmlBody,
         string textBody,
         CancellationToken cancellationToken = default)
     {
-        var senderAddress = GetSenderAddress(siteMode);
-        var senderDisplayName = siteMode == SiteMode.Professional ? "Kyle Barnett" : "Dorks & Dice";
+        ArgumentNullException.ThrowIfNull(senderIdentity);
+
+        var senderAddress = GetSenderAddress(senderIdentity.Domain);
+        var senderDisplayName = senderIdentity.DisplayName.Trim();
+        if (senderDisplayName.Length == 0)
+        {
+            throw new InvalidOperationException("Account email sender display name is required.");
+        }
 
         if (string.IsNullOrWhiteSpace(_options.SmtpHost))
         {
@@ -77,15 +81,18 @@ public sealed class SmtpAccountEmailSender : IAccountEmailSender
         cancellationToken.ThrowIfCancellationRequested();
     }
 
-    private string GetSenderAddress(SiteMode siteMode)
+    private string GetSenderAddress(string domain)
     {
         var localPart = string.IsNullOrWhiteSpace(_options.FromLocalPart)
             ? "accounts"
             : _options.FromLocalPart.Trim();
-        var domain = siteMode == SiteMode.Professional
-            ? SiteModeOptions.CanonicalProfessionalHost
-            : SiteModeOptions.CanonicalDorksAndDiceHost;
-        return $"{localPart}@{domain}";
+        var normalizedDomain = domain.Trim();
+        if (normalizedDomain.Length == 0)
+        {
+            throw new InvalidOperationException("Account email sender domain is required.");
+        }
+
+        return $"{localPart}@{normalizedDomain}";
     }
 
     private string? ResolvePassword()
