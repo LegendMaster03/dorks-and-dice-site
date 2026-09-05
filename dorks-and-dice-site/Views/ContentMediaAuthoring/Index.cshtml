@@ -2,15 +2,16 @@
 @{
     ViewData["Title"] = $"Media for {Model.Slug}";
     ViewData["Robots"] = "noindex, nofollow";
+    var encodedSource = Uri.EscapeDataString(Model.SourceKey);
 }
 
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
     <div>
         <p class="text-uppercase text-muted small mb-1">Editor</p>
         <h1 class="h3 mb-0">Content media</h1>
-        <p class="text-muted mb-0"><code>@Model.Slug</code></p>
+        <p class="text-muted mb-0"><code>@Model.Slug</code> · <code>@Model.SourceKey</code></p>
     </div>
-    <a class="btn btn-outline-secondary" href="/editor/content/@Model.Slug/edit">Back to editor</a>
+    <a class="btn btn-outline-secondary" href="/editor/content/@Model.Slug/edit?source=@encodedSource">Back to editor</a>
 </div>
 
 <p>Attach media before referencing its stable URL in the content body. Database/source management remains a Development responsibility.</p>
@@ -25,11 +26,12 @@
 }
 
 <form method="get" class="card card-body mb-4">
+    <input type="hidden" name="source" value="@Model.SourceKey" />
     <div class="row g-3 align-items-end">
         <div class="col-md-8">
             <label class="form-label" for="q">Search available media</label>
             <input class="form-control" id="q" name="q" value="@Model.SearchQuery" placeholder="File name or media key" required />
-            <div class="form-text">Searches available authoring and global media. Results are limited for fast browsing.</div>
+            <div class="form-text">Searches media available to the current authoring context. Results are limited for fast browsing.</div>
         </div>
         <div class="col-md-4">
             <button class="btn btn-primary w-100" type="submit">Search media</button>
@@ -55,6 +57,7 @@
                     <p class="small text-muted"><code>@asset.AssetKey</code></p>
                     <form method="post" action="/editor/content/@Model.Slug/media/attach">
                         @Html.AntiForgeryToken()
+                        <input type="hidden" name="source" value="@Model.SourceKey" />
                         <input type="hidden" name="assetSource" value="@asset.SourceKey" />
                         <input type="hidden" name="assetKey" value="@asset.AssetKey" />
                         <button class="btn btn-sm btn-primary" type="submit">Add dependency</button>
@@ -96,6 +99,7 @@ else
                         <input id="url-@asset.AssetKey" class="form-control font-monospace" value="@asset.Url" readonly />
                         <form method="post" action="/editor/content/@Model.Slug/media/detach" class="mt-3">
                             @Html.AntiForgeryToken()
+                            <input type="hidden" name="source" value="@Model.SourceKey" />
                             <input type="hidden" name="assetKey" value="@asset.AssetKey" />
                             <button class="btn btn-sm btn-outline-danger" type="submit">Remove dependency</button>
                         </form>
