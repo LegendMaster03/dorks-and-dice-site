@@ -28,6 +28,10 @@ public sealed class ToolProxyServiceTests
         context.Request.Headers["X-Custom"] = "forward-me";
         context.Request.Headers["Cookie"] = "site-auth=secret";
         context.Request.Headers["Authorization"] = "Bearer secret";
+        context.Request.Headers["X-Forwarded-Host"] = "spoofed.example";
+        context.Request.Headers["X-Forwarded-Proto"] = "http";
+        context.Request.Headers["X-Forwarded-Prefix"] = "/spoofed";
+        context.Request.Headers["X-Dorks-Tool-Context-Url"] = "/spoofed/context";
         var bodyBytes = Encoding.UTF8.GetBytes("payload");
         context.Request.Body = new MemoryStream(bodyBytes);
         context.Request.ContentLength = bodyBytes.Length;
@@ -41,8 +45,10 @@ public sealed class ToolProxyServiceTests
         Assert.Contains("forward-me", custom!);
         Assert.False(captured.Headers.Contains("Cookie"));
         Assert.Null(captured.Headers.Authorization);
-        Assert.True(captured.Headers.TryGetValues("X-Forwarded-Prefix", out var prefix));
-        Assert.Contains("/tools/proxy-test", prefix!);
+        Assert.Equal("dorks-and-dice.com", captured.Headers.GetValues("X-Forwarded-Host").Single());
+        Assert.Equal("https", captured.Headers.GetValues("X-Forwarded-Proto").Single());
+        Assert.Equal("/tools/proxy-test", captured.Headers.GetValues("X-Forwarded-Prefix").Single());
+        Assert.Equal("/tool-host/proxy-test/context", captured.Headers.GetValues("X-Dorks-Tool-Context-Url").Single());
         Assert.Equal(StatusCodes.Status200OK, context.Response.StatusCode);
 
         context.Response.Body.Position = 0;
