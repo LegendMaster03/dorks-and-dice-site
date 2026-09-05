@@ -14,7 +14,7 @@ namespace dorks_and_dice_site.Controllers;
 public sealed class ContentAuthoringController : Controller
 {
     private static readonly Regex DirectiveLinePattern = new(
-        @"^[\t ]*(?<directive>\{\{[a-z0-9-]+\}\})[\t ]*$",
+        "^[\\t ]*(?<directive>\\{\\{[a-z0-9-]+(?:[\\t ]+[a-z][a-z0-9-]*=\"[^\"\\r\\n]*\")*[\\t ]*\\}\\})[\\t ]*$",
         RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.Multiline);
     private readonly IContentAuthoringService _authoringService;
     private readonly IContentBodyRenderer _bodyRenderer;
