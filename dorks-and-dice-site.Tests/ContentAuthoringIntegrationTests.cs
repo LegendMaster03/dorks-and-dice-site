@@ -87,8 +87,8 @@ public sealed class ContentAuthoringIntegrationTests
         Assert.Contains("data-meta-path=\"title\"", html);
         Assert.Contains("data-meta-path=\"presentations.project.title\"", html);
         Assert.Contains("content-metadata-editor.js", html);
-        Assert.Contains("visible-mode-Professional", html);
-        Assert.Contains("visible-mode-DorksAndDice", html);
+        Assert.Contains("visible-mode-professional", html);
+        Assert.Contains("visible-mode-dorks-and-dice", html);
         Assert.DoesNotContain("visible-mode-Development", html);
         Assert.DoesNotContain("visible-mode-Unassigned", html);
     }
