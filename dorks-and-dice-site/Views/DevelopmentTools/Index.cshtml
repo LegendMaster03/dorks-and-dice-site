@@ -1,4 +1,5 @@
 @model IReadOnlyList<dorks_and_dice_site.Models.Tools.ToolRegistration>
+@using dorks_and_dice_site.Services.Site
 @{
     ViewData["Title"] = "Tool Hosting";
     ViewData["Robots"] = "noindex,nofollow";
@@ -8,7 +9,7 @@
     <div>
         <p class="text-uppercase text-muted small mb-1">Development tools</p>
         <h1 class="h2 mb-2">Tool Hosting</h1>
-        <p class="text-body-secondary mb-0">Register portable tools and configure how the Dorks & Dice host exposes them.</p>
+        <p class="text-body-secondary mb-0">Register portable tools and configure how the site host exposes them.</p>
     </div>
     <a class="btn btn-primary" href="/development/tools/new">Register tool</a>
 </div>
@@ -29,6 +30,20 @@ else
     <div class="row g-3">
         @foreach (var tool in Model)
         {
+            var modes = new List<string>();
+            if (tool.Modes.Contains(SiteModeValues.DorksAndDiceModeValue, StringComparer.Ordinal))
+            {
+                modes.Add("Dorks & Dice");
+            }
+            if (tool.Modes.Contains(SiteModeValues.ProfessionalModeValue, StringComparer.Ordinal))
+            {
+                modes.Add("Professional");
+            }
+            if (modes.Count == 0)
+            {
+                modes.Add("Dorks & Dice");
+            }
+
             <div class="col-lg-6">
                 <section class="card h-100">
                     <div class="card-body d-flex flex-column">
@@ -48,6 +63,8 @@ else
                         <dl class="row small mt-2 mb-3">
                             <dt class="col-sm-4">Integration</dt>
                             <dd class="col-sm-8">@tool.IntegrationType</dd>
+                            <dt class="col-sm-4">Modes</dt>
+                            <dd class="col-sm-8">@string.Join(", ", modes)</dd>
                             <dt class="col-sm-4">Anonymous</dt>
                             <dd class="col-sm-8">@(tool.AllowAnonymous ? "Allowed" : "Account required")</dd>
                             <dt class="col-sm-4">Upstream</dt>
