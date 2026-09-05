@@ -1,3 +1,4 @@
+using dorks_and_dice_site.Models.Tools;
 using dorks_and_dice_site.Services.Site;
 using dorks_and_dice_site.Services.Tools;
 using Microsoft.AspNetCore.Authorization;
@@ -9,10 +10,14 @@ namespace dorks_and_dice_site.Controllers;
 public sealed class ToolsController : Controller
 {
     private readonly IToolRegistry _toolRegistry;
+    private readonly IToolProxyService _toolProxyService;
 
-    public ToolsController(IToolRegistry toolRegistry)
+    public ToolsController(
+        IToolRegistry toolRegistry,
+        IToolProxyService toolProxyService)
     {
         _toolRegistry = toolRegistry;
+        _toolProxyService = toolProxyService;
     }
 
     [AllowAnonymous]
@@ -27,12 +32,12 @@ public sealed class ToolsController : Controller
     }
 
     [AllowAnonymous]
-    [HttpGet("{slug}")]
+    [AcceptVerbs("GET", "HEAD")]
+    [Route("{slug}")]
     public async Task<IActionResult> Details(string slug, CancellationToken cancellationToken)
     {
-        var tool = await _toolRegistry.GetBySlugAsync(slug, cancellationToken);
-        var siteMode = HttpContext.GetSiteModeContext().SiteMode;
-        if (tool is null || !tool.Enabled || !ToolVisibility.IsVisibleInMode(tool, siteMode))
+        var tool = await ResolveAvailableToolAsync(slug, cancellationToken);
+        if (tool is null)
         {
             return NotFound();
         }
@@ -42,6 +47,49 @@ public sealed class ToolsController : Controller
             return Challenge();
         }
 
+        if (tool.IntegrationType == ToolIntegrationType.ProxiedApplication)
+        {
+            await _toolProxyService.ProxyAsync(HttpContext, tool, "/", cancellationToken);
+            return new EmptyResult();
+        }
+
         return View(tool);
+    }
+
+    [AllowAnonymous]
+    [AcceptVerbs("GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")]
+    [Route("{slug}/{**proxyPath}")]
+    public async Task<IActionResult> Proxy(
+        string slug,
+        string? proxyPath,
+        CancellationToken cancellationToken)
+    {
+        var tool = await ResolveAvailableToolAsync(slug, cancellationToken);
+        if (tool is null || tool.IntegrationType != ToolIntegrationType.ProxiedApplication)
+        {
+            return NotFound();
+        }
+
+        if (!tool.AllowAnonymous && User.Identity?.IsAuthenticated != true)
+        {
+            return Challenge();
+        }
+
+        var path = string.IsNullOrWhiteSpace(proxyPath) ? "/" : $"/{proxyPath}";
+        await _toolProxyService.ProxyAsync(HttpContext, tool, path, cancellationToken);
+        return new EmptyResult();
+    }
+
+    private async Task<ToolRegistration?> ResolveAvailableToolAsync(
+        string slug,
+        CancellationToken cancellationToken)
+    {
+        var tool = await _toolRegistry.GetBySlugAsync(slug, cancellationToken);
+        var siteMode = HttpContext.GetSiteModeContext().SiteMode;
+        return tool is not null
+            && tool.Enabled
+            && ToolVisibility.IsVisibleInMode(tool, siteMode)
+            ? tool
+            : null;
     }
 }
