@@ -5,6 +5,17 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace dorks_and_dice_site.Services.Content;
 
+/// <summary>
+/// Installed presentation for the generic content-collection page component. The framework owns
+/// the query and visibility rules; themes/plugins can own specialized rendering without allowing
+/// authored content to select an arbitrary Razor path.
+/// </summary>
+public interface IContentCollectionPresentation
+{
+    string Key { get; }
+    string ViewPath { get; }
+}
+
 public sealed class ContentCollectionPageComponentDefinition : IContentPageComponentDefinition
 {
     private static readonly Regex KeyPattern = new(
@@ -88,10 +99,16 @@ public sealed class ContentCollectionPageComponentDefinition : IContentPageCompo
 public sealed class ContentCollectionViewComponent : ViewComponent
 {
     private readonly IContentCatalogService _catalog;
+    private readonly IReadOnlyDictionary<string, IContentCollectionPresentation> _presentations;
 
-    public ContentCollectionViewComponent(IContentCatalogService catalog)
+    public ContentCollectionViewComponent(
+        IContentCatalogService catalog,
+        IEnumerable<IContentCollectionPresentation> presentations)
     {
         _catalog = catalog;
+        _presentations = presentations.ToDictionary(
+            presentation => presentation.Key,
+            StringComparer.OrdinalIgnoreCase);
     }
 
     public async Task<IViewComponentResult> InvokeAsync(ContentPageComponentInvocation request)
@@ -100,6 +117,12 @@ public sealed class ContentCollectionViewComponent : ViewComponent
 
         var contextTag = request.GetRequiredParameter("context");
         var presentationKey = request.GetRequiredParameter("presentation");
+        if (!_presentations.TryGetValue(presentationKey, out var presentation))
+        {
+            throw new InvalidOperationException(
+                $"Content collection presentation '{presentationKey}' is not installed.");
+        }
+
         var modeContext = HttpContext.GetSiteModeContext();
         var items = await _catalog.GetByContextAsync(
             contextTag,
@@ -108,11 +131,7 @@ public sealed class ContentCollectionViewComponent : ViewComponent
             HttpContext.RequestAborted);
 
         var ordered = ApplyOrdering(items, contextTag, request);
-
-        // Presentation keys are validated as lowercase/hyphen identifiers by the component
-        // definition, so authored data can only select an installed view under this directory
-        // and can not choose an arbitrary Razor path.
-        return View($"~/Views/ContentCollections/{presentationKey}.cshtml", ordered);
+        return View(presentation.ViewPath, ordered);
     }
 
     private static IReadOnlyList<ContentItem> ApplyOrdering(
