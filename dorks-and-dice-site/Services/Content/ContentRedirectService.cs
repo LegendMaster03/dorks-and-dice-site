@@ -1,5 +1,4 @@
 using dorks_and_dice_site.Models.Content;
-using dorks_and_dice_site.Models.Site;
 using dorks_and_dice_site.Services.Content.Storage;
 using dorks_and_dice_site.Services.Site;
 using Microsoft.EntityFrameworkCore;
@@ -48,9 +47,7 @@ public sealed class ContentRedirectService : IContentRedirectService
         }
 
         var modeContext = GetSiteModeContext();
-        var sources = modeContext.IsDevelopmentPreview && modeContext.HasContentSourceOverride
-            ? _sourceRegistry.GetSourcesByKeys(modeContext.EnabledContentSources)
-            : _sourceRegistry.GetDefaultSources(modeContext.SiteMode);
+        var sources = _sourceRegistry.GetSourcesForContext(modeContext);
 
         for (var index = sources.Count - 1; index >= 0; index--)
         {
@@ -82,7 +79,7 @@ public sealed class ContentRedirectService : IContentRedirectService
 
         return new SiteModeContext
         {
-            SiteMode = SiteMode.Development,
+            FrameworkState = FrameworkRuntimeStates.TrustedPreview,
             IsDevelopmentPreview = true
         };
     }
