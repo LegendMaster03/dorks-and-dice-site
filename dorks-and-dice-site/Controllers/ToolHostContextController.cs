@@ -36,7 +36,7 @@ public sealed class ToolHostContextController : ControllerBase
             return Challenge();
         }
 
-        Response.Headers.CacheControl = "no-store";
+        Response.Headers["Cache-Control"] = "no-store";
 
         ToolHostUserContext? userContext = null;
         if (User.Identity?.IsAuthenticated == true)
