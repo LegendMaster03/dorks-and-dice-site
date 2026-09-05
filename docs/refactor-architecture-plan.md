@@ -195,7 +195,8 @@ Security-sensitive decisions must not become arbitrary editable metadata merely 
 - inventory named-mode references and current ownership
 - inventory tool-mode coupling
 - inventory deployment values embedded in shared code
-- inventory legacy compatibility behavior, including article-specific presentation/CSS
+- inventory legacy compatibility behavior and remove any code that exists solely for the retired HTML article format
+- track the remaining ConsoleVariations article-specific presentation selector separately from article-format compatibility
 - classify tests by subsystem and type
 - record security boundaries
 - compare selected MediaWiki/Wikimedia implementations
@@ -278,7 +279,9 @@ Keep this flatter than necessary until subsystem size justifies additional folde
 
 Compare the existing article/revision/storage system with MediaWiki's page/revision/content separation and content handlers. Adopt only changes that solve concrete coupling or extensibility problems.
 
-Resolve legacy article-specific behavior through supported generic mechanisms where appropriate. The known ConsoleVariations Free the Bees logo rule must be generalized or migrated so a named article selector does not remain permanently embedded in the Professional mode stylesheet.
+The retired HTML article format has no compatibility requirement: all legacy articles were converted to the Markdown-backed content system and the old versions were removed. Delete any renderer, parser, route, view, migration shim, test fixture, or other code found to exist solely for that retired format rather than preserving or generalizing it.
+
+The known ConsoleVariations Free the Bees logo selector is a separate presentation holdover. It may remain temporarily while the constrained content-presentation/theme mechanism is revisited, but it must ultimately be migrated to a supported generic presentation mechanism or removed so a named article selector does not remain permanently embedded in the Professional mode stylesheet.
 
 Do not add multi-content revisions or arbitrary per-article CSS execution solely because they are possible.
 
