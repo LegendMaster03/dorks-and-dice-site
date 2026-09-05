@@ -6,11 +6,11 @@ public sealed record SiteModeDefinition(
     string Id,
     string DisplayName,
     SiteMode? LegacyMode,
-    bool SupportsContent,
-    bool SupportsScopedEditor,
-    bool IsPreviewable,
     string ViewFolder,
-    string AssetFolder);
+    string AssetFolder,
+    bool SupportsContent = true,
+    bool SupportsScopedEditor = true,
+    bool IsPreviewable = true);
 
 public static class BuiltInSiteModes
 {
@@ -18,19 +18,19 @@ public static class BuiltInSiteModes
         Id: "unassigned",
         DisplayName: "Unassigned",
         LegacyMode: SiteMode.Unassigned,
+        ViewFolder: "Unassigned",
+        AssetFolder: "unassigned",
         SupportsContent: false,
         SupportsScopedEditor: false,
-        IsPreviewable: false,
-        ViewFolder: "Unassigned",
-        AssetFolder: "unassigned");
+        IsPreviewable: false);
 
+    // Dorks & Dice and Professional represent the normal mode shape. Future normal
+    // modes inherit content, scoped-editor, and preview behavior unless they explicitly
+    // opt out for a special-case reason.
     public static SiteModeDefinition DorksAndDice { get; } = new(
         Id: "dorks-and-dice",
         DisplayName: "Dorks & Dice",
         LegacyMode: SiteMode.DorksAndDice,
-        SupportsContent: true,
-        SupportsScopedEditor: true,
-        IsPreviewable: true,
         ViewFolder: "DorksAndDice",
         AssetFolder: "dorks-and-dice");
 
@@ -38,9 +38,6 @@ public static class BuiltInSiteModes
         Id: "professional",
         DisplayName: "Professional",
         LegacyMode: SiteMode.Professional,
-        SupportsContent: true,
-        SupportsScopedEditor: true,
-        IsPreviewable: true,
         ViewFolder: "Professional",
         AssetFolder: "professional");
 
@@ -48,11 +45,10 @@ public static class BuiltInSiteModes
         Id: "development",
         DisplayName: "Development",
         LegacyMode: SiteMode.Development,
-        SupportsContent: false,
-        SupportsScopedEditor: false,
-        IsPreviewable: true,
         ViewFolder: "Development",
-        AssetFolder: "development");
+        AssetFolder: "development",
+        SupportsContent: false,
+        SupportsScopedEditor: false);
 
     public static IReadOnlyList<SiteModeDefinition> All { get; } =
     [
