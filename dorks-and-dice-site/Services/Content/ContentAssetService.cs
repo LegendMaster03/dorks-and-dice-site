@@ -332,9 +332,7 @@ public sealed class ContentAssetService : IContentAssetService
     {
         ValidateAssetKey(assetKey);
         var modeContext = GetSiteModeContext();
-        var pageSources = (modeContext.IsDevelopmentPreview && modeContext.HasContentSourceOverride
-            ? _sourceRegistry.GetSourcesByKeys(modeContext.EnabledContentSources)
-            : _sourceRegistry.GetDefaultSources(modeContext.SiteMode)).ToList();
+        var pageSources = _sourceRegistry.GetSourcesForContext(modeContext).ToList();
         var assetSources = pageSources.ToList();
 
         foreach (var globalSource in _sourceRegistry.GetGlobalSources())
