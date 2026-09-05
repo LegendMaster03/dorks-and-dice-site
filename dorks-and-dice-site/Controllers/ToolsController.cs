@@ -57,11 +57,26 @@ public sealed class ToolsController : Controller
     }
 
     [AllowAnonymous]
+    [AcceptVerbs("POST", "PUT", "PATCH", "DELETE", "OPTIONS")]
+    [Route("{slug}")]
+    public Task<IActionResult> ProxyRoot(string slug, CancellationToken cancellationToken) =>
+        ProxyResolvedAsync(slug, "/", cancellationToken);
+
+    [AllowAnonymous]
     [AcceptVerbs("GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")]
     [Route("{slug}/{**proxyPath}")]
-    public async Task<IActionResult> Proxy(
+    public Task<IActionResult> Proxy(
         string slug,
         string? proxyPath,
+        CancellationToken cancellationToken) =>
+        ProxyResolvedAsync(
+            slug,
+            string.IsNullOrWhiteSpace(proxyPath) ? "/" : $"/{proxyPath}",
+            cancellationToken);
+
+    private async Task<IActionResult> ProxyResolvedAsync(
+        string slug,
+        string path,
         CancellationToken cancellationToken)
     {
         var tool = await ResolveAvailableToolAsync(slug, cancellationToken);
@@ -75,7 +90,6 @@ public sealed class ToolsController : Controller
             return Challenge();
         }
 
-        var path = string.IsNullOrWhiteSpace(proxyPath) ? "/" : $"/{proxyPath}";
         await _toolProxyService.ProxyAsync(HttpContext, tool, path, cancellationToken);
         return new EmptyResult();
     }
