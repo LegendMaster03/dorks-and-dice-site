@@ -27,6 +27,7 @@ builder.Services.AddSingleton<IMinecraftServerStatusService, MinecraftServerStat
 builder.Services.AddContentStorage(builder.Configuration, builder.Environment.ContentRootPath);
 builder.Services.AddScoped<IResumeContentService, ResumeContentService>();
 builder.Services.AddSingleton<IToolRegistry, JsonToolRegistry>();
+builder.Services.AddSingleton<IToolUpstreamPolicy, ToolUpstreamPolicy>();
 builder.Services.AddSingleton<IToolHealthService, ToolHealthService>();
 builder.Services
     .AddHttpClient(ToolHttpClientNames.Hosting, client =>
