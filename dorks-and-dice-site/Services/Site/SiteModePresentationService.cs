@@ -57,6 +57,23 @@ public sealed class SiteModePresentationService : ISiteModePresentationService
         return _fallbackModule.GetFaviconPath();
     }
 
+    public string? GetDefaultMetaImagePath(SiteModeContext context)
+    {
+        return Resolve(
+            context,
+            SiteModePresentationPart.DefaultMetaImage,
+            module => module.GetDefaultMetaImagePath());
+    }
+
+    public string? GetStructuredDataJson(SiteModeContext context, string canonicalOrigin)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(canonicalOrigin);
+        return Resolve(
+            context,
+            SiteModePresentationPart.StructuredData,
+            module => module.GetStructuredDataJson(canonicalOrigin.TrimEnd('/')));
+    }
+
     public ArticlesIndexPresentationViewModel GetArticlesIndexPresentation(SiteModeContext context)
     {
         return Resolve(
@@ -73,6 +90,12 @@ public sealed class SiteModePresentationService : ISiteModePresentationService
 
     public string GetFaviconPath(SiteMode siteMode) =>
         GetFaviconPath(BuildCompatibilityContext(siteMode));
+
+    public string? GetDefaultMetaImagePath(SiteMode siteMode) =>
+        GetDefaultMetaImagePath(BuildCompatibilityContext(siteMode));
+
+    public string? GetStructuredDataJson(SiteMode siteMode, string canonicalOrigin) =>
+        GetStructuredDataJson(BuildCompatibilityContext(siteMode), canonicalOrigin);
 
     public ArticlesIndexPresentationViewModel GetArticlesIndexPresentation(SiteMode siteMode) =>
         GetArticlesIndexPresentation(BuildCompatibilityContext(siteMode));
