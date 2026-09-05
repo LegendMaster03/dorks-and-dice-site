@@ -29,6 +29,27 @@ public sealed class ModeScopedRoleAuthorizationTests
     }
 
     [Fact]
+    public async Task SyntheticModeEditorAuthorizesFromStableModeIdWithoutEnumValue()
+    {
+        var syntheticMode = new SiteModeDefinition(
+            Id: "test-mode",
+            DisplayName: "Test Mode",
+            LegacyMode: null,
+            ViewFolder: "TestMode",
+            AssetFolder: "test-mode");
+        var user = CreateScopedEditor($"test-mode:{ScopedAccountRoles.Editor}");
+
+        Assert.True(await IsAuthorizedAsync(user, new SiteModeContext
+        {
+            ActiveMode = syntheticMode
+        }));
+        Assert.False(await IsAuthorizedAsync(user, new SiteModeContext
+        {
+            ActiveMode = BuiltInSiteModes.Professional
+        }));
+    }
+
+    [Fact]
     public async Task AdminInheritsGlobalEditorAuthorizationFromHierarchy()
     {
         var user = CreateGlobalRoleUser(AccountRoles.Admin);
@@ -134,13 +155,16 @@ public sealed class ModeScopedRoleAuthorizationTests
         return new ClaimsPrincipal(identity);
     }
 
-    private static async Task<bool> IsAuthorizedAsync(ClaimsPrincipal user, SiteMode siteMode)
-    {
-        var httpContext = new DefaultHttpContext();
-        httpContext.Items[SiteModeContext.HttpContextItemKey] = new SiteModeContext
+    private static Task<bool> IsAuthorizedAsync(ClaimsPrincipal user, SiteMode siteMode) =>
+        IsAuthorizedAsync(user, new SiteModeContext
         {
             SiteMode = siteMode
-        };
+        });
+
+    private static async Task<bool> IsAuthorizedAsync(ClaimsPrincipal user, SiteModeContext modeContext)
+    {
+        var httpContext = new DefaultHttpContext();
+        httpContext.Items[SiteModeContext.HttpContextItemKey] = modeContext;
         var accessor = new HttpContextAccessor { HttpContext = httpContext };
         var handler = new ModeScopedRoleAuthorizationHandler(accessor);
         var requirement = new ModeScopedRoleRequirement(ScopedAccountRoles.Editor);
