@@ -8,7 +8,6 @@ using dorks_and_dice_site.Services.Content.Storage;
 using dorks_and_dice_site.Services.GameServers.Minecraft;
 using dorks_and_dice_site.Services.Identity;
 using dorks_and_dice_site.Services.Site;
-using dorks_and_dice_site.Services.Site.ModePresentation;
 using dorks_and_dice_site.Services.Tools;
 using dorks_and_dice_site.Services.Campaigns;
 using Microsoft.AspNetCore.Authorization;
@@ -60,12 +59,12 @@ builder.Services.AddSingleton<ISiteModePresentationService, SiteModePresentation
 builder.Services.AddSingleton<ISiteModeArchitectureSummaryService, SiteModeArchitectureSummaryService>();
 builder.Services.AddSingleton<ISiteModePresentationModule, dorks_and_dice_site.Modes.DorksAndDice.DorksAndDicePresentationModule>();
 builder.Services.AddSingleton<ISiteModePresentationModule, dorks_and_dice_site.Modes.Professional.ProfessionalPresentationModule>();
-builder.Services.AddSingleton<ISiteModePresentationModule, DevelopmentPresentationModule>();
-builder.Services.AddSingleton<ISiteModePresentationModule, UnassignedPresentationModule>();
+builder.Services.AddSingleton<ISiteModePresentationModule, dorks_and_dice_site.Framework.TrustedPreview.TrustedPreviewPresentationModule>();
+builder.Services.AddSingleton<ISiteModePresentationModule, dorks_and_dice_site.Framework.Fallback.FallbackPresentationModule>();
 builder.Services.AddScoped<ISiteModeHomeService, SiteModeHomeService>();
 builder.Services.AddScoped<ISiteModeHomeModule, dorks_and_dice_site.Modes.DorksAndDice.DorksAndDiceHomeModule>();
 builder.Services.AddScoped<ISiteModeHomeModule, dorks_and_dice_site.Modes.Professional.ProfessionalHomeModule>();
-builder.Services.AddScoped<ISiteModeHomeModule, FallbackHomeModule>();
+builder.Services.AddScoped<ISiteModeHomeModule, dorks_and_dice_site.Framework.Fallback.FallbackHomeModule>();
 
 builder.Services.Configure<AccountEmailOptions>(
     builder.Configuration.GetSection(AccountEmailOptions.SectionName));
