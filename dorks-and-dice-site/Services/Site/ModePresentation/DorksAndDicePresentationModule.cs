@@ -21,6 +21,10 @@ public sealed class DorksAndDicePresentationModule : ISiteModePresentationModule
         return "~/site-modes/dorks-and-dice/images/favicon.svg";
     }
 
+    public string? GetDefaultMetaImagePath() => null;
+
+    public string? GetStructuredDataJson(string canonicalOrigin) => null;
+
     public ArticlesIndexPresentationViewModel GetArticlesIndexPresentation()
     {
         return new ArticlesIndexPresentationViewModel
