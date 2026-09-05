@@ -93,12 +93,33 @@ public sealed class ContentAssetVisibilityTests
         Assert.Null(await fixture.Assets.GetForRequestAsync(asset.AssetKey, asset.FileName));
     }
 
+    [Fact]
+    public async Task MediaUsesStableModeSourceCompositionWithoutLegacyEnumValue()
+    {
+        var syntheticMode = new SiteModeDefinition(
+            Id: "test-mode",
+            DisplayName: "Test Mode",
+            LegacyMode: null,
+            ViewFolder: "TestMode",
+            AssetFolder: "test-mode");
+        using var fixture = new VisibilityFixture(syntheticMode);
+        await fixture.CreatePageAsync("Mode", "synthetic-page", syntheticMode.Id);
+        var asset = await fixture.UploadAsync("Mode", "synthetic.png", 8);
+        await fixture.ReferenceAsync("Mode", "synthetic-page", "Mode", asset);
+
+        var file = await fixture.Assets.GetForRequestAsync(asset.AssetKey, asset.FileName);
+
+        Assert.NotNull(file);
+        Assert.Equal(asset.Sha256, file.Sha256);
+    }
+
     private sealed class VisibilityFixture : IDisposable
     {
         private readonly string _directory;
 
-        public VisibilityFixture()
+        public VisibilityFixture(SiteModeDefinition? activeMode = null)
         {
+            activeMode ??= BuiltInSiteModes.Professional;
             _directory = Path.Combine(Path.GetTempPath(), $"content-visibility-{Guid.NewGuid():N}");
             Directory.CreateDirectory(_directory);
             var configuration = new ConfigurationBuilder()
@@ -112,23 +133,30 @@ public sealed class ContentAssetVisibilityTests
                     ["ContentStorage:Sources:Mode:Provider"] = "Sqlite",
                     ["ContentStorage:Sources:Mode:ConnectionString"] = "ModeDb",
                     ["ContentStorage:GlobalSources:0"] = "Global",
-                    ["ContentStorage:Modes:Professional:Add:0"] = "Mode"
+                    ["ContentStorage:Modes:professional:Add:0"] = "Mode",
+                    ["ContentStorage:Modes:test-mode:Add:0"] = "Mode"
                 })
                 .Build();
             Registry = new ContentSourceRegistry(configuration, _directory);
             new ContentStorageInitializer(Registry).InitializeAsync().GetAwaiter().GetResult();
 
+            var registeredModes = BuiltInSiteModes.All.ToList();
+            if (!registeredModes.Any(mode => string.Equals(mode.Id, activeMode.Id, StringComparison.Ordinal)))
+            {
+                registeredModes.Add(activeMode);
+            }
+
             var httpContext = new DefaultHttpContext();
             httpContext.Items[SiteModeContext.HttpContextItemKey] = new SiteModeContext
             {
-                ActiveMode = BuiltInSiteModes.Professional
+                ActiveMode = activeMode
             };
             var accessor = new HttpContextAccessor { HttpContext = httpContext };
             var repository = new CompositeContentRepository(accessor, Registry);
             var catalog = new ContentCatalogService(repository);
             Authoring = new ContentAuthoringService(
                 Registry,
-                new SiteModeRegistry(BuiltInSiteModes.All));
+                new SiteModeRegistry(registeredModes));
             Assets = new ContentAssetService(Registry, accessor, catalog);
         }
 
