@@ -8,7 +8,7 @@ namespace dorks_and_dice_site.Tests;
 public sealed class HomepageContentServiceTests
 {
     [Fact]
-    public async Task NormalModeHomepageUsesHomepageContextAndRendersBody()
+    public async Task NormalModeHomepageUsesHomepageContextAndComposesBody()
     {
         var item = new ContentItem
         {
@@ -19,7 +19,8 @@ public sealed class HomepageContentServiceTests
             Body = "# Hello"
         };
         var catalog = new TestContentCatalog([item]);
-        var service = new HomepageContentService(catalog, new TestBodyRenderer());
+        var composer = new TestPageComposer();
+        var service = new HomepageContentService(catalog, composer);
         var context = new SiteModeContext
         {
             ActiveMode = new SiteModeDefinition(
@@ -34,7 +35,8 @@ public sealed class HomepageContentServiceTests
 
         Assert.NotNull(result);
         Assert.Same(item, result.Item);
-        Assert.Equal("rendered:markdown:# Hello", result.RenderedBodyHtml);
+        var fragment = Assert.Single(result.Fragments);
+        Assert.Equal("composed:markdown:# Hello", fragment.RenderedHtml);
         Assert.Equal(ContentTags.Homepage, catalog.LastContextTag);
         Assert.True(catalog.LastIncludeUnlisted);
     }
@@ -46,7 +48,7 @@ public sealed class HomepageContentServiceTests
         [
             new ContentItem { Id = "home", Slug = "home", Title = "Home" }
         ]);
-        var service = new HomepageContentService(catalog, new TestBodyRenderer());
+        var service = new HomepageContentService(catalog, new TestPageComposer());
 
         var result = await service.GetAsync(new SiteModeContext
         {
@@ -65,7 +67,7 @@ public sealed class HomepageContentServiceTests
             new ContentItem { Id = "home-one", Slug = "home-one", Title = "Home One" },
             new ContentItem { Id = "home-two", Slug = "home-two", Title = "Home Two" }
         ]);
-        var service = new HomepageContentService(catalog, new TestBodyRenderer());
+        var service = new HomepageContentService(catalog, new TestPageComposer());
         var context = new SiteModeContext
         {
             ActiveMode = BuiltInSiteModes.DorksAndDice
@@ -76,9 +78,10 @@ public sealed class HomepageContentServiceTests
         Assert.Contains("multiple visible homepage documents", exception.Message, StringComparison.Ordinal);
     }
 
-    private sealed class TestBodyRenderer : IContentBodyRenderer
+    private sealed class TestPageComposer : IContentPageComposer
     {
-        public string Render(string format, string body) => $"rendered:{format}:{body}";
+        public IReadOnlyList<ContentPageFragment> Compose(string format, string body) =>
+            [ContentPageFragment.Html($"composed:{format}:{body}")];
     }
 
     private sealed class TestContentCatalog(IReadOnlyList<ContentItem> items) : IContentCatalogService
