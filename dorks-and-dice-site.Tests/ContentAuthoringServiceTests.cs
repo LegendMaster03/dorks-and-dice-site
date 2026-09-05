@@ -1,5 +1,4 @@
 using dorks_and_dice_site.Models.Content;
-using dorks_and_dice_site.Models.Site;
 using dorks_and_dice_site.Services.Content;
 using dorks_and_dice_site.Services.Content.Storage;
 using dorks_and_dice_site.Services.Site;
@@ -15,7 +14,7 @@ public sealed class ContentAuthoringServiceTests
     public async Task SavingCreatesRevisionAndPreservesStablePageIdentity()
     {
         using var fixture = new AuthoringSourceFixture();
-        var service = new ContentAuthoringService(fixture.Registry);
+        var service = CreateService(fixture.Registry);
         var newModel = service.GetNew("Test");
         newModel.Document.Id = "authoring-test";
         newModel.Document.Slug = "authoring-test";
@@ -52,10 +51,41 @@ public sealed class ContentAuthoringServiceTests
     }
 
     [Fact]
+    public async Task SyntheticRegisteredModeCanOwnContentWithoutEnumValue()
+    {
+        using var fixture = new AuthoringSourceFixture();
+        var syntheticMode = new SiteModeDefinition(
+            Id: "test-mode",
+            DisplayName: "Test Mode",
+            LegacyMode: null,
+            ViewFolder: "TestMode",
+            AssetFolder: "test-mode");
+        var registry = new SiteModeRegistry(BuiltInSiteModes.All.Append(syntheticMode));
+        var service = new ContentAuthoringService(fixture.Registry, registry);
+        var model = service.GetNew("Test");
+        model.Document.Id = "synthetic-mode-content";
+        model.Document.Slug = "synthetic-mode-content";
+        model.Document.VisibleModesSelection = [syntheticMode.Id];
+
+        await service.CreateAsync(model.Document);
+
+        var saved = await fixture.GetBySlugAsync(model.Document.Slug);
+        Assert.NotNull(saved);
+        Assert.Equal([syntheticMode.Id], saved.VisibleInModes);
+        Assert.True(saved.IsVisibleInMode(syntheticMode.Id));
+        Assert.False(saved.IsVisibleInMode(BuiltInSiteModes.Professional.Id));
+
+        var edit = await service.GetEditAsync("Test", model.Document.Slug);
+        Assert.NotNull(edit);
+        Assert.Contains(edit.Modes, option => option.Id == syntheticMode.Id && option.DisplayName == "Test Mode");
+        Assert.Equal([syntheticMode.Id], edit.Document.VisibleModesSelection);
+    }
+
+    [Fact]
     public async Task StaleEditorCanNotOverwriteNewerRevision()
     {
         using var fixture = new AuthoringSourceFixture();
-        var service = new ContentAuthoringService(fixture.Registry);
+        var service = CreateService(fixture.Registry);
         var newModel = service.GetNew("Test");
         newModel.Document.Id = "conflict-test";
         newModel.Document.Slug = "conflict-test";
@@ -78,7 +108,7 @@ public sealed class ContentAuthoringServiceTests
     public async Task MultipleSlugChangesKeepDirectAliasesToTheStablePage()
     {
         using var fixture = new AuthoringSourceFixture();
-        var service = new ContentAuthoringService(fixture.Registry);
+        var service = CreateService(fixture.Registry);
         var newModel = service.GetNew("Test");
         newModel.Document.Id = "stable-redirect-page";
         newModel.Document.Slug = "first-slug";
@@ -108,7 +138,7 @@ public sealed class ContentAuthoringServiceTests
     public async Task NewPageCanNotReuseAnExistingRedirectSlug()
     {
         using var fixture = new AuthoringSourceFixture();
-        var service = new ContentAuthoringService(fixture.Registry);
+        var service = CreateService(fixture.Registry);
         var firstPage = service.GetNew("Test");
         firstPage.Document.Id = "redirect-owner";
         firstPage.Document.Slug = "reserved-slug";
@@ -127,6 +157,9 @@ public sealed class ContentAuthoringServiceTests
             () => service.CreateAsync(conflictingPage.Document));
         Assert.Contains("redirect", error.Message, StringComparison.OrdinalIgnoreCase);
     }
+
+    private static ContentAuthoringService CreateService(IContentSourceRegistry sourceRegistry) =>
+        new(sourceRegistry, new SiteModeRegistry(BuiltInSiteModes.All));
 
     private sealed class AuthoringSourceFixture : IDisposable
     {
@@ -167,7 +200,7 @@ public sealed class ContentAuthoringServiceTests
             var httpContext = new DefaultHttpContext();
             httpContext.Items[SiteModeContext.HttpContextItemKey] = new SiteModeContext
             {
-                SiteMode = SiteMode.Professional
+                ActiveMode = BuiltInSiteModes.Professional
             };
             var accessor = new HttpContextAccessor { HttpContext = httpContext };
             var redirects = new ContentRedirectService(Registry, accessor);
