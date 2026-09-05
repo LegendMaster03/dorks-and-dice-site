@@ -34,6 +34,16 @@ public sealed class ContentSecurityTests
     }
 
     [Fact]
+    public void RendererPreservesAuthoredSectionIds()
+    {
+        var renderer = new ContentBodyRenderer(Array.Empty<IContentDirectiveRenderer>());
+
+        var html = renderer.Render("markdown", "## Experience {#experience-section}");
+
+        Assert.Contains("id=\"experience-section\"", html, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void RendererRejectsUnknownApplicationDirective()
     {
         var renderer = new ContentBodyRenderer(Array.Empty<IContentDirectiveRenderer>());
