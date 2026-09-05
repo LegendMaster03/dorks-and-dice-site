@@ -16,7 +16,7 @@
     </div>
 </div>
 
-<p class="text-muted">Create, review, and edit content for the active site. Database selection and content transfer are available separately to Development users.</p>
+<p class="text-muted">Create, review, and edit content available to the current preview. The configured authoring workspace is always included even when it is not part of the current preview composition.</p>
 
 <div class="table-responsive">
     <table class="table align-middle">
@@ -24,6 +24,7 @@
             <tr>
                 <th scope="col">Title</th>
                 <th scope="col">Contexts</th>
+                <th scope="col">Source</th>
                 <th scope="col">Slug</th>
                 <th scope="col">Revision</th>
                 <th scope="col">Listing</th>
@@ -31,22 +32,29 @@
             </tr>
         </thead>
         <tbody>
-            @foreach (var item in Model.Items)
+            @foreach (var entry in Model.Entries)
             {
+                var item = entry.Item;
                 var contexts = item.Tags.Where(ContentTags.IsContext).ToList();
-                var detailHref = item.Tags.Contains(ContentTags.Article, StringComparer.OrdinalIgnoreCase)
-                    ? $"/articles/{item.Slug}"
-                    : $"/resume/{item.Slug}";
+                var detailHref = ContentPublicRoute.GetPath(item.Slug, item.Tags);
+                var editHref = $"/editor/content/{item.Slug}/edit?source={Uri.EscapeDataString(entry.SourceKey)}";
                 <tr>
                     <th scope="row">@item.Title</th>
                     <td>@string.Join(", ", contexts)</td>
+                    <td>
+                        <span>@entry.SourceDisplayName</span>
+                        @if (entry.IsAuthoringSource)
+                        {
+                            <span class="badge text-bg-secondary ms-1">Authoring</span>
+                        }
+                    </td>
                     <td><code>@item.Slug</code></td>
                     <td>@item.RevisionId</td>
                     <td>@(item.IsListed ? "Listed" : "Unlisted")</td>
                     <td class="text-end">
                         <div class="d-flex gap-2 justify-content-end">
                             <a class="btn btn-sm btn-outline-secondary" href="@detailHref">View</a>
-                            <a class="btn btn-sm btn-outline-primary" href="/editor/content/@item.Slug/edit">Edit</a>
+                            <a class="btn btn-sm btn-outline-primary" href="@editHref">Edit</a>
                         </div>
                     </td>
                 </tr>
