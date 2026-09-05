@@ -13,16 +13,11 @@ public sealed class SiteModeMiddleware
     public SiteModeMiddleware(
         RequestDelegate next,
         SiteModeOptions options,
-        ISiteModeRegistry? siteModeRegistry = null)
+        ISiteModeRegistry siteModeRegistry)
     {
         _next = next;
         _options = options;
-
-        // Program.cs does not yet own the final deployment-composition registration surface.
-        // Prefer an injected registry when present so tests/future composition can supply
-        // additional normal modes; preserve current startup behavior until that stage moves
-        // registration into deployment composition explicitly.
-        _siteModeRegistry = siteModeRegistry ?? new SiteModeRegistry(BuiltInSiteModes.All);
+        _siteModeRegistry = siteModeRegistry;
     }
 
     public async Task InvokeAsync(HttpContext context)
