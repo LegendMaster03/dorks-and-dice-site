@@ -16,15 +16,12 @@ public sealed class SiteModeRegistryTests
     }
 
     [Fact]
-    public void SyntheticModeCanBeRegisteredWithoutAddingAProductionEnumValue()
+    public void SyntheticStandardModeGetsNormalModeBehaviorWithoutProductionEnumValue()
     {
         var syntheticMode = new SiteModeDefinition(
             Id: "test-mode",
             DisplayName: "Test Mode",
             LegacyMode: null,
-            SupportsContent: true,
-            SupportsScopedEditor: true,
-            IsPreviewable: true,
             ViewFolder: "TestMode",
             AssetFolder: "test-mode");
         var registry = new SiteModeRegistry(BuiltInSiteModes.All.Append(syntheticMode));
@@ -36,6 +33,18 @@ public sealed class SiteModeRegistryTests
         Assert.True(registered.SupportsContent);
         Assert.True(registered.SupportsScopedEditor);
         Assert.True(registered.IsPreviewable);
+    }
+
+    [Fact]
+    public void SpecialModesCanOptOutOfNormalModeBehavior()
+    {
+        Assert.False(BuiltInSiteModes.Unassigned.SupportsContent);
+        Assert.False(BuiltInSiteModes.Unassigned.SupportsScopedEditor);
+        Assert.False(BuiltInSiteModes.Unassigned.IsPreviewable);
+
+        Assert.False(BuiltInSiteModes.Development.SupportsContent);
+        Assert.False(BuiltInSiteModes.Development.SupportsScopedEditor);
+        Assert.True(BuiltInSiteModes.Development.IsPreviewable);
     }
 
     [Fact]
@@ -56,9 +65,6 @@ public sealed class SiteModeRegistryTests
             Id: "another-professional",
             DisplayName: "Another Professional",
             LegacyMode: SiteMode.Professional,
-            SupportsContent: true,
-            SupportsScopedEditor: true,
-            IsPreviewable: true,
             ViewFolder: "AnotherProfessional",
             AssetFolder: "another-professional");
 
