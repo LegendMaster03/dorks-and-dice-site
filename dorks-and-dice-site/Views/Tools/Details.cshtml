@@ -3,6 +3,7 @@
 @using dorks_and_dice_site.Models.Tools
 @{
     ViewData["Title"] = Model.DisplayName;
+    var contextUrl = $"/tool-host/{Model.Slug}/context";
 }
 
 <div class="mb-4">
@@ -16,7 +17,7 @@
 
 @if (Model.IntegrationType == ToolIntegrationType.EmbeddedModule)
 {
-    <div id="tool-root" data-tool-slug="@Model.Slug">
+    <div id="tool-root" data-tool-slug="@Model.Slug" data-tool-context-url="@contextUrl">
         @if (string.IsNullOrWhiteSpace(Model.UpstreamBaseUrl) || string.IsNullOrWhiteSpace(Model.FrontendEntryPoint))
         {
             <div class="card card-body">
@@ -58,10 +59,4 @@
             }
         </script>
     }
-}
-else
-{
-    <div class="card card-body">
-        <p class="mb-0 text-body-secondary">This proxied application is registered. Full application request forwarding has not been implemented yet.</p>
-    </div>
 }
