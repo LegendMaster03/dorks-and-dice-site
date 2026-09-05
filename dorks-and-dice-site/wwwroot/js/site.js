@@ -392,7 +392,6 @@ const siteSearch = (() => {
         const categoryButtons = filterContainer.querySelectorAll("[data-content-category]");
         const status = document.getElementById(filterContainer.dataset.contentStatus ?? "");
         const emptyState = document.getElementById(filterContainer.dataset.contentEmpty ?? "");
-        const forceProfessionalOnly = filterContainer.dataset.contentProfessionalOnly === "true";
         const itemLabel = filterContainer.dataset.contentLabel ?? "item";
         let activeCategory = "all";
         let activeTag = "all";
@@ -418,11 +417,9 @@ const siteSearch = (() => {
 
             cards.forEach((card) => {
                 const cardData = readCardData(card);
-                const isProfessional = card.dataset.contentProfessional === "true";
                 const isVisible = (activeCategory === "all" || cardData.category === activeCategory)
                     && (activeTag === "all" || cardData.tags.includes(activeTag))
-                    && siteSearch.cardMatchesParsedQuery(parsedQuery, cardData)
-                    && (!forceProfessionalOnly || isProfessional);
+                    && siteSearch.cardMatchesParsedQuery(parsedQuery, cardData);
 
                 card.classList.toggle("d-none", !isVisible);
                 if (isVisible) {
