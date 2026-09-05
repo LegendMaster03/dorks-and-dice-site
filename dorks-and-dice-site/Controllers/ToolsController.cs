@@ -24,9 +24,9 @@ public sealed class ToolsController : Controller
     [HttpGet("")]
     public async Task<IActionResult> Index(CancellationToken cancellationToken)
     {
-        var siteMode = HttpContext.GetSiteModeContext().SiteMode;
+        var modeId = HttpContext.GetSiteModeContext().ActiveModeId;
         var tools = (await _toolRegistry.GetAllAsync(cancellationToken))
-            .Where(tool => tool.Enabled && ToolVisibility.IsVisibleInMode(tool, siteMode))
+            .Where(tool => tool.Enabled && ToolVisibility.IsVisibleInMode(tool, modeId))
             .ToArray();
         return View(tools);
     }
@@ -105,10 +105,10 @@ public sealed class ToolsController : Controller
         CancellationToken cancellationToken)
     {
         var tool = await _toolRegistry.GetBySlugAsync(slug, cancellationToken);
-        var siteMode = HttpContext.GetSiteModeContext().SiteMode;
+        var modeId = HttpContext.GetSiteModeContext().ActiveModeId;
         return tool is not null
             && tool.Enabled
-            && ToolVisibility.IsVisibleInMode(tool, siteMode)
+            && ToolVisibility.IsVisibleInMode(tool, modeId)
             ? tool
             : null;
     }
