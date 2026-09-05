@@ -5,54 +5,136 @@ namespace dorks_and_dice_site.Services.Site;
 
 public sealed class SiteModePresentationService : ISiteModePresentationService
 {
-    private readonly IReadOnlyDictionary<SiteMode, ISiteModePresentationModule> _modules;
-    private readonly ISiteModePresentationModule _unassignedModule;
+    private readonly IReadOnlyDictionary<string, ISiteModePresentationModule> _modules;
+    private readonly ISiteModePresentationModule _fallbackModule;
     private readonly IWebHostEnvironment _environment;
 
-    public SiteModePresentationService(IEnumerable<ISiteModePresentationModule> modules, IWebHostEnvironment environment)
+    public SiteModePresentationService(
+        IEnumerable<ISiteModePresentationModule> modules,
+        IWebHostEnvironment environment)
     {
-        _modules = modules.ToDictionary(module => module.SiteMode);
-        _unassignedModule = _modules[SiteMode.Unassigned];
+        var materialized = modules.ToArray();
+        var duplicateKey = materialized
+            .GroupBy(module => module.PresentationKey, StringComparer.Ordinal)
+            .FirstOrDefault(group => group.Count() > 1);
+        if (duplicateKey is not null)
+        {
+            throw new InvalidOperationException(
+                $"Duplicate presentation key '{duplicateKey.Key}'.");
+        }
+
+        _modules = materialized.ToDictionary(
+            module => module.PresentationKey,
+            StringComparer.Ordinal);
+        _fallbackModule = _modules.TryGetValue(FrameworkRuntimeStates.Fallback.Id, out var fallback)
+            ? fallback
+            : throw new InvalidOperationException(
+                $"Framework fallback presentation '{FrameworkRuntimeStates.Fallback.Id}' is not registered.");
         _environment = environment;
     }
 
-    public string GetTitleSuffix(SiteMode siteMode)
+    public string GetTitleSuffix(SiteModeContext context)
     {
-        return Resolve(siteMode, SiteModePresentationPart.TitleSuffix, module => module.GetTitleSuffix());
+        return Resolve(context, SiteModePresentationPart.TitleSuffix, module => module.GetTitleSuffix());
     }
 
-    public string GetDefaultMetaDescription(SiteMode siteMode)
+    public string GetDefaultMetaDescription(SiteModeContext context)
     {
-        return Resolve(siteMode, SiteModePresentationPart.DefaultMetaDescription, module => module.GetDefaultMetaDescription());
+        return Resolve(
+            context,
+            SiteModePresentationPart.DefaultMetaDescription,
+            module => module.GetDefaultMetaDescription());
     }
 
-    public string GetFaviconPath(SiteMode siteMode)
+    public string GetFaviconPath(SiteModeContext context)
     {
-        var faviconPath = Resolve(siteMode, SiteModePresentationPart.Favicon, module => module.GetFaviconPath());
+        var faviconPath = Resolve(context, SiteModePresentationPart.Favicon, module => module.GetFaviconPath());
         if (AssetExists(faviconPath))
         {
             return faviconPath;
         }
 
-        return _unassignedModule.GetFaviconPath();
+        return _fallbackModule.GetFaviconPath();
     }
 
-    public ArticlesIndexPresentationViewModel GetArticlesIndexPresentation(SiteMode siteMode)
+    public ArticlesIndexPresentationViewModel GetArticlesIndexPresentation(SiteModeContext context)
     {
-        return Resolve(siteMode, SiteModePresentationPart.ArticlesIndex, module => module.GetArticlesIndexPresentation());
+        return Resolve(
+            context,
+            SiteModePresentationPart.ArticlesIndex,
+            module => module.GetArticlesIndexPresentation());
     }
 
-    private T Resolve<T>(SiteMode siteMode, SiteModePresentationPart presentationPart, Func<ISiteModePresentationModule, T> resolve)
+    public string GetTitleSuffix(SiteMode siteMode) =>
+        GetTitleSuffix(BuildCompatibilityContext(siteMode));
+
+    public string GetDefaultMetaDescription(SiteMode siteMode) =>
+        GetDefaultMetaDescription(BuildCompatibilityContext(siteMode));
+
+    public string GetFaviconPath(SiteMode siteMode) =>
+        GetFaviconPath(BuildCompatibilityContext(siteMode));
+
+    public ArticlesIndexPresentationViewModel GetArticlesIndexPresentation(SiteMode siteMode) =>
+        GetArticlesIndexPresentation(BuildCompatibilityContext(siteMode));
+
+    private T Resolve<T>(
+        SiteModeContext context,
+        SiteModePresentationPart presentationPart,
+        Func<ISiteModePresentationModule, T> resolve)
     {
-        var module = _modules.GetValueOrDefault(siteMode) ?? _unassignedModule;
+        ArgumentNullException.ThrowIfNull(context);
+
+        var key = GetPresentationKey(context);
+        var module = _modules.GetValueOrDefault(key) ?? _fallbackModule;
         try
         {
             return resolve(module);
         }
-        catch (SiteModePresentationPartUnavailableException exception) when (exception.PresentationPart == presentationPart && module.SiteMode != SiteMode.Unassigned)
+        catch (SiteModePresentationPartUnavailableException exception)
+            when (exception.PresentationPart == presentationPart
+                && !string.Equals(
+                    module.PresentationKey,
+                    FrameworkRuntimeStates.Fallback.Id,
+                    StringComparison.Ordinal))
         {
-            return resolve(_unassignedModule);
+            return resolve(_fallbackModule);
         }
+    }
+
+    private static string GetPresentationKey(SiteModeContext context)
+    {
+        if (context.ActiveMode is not null)
+        {
+            return context.ActiveMode.Id;
+        }
+
+        if (context.FrameworkState is not null)
+        {
+            return context.FrameworkState.Id;
+        }
+
+        return FrameworkRuntimeStates.Fallback.Id;
+    }
+
+    private static SiteModeContext BuildCompatibilityContext(SiteMode siteMode)
+    {
+        if (BuiltInSiteModes.TryGetByLegacyMode(siteMode, out var definition))
+        {
+            return new SiteModeContext
+            {
+                ActiveMode = definition
+            };
+        }
+
+        if (FrameworkRuntimeStates.TryGetByLegacyMode(siteMode, out var frameworkState))
+        {
+            return new SiteModeContext
+            {
+                FrameworkState = frameworkState
+            };
+        }
+
+        throw new ArgumentOutOfRangeException(nameof(siteMode), siteMode, "Unknown site mode.");
     }
 
     private bool AssetExists(string path)
