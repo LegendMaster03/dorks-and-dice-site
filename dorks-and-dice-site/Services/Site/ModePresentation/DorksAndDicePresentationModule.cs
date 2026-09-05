@@ -1,11 +1,10 @@
 using dorks_and_dice_site.Models.Articles;
-using dorks_and_dice_site.Models.Site;
 
 namespace dorks_and_dice_site.Services.Site.ModePresentation;
 
 public sealed class DorksAndDicePresentationModule : ISiteModePresentationModule
 {
-    public SiteMode SiteMode => SiteMode.DorksAndDice;
+    public string PresentationKey => BuiltInSiteModes.DorksAndDice.Id;
 
     public string GetTitleSuffix()
     {
