@@ -415,7 +415,9 @@ public sealed class ContentAssetService : IContentAssetService
         SiteModeContext modeContext,
         CancellationToken cancellationToken)
     {
-        var visibleMode = modeContext.SiteMode.ToString();
+        var visibleModeId = modeContext.ActiveModeId;
+        var legacyVisibleMode = modeContext.ActiveMode?.LegacyMode?.ToString();
+
         for (var pageSourceIndex = 0; pageSourceIndex < pageSources.Count; pageSourceIndex++)
         {
             var pageSource = pageSources[pageSourceIndex];
@@ -438,9 +440,11 @@ public sealed class ContentAssetService : IContentAssetService
                             && dependency.AssetSourceKey == assetSourceKey
                             && dependency.AssetKey == assetKey))
                     && (modeContext.IsDevelopmentPreview
-                        || context.RevisionModes.Any(mode =>
-                            mode.RevisionId == page.CurrentRevisionId
-                            && mode.SiteMode == visibleMode)))
+                        || (visibleModeId != null
+                            && context.RevisionModes.Any(mode =>
+                                mode.RevisionId == page.CurrentRevisionId
+                                && (mode.SiteMode == visibleModeId
+                                    || (legacyVisibleMode != null && mode.SiteMode == legacyVisibleMode))))))
                 .Select(page => new { page.ContentKey, page.Slug })
                 .ToListAsync(cancellationToken);
 
@@ -450,8 +454,7 @@ public sealed class ContentAssetService : IContentAssetService
                 {
                     var visiblePage = await _catalog.GetForDetailAsync(
                         page.Slug,
-                        modeContext.SiteMode,
-                        isDevelopmentPreview: true,
+                        modeContext,
                         cancellationToken);
                     if (visiblePage is not null
                         && string.Equals(visiblePage.Id, page.ContentKey, StringComparison.OrdinalIgnoreCase)
@@ -539,7 +542,7 @@ public sealed class ContentAssetService : IContentAssetService
 
         return new SiteModeContext
         {
-            SiteMode = SiteMode.Development,
+            FrameworkState = FrameworkRuntimeStates.TrustedPreview,
             IsDevelopmentPreview = true
         };
     }
