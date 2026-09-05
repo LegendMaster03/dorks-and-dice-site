@@ -18,7 +18,7 @@ public sealed class SiteModeHomeServiceTests
         var homepage = new HomepageContentViewModel
         {
             Item = new ContentItem { Id = "home", Slug = "home", Title = "Home" },
-            RenderedBodyHtml = "<p>Database homepage</p>"
+            Fragments = [ContentPageFragment.Html("<p>Database homepage</p>")]
         };
         var service = new SiteModeHomeService(
             new TestHomepageContentService(homepage),
