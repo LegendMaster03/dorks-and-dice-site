@@ -1,8 +1,10 @@
 using System.Net;
 using System.Security;
 using System.Threading.RateLimiting;
+using dorks_and_dice_site.Framework.Plugins;
 using dorks_and_dice_site.Models.Identity;
 using dorks_and_dice_site.Models.Site;
+using dorks_and_dice_site.Plugins.ProfessionalPortfolio;
 using dorks_and_dice_site.Services.Resume;
 using dorks_and_dice_site.Services.Content.Storage;
 using dorks_and_dice_site.Services.GameServers.Minecraft;
@@ -25,6 +27,10 @@ builder.Services.Configure<MinecraftServerOptions>(
     builder.Configuration.GetSection(MinecraftServerOptions.SectionName));
 builder.Services.AddSingleton<IMinecraftServerStatusService, MinecraftServerStatusService>();
 builder.Services.AddContentStorage(builder.Configuration, builder.Environment.ContentRootPath);
+builder.Services.AddSitePlugins(
+[
+    new ProfessionalPortfolioPlugin()
+]);
 builder.Services.AddScoped<IResumeContentService, ResumeContentService>();
 builder.Services.AddSingleton<IToolRegistry, JsonToolRegistry>();
 builder.Services.AddSingleton<ICampaignAccessStore, JsonCampaignAccessStore>();
