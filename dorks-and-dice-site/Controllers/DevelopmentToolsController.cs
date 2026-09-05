@@ -129,13 +129,13 @@ public sealed partial class DevelopmentToolsController : Controller
         }
 
         if (!string.IsNullOrWhiteSpace(model.FrontendEntryPoint)
-            && !model.FrontendEntryPoint.StartsWith('/', StringComparison.Ordinal))
+            && !model.FrontendEntryPoint.StartsWith("/", StringComparison.Ordinal))
         {
             ModelState.AddModelError(nameof(model.FrontendEntryPoint), "Frontend entry point must be an absolute path beginning with '/'.");
         }
 
         if (!string.IsNullOrWhiteSpace(model.HealthPath)
-            && !model.HealthPath.StartsWith('/', StringComparison.Ordinal))
+            && !model.HealthPath.StartsWith("/", StringComparison.Ordinal))
         {
             ModelState.AddModelError(nameof(model.HealthPath), "Health path must begin with '/'.");
         }
