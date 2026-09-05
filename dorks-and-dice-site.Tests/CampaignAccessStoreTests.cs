@@ -1,5 +1,6 @@
 using dorks_and_dice_site.Models.Campaigns;
 using dorks_and_dice_site.Services.Campaigns;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
