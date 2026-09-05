@@ -10,5 +10,4 @@ public sealed class ArticlesIndexPresentationViewModel
     public string EmptyStateText { get; init; } = "No listed articles are available for this site mode yet.";
     public bool ShowSearchFilter { get; init; } = true;
     public bool ShowCategoryFilter { get; init; } = true;
-    public bool ForceProfessionalFilter { get; init; }
 }
