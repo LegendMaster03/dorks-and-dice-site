@@ -1,5 +1,4 @@
 using dorks_and_dice_site.Models.Content;
-using dorks_and_dice_site.Models.Site;
 using dorks_and_dice_site.Services.Content;
 using dorks_and_dice_site.Services.Content.Storage;
 using dorks_and_dice_site.Services.Site;
@@ -23,7 +22,7 @@ public sealed class ContentAssetVisibilityTests
     public async Task AttachedButUnreferencedMediaIsNotServed()
     {
         using var fixture = new VisibilityFixture();
-        await fixture.CreatePageAsync("Global", "attached-page", SiteMode.Professional);
+        await fixture.CreatePageAsync("Global", "attached-page", BuiltInSiteModes.Professional.Id);
         var asset = await fixture.UploadAsync("Global", "attached.png", 2);
         await fixture.Assets.AttachAsync("Global", "attached-page", "Global", asset.AssetKey);
 
@@ -34,7 +33,7 @@ public sealed class ContentAssetVisibilityTests
     public async Task MediaReferencedByAVisibleCurrentRevisionIsServed()
     {
         using var fixture = new VisibilityFixture();
-        await fixture.CreatePageAsync("Global", "visible-page", SiteMode.Professional);
+        await fixture.CreatePageAsync("Global", "visible-page", BuiltInSiteModes.Professional.Id);
         var asset = await fixture.UploadAsync("Global", "visible.png", 3);
         await fixture.ReferenceAsync("Global", "visible-page", "Global", asset);
 
@@ -48,7 +47,7 @@ public sealed class ContentAssetVisibilityTests
     public async Task MediaReferencedOnlyByASupersededRevisionIsNotServed()
     {
         using var fixture = new VisibilityFixture();
-        await fixture.CreatePageAsync("Global", "revised-page", SiteMode.Professional);
+        await fixture.CreatePageAsync("Global", "revised-page", BuiltInSiteModes.Professional.Id);
         var asset = await fixture.UploadAsync("Global", "superseded.png", 4);
         await fixture.ReferenceAsync("Global", "revised-page", "Global", asset);
 
@@ -64,7 +63,7 @@ public sealed class ContentAssetVisibilityTests
     public async Task MediaReferencedOnlyByAPageHiddenInTheCurrentModeIsNotServed()
     {
         using var fixture = new VisibilityFixture();
-        await fixture.CreatePageAsync("Global", "hidden-page", SiteMode.DorksAndDice);
+        await fixture.CreatePageAsync("Global", "hidden-page", BuiltInSiteModes.DorksAndDice.Id);
         var asset = await fixture.UploadAsync("Global", "hidden.png", 5);
         await fixture.ReferenceAsync("Global", "hidden-page", "Global", asset);
 
@@ -75,7 +74,7 @@ public sealed class ContentAssetVisibilityTests
     public async Task GlobalMediaReferencedByAVisibleModeSourcePageIsServed()
     {
         using var fixture = new VisibilityFixture();
-        await fixture.CreatePageAsync("Mode", "dependent-page", SiteMode.Professional);
+        await fixture.CreatePageAsync("Mode", "dependent-page", BuiltInSiteModes.Professional.Id);
         var asset = await fixture.UploadAsync("Global", "dependency.png", 6);
         await fixture.ReferenceAsync("Mode", "dependent-page", "Global", asset);
 
@@ -86,10 +85,10 @@ public sealed class ContentAssetVisibilityTests
     public async Task MediaReferencedOnlyByAShadowedPageIsNotServed()
     {
         using var fixture = new VisibilityFixture();
-        await fixture.CreatePageAsync("Global", "shadowed-page", SiteMode.Professional);
+        await fixture.CreatePageAsync("Global", "shadowed-page", BuiltInSiteModes.Professional.Id);
         var asset = await fixture.UploadAsync("Global", "shadowed.png", 7);
         await fixture.ReferenceAsync("Global", "shadowed-page", "Global", asset);
-        await fixture.CreatePageAsync("Mode", "shadowed-page", SiteMode.Professional);
+        await fixture.CreatePageAsync("Mode", "shadowed-page", BuiltInSiteModes.Professional.Id);
 
         Assert.Null(await fixture.Assets.GetForRequestAsync(asset.AssetKey, asset.FileName));
     }
@@ -122,12 +121,14 @@ public sealed class ContentAssetVisibilityTests
             var httpContext = new DefaultHttpContext();
             httpContext.Items[SiteModeContext.HttpContextItemKey] = new SiteModeContext
             {
-                SiteMode = SiteMode.Professional
+                ActiveMode = BuiltInSiteModes.Professional
             };
             var accessor = new HttpContextAccessor { HttpContext = httpContext };
             var repository = new CompositeContentRepository(accessor, Registry);
             var catalog = new ContentCatalogService(repository);
-            Authoring = new ContentAuthoringService(Registry);
+            Authoring = new ContentAuthoringService(
+                Registry,
+                new SiteModeRegistry(BuiltInSiteModes.All));
             Assets = new ContentAssetService(Registry, accessor, catalog);
         }
 
@@ -135,12 +136,12 @@ public sealed class ContentAssetVisibilityTests
         public ContentAuthoringService Authoring { get; }
         public ContentAssetService Assets { get; }
 
-        public async Task CreatePageAsync(string sourceKey, string slug, SiteMode visibleMode)
+        public async Task CreatePageAsync(string sourceKey, string slug, string visibleModeId)
         {
             var model = Authoring.GetNew(sourceKey);
             model.Document.Id = slug;
             model.Document.Slug = slug;
-            model.Document.VisibleModesSelection = [visibleMode.ToString()];
+            model.Document.VisibleModesSelection = [visibleModeId];
             await Authoring.CreateAsync(model.Document);
         }
 
