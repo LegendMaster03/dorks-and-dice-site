@@ -46,7 +46,7 @@
         <div class="col-md-6">
             <label asp-for="UpstreamBaseUrl" class="form-label">Upstream base URL</label>
             <input asp-for="UpstreamBaseUrl" class="form-control" placeholder="http://initiative:8080" />
-            <div class="form-text">Internal HTTP address where the running tool can be reached, usually by Docker service name and container port.</div>
+            <div class="form-text">Internal HTTP address where the running tool can be reached. <code>localhost</code> and single-label service names such as <code>initiative</code> are allowed by default; FQDNs and literal non-loopback IPs must be explicitly allowlisted in <code>ToolHosting:AllowedUpstreamHosts</code>.</div>
             <span asp-validation-for="UpstreamBaseUrl" class="text-danger"></span>
         </div>
         <div class="col-md-6">
