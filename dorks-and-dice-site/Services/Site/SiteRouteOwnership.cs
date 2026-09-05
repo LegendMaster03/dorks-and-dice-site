@@ -25,9 +25,7 @@ public static class SiteRouteOwnership
                 || IsProfessionalOwnedPath(normalizedPath)
                 || IsProfessionalAssetPath(normalizedPath)
                 || IsAssetException(SiteMode.Professional, normalizedPath),
-            SiteMode.DorksAndDice => isSharedPath
-                || IsDorksAndDiceOwnedPath(normalizedPath)
-                || IsDorksAndDiceAssetPath(normalizedPath),
+            SiteMode.DorksAndDice => isSharedPath || IsDorksAndDiceAssetPath(normalizedPath),
             SiteMode.Unassigned => IsUnassignedModePath(normalizedPath)
                 || IsContentMediaPath(normalizedPath)
                 || IsSharedStaticAssetPath(normalizedPath)
@@ -39,17 +37,16 @@ public static class SiteRouteOwnership
 
     private static bool IsModeAdaptivePath(string path)
     {
-        return path == "/" || path == "/articles" || path.StartsWith("/articles/");
+        return path == "/"
+            || path == "/articles"
+            || path.StartsWith("/articles/")
+            || path == "/tools"
+            || path.StartsWith("/tools/", StringComparison.Ordinal);
     }
 
     private static bool IsProfessionalOwnedPath(string path)
     {
         return path == "/resume" || path.StartsWith("/resume/");
-    }
-
-    private static bool IsDorksAndDiceOwnedPath(string path)
-    {
-        return path == "/tools" || path.StartsWith("/tools/", StringComparison.Ordinal);
     }
 
     private static bool IsSharedSystemPath(string path)
