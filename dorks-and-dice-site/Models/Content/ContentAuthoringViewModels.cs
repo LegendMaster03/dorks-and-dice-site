@@ -1,7 +1,11 @@
+using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
+
 namespace dorks_and_dice_site.Models.Content;
 
 public sealed class ContentAuthoringDocument
 {
+    private string _visibleModesText = string.Empty;
+
     public bool IsNew { get; set; }
     public string SourceKey { get; set; } = string.Empty;
     public string Id { get; set; } = string.Empty;
@@ -12,9 +16,13 @@ public sealed class ContentAuthoringDocument
     public string TagsText { get; set; } = string.Empty;
 
     // Legacy/free-text compatibility input. The checkbox collection below is the normal editor path,
-    // so this value is legitimately absent on a submitted form and must not be implicitly required
-    // by ASP.NET Core's non-nullable reference-type model validation.
-    public string? VisibleModesText { get; set; }
+    // so an empty hidden value is valid and must not participate in MVC required-field validation.
+    [ValidateNever]
+    public string VisibleModesText
+    {
+        get => _visibleModesText;
+        set => _visibleModesText = value ?? string.Empty;
+    }
 
     public List<string> VisibleModesSelection { get; set; } = [];
     public string BodyFormat { get; set; } = "markdown";
