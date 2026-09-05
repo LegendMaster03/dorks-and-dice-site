@@ -36,12 +36,12 @@
     var currentDevelopmentPreviewReturnUrl = $"{Context.Request.Path}{(string.IsNullOrWhiteSpace(returnQuery) ? string.Empty : $"?{returnQuery}")}";
     var developmentPreviewReturnUrl = ViewData["DevelopmentPreviewReturnUrl"]?.ToString() ?? currentDevelopmentPreviewReturnUrl;
     var brandingHeaderPartialPath = SiteModePartialResolver.GetBrandingPartialPath(
-        siteModeContext.SiteMode,
+        siteModeContext,
         SiteModeBrandingPart.Header);
     var brandingFooterPartialPath = SiteModePartialResolver.GetBrandingPartialPath(
-        siteModeContext.SiteMode,
+        siteModeContext,
         SiteModeBrandingPart.Footer);
-    var developmentToolsPartialPath = "~/Views/SiteModes/Development/_DevelopmentTools.cshtml";
+    var developmentToolsPartialPath = $"~/Views/SiteModes/{FrameworkRuntimeStates.TrustedPreview.ViewFolder}/_DevelopmentTools.cshtml";
     var defaultSourceKeys = canUseDeveloperTools
         ? ContentSourceRegistry.GetDefaultSources(siteModeContext.SiteMode)
             .Select(source => source.Key)
