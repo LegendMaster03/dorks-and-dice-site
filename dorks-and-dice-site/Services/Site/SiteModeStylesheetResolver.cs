@@ -4,36 +4,57 @@ namespace dorks_and_dice_site.Services.Site;
 
 public sealed class SiteModeStylesheetResolver : ISiteModeStylesheetResolver
 {
-    private const string ProfessionalStylesheetPath = "~/site-modes/professional/css/site.css";
-    private const string DorksAndDiceStylesheetPath = "~/site-modes/dorks-and-dice/css/site.css";
-    private const string DevelopmentStylesheetPath = "~/site-modes/development/css/site.css";
+    // Trusted Preview still uses the legacy development asset location during migration.
+    private const string TrustedPreviewStylesheetPath = "~/site-modes/development/css/site.css";
 
-    public IReadOnlyList<string> GetStylesheetPaths(SiteMode siteMode, bool includeDevelopmentTools)
+    public IReadOnlyList<string> GetStylesheetPaths(SiteModeContext context)
     {
-        var paths = new List<string>(2);
+        ArgumentNullException.ThrowIfNull(context);
 
-        switch (siteMode)
+        var paths = new List<string>(2);
+        if (context.ActiveMode is not null)
         {
-            case SiteMode.Professional:
-                paths.Add(ProfessionalStylesheetPath);
-                break;
-            case SiteMode.DorksAndDice:
-                paths.Add(DorksAndDiceStylesheetPath);
-                break;
-            case SiteMode.Development:
-                paths.Add(DevelopmentStylesheetPath);
-                break;
-            case SiteMode.Unassigned:
-                break;
-            default:
-                throw new ArgumentOutOfRangeException(nameof(siteMode), siteMode, "Unknown site mode.");
+            paths.Add(BuildModeStylesheetPath(context.ActiveMode));
         }
 
-        if (includeDevelopmentTools && siteMode != SiteMode.Development)
+        if (context.IsTrustedPreview)
         {
-            paths.Add(DevelopmentStylesheetPath);
+            paths.Add(TrustedPreviewStylesheetPath);
         }
 
         return paths;
     }
+
+    public IReadOnlyList<string> GetStylesheetPaths(SiteMode siteMode, bool includeDevelopmentTools)
+    {
+        SiteModeDefinition? activeMode = null;
+        FrameworkRuntimeStateDefinition? frameworkState = null;
+
+        if (BuiltInSiteModes.TryGetByLegacyMode(siteMode, out var definition))
+        {
+            activeMode = definition;
+        }
+        else if (FrameworkRuntimeStates.TryGetByLegacyMode(siteMode, out var state))
+        {
+            frameworkState = state;
+        }
+        else
+        {
+            throw new ArgumentOutOfRangeException(nameof(siteMode), siteMode, "Unknown site mode.");
+        }
+
+        if (includeDevelopmentTools)
+        {
+            frameworkState = FrameworkRuntimeStates.TrustedPreview;
+        }
+
+        return GetStylesheetPaths(new SiteModeContext
+        {
+            ActiveMode = activeMode,
+            FrameworkState = frameworkState
+        });
+    }
+
+    private static string BuildModeStylesheetPath(SiteModeDefinition mode) =>
+        $"~/site-modes/{mode.AssetFolder}/css/site.css";
 }
