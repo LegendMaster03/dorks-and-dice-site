@@ -53,10 +53,8 @@ public sealed class SiteModeContext
         init => _legacySiteModeOverride = value;
     }
 
-    public bool IsProfessionalDomain { get; init; }
-    public bool IsDorksAndDiceDomain { get; init; }
     public bool HasTrustedAccess { get; init; }
-    public bool IsAssignedDomain => IsProfessionalDomain || IsDorksAndDiceDomain || HasTrustedAccess;
+    public bool IsAssignedDomain => ActiveMode is not null || HasTrustedAccess;
 
     // Compatibility name: this currently means the authenticated user can use developer
     // controls while in Trusted Preview, not that Development is a normal site mode.
