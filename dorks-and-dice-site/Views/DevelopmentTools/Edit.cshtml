@@ -21,6 +21,7 @@
         <div class="col-md-6">
             <label asp-for="DisplayName" class="form-label">Display name</label>
             <input asp-for="DisplayName" class="form-control" />
+            <div class="form-text">Human-readable name shown in tool listings and page headings.</div>
             <span asp-validation-for="DisplayName" class="text-danger"></span>
         </div>
         <div class="col-md-6">
@@ -29,39 +30,61 @@
                 <span class="input-group-text">/tools/</span>
                 <input asp-for="Slug" class="form-control" />
             </div>
+            <div class="form-text">Stable URL segment used by the host, for example <code>initiative</code>.</div>
             <span asp-validation-for="Slug" class="text-danger"></span>
         </div>
         <div class="col-12">
             <label asp-for="Description" class="form-label">Description</label>
             <textarea asp-for="Description" class="form-control" rows="3"></textarea>
+            <div class="form-text">Optional user-facing summary of what the tool does.</div>
         </div>
         <div class="col-md-6">
             <label asp-for="IntegrationType" class="form-label">Integration type</label>
             <select asp-for="IntegrationType" asp-items="Html.GetEnumSelectList<ToolIntegrationType>()" class="form-select"></select>
+            <div class="form-text"><strong>Embedded Module</strong> mounts the tool UI inside the site's normal page shell. <strong>Proxied Application</strong> gives the tool control of its routed application surface.</div>
         </div>
         <div class="col-md-6">
             <label asp-for="UpstreamBaseUrl" class="form-label">Upstream base URL</label>
             <input asp-for="UpstreamBaseUrl" class="form-control" placeholder="http://initiative:8080" />
+            <div class="form-text">Internal HTTP address where the running tool can be reached, usually by Docker service name and container port.</div>
             <span asp-validation-for="UpstreamBaseUrl" class="text-danger"></span>
         </div>
         <div class="col-md-6">
             <label asp-for="FrontendEntryPoint" class="form-label">Frontend entry point</label>
             <input asp-for="FrontendEntryPoint" class="form-control" placeholder="/app.js" />
+            <div class="form-text">For an embedded module, the browser-loadable JavaScript or module path that mounts the tool UI into the host page.</div>
             <span asp-validation-for="FrontendEntryPoint" class="text-danger"></span>
         </div>
         <div class="col-md-6">
             <label asp-for="HealthPath" class="form-label">Health path</label>
             <input asp-for="HealthPath" class="form-control" placeholder="/health" />
+            <div class="form-text">Optional lightweight endpoint the host can call to verify that the tool service is running and responsive. It is combined with the upstream base URL.</div>
             <span asp-validation-for="HealthPath" class="text-danger"></span>
+        </div>
+        <div class="col-12">
+            <fieldset>
+                <legend class="form-label mb-2">Available site modes</legend>
+                <div class="form-check">
+                    <input asp-for="DorksAndDiceMode" class="form-check-input" />
+                    <label asp-for="DorksAndDiceMode" class="form-check-label">Dorks &amp; Dice</label>
+                </div>
+                <div class="form-check mt-2">
+                    <input asp-for="ProfessionalMode" class="form-check-input" />
+                    <label asp-for="ProfessionalMode" class="form-check-label">Professional</label>
+                </div>
+                <div class="form-text">A tool can be available in one or both public site modes. The same <code>/tools/{slug}</code> route resolves according to the active mode.</div>
+            </fieldset>
         </div>
         <div class="col-12">
             <div class="form-check">
                 <input asp-for="AllowAnonymous" class="form-check-input" />
                 <label asp-for="AllowAnonymous" class="form-check-label">Allow anonymous use</label>
+                <div class="form-text">When enabled, visitors do not need an account to open the tool. Signed-in users may still receive optional account or campaign features later.</div>
             </div>
-            <div class="form-check mt-2">
+            <div class="form-check mt-3">
                 <input asp-for="Enabled" class="form-check-input" />
                 <label asp-for="Enabled" class="form-check-label">Enable public route</label>
+                <div class="form-text">Controls whether the registration is currently exposed at all. A disabled tool remains configured but returns as unavailable publicly.</div>
             </div>
         </div>
     </div>
