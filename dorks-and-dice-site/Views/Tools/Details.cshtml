@@ -5,7 +5,7 @@
 }
 
 <div class="mb-4">
-    <p class="text-uppercase text-muted small mb-1">Dorks & Dice tool</p>
+    <p class="text-uppercase text-muted small mb-1">Hosted tool</p>
     <h1 class="h2 mb-2">@Model.DisplayName</h1>
     @if (!string.IsNullOrWhiteSpace(Model.Description))
     {
@@ -15,20 +15,23 @@
 
 @if (Model.IntegrationType == ToolIntegrationType.EmbeddedModule)
 {
-    <div id="dnd-tool-root" data-tool-slug="@Model.Slug" class="card card-body">
+    <div id="tool-root" data-tool-slug="@Model.Slug">
         @if (string.IsNullOrWhiteSpace(Model.UpstreamBaseUrl) || string.IsNullOrWhiteSpace(Model.FrontendEntryPoint))
         {
-            <p class="mb-0 text-body-secondary">This tool is registered but its embedded module endpoint is not configured yet.</p>
-        }
-        else
-        {
-            <p class="mb-0 text-body-secondary">The embedded module is registered. Asset proxying is the next Tool Hosting implementation step.</p>
+            <div class="card card-body">
+                <p class="mb-0 text-body-secondary">This tool is registered but its embedded module endpoint is not configured yet.</p>
+            </div>
         }
     </div>
+
+    @if (!string.IsNullOrWhiteSpace(Model.UpstreamBaseUrl) && !string.IsNullOrWhiteSpace(Model.FrontendEntryPoint))
+    {
+        <script type="module" src="/tool-modules/@Model.Slug@Model.FrontendEntryPoint"></script>
+    }
 }
 else
 {
     <div class="card card-body">
-        <p class="mb-0 text-body-secondary">This proxied application is registered. Request forwarding is the next Tool Hosting implementation step.</p>
+        <p class="mb-0 text-body-secondary">This proxied application is registered. Full application request forwarding has not been implemented yet.</p>
     </div>
 }
