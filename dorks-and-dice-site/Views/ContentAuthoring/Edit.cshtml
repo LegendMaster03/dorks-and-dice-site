@@ -1,5 +1,4 @@
 @model dorks_and_dice_site.Models.Content.ContentAuthoringEditViewModel
-@using dorks_and_dice_site.Models.Site
 @{
     var document = Model.Document;
     ViewData["Title"] = document.IsNew ? "New Content" : $"Edit {document.Id}";
@@ -17,9 +16,7 @@
         : hasExperienceTag && !hasProjectTag
             ? $"/resume/{document.Slug}?context=experience"
             : $"/resume/{document.Slug}";
-    var selectableModes = Enum.GetValues<SiteMode>()
-        .Where(mode => mode is not SiteMode.Development and not SiteMode.Unassigned)
-        .ToList();
+    var selectableModes = Model.Modes;
     IEnumerable<string> selectedModeValues = document.VisibleModesSelection.Count > 0
         ? document.VisibleModesSelection
         : document.VisibleModesText.Split([',', '\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
@@ -85,17 +82,17 @@
                 <div class="dropdown-menu w-100 p-3" aria-labelledby="visible-mode-dropdown">
                     @foreach (var mode in selectableModes)
                     {
-                        var modeName = mode.ToString();
+                        var modeId = mode.Id;
                         <div class="form-check">
                             <input class="form-check-input content-visible-mode" type="checkbox"
-                                   name="Document.VisibleModesSelection" value="@modeName" id="visible-mode-@modeName"
-                                   checked="@(selectedModes.Contains(modeName))" />
-                            <label class="form-check-label" for="visible-mode-@modeName">@modeName</label>
+                                   name="Document.VisibleModesSelection" value="@modeId" id="visible-mode-@modeId"
+                                   checked="@(selectedModes.Contains(modeId))" />
+                            <label class="form-check-label" for="visible-mode-@modeId">@mode.DisplayName</label>
                         </div>
                     }
                 </div>
             </div>
-            <div class="form-text">Choose one or more public modes. Development and the Unassigned fall-through mode are not authoring targets.</div>
+            <div class="form-text">Choose one or more registered site modes. Framework fallback and Trusted Preview are not content visibility targets.</div>
         </div>
     </div>
 
