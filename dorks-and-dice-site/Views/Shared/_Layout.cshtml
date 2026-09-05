@@ -1,10 +1,12 @@
 @using dorks_and_dice_site.Services.Site
 @using dorks_and_dice_site.Services.Content.Storage
 @using dorks_and_dice_site.Services.Identity
+@using dorks_and_dice_site.Models.Identity
 @using dorks_and_dice_site.Models.Site
 @using System.Text.Json
 @inject ISiteModePartialResolver SiteModePartialResolver
 @inject ISiteModePresentationService SiteModePresentationService
+@inject ISiteModeRegistry SiteModeRegistry
 @inject IContentSourceRegistry ContentSourceRegistry
 @{
     var siteModeContext = Context.GetSiteModeContext();
@@ -50,9 +52,30 @@
     var enabledSourceKeys = siteModeContext.HasContentSourceOverride
         ? siteModeContext.EnabledContentSources
         : defaultSourceKeys;
+    var activeModeId = siteModeContext.ActiveModeId;
+    var canPreviewUnlisted = User.Identity?.IsAuthenticated == true
+        && activeModeId is not null
+        && (User.IsInRole(AccountRoles.Admin)
+            || User.HasClaim(
+                AccountClaimTypes.ScopedRole,
+                $"{activeModeId}:{ScopedAccountRoles.Editor}"));
+    var previewModeOptions = SiteModeRegistry.All
+        .Select(mode => new DevelopmentPreviewModeOptionViewModel
+        {
+            Id = mode.Id,
+            DisplayName = mode.DisplayName
+        })
+        .Append(new DevelopmentPreviewModeOptionViewModel
+        {
+            Id = FrameworkRuntimeStates.TrustedPreview.Id,
+            DisplayName = FrameworkRuntimeStates.TrustedPreview.DisplayName
+        })
+        .ToList();
     var developmentTools = new DevelopmentPreviewToolbarViewModel
     {
-        SelectedMode = siteModeContext.SiteMode,
+        SelectedModeId = activeModeId ?? FrameworkRuntimeStates.TrustedPreview.Id,
+        ModeOptions = previewModeOptions,
+        CanPreviewUnlisted = canPreviewUnlisted,
         IncludeUnlistedArticles = siteModeContext.IncludeUnlistedArticles,
         RouteRestrictionMismatch = siteModeContext.DevelopmentPreviewRouteRestrictionMismatch,
         CanUseDeveloperTools = canUseDeveloperTools,
