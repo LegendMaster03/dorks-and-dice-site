@@ -58,6 +58,7 @@ public sealed class ToolHostContextController : ControllerBase
         {
             ToolSlug = tool.Slug,
             SiteMode = SiteModeValues.ToModeValue(siteMode),
+            ApiBaseUrl = $"/tool-host/{tool.Slug}/api",
             User = userContext
         });
     }
