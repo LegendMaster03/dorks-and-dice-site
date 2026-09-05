@@ -62,6 +62,10 @@ builder.Services.AddSingleton<ISiteModePresentationModule, DorksAndDicePresentat
 builder.Services.AddSingleton<ISiteModePresentationModule, ProfessionalPresentationModule>();
 builder.Services.AddSingleton<ISiteModePresentationModule, DevelopmentPresentationModule>();
 builder.Services.AddSingleton<ISiteModePresentationModule, UnassignedPresentationModule>();
+builder.Services.AddScoped<ISiteModeHomeService, SiteModeHomeService>();
+builder.Services.AddScoped<ISiteModeHomeModule, DorksAndDiceHomeModule>();
+builder.Services.AddScoped<ISiteModeHomeModule, ProfessionalHomeModule>();
+builder.Services.AddScoped<ISiteModeHomeModule, FallbackHomeModule>();
 
 builder.Services.Configure<AccountEmailOptions>(
     builder.Configuration.GetSection(AccountEmailOptions.SectionName));
