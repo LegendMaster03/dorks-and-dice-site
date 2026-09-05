@@ -470,7 +470,7 @@ public sealed class ContentAuthoringService : IContentAuthoringService
 
         var selectedModes = document.VisibleModesSelection.Count > 0
             ? document.VisibleModesSelection
-            : document.VisibleModesText
+            : (document.VisibleModesText ?? string.Empty)
                 .Split([',', '\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
                 .ToList();
         var normalizedModeIds = selectedModes
@@ -494,7 +494,8 @@ public sealed class ContentAuthoringService : IContentAuthoringService
 
         if (!item.Tags.Any(ContentTags.IsContext))
         {
-            throw new InvalidOperationException("At least one context tag is required: project, experience, or article.");
+            throw new InvalidOperationException(
+                $"At least one context tag is required: {string.Join(", ", ContentTags.ContextTags.Order(StringComparer.OrdinalIgnoreCase))}.");
         }
 
         if (item.VisibleInModes.Count == 0)
