@@ -49,7 +49,8 @@ public sealed class ToolsController : Controller
 
         if (tool.IntegrationType == ToolIntegrationType.ProxiedApplication)
         {
-            if (!Request.Path.Value?.EndsWith('/', StringComparison.Ordinal) == true)
+            var requestPath = Request.Path.Value ?? string.Empty;
+            if (!requestPath.EndsWith("/", StringComparison.Ordinal))
             {
                 return RedirectPreserveMethod($"/tools/{tool.Slug}/{Request.QueryString}");
             }
