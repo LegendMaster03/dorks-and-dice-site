@@ -63,8 +63,7 @@ public sealed class ContentController : Controller
         var modeContext = HttpContext.GetSiteModeContext();
         var item = await _catalog.GetForDetailAsync(
             slug,
-            modeContext.SiteMode,
-            modeContext.IsDevelopmentPreview,
+            modeContext,
             cancellationToken);
 
         if (item is null)
@@ -77,8 +76,7 @@ public sealed class ContentController : Controller
 
             var targetItem = await _catalog.GetForDetailByIdAsync(
                 redirect.ContentKey,
-                modeContext.SiteMode,
-                modeContext.IsDevelopmentPreview,
+                modeContext,
                 cancellationToken);
             if (targetItem is null
                 || ResolveContextTag(targetItem, requestedContext, allowExperienceFallback) is null
@@ -119,7 +117,7 @@ public sealed class ContentController : Controller
             RenderedBodyHtml = _bodyRenderer.Render(item.BodyFormat, item.Body),
             BackLinks = backLinks,
             IsDevelopmentVisibilityOverride = modeContext.IsDevelopmentPreview
-                && !item.IsVisibleInMode(modeContext.SiteMode),
+                && !item.IsVisibleInMode(modeContext.ActiveModeId),
             IsDevelopmentPreview = modeContext.IsDevelopmentPreview,
             EditHref = canEdit ? $"/editor/content/{item.Slug}/edit" : null
         };
