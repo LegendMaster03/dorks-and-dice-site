@@ -58,8 +58,7 @@ public sealed class ProfessionalPresentationModule : ISiteModePresentationModule
             Eyebrow = "Articles",
             Title = "Long-Form Write-Ups",
             Description = "Technical investigations, puzzle walkthroughs, and narrative project notes.",
-            EmptyStateText = "No listed articles are available for this site mode yet.",
-            ForceProfessionalFilter = true
+            EmptyStateText = "No listed articles are available for this site mode yet."
         };
     }
 }
