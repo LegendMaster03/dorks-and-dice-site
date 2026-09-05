@@ -18,6 +18,18 @@ public sealed record SiteModeDefinition(
     // registry without introducing per-mode opt-in flags.
     public bool SupportsContent => true;
     public bool SupportsScopedEditor => true;
+
+    /// <summary>
+    /// Route prefixes owned by this mode in addition to the framework's shared mode-adaptive
+    /// routes. Prefixes match both the exact path and descendants below that path.
+    /// </summary>
+    public IReadOnlyList<string> OwnedRoutePrefixes { get; init; } = [];
+
+    /// <summary>
+    /// Exact static-asset paths this mode may use outside its own asset folder. This is for
+    /// narrow compatibility exceptions, not general cross-mode asset sharing.
+    /// </summary>
+    public IReadOnlyList<string> AdditionalAssetPaths { get; init; } = [];
 }
 
 public static class BuiltInSiteModes
@@ -34,7 +46,11 @@ public static class BuiltInSiteModes
         DisplayName: "Professional",
         LegacyMode: SiteMode.Professional,
         ViewFolder: "Professional",
-        AssetFolder: "professional");
+        AssetFolder: "professional")
+    {
+        OwnedRoutePrefixes = ["/resume"],
+        AdditionalAssetPaths = ["/site-modes/dorks-and-dice/images/favicon.svg"]
+    };
 
     /// <summary>
     /// The normal site modes shipped by this deployment. Framework fallback and Trusted
