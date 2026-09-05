@@ -53,6 +53,7 @@ builder.Services
         UseCookies = false
     });
 builder.Services.AddSingleton<SiteModeOptions>();
+builder.Services.AddSingleton<ISiteModeRegistry>(_ => new SiteModeRegistry(BuiltInSiteModes.All));
 builder.Services.AddSingleton<ISiteModePartialResolver, SiteModePartialResolver>();
 builder.Services.AddSingleton<ISiteModeStylesheetResolver, SiteModeStylesheetResolver>();
 builder.Services.AddSingleton<ISiteModePresentationService, SiteModePresentationService>();
@@ -336,7 +337,8 @@ app.MapGet("/sitemap.xml", (HttpContext context) =>
 
 app.MapPost("/development-preview", async (
     HttpContext context,
-    IContentSourceRegistry contentSourceRegistry) =>
+    IContentSourceRegistry contentSourceRegistry,
+    ISiteModeRegistry siteModeRegistry) =>
 {
     var siteModeContext = context.GetSiteModeContext();
     if (!siteModeContext.HasTrustedAccess)
@@ -354,19 +356,26 @@ app.MapPost("/development-preview", async (
     if (form.ContainsKey("siteMode"))
     {
         var requestedMode = form["siteMode"].FirstOrDefault();
-        if (requestedMode is not (SiteModeValues.DorksAndDiceModeValue
-            or SiteModeValues.ProfessionalModeValue
-            or SiteModeValues.DevelopmentModeValue))
+        var isTrustedPreviewRoot = string.Equals(
+            requestedMode,
+            FrameworkRuntimeStates.TrustedPreview.Id,
+            StringComparison.Ordinal);
+        if (!isTrustedPreviewRoot
+            && (string.IsNullOrWhiteSpace(requestedMode)
+                || !siteModeRegistry.TryGetById(requestedMode, out _)))
         {
-            requestedMode = SiteModeValues.DevelopmentModeValue;
+            requestedMode = FrameworkRuntimeStates.TrustedPreview.Id;
         }
 
-        context.Response.Cookies.Append(SiteModeValues.DevelopmentSiteModeCookie, requestedMode, cookieOptions);
+        context.Response.Cookies.Append(
+            SiteModeValues.DevelopmentSiteModeCookie,
+            requestedMode!,
+            cookieOptions);
     }
 
     if (form.ContainsKey("editorPreviewSettings"))
     {
-        if (!CanPreviewUnlisted(context.User, siteModeContext.SiteMode))
+        if (!CanPreviewUnlisted(context.User, siteModeContext))
         {
             return Results.Forbid();
         }
@@ -439,32 +448,23 @@ static string NormalizeHost(string host)
         : normalizedHost;
 }
 
-static bool CanPreviewUnlisted(System.Security.Claims.ClaimsPrincipal user, SiteMode siteMode)
+static bool CanPreviewUnlisted(
+    System.Security.Claims.ClaimsPrincipal user,
+    SiteModeContext modeContext)
 {
-    if (user.Identity?.IsAuthenticated != true)
+    if (user.Identity?.IsAuthenticated != true || modeContext.ActiveMode is null)
     {
         return false;
     }
 
     if (user.IsInRole(AccountRoles.Admin))
     {
-        return siteMode is SiteMode.DorksAndDice or SiteMode.Professional;
-    }
-
-    var scope = siteMode switch
-    {
-        SiteMode.DorksAndDice => AccountRoleScopes.DorksAndDice,
-        SiteMode.Professional => AccountRoleScopes.Professional,
-        _ => null
-    };
-    if (scope is null)
-    {
-        return false;
+        return true;
     }
 
     return user.HasClaim(
         AccountClaimTypes.ScopedRole,
-        $"{scope}:{ScopedAccountRoles.Editor}");
+        $"{modeContext.ActiveMode.Id}:{ScopedAccountRoles.Editor}");
 }
 
 static bool IsLocalUrl(string url)
