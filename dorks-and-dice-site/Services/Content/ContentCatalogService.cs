@@ -1,5 +1,5 @@
 using dorks_and_dice_site.Models.Content;
-using dorks_and_dice_site.Models.Site;
+using dorks_and_dice_site.Services.Site;
 
 namespace dorks_and_dice_site.Services.Content;
 
@@ -14,7 +14,7 @@ public sealed class ContentCatalogService : IContentCatalogService
 
     public async Task<IReadOnlyList<ContentItem>> GetByContextAsync(
         string contextTag,
-        SiteMode siteMode,
+        SiteModeContext modeContext,
         bool includeUnlisted = false,
         CancellationToken cancellationToken = default)
     {
@@ -22,14 +22,13 @@ public sealed class ContentCatalogService : IContentCatalogService
         return items
             .Where(item => item.HasTag(contextTag))
             .Where(item => includeUnlisted || item.IsListed)
-            .Where(item => item.IsVisibleInMode(siteMode))
+            .Where(item => IsEligibleForListing(item, modeContext))
             .ToList();
     }
 
     public async Task<ContentItem?> GetForDetailAsync(
         string slug,
-        SiteMode siteMode,
-        bool isDevelopmentPreview,
+        SiteModeContext modeContext,
         CancellationToken cancellationToken = default)
     {
         var item = await _repository.GetBySlugAsync(slug, cancellationToken);
@@ -38,15 +37,12 @@ public sealed class ContentCatalogService : IContentCatalogService
             return null;
         }
 
-        return isDevelopmentPreview || item.IsVisibleInMode(siteMode)
-            ? item
-            : null;
+        return CanInspectDetail(item, modeContext) ? item : null;
     }
 
     public async Task<ContentItem?> GetForDetailByIdAsync(
         string contentKey,
-        SiteMode siteMode,
-        bool isDevelopmentPreview,
+        SiteModeContext modeContext,
         CancellationToken cancellationToken = default)
     {
         var items = await _repository.GetAllAsync(cancellationToken);
@@ -57,8 +53,29 @@ public sealed class ContentCatalogService : IContentCatalogService
             return null;
         }
 
-        return isDevelopmentPreview || item.IsVisibleInMode(siteMode)
-            ? item
-            : null;
+        return CanInspectDetail(item, modeContext) ? item : null;
+    }
+
+    private static bool IsEligibleForListing(ContentItem item, SiteModeContext modeContext)
+    {
+        if (modeContext.ActiveModeId is not null)
+        {
+            return item.IsVisibleInMode(modeContext.ActiveModeId);
+        }
+
+        // Trusted Preview with no selected site preserves the former Development-mode
+        // inspection behavior. Framework fallback on an unmapped public host has no content
+        // identity and therefore lists nothing.
+        return modeContext.IsTrustedPreview;
+    }
+
+    private static bool CanInspectDetail(ContentItem item, SiteModeContext modeContext)
+    {
+        if (modeContext.IsDevelopmentPreview)
+        {
+            return true;
+        }
+
+        return IsEligibleForListing(item, modeContext);
     }
 }
