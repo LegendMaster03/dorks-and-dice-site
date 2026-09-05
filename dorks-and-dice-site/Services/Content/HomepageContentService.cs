@@ -11,21 +11,22 @@ public interface IHomepageContentService
 }
 
 /// <summary>
-/// Resolves the single database-backed homepage document visible to a normal mode.
-/// Mode definition storage is deliberately outside this service so the same page contract
-/// works whether normal modes ultimately remain compiled definitions or become runtime data.
+/// Resolves the single database-backed homepage document visible to a normal mode and composes
+/// its authored Markdown with installed page components. Mode definition storage is deliberately
+/// outside this service so the same page contract works whether normal modes ultimately remain
+/// compiled definitions or become runtime data.
 /// </summary>
 public sealed class HomepageContentService : IHomepageContentService
 {
     private readonly IContentCatalogService _catalog;
-    private readonly IContentBodyRenderer _bodyRenderer;
+    private readonly IContentPageComposer _pageComposer;
 
     public HomepageContentService(
         IContentCatalogService catalog,
-        IContentBodyRenderer bodyRenderer)
+        IContentPageComposer pageComposer)
     {
         _catalog = catalog;
-        _bodyRenderer = bodyRenderer;
+        _pageComposer = pageComposer;
     }
 
     public async Task<HomepageContentViewModel?> GetAsync(
@@ -60,7 +61,7 @@ public sealed class HomepageContentService : IHomepageContentService
         return new HomepageContentViewModel
         {
             Item = item,
-            RenderedBodyHtml = _bodyRenderer.Render(item.BodyFormat, item.Body)
+            Fragments = _pageComposer.Compose(item.BodyFormat, item.Body)
         };
     }
 }
