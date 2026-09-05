@@ -20,6 +20,7 @@ public sealed class ContentAuthoringEditViewModel
 {
     public ContentAuthoringDocument Document { get; set; } = new();
     public List<ContentAuthoringSourceOption> Sources { get; set; } = [];
+    public List<ContentAuthoringModeOption> Modes { get; set; } = [];
     public string? RenderedPreviewHtml { get; set; }
     public List<ContentRevisionSummary> History { get; set; } = [];
 }
@@ -45,5 +46,11 @@ public sealed class ContentAuthoringIndexViewModel
 public sealed class ContentAuthoringSourceOption
 {
     public string Key { get; init; } = string.Empty;
+    public string DisplayName { get; init; } = string.Empty;
+}
+
+public sealed class ContentAuthoringModeOption
+{
+    public string Id { get; init; } = string.Empty;
     public string DisplayName { get; init; } = string.Empty;
 }
