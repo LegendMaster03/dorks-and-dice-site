@@ -13,16 +13,26 @@ namespace dorks_and_dice_site.Controllers;
 public sealed partial class DevelopmentToolsController : Controller
 {
     private readonly IToolRegistry _toolRegistry;
+    private readonly IToolHealthService _toolHealthService;
 
-    public DevelopmentToolsController(IWebHostEnvironment environment, IConfiguration configuration)
+    public DevelopmentToolsController(
+        IToolRegistry toolRegistry,
+        IToolHealthService toolHealthService)
     {
-        _toolRegistry = new JsonToolRegistry(environment, configuration);
+        _toolRegistry = toolRegistry;
+        _toolHealthService = toolHealthService;
     }
 
     [HttpGet("")]
     public async Task<IActionResult> Index(CancellationToken cancellationToken)
     {
-        return View(await _toolRegistry.GetAllAsync(cancellationToken));
+        var tools = await _toolRegistry.GetAllAsync(cancellationToken);
+        var items = await Task.WhenAll(tools.Select(async tool => new DevelopmentToolListItemViewModel
+        {
+            Tool = tool,
+            Health = await _toolHealthService.CheckAsync(tool, cancellationToken)
+        }));
+        return View(items);
     }
 
     [HttpGet("new")]
