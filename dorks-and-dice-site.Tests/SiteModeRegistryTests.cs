@@ -48,6 +48,28 @@ public sealed class SiteModeRegistryTests
     }
 
     [Fact]
+    public void SyntheticModeOwnsRoutesAndAssetsWithoutProductionEnumValue()
+    {
+        var syntheticMode = new SiteModeDefinition(
+            Id: "test-mode",
+            DisplayName: "Test Mode",
+            LegacyMode: null,
+            ViewFolder: "TestMode",
+            AssetFolder: "test-assets")
+        {
+            OwnedRoutePrefixes = ["/test-area"]
+        };
+
+        Assert.True(SiteRouteOwnership.IsAllowedInMode("/", syntheticMode));
+        Assert.True(SiteRouteOwnership.IsAllowedInMode("/articles/example", syntheticMode));
+        Assert.True(SiteRouteOwnership.IsAllowedInMode("/test-area", syntheticMode));
+        Assert.True(SiteRouteOwnership.IsAllowedInMode("/test-area/nested", syntheticMode));
+        Assert.True(SiteRouteOwnership.IsAllowedInMode("/site-modes/test-assets/css/site.css", syntheticMode));
+        Assert.False(SiteRouteOwnership.IsAllowedInMode("/resume", syntheticMode));
+        Assert.False(SiteRouteOwnership.IsAllowedInMode("/site-modes/professional/css/site.css", syntheticMode));
+    }
+
+    [Fact]
     public void FrameworkRuntimeStatesRemainAvailableOnlyAsCompatibilityMetadata()
     {
         Assert.Equal(SiteMode.Unassigned, FrameworkRuntimeStates.Fallback.LegacyMode);
@@ -92,6 +114,17 @@ public sealed class SiteModeRegistryTests
         Assert.True(captured.IsTrustedPreview);
         Assert.False(captured.IsFrameworkFallback);
         Assert.Equal(SiteMode.Unassigned, captured.SiteMode);
+    }
+
+    [Fact]
+    public void TrustedPreviewAddsFrameworkAssetsWithoutExpandingSelectedLiveMode()
+    {
+        var selectedMode = BuiltInSiteModes.DorksAndDice;
+        const string trustedPreviewAsset = "/site-modes/development/css/site.css";
+
+        Assert.False(SiteRouteOwnership.IsAllowedInMode(trustedPreviewAsset, selectedMode));
+        Assert.True(SiteRouteOwnership.IsAllowedInTrustedPreview(trustedPreviewAsset, selectedMode));
+        Assert.False(SiteRouteOwnership.IsAllowedInTrustedPreview("/resume", selectedMode));
     }
 
     [Fact]
