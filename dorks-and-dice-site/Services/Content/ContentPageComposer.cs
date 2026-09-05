@@ -23,7 +23,7 @@ public interface IContentPageComposer
 public sealed class ContentPageComposer : IContentPageComposer
 {
     private static readonly Regex ComponentPattern = new(
-        @"^[\t ]*\{\{(?<name>[a-z0-9-]+)(?<arguments>(?:[\t ]+[a-z][a-z0-9-]*=\"[^\"\r\n]*\")+)[\t ]*\}\}[\t ]*(?:\r?\n|$)",
+        "^[\\t ]*\\{\\{(?<name>[a-z0-9-]+)(?<arguments>(?:[\\t ]+[a-z][a-z0-9-]*=\"[^\"\\r\\n]*\")+)[\\t ]*\\}\\}[\\t ]*(?:\\r?\\n|$)",
         RegexOptions.Compiled
         | RegexOptions.CultureInvariant
         | RegexOptions.IgnoreCase
@@ -31,7 +31,7 @@ public sealed class ContentPageComposer : IContentPageComposer
         TimeSpan.FromMilliseconds(100));
 
     private static readonly Regex ArgumentPattern = new(
-        @"[\t ]+(?<key>[a-z][a-z0-9-]*)=\"(?<value>[^\"\r\n]*)\"",
+        "[\\t ]+(?<key>[a-z][a-z0-9-]*)=\"(?<value>[^\"\\r\\n]*)\"",
         RegexOptions.Compiled
         | RegexOptions.CultureInvariant
         | RegexOptions.IgnoreCase,
