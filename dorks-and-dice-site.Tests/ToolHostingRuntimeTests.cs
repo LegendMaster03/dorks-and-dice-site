@@ -107,6 +107,17 @@ public sealed class ToolHostingRuntimeTests
         Assert.Equal("http://initiative:8080/app.js?v=123", uri?.ToString());
     }
 
+    [Theory]
+    [InlineData("/..\\secrets")]
+    [InlineData("/%2e%2e%5csecrets")]
+    [InlineData("/%252e%252e/secrets")]
+    [InlineData("/folder/%252e%252e%252fsecrets")]
+    public void UpstreamUriRejectsAmbiguousTraversal(string path)
+    {
+        var tool = new ToolRegistration { UpstreamBaseUrl = "http://initiative:8080/private-tool" };
+        Assert.False(ToolUpstreamUri.TryBuild(tool, path, QueryString.Empty, out _));
+    }
+
     private static ToolUpstreamPolicy CreatePolicy(Dictionary<string, string?>? values = null)
     {
         var configuration = new ConfigurationBuilder()
