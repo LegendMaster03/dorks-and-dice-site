@@ -3,11 +3,11 @@
 @using dorks_and_dice_site.Services.Identity
 @using dorks_and_dice_site.Models.Identity
 @using dorks_and_dice_site.Models.Site
-@using System.Text.Json
 @inject ISiteModePartialResolver SiteModePartialResolver
 @inject ISiteModePresentationService SiteModePresentationService
 @inject ISiteModeRegistry SiteModeRegistry
 @inject IContentSourceRegistry ContentSourceRegistry
+@inject SiteModeOptions SiteHosting
 @{
     var siteModeContext = Context.GetSiteModeContext();
     var hasTrustedAccess = siteModeContext.HasTrustedAccess;
@@ -19,19 +19,19 @@
     var metaDescription = ViewData["MetaDescription"]?.ToString()
         ?? SiteModePresentationService.GetDefaultMetaDescription(siteModeContext);
     var robots = ViewData["Robots"]?.ToString();
-    var canonicalHost = siteModeContext.SiteMode == SiteMode.Professional
-        ? SiteModeOptions.CanonicalProfessionalHost
-        : Context.Request.Host.Value;
-    var canonicalUrl = $"{Context.Request.Scheme}://{canonicalHost}{Context.Request.PathBase}{Context.Request.Path}";
-    var defaultMetaImagePath = siteModeContext.SiteMode == SiteMode.Professional
-        ? Url.Content("~/site-modes/professional/images/profile/kyle-headshot.jpg")
-        : null;
+    var canonicalHost = siteModeContext.ActiveModeId is { Length: > 0 } activeCanonicalModeId
+        && SiteHosting.TryGetCanonicalHost(activeCanonicalModeId, out var configuredCanonicalHost)
+            ? configuredCanonicalHost!
+            : Context.Request.Host.Value;
+    var canonicalOrigin = $"{Context.Request.Scheme}://{canonicalHost}";
+    var canonicalUrl = $"{canonicalOrigin}{Context.Request.PathBase}{Context.Request.Path}";
+    var defaultMetaImagePath = SiteModePresentationService.GetDefaultMetaImagePath(siteModeContext);
     var metaImagePath = ViewData["MetaImage"]?.ToString() ?? defaultMetaImagePath;
     var metaImage = metaImagePath?.StartsWith("http", StringComparison.OrdinalIgnoreCase) == true
         ? metaImagePath
         : string.IsNullOrWhiteSpace(metaImagePath)
             ? null
-            : $"{Context.Request.Scheme}://{canonicalHost}{metaImagePath}";
+            : $"{canonicalOrigin}{metaImagePath}";
     var returnQuery = string.Join("&", Context.Request.Query
         .Where(item => !string.Equals(item.Key, "includeUnlisted", StringComparison.OrdinalIgnoreCase))
         .SelectMany(item => item.Value.Select(value => $"{Uri.EscapeDataString(item.Key)}={Uri.EscapeDataString(value ?? string.Empty)}")));
@@ -45,7 +45,7 @@
         SiteModeBrandingPart.Footer);
     var developmentToolsPartialPath = $"~/Views/SiteModes/{FrameworkRuntimeStates.TrustedPreview.ViewFolder}/_DevelopmentTools.cshtml";
     var defaultSourceKeys = canUseDeveloperTools
-        ? ContentSourceRegistry.GetDefaultSources(siteModeContext.SiteMode)
+        ? ContentSourceRegistry.GetSourcesForContext(siteModeContext)
             .Select(source => source.Key)
             .ToHashSet(StringComparer.OrdinalIgnoreCase)
         : new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -91,26 +91,9 @@
                 .ToList()
             : []
     };
-    var professionalProfileJson = siteModeContext.SiteMode == SiteMode.Professional
-        ? JsonSerializer.Serialize(new
-        {
-            @context = "https://schema.org",
-            @type = "ProfilePage",
-            mainEntity = new
-            {
-                @type = "Person",
-                name = "Kyle W. Barnett",
-                url = $"{Context.Request.Scheme}://{SiteModeOptions.CanonicalProfessionalHost}/",
-                image = $"{Context.Request.Scheme}://{SiteModeOptions.CanonicalProfessionalHost}/site-modes/professional/images/profile/kyle-headshot.jpg",
-                jobTitle = "Information Science Graduate",
-                sameAs = new[]
-                {
-                    "https://www.linkedin.com/in/kyle-barnett03/",
-                    "https://github.com/LegendMaster03"
-                }
-            }
-        })
-        : null;
+    var structuredDataJson = SiteModePresentationService.GetStructuredDataJson(
+        siteModeContext,
+        canonicalOrigin);
 }
 <!DOCTYPE html>
 <html lang="en">
@@ -141,9 +124,9 @@
     {
         <meta name="twitter:image" content="@metaImage" />
     }
-    @if (!string.IsNullOrWhiteSpace(professionalProfileJson))
+    @if (!string.IsNullOrWhiteSpace(structuredDataJson))
     {
-        <script type="application/ld+json">@Html.Raw(professionalProfileJson)</script>
+        <script type="application/ld+json">@Html.Raw(structuredDataJson)</script>
     }
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
