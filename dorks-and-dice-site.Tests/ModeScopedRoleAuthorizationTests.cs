@@ -55,17 +55,36 @@ public sealed class ModeScopedRoleAuthorizationTests
     }
 
     [Fact]
-    public void EveryContentSiteModeAutomaticallyDefinesAChildEditorRole()
+    public void EveryBuiltInModeAutomaticallyDefinesAChildEditorRole()
     {
-        var expectedModes = Enum.GetValues<SiteMode>()
-            .Where(SiteModeValues.IsEditorMode)
-            .ToArray();
+        Assert.Equal(
+            BuiltInSiteModes.All.Select(mode => mode.Id),
+            SiteModeEditorRoles.All.Select(role => role.Scope));
+        Assert.Equal(
+            BuiltInSiteModes.All.Select(mode => mode.LegacyMode),
+            SiteModeEditorRoles.All.Select(role => role.LegacySiteMode));
 
-        Assert.Equal(expectedModes, SiteModeEditorRoles.All.Select(role => role.SiteMode));
         var globalEditor = AccountRoleHierarchy.GetGlobalRole(AccountRoles.GlobalEditor);
         Assert.Equal(
             SiteModeEditorRoles.All.Select(role => role.RoleName),
             globalEditor.Children.Select(child => child.DisplayName));
+    }
+
+    [Fact]
+    public void SyntheticModeAutomaticallyGetsEditorRoleWithoutIdentityConfigurationChange()
+    {
+        var syntheticMode = new SiteModeDefinition(
+            Id: "test-mode",
+            DisplayName: "Test Mode",
+            LegacyMode: null,
+            ViewFolder: "TestMode",
+            AssetFolder: "test-mode");
+
+        var role = Assert.Single(SiteModeEditorRoleFactory.Create([syntheticMode]));
+
+        Assert.Equal("test-mode", role.Scope);
+        Assert.Equal("Test Mode Editor", role.RoleName);
+        Assert.Null(role.LegacySiteMode);
     }
 
     [Fact]
