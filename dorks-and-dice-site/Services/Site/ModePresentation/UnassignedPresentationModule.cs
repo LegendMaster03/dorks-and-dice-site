@@ -1,11 +1,14 @@
 using dorks_and_dice_site.Models.Articles;
-using dorks_and_dice_site.Models.Site;
 
 namespace dorks_and_dice_site.Services.Site.ModePresentation;
 
+/// <summary>
+/// Framework fallback presentation retained under its legacy class/file name until physical
+/// ownership consolidation.
+/// </summary>
 public sealed class UnassignedPresentationModule : ISiteModePresentationModule
 {
-    public SiteMode SiteMode => SiteMode.Unassigned;
+    public string PresentationKey => FrameworkRuntimeStates.Fallback.Id;
 
     public string GetTitleSuffix()
     {
