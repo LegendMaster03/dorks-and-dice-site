@@ -121,6 +121,44 @@ public sealed class SiteModeRegistryTests
     }
 
     [Fact]
+    public void StylesheetResolverUsesModeAssetMetadataForSyntheticMode()
+    {
+        var syntheticMode = new SiteModeDefinition(
+            Id: "test-mode",
+            DisplayName: "Test Mode",
+            LegacyMode: null,
+            ViewFolder: "TestMode",
+            AssetFolder: "custom-test-assets");
+        var resolver = new SiteModeStylesheetResolver();
+
+        var paths = resolver.GetStylesheetPaths(new SiteModeContext
+        {
+            ActiveMode = syntheticMode
+        });
+
+        Assert.Equal(["~/site-modes/custom-test-assets/css/site.css"], paths);
+    }
+
+    [Fact]
+    public void TrustedPreviewStylesheetIsAnOverlayOnSelectedMode()
+    {
+        var resolver = new SiteModeStylesheetResolver();
+
+        var paths = resolver.GetStylesheetPaths(new SiteModeContext
+        {
+            ActiveMode = BuiltInSiteModes.DorksAndDice,
+            FrameworkState = FrameworkRuntimeStates.TrustedPreview
+        });
+
+        Assert.Equal(
+            [
+                "~/site-modes/dorks-and-dice/css/site.css",
+                "~/site-modes/development/css/site.css"
+            ],
+            paths);
+    }
+
+    [Fact]
     public void DuplicateStableIdsAreRejected()
     {
         var duplicate = BuiltInSiteModes.DorksAndDice with { LegacyMode = null };
