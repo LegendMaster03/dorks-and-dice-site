@@ -1,7 +1,7 @@
 using dorks_and_dice_site.Models.Content;
 using dorks_and_dice_site.Models.Resume;
-using dorks_and_dice_site.Models.Site;
 using dorks_and_dice_site.Services.Content;
+using dorks_and_dice_site.Services.Site;
 
 namespace dorks_and_dice_site.Services.Resume;
 
@@ -32,6 +32,11 @@ public class ResumeContentService : IResumeContentService
         "dndtools"
     ];
 
+    private static readonly SiteModeContext ProfessionalModeContext = new()
+    {
+        ActiveMode = BuiltInSiteModes.Professional
+    };
+
     private readonly IContentCatalogService _contentCatalogService;
 
     public ResumeContentService(IContentCatalogService contentCatalogService)
@@ -44,18 +49,18 @@ public class ResumeContentService : IResumeContentService
         var model = ResumePageContentBuilder.Build();
         model.ExperienceItems = SortBySlugOrder(
             await _contentCatalogService.GetByContextAsync(
-            ContentTags.Experience,
-            SiteMode.Professional,
-            includeUnlisted: false,
-            cancellationToken),
+                ContentTags.Experience,
+                ProfessionalModeContext,
+                includeUnlisted: false,
+                cancellationToken),
             ExperienceOrder,
             ContentTags.Experience);
         model.ProjectItems = SortBySlugOrder(
             await _contentCatalogService.GetByContextAsync(
-            ContentTags.Project,
-            SiteMode.Professional,
-            includeUnlisted: false,
-            cancellationToken),
+                ContentTags.Project,
+                ProfessionalModeContext,
+                includeUnlisted: false,
+                cancellationToken),
             ProjectOrder,
             ContentTags.Project);
         return model;
