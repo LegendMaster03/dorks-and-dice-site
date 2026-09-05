@@ -1,6 +1,6 @@
 @model dorks_and_dice_site.Models.Articles.ArticlesIndexViewModel
 @using dorks_and_dice_site.Models.Content
-@using dorks_and_dice_site.Models.Site
+@using dorks_and_dice_site.Services.Site
 @{
     ViewData["Title"] = "Articles";
     ViewData["MetaTitle"] = Model.Presentation.MetaTitle;
@@ -97,7 +97,7 @@
                 <div class="col article-card"
                      data-content-card
                      data-content-category="@category"
-                     data-content-professional="@(article.IsVisibleInMode(SiteMode.Professional) ? "true" : "false")"
+                     data-content-professional="@(article.IsVisibleInMode(BuiltInSiteModes.Professional.Id) ? "true" : "false")"
                      data-content-listed="@(article.IsListed ? "true" : "false")"
                      data-content-date="@dateText.ToLowerInvariant()"
                      data-content-tags="@string.Join(' ', publicTags)"
