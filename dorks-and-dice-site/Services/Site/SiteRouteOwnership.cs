@@ -41,7 +41,8 @@ public static class SiteRouteOwnership
             || path == "/articles"
             || path.StartsWith("/articles/")
             || path == "/tools"
-            || path.StartsWith("/tools/", StringComparison.Ordinal);
+            || path.StartsWith("/tools/", StringComparison.Ordinal)
+            || path.StartsWith("/tool-modules/", StringComparison.Ordinal);
     }
 
     private static bool IsProfessionalOwnedPath(string path)
