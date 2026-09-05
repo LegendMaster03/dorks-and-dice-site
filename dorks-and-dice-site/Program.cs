@@ -29,10 +29,20 @@ builder.Services.AddScoped<IResumeContentService, ResumeContentService>();
 builder.Services.AddSingleton<IToolRegistry, JsonToolRegistry>();
 builder.Services.AddSingleton<IToolUpstreamPolicy, ToolUpstreamPolicy>();
 builder.Services.AddSingleton<IToolHealthService, ToolHealthService>();
+builder.Services.AddSingleton<IToolProxyService, ToolProxyService>();
 builder.Services
     .AddHttpClient(ToolHttpClientNames.Hosting, client =>
     {
         client.Timeout = TimeSpan.FromSeconds(3);
+    })
+    .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+    {
+        AllowAutoRedirect = false
+    });
+builder.Services
+    .AddHttpClient(ToolHttpClientNames.Proxy, client =>
+    {
+        client.Timeout = TimeSpan.FromSeconds(30);
     })
     .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
     {
