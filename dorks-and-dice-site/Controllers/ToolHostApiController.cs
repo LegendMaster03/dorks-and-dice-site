@@ -18,11 +18,10 @@ public sealed class ToolHostApiController : ControllerBase
 
     public ToolHostApiController(
         IToolRegistry toolRegistry,
-        IWebHostEnvironment environment,
-        IConfiguration configuration)
+        ICampaignAccessStore campaignAccessStore)
     {
         _toolRegistry = toolRegistry;
-        _campaignAccessStore = new JsonCampaignAccessStore(environment, configuration);
+        _campaignAccessStore = campaignAccessStore;
     }
 
     [HttpGet("session")]
@@ -88,6 +87,8 @@ public sealed class ToolHostApiController : ControllerBase
     private async Task<(Models.Tools.ToolRegistration? Tool, string? UserId, IActionResult? Result)>
         ResolveToolAndUserAsync(string slug, CancellationToken cancellationToken)
     {
+        // Membership-dependent failures must not be cached either.
+        Response.Headers.CacheControl = "no-store";
         var tool = await _toolRegistry.GetBySlugAsync(slug, cancellationToken);
         var siteMode = HttpContext.GetSiteModeContext().SiteMode;
         if (tool is null
