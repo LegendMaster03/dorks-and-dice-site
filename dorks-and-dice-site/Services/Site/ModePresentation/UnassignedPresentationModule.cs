@@ -25,6 +25,10 @@ public sealed class UnassignedPresentationModule : ISiteModePresentationModule
         return "~/favicon.ico";
     }
 
+    public string? GetDefaultMetaImagePath() => null;
+
+    public string? GetStructuredDataJson(string canonicalOrigin) => null;
+
     public ArticlesIndexPresentationViewModel GetArticlesIndexPresentation()
     {
         return new ArticlesIndexPresentationViewModel
