@@ -10,7 +10,12 @@ public sealed class ContentAuthoringDocument
     public bool IsListed { get; set; } = true;
     public string MetadataJson { get; set; } = string.Empty;
     public string TagsText { get; set; } = string.Empty;
-    public string VisibleModesText { get; set; } = string.Empty;
+
+    // Legacy/free-text compatibility input. The checkbox collection below is the normal editor path,
+    // so this value is legitimately absent on a submitted form and must not be implicitly required
+    // by ASP.NET Core's non-nullable reference-type model validation.
+    public string? VisibleModesText { get; set; }
+
     public List<string> VisibleModesSelection { get; set; } = [];
     public string BodyFormat { get; set; } = "markdown";
     public string Body { get; set; } = string.Empty;
