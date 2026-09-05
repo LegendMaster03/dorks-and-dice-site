@@ -1,10 +1,10 @@
-@model string?
+@model dorks_and_dice_site.Plugins.DiscordWidget.DiscordWidgetViewModel
 
-@if (!string.IsNullOrWhiteSpace(Model))
+@if (!string.IsNullOrWhiteSpace(Model.WidgetUrl))
 {
     <div class="discord-widget-wrapper">
-        <iframe title="Dorks & Dice Discord Server"
-                src="@Model"
+        <iframe title="@Model.Title"
+                src="@Model.WidgetUrl"
                 width="350"
                 height="500"
                 allowtransparency="true"
