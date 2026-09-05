@@ -10,12 +10,12 @@
     var siteModeContext = Context.GetSiteModeContext();
     var hasTrustedAccess = siteModeContext.HasTrustedAccess;
     var canUseDeveloperTools = siteModeContext.IsDevelopmentPreview;
-    var siteSuffix = SiteModePresentationService.GetTitleSuffix(siteModeContext.SiteMode);
-    var faviconPath = Url.Content(SiteModePresentationService.GetFaviconPath(siteModeContext.SiteMode));
+    var siteSuffix = SiteModePresentationService.GetTitleSuffix(siteModeContext);
+    var faviconPath = Url.Content(SiteModePresentationService.GetFaviconPath(siteModeContext));
     var pageTitle = $"{ViewData["Title"]} - {siteSuffix}";
     var metaTitle = ViewData["MetaTitle"]?.ToString() ?? pageTitle;
     var metaDescription = ViewData["MetaDescription"]?.ToString()
-        ?? SiteModePresentationService.GetDefaultMetaDescription(siteModeContext.SiteMode);
+        ?? SiteModePresentationService.GetDefaultMetaDescription(siteModeContext);
     var robots = ViewData["Robots"]?.ToString();
     var canonicalHost = siteModeContext.SiteMode == SiteMode.Professional
         ? SiteModeOptions.CanonicalProfessionalHost
