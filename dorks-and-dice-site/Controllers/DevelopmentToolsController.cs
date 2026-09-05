@@ -14,13 +14,16 @@ public sealed partial class DevelopmentToolsController : Controller
 {
     private readonly IToolRegistry _toolRegistry;
     private readonly IToolHealthService _toolHealthService;
+    private readonly IToolUpstreamPolicy _upstreamPolicy;
 
     public DevelopmentToolsController(
         IToolRegistry toolRegistry,
-        IToolHealthService toolHealthService)
+        IToolHealthService toolHealthService,
+        IToolUpstreamPolicy upstreamPolicy)
     {
         _toolRegistry = toolRegistry;
         _toolHealthService = toolHealthService;
+        _upstreamPolicy = upstreamPolicy;
     }
 
     [HttpGet("")]
@@ -149,12 +152,11 @@ public sealed partial class DevelopmentToolsController : Controller
             ModelState.AddModelError(string.Empty, "Select at least one site mode for this tool.");
         }
 
-        if (!string.IsNullOrWhiteSpace(model.UpstreamBaseUrl)
-            && (!Uri.TryCreate(model.UpstreamBaseUrl, UriKind.Absolute, out var upstream)
-                || (upstream.Scheme != Uri.UriSchemeHttp && upstream.Scheme != Uri.UriSchemeHttps)
-                || !string.IsNullOrEmpty(upstream.UserInfo)))
+        if (!_upstreamPolicy.IsAllowed(model.UpstreamBaseUrl, out var upstreamReason))
         {
-            ModelState.AddModelError(nameof(model.UpstreamBaseUrl), "Upstream base URL must be an absolute HTTP or HTTPS URL without embedded credentials.");
+            ModelState.AddModelError(
+                nameof(model.UpstreamBaseUrl),
+                upstreamReason ?? "Upstream base URL is not allowed.");
         }
 
         if (!string.IsNullOrWhiteSpace(model.FrontendEntryPoint)
