@@ -1,6 +1,4 @@
-@using dorks_and_dice_site.Models.Identity
 @using dorks_and_dice_site.Models.Site
-@using dorks_and_dice_site.Services.Identity
 @model DevelopmentPreviewToolbarViewModel
 @{
     var host = Context.Request.Host.Host;
@@ -20,19 +18,7 @@
         .Where(source => !string.Equals(source.Key, "Local", StringComparison.OrdinalIgnoreCase))
         .Where(source => !string.Equals(source.Key, "External", StringComparison.OrdinalIgnoreCase))
         .ToList();
-    var editorScope = Model.SelectedMode switch
-    {
-        SiteMode.DorksAndDice => AccountRoleScopes.DorksAndDice,
-        SiteMode.Professional => AccountRoleScopes.Professional,
-        _ => null
-    };
-    var canPreviewUnlisted = User.Identity?.IsAuthenticated == true
-        && editorScope is not null
-        && (User.IsInRole(AccountRoles.Admin)
-            || User.HasClaim(
-                AccountClaimTypes.ScopedRole,
-                $"{editorScope}:{ScopedAccountRoles.Editor}"));
-    var showPreviewSettings = canPreviewUnlisted || Model.CanUseDeveloperTools;
+    var showPreviewSettings = Model.CanPreviewUnlisted || Model.CanUseDeveloperTools;
 }
 
 <div class="development-preview-toolbar border-bottom">
@@ -43,9 +29,10 @@
                 <input type="hidden" name="returnUrl" value="@Model.ReturnUrl" />
                 <label class="small text-muted flex-shrink-0" for="siteMode">Mode</label>
                 <select class="form-select form-select-sm development-preview-select w-auto" id="siteMode" name="siteMode">
-                    <option value="dorks-and-dice" selected="@(Model.SelectedMode == SiteMode.DorksAndDice)">Dorks &amp; Dice</option>
-                    <option value="professional" selected="@(Model.SelectedMode == SiteMode.Professional)">Professional</option>
-                    <option value="development" selected="@(Model.SelectedMode == SiteMode.Development)">Development</option>
+                    @foreach (var mode in Model.ModeOptions)
+                    {
+                        <option value="@mode.Id" selected="@(string.Equals(Model.SelectedModeId, mode.Id, StringComparison.Ordinal))">@mode.DisplayName</option>
+                    }
                 </select>
             </form>
 
@@ -60,7 +47,7 @@
                         Preview settings
                     </button>
                     <div class="dropdown-menu dropdown-menu-end p-3 development-preview-articles-menu">
-                        @if (canPreviewUnlisted)
+                        @if (Model.CanPreviewUnlisted)
                         {
                             <form method="post" action="/development-preview" data-auto-submit="change" class="mb-3">
                                 <input type="hidden" name="returnUrl" value="@Model.ReturnUrl" />
