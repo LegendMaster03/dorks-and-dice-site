@@ -1,6 +1,7 @@
 using System.Text.Json.Nodes;
 using dorks_and_dice_site.Services.Content;
 using dorks_and_dice_site.Services.Content.Storage;
+using dorks_and_dice_site.Services.Site;
 using Microsoft.Extensions.Configuration;
 
 namespace dorks_and_dice_site.Tests;
@@ -35,7 +36,7 @@ public sealed class ContentSecurityTests
     public async Task AuthoringRejectsReservedInternalTags()
     {
         using var fixture = new AuthoringFixture();
-        var service = new ContentAuthoringService(fixture.Registry);
+        var service = CreateAuthoringService(fixture.Registry);
         var model = CreateValidModel(service);
         model.Document.TagsText = "article\n_internal:unlisted";
 
@@ -46,7 +47,7 @@ public sealed class ContentSecurityTests
     public async Task AuthoringRejectsUnknownMetadataProperties()
     {
         using var fixture = new AuthoringFixture();
-        var service = new ContentAuthoringService(fixture.Registry);
+        var service = CreateAuthoringService(fixture.Registry);
         var model = CreateValidModel(service);
         var metadata = JsonNode.Parse(model.Document.MetadataJson)!.AsObject();
         metadata["unexpected"] = "value";
@@ -59,7 +60,7 @@ public sealed class ContentSecurityTests
     public async Task AuthoringRejectsUnsafeMetadataUrls()
     {
         using var fixture = new AuthoringFixture();
-        var service = new ContentAuthoringService(fixture.Registry);
+        var service = CreateAuthoringService(fixture.Registry);
         var model = CreateValidModel(service);
         var metadata = JsonNode.Parse(model.Document.MetadataJson)!.AsObject();
         metadata["repositoryUrl"] = "javascript:alert(1)";
@@ -72,10 +73,13 @@ public sealed class ContentSecurityTests
     public async Task AuthoringRejectsMalformedRouteSlugBeforeDatabaseLookup()
     {
         using var fixture = new AuthoringFixture();
-        var service = new ContentAuthoringService(fixture.Registry);
+        var service = CreateAuthoringService(fixture.Registry);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => service.GetEditAsync("Test", "../bad"));
     }
+
+    private static ContentAuthoringService CreateAuthoringService(IContentSourceRegistry sourceRegistry) =>
+        new(sourceRegistry, new SiteModeRegistry(BuiltInSiteModes.All));
 
     private static dorks_and_dice_site.Models.Content.ContentAuthoringEditViewModel CreateValidModel(
         ContentAuthoringService service)
