@@ -58,9 +58,10 @@ public sealed class ToolModulesController : ControllerBase
         {
             var method = HttpMethods.IsHead(Request.Method) ? HttpMethod.Head : HttpMethod.Get;
             using var upstreamRequest = new HttpRequestMessage(method, upstreamUri);
-            if (Request.Headers.Accept.Count > 0)
+            var acceptHeader = Request.Headers["Accept"];
+            if (acceptHeader.Count > 0)
             {
-                upstreamRequest.Headers.TryAddWithoutValidation("Accept", Request.Headers.Accept.ToArray());
+                upstreamRequest.Headers.TryAddWithoutValidation("Accept", acceptHeader.ToArray());
             }
 
             using var upstreamResponse = await _httpClientFactory
@@ -83,11 +84,11 @@ public sealed class ToolModulesController : ControllerBase
             }
             if (upstreamResponse.Headers.CacheControl is not null)
             {
-                Response.Headers.CacheControl = upstreamResponse.Headers.CacheControl.ToString();
+                Response.Headers["Cache-Control"] = upstreamResponse.Headers.CacheControl.ToString();
             }
             if (upstreamResponse.Headers.ETag is not null)
             {
-                Response.Headers.ETag = upstreamResponse.Headers.ETag.ToString();
+                Response.Headers["ETag"] = upstreamResponse.Headers.ETag.ToString();
             }
 
             if (!HttpMethods.IsHead(Request.Method))
