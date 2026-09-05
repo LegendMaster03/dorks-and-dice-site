@@ -15,25 +15,30 @@ public static class ToolVisibility
 {
     public static bool IsVisibleInMode(ToolRegistration tool, SiteMode siteMode)
     {
-        var modeValue = siteMode switch
+        if (!BuiltInSiteModes.TryGetByLegacyMode(siteMode, out var definition))
         {
-            SiteMode.DorksAndDice => SiteModeValues.DorksAndDiceModeValue,
-            SiteMode.Professional => SiteModeValues.ProfessionalModeValue,
-            _ => null
-        };
+            return false;
+        }
 
-        if (modeValue is null)
+        return IsVisibleInMode(tool, definition!.Id);
+    }
+
+    public static bool IsVisibleInMode(ToolRegistration tool, string? modeId)
+    {
+        if (string.IsNullOrWhiteSpace(modeId))
         {
             return false;
         }
 
         // Registrations created before mode selection existed were Dorks & Dice-only.
+        // Keep that compatibility policy explicit and isolated until those registrations
+        // are migrated to an explicit mode list.
         if (tool.Modes is null || tool.Modes.Count == 0)
         {
-            return string.Equals(modeValue, SiteModeValues.DorksAndDiceModeValue, StringComparison.Ordinal);
+            return string.Equals(modeId, SiteModeValues.DorksAndDiceModeValue, StringComparison.Ordinal);
         }
 
-        return tool.Modes.Contains(modeValue, StringComparer.Ordinal);
+        return tool.Modes.Contains(modeId, StringComparer.Ordinal);
     }
 }
 
