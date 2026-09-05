@@ -80,19 +80,33 @@ public static class ToolUpstreamUri
 
     private static bool ContainsTraversal(string path)
     {
-        string decoded;
-        try
+        // Validate each decoding layer: upstream servers differ in when they decode
+        // path escapes and whether backslashes are treated as separators.
+        for (var depth = 0; depth < 8; depth++)
         {
-            decoded = Uri.UnescapeDataString(path);
-        }
-        catch (UriFormatException)
-        {
-            return true;
+            if (path.Contains('\\')
+                || path.Split('/', StringSplitOptions.RemoveEmptyEntries).Any(segment => segment is "." or ".."))
+            {
+                return true;
+            }
+
+            string decoded;
+            try
+            {
+                decoded = Uri.UnescapeDataString(path);
+            }
+            catch (UriFormatException)
+            {
+                return true;
+            }
+            if (decoded == path)
+            {
+                return false;
+            }
+            path = decoded;
         }
 
-        return decoded
-            .Split('/', StringSplitOptions.RemoveEmptyEntries)
-            .Any(segment => segment is "." or "..");
+        return true;
     }
 }
 
