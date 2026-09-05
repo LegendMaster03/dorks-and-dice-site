@@ -23,10 +23,10 @@ public sealed class ToolHostContextController : ControllerBase
     public async Task<IActionResult> GetContext(string slug, CancellationToken cancellationToken)
     {
         var tool = await _toolRegistry.GetBySlugAsync(slug, cancellationToken);
-        var siteMode = HttpContext.GetSiteModeContext().SiteMode;
+        var modeId = HttpContext.GetSiteModeContext().ActiveModeId;
         if (tool is null
             || !tool.Enabled
-            || !ToolVisibility.IsVisibleInMode(tool, siteMode))
+            || !ToolVisibility.IsVisibleInMode(tool, modeId))
         {
             return NotFound();
         }
@@ -57,7 +57,7 @@ public sealed class ToolHostContextController : ControllerBase
         return Ok(new ToolHostContext
         {
             ToolSlug = tool.Slug,
-            SiteMode = SiteModeValues.ToModeValue(siteMode),
+            SiteMode = modeId!,
             ApiBaseUrl = $"/tool-host/{tool.Slug}/api",
             User = userContext
         });
