@@ -1,4 +1,5 @@
 @model dorks_and_dice_site.Models.Tools.ToolRegistration
+@using System.Text.Json
 @using dorks_and_dice_site.Models.Tools
 @{
     ViewData["Title"] = Model.DisplayName;
@@ -22,11 +23,40 @@
                 <p class="mb-0 text-body-secondary">This tool is registered but its embedded module endpoint is not configured yet.</p>
             </div>
         }
+        else
+        {
+            <div id="tool-load-status" class="card card-body" role="status" aria-live="polite">
+                <p class="mb-0 text-body-secondary">Loading tool…</p>
+            </div>
+        }
     </div>
 
     @if (!string.IsNullOrWhiteSpace(Model.UpstreamBaseUrl) && !string.IsNullOrWhiteSpace(Model.FrontendEntryPoint))
     {
-        <script type="module" src="/tool-modules/@Model.Slug@Model.FrontendEntryPoint"></script>
+        var moduleUrl = $"/tool-modules/{Model.Slug}{Model.FrontendEntryPoint}";
+        <script type="module">
+            const toolRoot = document.getElementById("tool-root");
+            const status = document.getElementById("tool-load-status");
+            const moduleUrl = @Html.Raw(JsonSerializer.Serialize(moduleUrl));
+
+            try {
+                await import(moduleUrl);
+                if (status?.isConnected) {
+                    status.remove();
+                }
+            } catch (error) {
+                console.error("Hosted tool module failed to load.", error);
+                if (toolRoot) {
+                    toolRoot.innerHTML = `
+                        <div class="card card-body border-danger">
+                            <h2 class="h5">Tool unavailable</h2>
+                            <p class="mb-0 text-body-secondary">
+                                The tool is configured but its frontend module could not be loaded. The main site is still available.
+                            </p>
+                        </div>`;
+                }
+            }
+        </script>
     }
 }
 else
