@@ -1,11 +1,10 @@
 using System.Collections.Concurrent;
-using dorks_and_dice_site.Models.Site;
 using dorks_and_dice_site.Services.Identity;
 
 namespace dorks_and_dice_site.Tests;
 
 public sealed record SentAccountEmail(
-    SiteMode SiteMode,
+    AccountEmailSenderIdentity SenderIdentity,
     string Recipient,
     string Subject,
     string HtmlBody,
@@ -16,7 +15,7 @@ public sealed class TestAccountEmailSender : IAccountEmailSender
     public ConcurrentQueue<SentAccountEmail> Messages { get; } = new();
 
     public Task SendAsync(
-        SiteMode siteMode,
+        AccountEmailSenderIdentity senderIdentity,
         string recipient,
         string subject,
         string htmlBody,
@@ -24,7 +23,7 @@ public sealed class TestAccountEmailSender : IAccountEmailSender
         CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        Messages.Enqueue(new SentAccountEmail(siteMode, recipient, subject, htmlBody, textBody));
+        Messages.Enqueue(new SentAccountEmail(senderIdentity, recipient, subject, htmlBody, textBody));
         return Task.CompletedTask;
     }
 }
