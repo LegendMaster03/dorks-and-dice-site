@@ -1,3 +1,4 @@
+using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.RegularExpressions;
 using dorks_and_dice_site.Models.Content;
@@ -18,13 +19,16 @@ public sealed class ContentAuthoringController : Controller
         RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.Multiline);
     private readonly IContentAuthoringService _authoringService;
     private readonly IContentBodyRenderer _bodyRenderer;
+    private readonly IContentPageComposer _pageComposer;
 
     public ContentAuthoringController(
         IContentAuthoringService authoringService,
-        IContentBodyRenderer bodyRenderer)
+        IContentBodyRenderer bodyRenderer,
+        IContentPageComposer pageComposer)
     {
         _authoringService = authoringService;
         _bodyRenderer = bodyRenderer;
+        _pageComposer = pageComposer;
     }
 
     [HttpGet("")]
@@ -107,7 +111,34 @@ public sealed class ContentAuthoringController : Controller
         model.Document.SourceKey = _authoringService.DefaultSourceKey;
         try
         {
-            model.RenderedPreviewHtml = _bodyRenderer.Render(model.Document.BodyFormat, model.Document.Body);
+            var fragments = _pageComposer.Compose(model.Document.BodyFormat, model.Document.Body);
+            var preview = new StringBuilder();
+            foreach (var fragment in fragments)
+            {
+                if (fragment.RenderedHtml is not null)
+                {
+                    preview.Append(fragment.RenderedHtml);
+                    continue;
+                }
+
+                if (fragment.Component is null)
+                {
+                    continue;
+                }
+
+                var component = HtmlEncoder.Default.Encode(fragment.Component.Name);
+                var parameters = fragment.Component.Parameters.Count == 0
+                    ? string.Empty
+                    : " " + string.Join(
+                        " ",
+                        fragment.Component.Parameters.Select(parameter =>
+                            $"{HtmlEncoder.Default.Encode(parameter.Key)}=&quot;{HtmlEncoder.Default.Encode(parameter.Value)}&quot;"));
+                preview.Append(
+                    $"<div class=\"alert alert-secondary content-preview-component\" role=\"note\">" +
+                    $"Page component: <code>{component}{parameters}</code></div>");
+            }
+
+            model.RenderedPreviewHtml = preview.ToString();
         }
         catch (Exception ex) when (ex is InvalidOperationException or NotSupportedException)
         {
