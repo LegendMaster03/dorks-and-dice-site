@@ -36,6 +36,12 @@ public sealed record SiteModeDefinition(
     /// mode exposes the shared home and article surfaces unless it explicitly replaces this list.
     /// </summary>
     public IReadOnlyList<string> SitemapPaths { get; init; } = ["/", "/articles"];
+
+    /// <summary>
+    /// Controls only whether the shared navigation advertises anonymous account sign-in.
+    /// Account authorization remains enforced independently by the Identity subsystem.
+    /// </summary>
+    public bool ShowAnonymousLoginInNavigation { get; init; } = true;
 }
 
 public static class BuiltInSiteModes
@@ -56,7 +62,8 @@ public static class BuiltInSiteModes
     {
         OwnedRoutePrefixes = ["/resume"],
         AdditionalAssetPaths = ["/site-modes/dorks-and-dice/images/favicon.svg"],
-        SitemapPaths = ["/", "/resume", "/articles"]
+        SitemapPaths = ["/", "/resume", "/articles"],
+        ShowAnonymousLoginInNavigation = false
     };
 
     /// <summary>
