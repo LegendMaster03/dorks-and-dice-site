@@ -1,5 +1,6 @@
 using dorks_and_dice_site.Models.Site;
 using dorks_and_dice_site.Services.Site;
+using Microsoft.AspNetCore.Http;
 
 namespace dorks_and_dice_site.Tests;
 
@@ -57,6 +58,66 @@ public sealed class SiteModeRegistryTests
         var registry = new SiteModeRegistry(BuiltInSiteModes.All);
         Assert.False(registry.TryGetByLegacyMode(SiteMode.Unassigned, out _));
         Assert.False(registry.TryGetByLegacyMode(SiteMode.Development, out _));
+    }
+
+    [Fact]
+    public async Task TrustedPreviewCanTargetSyntheticRegisteredModeWithoutEnumValue()
+    {
+        var syntheticMode = new SiteModeDefinition(
+            Id: "test-mode",
+            DisplayName: "Test Mode",
+            LegacyMode: null,
+            ViewFolder: "TestMode",
+            AssetFolder: "test-mode");
+        var registry = new SiteModeRegistry(BuiltInSiteModes.All.Append(syntheticMode));
+        SiteModeContext? captured = null;
+        var middleware = new SiteModeMiddleware(
+            context =>
+            {
+                captured = context.GetSiteModeContext();
+                return Task.CompletedTask;
+            },
+            new SiteModeOptions(),
+            registry);
+        var context = new DefaultHttpContext();
+        context.Request.Host = new HostString("localhost");
+        context.Request.Headers.Cookie = $"{SiteModeValues.DevelopmentSiteModeCookie}=test-mode";
+
+        await middleware.InvokeAsync(context);
+
+        Assert.NotNull(captured);
+        Assert.Same(syntheticMode, captured.ActiveMode);
+        Assert.Equal("test-mode", captured.ActiveModeId);
+        Assert.Same(FrameworkRuntimeStates.TrustedPreview, captured.FrameworkState);
+        Assert.True(captured.IsTrustedPreview);
+        Assert.False(captured.IsFrameworkFallback);
+        Assert.Equal(SiteMode.Unassigned, captured.SiteMode);
+    }
+
+    [Fact]
+    public async Task UnknownHostUsesFrameworkFallbackWithoutCreatingAHostedMode()
+    {
+        SiteModeContext? captured = null;
+        var middleware = new SiteModeMiddleware(
+            context =>
+            {
+                captured = context.GetSiteModeContext();
+                return Task.CompletedTask;
+            },
+            new SiteModeOptions(),
+            new SiteModeRegistry(BuiltInSiteModes.All));
+        var context = new DefaultHttpContext();
+        context.Request.Host = new HostString("unassigned.example");
+
+        await middleware.InvokeAsync(context);
+
+        Assert.NotNull(captured);
+        Assert.Null(captured.ActiveMode);
+        Assert.Null(captured.ActiveModeId);
+        Assert.Same(FrameworkRuntimeStates.Fallback, captured.FrameworkState);
+        Assert.True(captured.IsFrameworkFallback);
+        Assert.False(captured.IsTrustedPreview);
+        Assert.Equal(SiteMode.Unassigned, captured.SiteMode);
     }
 
     [Fact]
