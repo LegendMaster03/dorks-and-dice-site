@@ -101,7 +101,7 @@ public sealed class ContentBodyRenderer : IContentBodyRenderer
         sanitizer.AllowedAttributes.Clear();
         foreach (var attribute in new[]
         {
-            "alt", "class", "colspan", "height", "href", "rel",
+            "alt", "class", "colspan", "height", "href", "id", "rel",
             "role", "rowspan", "scope", "src", "target", "title", "width"
         })
         {
