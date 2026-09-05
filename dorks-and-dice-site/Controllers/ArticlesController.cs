@@ -26,7 +26,7 @@ public class ArticlesController : Controller
         var modeContext = HttpContext.GetSiteModeContext();
         var articles = (await _contentCatalogService.GetByContextAsync(
             ContentTags.Article,
-            modeContext.SiteMode,
+            modeContext,
             modeContext.IncludeUnlistedArticles,
             cancellationToken)).ToList();
 
