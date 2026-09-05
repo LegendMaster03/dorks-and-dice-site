@@ -18,6 +18,24 @@
 
   let visualActive = false;
 
+  const classAttributes = element => {
+    const classes = [...element.classList]
+      .filter(value => value && value !== "content-visual-directive");
+    return classes.length ? `{${classes.map(value => `.${value}`).join(" ")}}` : "";
+  };
+
+  const isSerializableContainer = element =>
+    element?.nodeType === Node.ELEMENT_NODE
+    && element.tagName.toLowerCase() === "div"
+    && !element.classList.contains("content-visual-directive");
+
+  const containerNestingDepth = element => {
+    const childDepths = [...element.children]
+      .filter(isSerializableContainer)
+      .map(containerNestingDepth);
+    return 1 + (childDepths.length ? Math.max(...childDepths) : 0);
+  };
+
   const inlineMarkdown = node => {
     if (node.nodeType === Node.TEXT_NODE) {
       return node.nodeValue.replace(/([\\*_[\]])/g, "\\$1");
@@ -25,13 +43,14 @@
     if (node.nodeType !== Node.ELEMENT_NODE) return "";
     const element = node;
     const content = [...element.childNodes].map(inlineMarkdown).join("");
+    const attributes = classAttributes(element);
     switch (element.tagName.toLowerCase()) {
-      case "strong": case "b": return `**${content}**`;
-      case "em": case "i": return `*${content}*`;
-      case "del": case "s": return `~~${content}~~`;
-      case "code": return `\`${element.textContent}\``;
-      case "a": return `[${content || element.getAttribute("href")}](${element.getAttribute("href") || ""})`;
-      case "img": return `![${element.getAttribute("alt") || ""}](${element.getAttribute("src") || ""})`;
+      case "strong": case "b": return `**${content}**${attributes}`;
+      case "em": case "i": return `*${content}*${attributes}`;
+      case "del": case "s": return `~~${content}~~${attributes}`;
+      case "code": return `\`${element.textContent}\`${attributes}`;
+      case "a": return `[${content || element.getAttribute("href")}](${element.getAttribute("href") || ""})${attributes}`;
+      case "img": return `![${element.getAttribute("alt") || ""}](${element.getAttribute("src") || ""})${attributes}`;
       case "br": return "  \n";
       default: return content;
     }
@@ -45,10 +64,23 @@
     if (element.classList.contains("content-visual-directive")) {
       return `${element.dataset.directive || element.textContent.trim()}\n\n`;
     }
-    if (/^h[1-6]$/.test(tag)) return `${"#".repeat(Number(tag[1]))} ${inlineMarkdown(element)}\n\n`;
-    if (tag === "p") return `${inlineMarkdown(element).trim()}\n\n`;
+    if (isSerializableContainer(element)) {
+      const attributes = classAttributes(element);
+      const fence = ":".repeat(2 + containerNestingDepth(element));
+      return `${fence}${attributes ? ` ${attributes}` : ""}\n${blockChildren(element, depth + 1).trimEnd()}\n${fence}\n\n`;
+    }
+    if (/^h[1-6]$/.test(tag)) {
+      const attributes = classAttributes(element);
+      return `${"#".repeat(Number(tag[1]))} ${inlineMarkdown(element)}${attributes ? ` ${attributes}` : ""}\n\n`;
+    }
+    if (tag === "p") {
+      const attributes = classAttributes(element);
+      return `${inlineMarkdown(element).trim()}${attributes ? ` ${attributes}` : ""}\n\n`;
+    }
     if (tag === "blockquote") {
-      return blockChildren(element).trim().split("\n").map(line => `> ${line}`).join("\n") + "\n\n";
+      const content = blockChildren(element, depth).trim().split("\n").map(line => `> ${line}`).join("\n");
+      const attributes = classAttributes(element);
+      return `${content}${attributes ? ` ${attributes}` : ""}\n\n`;
     }
     if (tag === "pre") return `\`\`\`\n${element.textContent.replace(/\n$/, "")}\n\`\`\`\n\n`;
     if (tag === "hr") return "---\n\n";
@@ -69,13 +101,17 @@
       if (!rows.length) return "";
       const width = Math.max(...rows.map(row => row.length));
       const normalized = rows.map(row => [...row, ...Array(width - row.length).fill("")]);
-      return `${normalized.map(row => `| ${row.join(" | ")} |`).slice(0, 1).join("\n")}\n| ${Array(width).fill("---").join(" | ")} |\n${normalized.slice(1).map(row => `| ${row.join(" | ")} |`).join("\n")}\n\n`;
+      const attributes = classAttributes(element);
+      const table = `${normalized.map(row => `| ${row.join(" | ")} |`).slice(0, 1).join("\n")}\n| ${Array(width).fill("---").join(" | ")} |\n${normalized.slice(1).map(row => `| ${row.join(" | ")} |`).join("\n")}\n\n`;
+      return `${attributes ? `${attributes}\n` : ""}${table}`;
     }
     if (tag === "img") return `${inlineMarkdown(element)}\n\n`;
-    return blockChildren(element);
+    return blockChildren(element, depth);
   };
 
-  const blockChildren = element => [...element.childNodes].map(node => blockMarkdown(node)).join("");
+  const blockChildren = (element, depth = 0) =>
+    [...element.childNodes].map(node => blockMarkdown(node, depth)).join("");
+
   const syncMarkdown = () => {
     if (visualActive) body.value = blockChildren(surface).replace(/\n{3,}/g, "\n\n").trimEnd();
   };
