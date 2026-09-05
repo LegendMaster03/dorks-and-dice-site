@@ -292,10 +292,12 @@ app.Use(async (context, next) =>
     var requestedHost = context.Request.Host.Host.ToLowerInvariant();
     var normalizedHost = NormalizeHost(requestedHost);
     var options = context.RequestServices.GetRequiredService<SiteModeOptions>();
-    if (options.ProfessionalDomains.Contains(normalizedHost)
-        && !string.Equals(requestedHost, SiteModeOptions.CanonicalProfessionalHost, StringComparison.OrdinalIgnoreCase))
+    var modeId = options.ResolveModeId(normalizedHost);
+    if (modeId is not null
+        && options.TryGetCanonicalHost(modeId, out var canonicalHost)
+        && !string.Equals(requestedHost, canonicalHost, StringComparison.OrdinalIgnoreCase))
     {
-        var target = $"https://{SiteModeOptions.CanonicalProfessionalHost}{context.Request.PathBase}{context.Request.Path}{context.Request.QueryString}";
+        var target = $"https://{canonicalHost}{context.Request.PathBase}{context.Request.Path}{context.Request.QueryString}";
         context.Response.Redirect(target, permanent: true, preserveMethod: true);
         return;
     }
@@ -321,13 +323,8 @@ app.MapGet("/robots.txt", (HttpContext context) =>
 
 app.MapGet("/sitemap.xml", (HttpContext context) =>
 {
-    var siteMode = context.GetSiteModeContext().SiteMode;
-    var paths = siteMode switch
-    {
-        SiteMode.Professional => new[] { "/", "/resume", "/articles" },
-        SiteMode.DorksAndDice => new[] { "/", "/articles" },
-        _ => new[] { "/" }
-    };
+    var modeContext = context.GetSiteModeContext();
+    IReadOnlyList<string> paths = modeContext.ActiveMode?.SitemapPaths ?? ["/"];
 
     var urls = string.Join(string.Empty, paths.Select(path =>
         $"<url><loc>{SecurityElement.Escape(BuildAbsoluteUrl(context, path))}</loc></url>"));
@@ -433,10 +430,12 @@ app.Run();
 
 static string BuildAbsoluteUrl(HttpContext context, string path)
 {
-    var siteMode = context.GetSiteModeContext().SiteMode;
-    var host = siteMode == SiteMode.Professional
-        ? SiteModeOptions.CanonicalProfessionalHost
-        : context.Request.Host.Value;
+    var modeContext = context.GetSiteModeContext();
+    var options = context.RequestServices.GetRequiredService<SiteModeOptions>();
+    var host = modeContext.ActiveModeId is { Length: > 0 } modeId
+        && options.TryGetCanonicalHost(modeId, out var canonicalHost)
+            ? canonicalHost!
+            : context.Request.Host.Value;
     return $"{context.Request.Scheme}://{host}{context.Request.PathBase}{path}";
 }
 
