@@ -25,6 +25,18 @@ public sealed class ToolHostingRuntimeTests
     }
 
     [Fact]
+    public void ToolVisibilitySupportsRegisteredModeIdsWithoutEnumValues()
+    {
+        var tool = new ToolRegistration
+        {
+            Modes = ["test-mode"]
+        };
+
+        Assert.True(ToolVisibility.IsVisibleInMode(tool, "test-mode"));
+        Assert.False(ToolVisibility.IsVisibleInMode(tool, "another-mode"));
+    }
+
+    [Fact]
     public void LegacyToolWithoutModesRemainsDorksAndDiceOnly()
     {
         var tool = new ToolRegistration
