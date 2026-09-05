@@ -50,6 +50,23 @@ public sealed class ModeScopedRoleAuthorizationTests
     }
 
     [Fact]
+    public async Task GlobalEditorAuthorizesSyntheticModeWithoutEnumValue()
+    {
+        var syntheticMode = new SiteModeDefinition(
+            Id: "test-mode",
+            DisplayName: "Test Mode",
+            LegacyMode: null,
+            ViewFolder: "TestMode",
+            AssetFolder: "test-mode");
+        var user = CreateGlobalRoleUser(AccountRoles.GlobalEditor);
+
+        Assert.True(await IsAuthorizedAsync(user, new SiteModeContext
+        {
+            ActiveMode = syntheticMode
+        }));
+    }
+
+    [Fact]
     public async Task AdminInheritsGlobalEditorAuthorizationFromHierarchy()
     {
         var user = CreateGlobalRoleUser(AccountRoles.Admin);
