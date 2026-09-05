@@ -48,12 +48,21 @@ public sealed class ContentRevisionSummary
 public sealed class ContentAuthoringIndexViewModel
 {
     public List<ContentItem> Items { get; init; } = [];
+    public List<ContentAuthoringIndexEntryViewModel> Entries { get; init; } = [];
     public string SelectedSourceKey { get; init; } = string.Empty;
     public string AuthoringSourceKey { get; init; } = string.Empty;
     public bool IsAuthoringWorkspace => string.Equals(
         SelectedSourceKey, AuthoringSourceKey, StringComparison.OrdinalIgnoreCase);
     public List<ContentAuthoringSourceOption> Sources { get; init; } = [];
     public List<ContentAuthoringSourceOption> MoveTargets { get; init; } = [];
+}
+
+public sealed class ContentAuthoringIndexEntryViewModel
+{
+    public required ContentItem Item { get; init; }
+    public string SourceKey { get; init; } = string.Empty;
+    public string SourceDisplayName { get; init; } = string.Empty;
+    public bool IsAuthoringSource { get; init; }
 }
 
 public sealed class ContentAuthoringSourceOption
