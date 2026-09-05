@@ -26,8 +26,8 @@ public sealed class ModeScopedRoleAuthorizationHandler : AuthorizationHandler<Mo
         }
 
         // Global role inheritance is resolved from the same hierarchy shown in account
-        // management. This preserves trusted Admin/Owner editor behavior even when the
-        // localhost preview is currently set to the Development mode.
+        // management. Global Editor therefore remains valid on shared editor routes even
+        // when Trusted Preview has no normal site mode selected.
         if (string.Equals(requirement.Role, ScopedAccountRoles.Editor, StringComparison.Ordinal)
             && AccountRoleHierarchy.PrincipalHasGlobalRole(context.User, AccountRoles.GlobalEditor))
         {
@@ -35,13 +35,18 @@ public sealed class ModeScopedRoleAuthorizationHandler : AuthorizationHandler<Mo
             return Task.CompletedTask;
         }
 
-        var siteMode = httpContext.GetSiteModeContext().SiteMode;
-        if (!AccountRoleScopes.TryGetScope(siteMode, out var scope) || scope is null)
+        var modeContext = httpContext.GetSiteModeContext();
+        var scope = modeContext.ActiveModeId;
+
+        // Temporary compatibility for tests/callers that still construct SiteModeContext
+        // using only the legacy enum. Runtime middleware now supplies ActiveMode directly.
+        if (scope is null)
         {
-            return Task.CompletedTask;
+            AccountRoleScopes.TryGetScope(modeContext.SiteMode, out scope);
         }
 
-        if (AccountRoleHierarchy.PrincipalHasScopedRole(context.User, scope, requirement.Role))
+        if (scope is not null
+            && AccountRoleHierarchy.PrincipalHasScopedRole(context.User, scope, requirement.Role))
         {
             context.Succeed(requirement);
         }
