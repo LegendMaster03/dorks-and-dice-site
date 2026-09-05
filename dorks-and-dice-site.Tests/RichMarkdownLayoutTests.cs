@@ -26,7 +26,7 @@ public sealed class RichMarkdownLayoutTests
     }
 
     [Fact]
-    public void RendererStillStripsUnapprovedGenericAttributes()
+    public void RendererPreservesSectionIdsButStripsUnsafeGenericAttributes()
     {
         var renderer = new ContentBodyRenderer(Array.Empty<IContentDirectiveRenderer>());
 
@@ -39,7 +39,7 @@ public sealed class RichMarkdownLayoutTests
             """);
 
         Assert.Contains("class=\"card\"", html, StringComparison.Ordinal);
-        Assert.DoesNotContain("id=", html, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("id=\"page-shell\"", html, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("onclick", html, StringComparison.OrdinalIgnoreCase);
     }
 }
