@@ -37,11 +37,11 @@ public sealed class ToolModulesController : ControllerBase
         }
 
         var tool = await _toolRegistry.GetBySlugAsync(slug, cancellationToken);
-        var siteMode = HttpContext.GetSiteModeContext().SiteMode;
+        var modeId = HttpContext.GetSiteModeContext().ActiveModeId;
         if (tool is null
             || !tool.Enabled
             || tool.IntegrationType != ToolIntegrationType.EmbeddedModule
-            || !ToolVisibility.IsVisibleInMode(tool, siteMode))
+            || !ToolVisibility.IsVisibleInMode(tool, modeId))
         {
             return NotFound();
         }
