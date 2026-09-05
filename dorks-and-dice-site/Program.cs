@@ -9,6 +9,7 @@ using dorks_and_dice_site.Services.GameServers.Minecraft;
 using dorks_and_dice_site.Services.Identity;
 using dorks_and_dice_site.Services.Site;
 using dorks_and_dice_site.Services.Site.ModePresentation;
+using dorks_and_dice_site.Services.Tools;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
@@ -25,6 +26,17 @@ builder.Services.Configure<MinecraftServerOptions>(
 builder.Services.AddSingleton<IMinecraftServerStatusService, MinecraftServerStatusService>();
 builder.Services.AddContentStorage(builder.Configuration, builder.Environment.ContentRootPath);
 builder.Services.AddScoped<IResumeContentService, ResumeContentService>();
+builder.Services.AddSingleton<IToolRegistry, JsonToolRegistry>();
+builder.Services.AddSingleton<IToolHealthService, ToolHealthService>();
+builder.Services
+    .AddHttpClient(ToolHttpClientNames.Hosting, client =>
+    {
+        client.Timeout = TimeSpan.FromSeconds(3);
+    })
+    .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+    {
+        AllowAutoRedirect = false
+    });
 builder.Services.AddSingleton<SiteModeOptions>();
 builder.Services.AddSingleton<ISiteModePartialResolver, SiteModePartialResolver>();
 builder.Services.AddSingleton<ISiteModeStylesheetResolver, SiteModeStylesheetResolver>();
