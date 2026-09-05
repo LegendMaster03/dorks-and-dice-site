@@ -5,7 +5,6 @@ namespace dorks_and_dice_site.Services.Site;
 
 public sealed class SiteModePartialResolver : ISiteModePartialResolver
 {
-    private const string UnassignedFolderName = "Unassigned";
     private readonly ICompositeViewEngine _viewEngine;
 
     public SiteModePartialResolver(ICompositeViewEngine viewEngine)
@@ -13,41 +12,74 @@ public sealed class SiteModePartialResolver : ISiteModePartialResolver
         _viewEngine = viewEngine;
     }
 
-    public string GetPartialPath(SiteMode siteMode, string partialName)
+    public string GetPartialPath(SiteModeContext context, string partialName)
     {
-        var modePath = BuildPartialPath(GetFolderName(siteMode), partialName);
-        if (_viewEngine.GetView(executingFilePath: null, viewPath: modePath, isMainPage: false).Success)
+        ArgumentNullException.ThrowIfNull(context);
+
+        var preferredFolder = GetPreferredFolder(context);
+        var preferredPath = BuildPartialPath(preferredFolder, partialName);
+        if (_viewEngine.GetView(executingFilePath: null, viewPath: preferredPath, isMainPage: false).Success)
         {
-            return modePath;
+            return preferredPath;
         }
 
-        return BuildPartialPath(UnassignedFolderName, partialName);
+        return BuildPartialPath(FrameworkRuntimeStates.Fallback.ViewFolder, partialName);
     }
 
-    public string GetBrandingPartialPath(SiteMode siteMode, SiteModeBrandingPart brandingPart)
+    public string GetBrandingPartialPath(SiteModeContext context, SiteModeBrandingPart brandingPart)
     {
         if (!Enum.IsDefined(brandingPart))
         {
             throw new ArgumentOutOfRangeException(nameof(brandingPart), brandingPart, "Unknown branding part.");
         }
 
-        return GetPartialPath(siteMode, $"Branding/_{brandingPart}");
+        return GetPartialPath(context, $"Branding/_{brandingPart}");
+    }
+
+    public string GetPartialPath(SiteMode siteMode, string partialName) =>
+        GetPartialPath(BuildCompatibilityContext(siteMode), partialName);
+
+    public string GetBrandingPartialPath(SiteMode siteMode, SiteModeBrandingPart brandingPart) =>
+        GetBrandingPartialPath(BuildCompatibilityContext(siteMode), brandingPart);
+
+    private static string GetPreferredFolder(SiteModeContext context)
+    {
+        if (context.ActiveMode is not null)
+        {
+            return context.ActiveMode.ViewFolder;
+        }
+
+        if (context.IsTrustedPreview)
+        {
+            return FrameworkRuntimeStates.TrustedPreview.ViewFolder;
+        }
+
+        return FrameworkRuntimeStates.Fallback.ViewFolder;
+    }
+
+    private static SiteModeContext BuildCompatibilityContext(SiteMode siteMode)
+    {
+        if (BuiltInSiteModes.TryGetByLegacyMode(siteMode, out var definition))
+        {
+            return new SiteModeContext
+            {
+                ActiveMode = definition
+            };
+        }
+
+        if (FrameworkRuntimeStates.TryGetByLegacyMode(siteMode, out var frameworkState))
+        {
+            return new SiteModeContext
+            {
+                FrameworkState = frameworkState
+            };
+        }
+
+        throw new ArgumentOutOfRangeException(nameof(siteMode), siteMode, "Unknown site mode.");
     }
 
     private static string BuildPartialPath(string folderName, string partialName)
     {
         return $"~/Views/SiteModes/{folderName}/{partialName}.cshtml";
-    }
-
-    private static string GetFolderName(SiteMode siteMode)
-    {
-        return siteMode switch
-        {
-            SiteMode.DorksAndDice => "DorksAndDice",
-            SiteMode.Professional => "Professional",
-            SiteMode.Development => "Development",
-            SiteMode.Unassigned => UnassignedFolderName,
-            _ => UnassignedFolderName
-        };
     }
 }
