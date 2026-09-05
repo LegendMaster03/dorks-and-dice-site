@@ -38,7 +38,7 @@ public sealed class ToolHostApiController : ControllerBase
         return Ok(new ToolHostApiSession
         {
             ToolSlug = access.Tool!.Slug,
-            SiteMode = SiteModeValues.ToModeValue(HttpContext.GetSiteModeContext().SiteMode),
+            SiteMode = HttpContext.GetSiteModeContext().ActiveModeId!,
             User = BuildUserContext(access.UserId!)
         });
     }
@@ -90,10 +90,10 @@ public sealed class ToolHostApiController : ControllerBase
         // Membership-dependent failures must not be cached either.
         Response.Headers.CacheControl = "no-store";
         var tool = await _toolRegistry.GetBySlugAsync(slug, cancellationToken);
-        var siteMode = HttpContext.GetSiteModeContext().SiteMode;
+        var modeId = HttpContext.GetSiteModeContext().ActiveModeId;
         if (tool is null
             || !tool.Enabled
-            || !ToolVisibility.IsVisibleInMode(tool, siteMode))
+            || !ToolVisibility.IsVisibleInMode(tool, modeId))
         {
             return (null, null, NotFound());
         }
