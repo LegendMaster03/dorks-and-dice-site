@@ -24,6 +24,8 @@ public static class ContentStorageServiceCollectionExtensions
         services.AddScoped<IContentAuthoringService, ContentAuthoringService>();
         services.AddScoped<IContentSourceTransferService, ContentSourceTransferService>();
         services.AddScoped<IContentAssetService, ContentAssetService>();
+        services.AddSingleton<IContentPageComponentDefinition, ContentCollectionPageComponentDefinition>();
+        services.AddSingleton<IContentPageComposer, ContentPageComposer>();
         services.AddSingleton<IContentDirectiveRenderer, SiteModeArchitectureDirectiveRenderer>();
         services.AddSingleton<IContentDirectiveRenderer>(new StaticContentDirectiveRenderer(
             "spoiler-warning-start",
