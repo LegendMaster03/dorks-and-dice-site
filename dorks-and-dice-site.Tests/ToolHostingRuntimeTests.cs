@@ -1,8 +1,11 @@
+using System.Net;
 using dorks_and_dice_site.Models.Site;
 using dorks_and_dice_site.Models.Tools;
 using dorks_and_dice_site.Services.Site;
 using dorks_and_dice_site.Services.Tools;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace dorks_and_dice_site.Tests;
 
@@ -111,4 +114,139 @@ public sealed class ToolHostingRuntimeTests
 
         return new ToolUpstreamPolicy(configuration);
     }
+}
+
+[Collection(PublishedContentIntegrationCollection.Name)]
+public sealed class ToolHostingIntegrationTests
+{
+    private readonly PublishedContentWebApplicationFactory _factory;
+
+    public ToolHostingIntegrationTests(PublishedContentWebApplicationFactory factory)
+    {
+        _factory = factory;
+    }
+
+    [Fact]
+    public async Task ToolDetailsHonorModeSelection()
+    {
+        var tool = await RegisterAsync(new ToolRegistration
+        {
+            Slug = UniqueSlug(),
+            DisplayName = "Professional Tool",
+            Modes = [SiteModeValues.ProfessionalModeValue],
+            Enabled = true
+        });
+
+        try
+        {
+            var professional = await SendAsync("kylebarnett.com", $"/tools/{tool.Slug}");
+            var dorks = await SendAsync("dorks-and-dice.com", $"/tools/{tool.Slug}");
+
+            Assert.Equal(HttpStatusCode.OK, professional.StatusCode);
+            Assert.Equal(HttpStatusCode.NotFound, dorks.StatusCode);
+        }
+        finally
+        {
+            await DeleteAsync(tool.Id);
+        }
+    }
+
+    [Fact]
+    public async Task DisabledToolAndModuleRoutesReturnNotFound()
+    {
+        var tool = await RegisterAsync(new ToolRegistration
+        {
+            Slug = UniqueSlug(),
+            DisplayName = "Disabled Tool",
+            Modes = [SiteModeValues.DorksAndDiceModeValue],
+            IntegrationType = ToolIntegrationType.EmbeddedModule,
+            UpstreamBaseUrl = "http://localhost:8123",
+            FrontendEntryPoint = "/app.js",
+            Enabled = false
+        });
+
+        try
+        {
+            var details = await SendAsync("dorks-and-dice.com", $"/tools/{tool.Slug}");
+            var module = await SendAsync("dorks-and-dice.com", $"/tool-modules/{tool.Slug}/app.js");
+
+            Assert.Equal(HttpStatusCode.NotFound, details.StatusCode);
+            Assert.Equal(HttpStatusCode.NotFound, module.StatusCode);
+        }
+        finally
+        {
+            await DeleteAsync(tool.Id);
+        }
+    }
+
+    [Fact]
+    public async Task AccountRequiredModuleChallengesAnonymousBeforeUpstreamResolution()
+    {
+        var tool = await RegisterAsync(new ToolRegistration
+        {
+            Slug = UniqueSlug(),
+            DisplayName = "Account Tool",
+            Modes = [SiteModeValues.DorksAndDiceModeValue],
+            IntegrationType = ToolIntegrationType.EmbeddedModule,
+            AllowAnonymous = false,
+            Enabled = true
+        });
+
+        try
+        {
+            var anonymous = await SendAsync("dorks-and-dice.com", $"/tool-modules/{tool.Slug}/app.js");
+            using var authenticatedRequest = CreateRequest("dorks-and-dice.com", $"/tool-modules/{tool.Slug}/app.js");
+            authenticatedRequest.Headers.Add(TestRoleAuthenticationHandler.RolesHeader, "Member");
+            var authenticated = await SendAsync(authenticatedRequest);
+
+            Assert.Equal(HttpStatusCode.Unauthorized, anonymous.StatusCode);
+            Assert.Equal(HttpStatusCode.BadGateway, authenticated.StatusCode);
+        }
+        finally
+        {
+            await DeleteAsync(tool.Id);
+        }
+    }
+
+    private async Task<ToolRegistration> RegisterAsync(ToolRegistration tool)
+    {
+        tool.Id = Guid.NewGuid();
+        tool.CreatedAt = DateTimeOffset.UtcNow;
+        tool.UpdatedAt = tool.CreatedAt;
+        using var scope = _factory.Services.CreateScope();
+        var registry = scope.ServiceProvider.GetRequiredService<IToolRegistry>();
+        await registry.SaveAsync(tool);
+        return tool;
+    }
+
+    private async Task DeleteAsync(Guid id)
+    {
+        using var scope = _factory.Services.CreateScope();
+        var registry = scope.ServiceProvider.GetRequiredService<IToolRegistry>();
+        await registry.DeleteAsync(id);
+    }
+
+    private async Task<HttpResponseMessage> SendAsync(string host, string path)
+    {
+        using var request = CreateRequest(host, path);
+        return await SendAsync(request);
+    }
+
+    private async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request)
+    {
+        using var client = _factory.CreateClient(new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false
+        });
+        return await client.SendAsync(request);
+    }
+
+    private static HttpRequestMessage CreateRequest(string host, string path)
+    {
+        var request = new HttpRequestMessage(HttpMethod.Get, $"http://{host}{path}");
+        request.Headers.Host = host;
+        return request;
+    }
+
+    private static string UniqueSlug() => $"tool-{Guid.NewGuid():N}";
 }
