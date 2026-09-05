@@ -41,7 +41,7 @@
         <div class="col-md-6">
             <label asp-for="IntegrationType" class="form-label">Integration type</label>
             <select asp-for="IntegrationType" asp-items="Html.GetEnumSelectList<ToolIntegrationType>()" class="form-select"></select>
-            <div class="form-text"><strong>Embedded Module</strong> mounts the tool UI inside the site's normal page shell. <strong>Proxied Application</strong> gives the tool control of its routed application surface.</div>
+            <div class="form-text"><strong>Embedded Module</strong> mounts the tool UI inside the site's normal page shell. <strong>Proxied Application</strong> gives the tool control of <code>/tools/{slug}</code> and its subroutes.</div>
         </div>
         <div class="col-md-6">
             <label asp-for="UpstreamBaseUrl" class="form-label">Upstream base URL</label>
@@ -52,7 +52,7 @@
         <div class="col-md-6">
             <label asp-for="FrontendEntryPoint" class="form-label">Frontend entry point</label>
             <input asp-for="FrontendEntryPoint" class="form-control" placeholder="/app.js" />
-            <div class="form-text">For an embedded module, the browser-loadable JavaScript or module path that mounts the tool UI into the host page.</div>
+            <div class="form-text">Used only by <strong>Embedded Module</strong>. For proxied applications, leave this blank.</div>
             <span asp-validation-for="FrontendEntryPoint" class="text-danger"></span>
         </div>
         <div class="col-md-6">
@@ -60,6 +60,11 @@
             <input asp-for="HealthPath" class="form-control" placeholder="/health" />
             <div class="form-text">Optional lightweight endpoint the host can call to verify that the tool service is running and responsive. It is combined with the upstream base URL.</div>
             <span asp-validation-for="HealthPath" class="text-danger"></span>
+        </div>
+        <div class="col-12">
+            <div class="alert alert-secondary mb-0" role="note">
+                Proxied applications should serve correctly behind the public prefix <code>/tools/{slug}</code>. The host sends <code>X-Forwarded-Prefix</code>, <code>X-Forwarded-Host</code>, and <code>X-Forwarded-Proto</code>. Site cookies and authorization headers are not forwarded upstream, and upstream redirects are currently rejected rather than exposed to the browser.
+            </div>
         </div>
         <div class="col-12">
             <fieldset>
