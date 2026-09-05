@@ -14,5 +14,7 @@ public interface ISiteModePresentationModule
     string GetTitleSuffix();
     string GetDefaultMetaDescription();
     string GetFaviconPath();
+    string? GetDefaultMetaImagePath();
+    string? GetStructuredDataJson(string canonicalOrigin);
     ArticlesIndexPresentationViewModel GetArticlesIndexPresentation();
 }
