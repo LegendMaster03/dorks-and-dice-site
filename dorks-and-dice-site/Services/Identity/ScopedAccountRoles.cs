@@ -11,23 +11,36 @@ public static class ScopedAccountRoles
 }
 
 public sealed record ScopedEditorRoleDefinition(
-    SiteMode SiteMode,
     string Scope,
-    string DisplayName)
+    string DisplayName,
+    SiteMode? LegacySiteMode)
 {
     public string RoleName => $"{DisplayName} {ScopedAccountRoles.Editor}";
+
+    // Compatibility bridge for consumers that still operate on the legacy SiteMode enum.
+    // New registry-driven consumers should use Scope instead.
+    public SiteMode SiteMode => LegacySiteMode
+        ?? throw new InvalidOperationException(
+            $"Mode '{Scope}' does not have a legacy SiteMode enum value.");
+}
+
+public static class SiteModeEditorRoleFactory
+{
+    public static IReadOnlyList<ScopedEditorRoleDefinition> Create(
+        IEnumerable<SiteModeDefinition> modes) =>
+        modes
+            .Where(mode => mode.SupportsScopedEditor)
+            .Select(mode => new ScopedEditorRoleDefinition(
+                mode.Id,
+                mode.DisplayName,
+                mode.LegacyMode))
+            .ToArray();
 }
 
 public static class SiteModeEditorRoles
 {
     public static IReadOnlyList<ScopedEditorRoleDefinition> All { get; } =
-        Enum.GetValues<SiteMode>()
-            .Where(SiteModeValues.IsEditorMode)
-            .Select(mode => new ScopedEditorRoleDefinition(
-                mode,
-                SiteModeValues.ToModeValue(mode),
-                SiteModeValues.ToDisplayName(mode)))
-            .ToArray();
+        SiteModeEditorRoleFactory.Create(BuiltInSiteModes.All);
 
     public static bool TryGetByScope(string scope, out ScopedEditorRoleDefinition? definition)
     {
@@ -38,13 +51,15 @@ public static class SiteModeEditorRoles
 
     public static bool TryGetByMode(SiteMode siteMode, out ScopedEditorRoleDefinition? definition)
     {
-        definition = All.FirstOrDefault(candidate => candidate.SiteMode == siteMode);
+        definition = All.FirstOrDefault(candidate => candidate.LegacySiteMode == siteMode);
         return definition is not null;
     }
 }
 
 public static class AccountRoleScopes
 {
+    // Compatibility constants for current callers. New mode-aware code should consume
+    // registered mode ids rather than adding another constant here.
     public const string DorksAndDice = SiteModeValues.DorksAndDiceModeValue;
     public const string Professional = SiteModeValues.ProfessionalModeValue;
 
