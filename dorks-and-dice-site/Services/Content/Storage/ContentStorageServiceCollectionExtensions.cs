@@ -19,6 +19,7 @@ public static class ContentStorageServiceCollectionExtensions
 
         services.AddScoped<IContentRepository, CompositeContentRepository>();
         services.AddScoped<IContentCatalogService, ContentCatalogService>();
+        services.AddScoped<IHomepageContentService, HomepageContentService>();
         services.AddScoped<IContentRedirectService, ContentRedirectService>();
         services.AddScoped<IContentAuthoringService, ContentAuthoringService>();
         services.AddScoped<IContentSourceTransferService, ContentSourceTransferService>();
