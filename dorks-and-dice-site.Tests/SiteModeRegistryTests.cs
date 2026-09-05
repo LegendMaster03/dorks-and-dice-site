@@ -16,7 +16,19 @@ public sealed class SiteModeRegistryTests
     }
 
     [Fact]
-    public void SyntheticStandardModeGetsNormalModeBehaviorWithoutProductionEnumValue()
+    public void BuiltInRegistryContainsOnlyNormalHostedModes()
+    {
+        var registry = new SiteModeRegistry(BuiltInSiteModes.All);
+
+        Assert.Equal(2, registry.All.Count);
+        Assert.Contains(BuiltInSiteModes.DorksAndDice, registry.All);
+        Assert.Contains(BuiltInSiteModes.Professional, registry.All);
+        Assert.DoesNotContain(registry.All, definition => definition.LegacyMode == SiteMode.Unassigned);
+        Assert.DoesNotContain(registry.All, definition => definition.LegacyMode == SiteMode.Development);
+    }
+
+    [Fact]
+    public void SyntheticModeGetsNormalModeBehaviorWithoutProductionEnumValue()
     {
         var syntheticMode = new SiteModeDefinition(
             Id: "test-mode",
@@ -30,30 +42,21 @@ public sealed class SiteModeRegistryTests
 
         Assert.Same(syntheticMode, registered);
         Assert.Null(registered.LegacyMode);
-        Assert.Equal(SiteModeKind.Standard, registered.Kind);
-        Assert.True(registered.IsStandardMode);
         Assert.True(registered.SupportsContent);
         Assert.True(registered.SupportsScopedEditor);
     }
 
     [Fact]
-    public void UnassignedIsFrameworkFallbackRatherThanNormalSiteMode()
+    public void FrameworkRuntimeStatesRemainAvailableOnlyAsCompatibilityMetadata()
     {
-        Assert.Equal(SiteModeKind.Fallback, BuiltInSiteModes.Unassigned.Kind);
-        Assert.True(BuiltInSiteModes.Unassigned.IsFallback);
-        Assert.False(BuiltInSiteModes.Unassigned.IsStandardMode);
-        Assert.False(BuiltInSiteModes.Unassigned.SupportsContent);
-        Assert.False(BuiltInSiteModes.Unassigned.SupportsScopedEditor);
-    }
+        Assert.Equal(SiteMode.Unassigned, FrameworkRuntimeStates.Fallback.LegacyMode);
+        Assert.Equal("unassigned", FrameworkRuntimeStates.Fallback.Id);
+        Assert.Equal(SiteMode.Development, FrameworkRuntimeStates.TrustedPreview.LegacyMode);
+        Assert.Equal("development", FrameworkRuntimeStates.TrustedPreview.Id);
 
-    [Fact]
-    public void DevelopmentRepresentsGlobalTrustedPreviewRatherThanNormalSiteMode()
-    {
-        Assert.Equal(SiteModeKind.TrustedPreview, BuiltInSiteModes.Development.Kind);
-        Assert.True(BuiltInSiteModes.Development.IsTrustedPreview);
-        Assert.False(BuiltInSiteModes.Development.IsStandardMode);
-        Assert.False(BuiltInSiteModes.Development.SupportsContent);
-        Assert.False(BuiltInSiteModes.Development.SupportsScopedEditor);
+        var registry = new SiteModeRegistry(BuiltInSiteModes.All);
+        Assert.False(registry.TryGetByLegacyMode(SiteMode.Unassigned, out _));
+        Assert.False(registry.TryGetByLegacyMode(SiteMode.Development, out _));
     }
 
     [Fact]
