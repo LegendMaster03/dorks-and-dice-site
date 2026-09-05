@@ -1,0 +1,72 @@
+@model IReadOnlyList<dorks_and_dice_site.Models.Tools.ToolRegistration>
+@{
+    ViewData["Title"] = "Tool Hosting";
+    ViewData["Robots"] = "noindex,nofollow";
+}
+
+<div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-4">
+    <div>
+        <p class="text-uppercase text-muted small mb-1">Development tools</p>
+        <h1 class="h2 mb-2">Tool Hosting</h1>
+        <p class="text-body-secondary mb-0">Register portable tools and configure how the Dorks & Dice host exposes them.</p>
+    </div>
+    <a class="btn btn-primary" href="/development/tools/new">Register tool</a>
+</div>
+
+@if (TempData["DevelopmentToolMessage"] is string message)
+{
+    <div class="alert alert-success" role="status">@message</div>
+}
+
+@if (Model.Count == 0)
+{
+    <div class="card card-body">
+        <p class="mb-0 text-body-secondary">No tools are registered.</p>
+    </div>
+}
+else
+{
+    <div class="row g-3">
+        @foreach (var tool in Model)
+        {
+            <div class="col-lg-6">
+                <section class="card h-100">
+                    <div class="card-body d-flex flex-column">
+                        <div class="d-flex justify-content-between gap-3">
+                            <div>
+                                <h2 class="h5 mb-1">@tool.DisplayName</h2>
+                                <div class="small text-body-secondary">/tools/@tool.Slug</div>
+                            </div>
+                            <span class="badge @(tool.Enabled ? "text-bg-success" : "text-bg-secondary") align-self-start">
+                                @(tool.Enabled ? "Enabled" : "Disabled")
+                            </span>
+                        </div>
+                        @if (!string.IsNullOrWhiteSpace(tool.Description))
+                        {
+                            <p class="mt-3 mb-2">@tool.Description</p>
+                        }
+                        <dl class="row small mt-2 mb-3">
+                            <dt class="col-sm-4">Integration</dt>
+                            <dd class="col-sm-8">@tool.IntegrationType</dd>
+                            <dt class="col-sm-4">Anonymous</dt>
+                            <dd class="col-sm-8">@(tool.AllowAnonymous ? "Allowed" : "Account required")</dd>
+                            <dt class="col-sm-4">Upstream</dt>
+                            <dd class="col-sm-8 text-break">@(tool.UpstreamBaseUrl ?? "Not configured")</dd>
+                        </dl>
+                        <div class="mt-auto d-flex flex-wrap gap-2">
+                            <a class="btn btn-outline-primary btn-sm" href="/development/tools/@tool.Id">Edit</a>
+                            @if (tool.Enabled)
+                            {
+                                <a class="btn btn-outline-secondary btn-sm" href="/tools/@tool.Slug">Open public route</a>
+                            }
+                            <form method="post" action="/development/tools/@tool.Id/delete" onsubmit="return confirm('Remove this tool registration?');">
+                                @Html.AntiForgeryToken()
+                                <button class="btn btn-outline-danger btn-sm" type="submit">Remove</button>
+                            </form>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        }
+    </div>
+}

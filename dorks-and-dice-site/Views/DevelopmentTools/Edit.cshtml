@@ -1,0 +1,73 @@
+@model dorks_and_dice_site.Models.Tools.ToolRegistrationEditViewModel
+@using dorks_and_dice_site.Models.Tools
+@{
+    ViewData["Title"] = Model.Id.HasValue ? "Edit Tool" : "Register Tool";
+    ViewData["Robots"] = "noindex,nofollow";
+}
+
+<div class="mb-4">
+    <p class="text-uppercase text-muted small mb-1">Development tools</p>
+    <h1 class="h2 mb-2">@(Model.Id.HasValue ? "Edit tool" : "Register tool")</h1>
+    <p class="text-body-secondary mb-0">This configures how the host presents an already available tool. Container deployment is intentionally separate.</p>
+</div>
+
+<form method="post" action="/development/tools/save" class="card card-body shadow-sm">
+    @Html.AntiForgeryToken()
+    <input type="hidden" asp-for="Id" />
+
+    <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+    <div class="row g-3">
+        <div class="col-md-6">
+            <label asp-for="DisplayName" class="form-label">Display name</label>
+            <input asp-for="DisplayName" class="form-control" />
+            <span asp-validation-for="DisplayName" class="text-danger"></span>
+        </div>
+        <div class="col-md-6">
+            <label asp-for="Slug" class="form-label">Slug</label>
+            <div class="input-group">
+                <span class="input-group-text">/tools/</span>
+                <input asp-for="Slug" class="form-control" />
+            </div>
+            <span asp-validation-for="Slug" class="text-danger"></span>
+        </div>
+        <div class="col-12">
+            <label asp-for="Description" class="form-label">Description</label>
+            <textarea asp-for="Description" class="form-control" rows="3"></textarea>
+        </div>
+        <div class="col-md-6">
+            <label asp-for="IntegrationType" class="form-label">Integration type</label>
+            <select asp-for="IntegrationType" asp-items="Html.GetEnumSelectList<ToolIntegrationType>()" class="form-select"></select>
+        </div>
+        <div class="col-md-6">
+            <label asp-for="UpstreamBaseUrl" class="form-label">Upstream base URL</label>
+            <input asp-for="UpstreamBaseUrl" class="form-control" placeholder="http://initiative:8080" />
+            <span asp-validation-for="UpstreamBaseUrl" class="text-danger"></span>
+        </div>
+        <div class="col-md-6">
+            <label asp-for="FrontendEntryPoint" class="form-label">Frontend entry point</label>
+            <input asp-for="FrontendEntryPoint" class="form-control" placeholder="/app.js" />
+            <span asp-validation-for="FrontendEntryPoint" class="text-danger"></span>
+        </div>
+        <div class="col-md-6">
+            <label asp-for="HealthPath" class="form-label">Health path</label>
+            <input asp-for="HealthPath" class="form-control" placeholder="/health" />
+            <span asp-validation-for="HealthPath" class="text-danger"></span>
+        </div>
+        <div class="col-12">
+            <div class="form-check">
+                <input asp-for="AllowAnonymous" class="form-check-input" />
+                <label asp-for="AllowAnonymous" class="form-check-label">Allow anonymous use</label>
+            </div>
+            <div class="form-check mt-2">
+                <input asp-for="Enabled" class="form-check-input" />
+                <label asp-for="Enabled" class="form-check-label">Enable public route</label>
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex flex-wrap gap-2 mt-4">
+        <button class="btn btn-primary" type="submit">Save tool</button>
+        <a class="btn btn-outline-secondary" href="/development/tools">Cancel</a>
+    </div>
+</form>
