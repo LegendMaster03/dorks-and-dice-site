@@ -1,3 +1,5 @@
+using dorks_and_dice_site.Services.Content;
+
 namespace dorks_and_dice_site.Services.Site;
 
 public sealed record SiteModeHomeResult(
@@ -19,17 +21,22 @@ public interface ISiteModeHomeService
 }
 
 /// <summary>
-/// Resolves the home-page implementation for the active normal mode. A mode that does not
-/// provide a home module falls back at the component boundary instead of requiring a shared
-/// controller switch for every registered mode.
+/// Resolves a normal mode's homepage. Database-backed homepage content is the shared path for
+/// every normal mode. Existing mode home modules remain as migration fallbacks until their
+/// current homepage content has been moved into the content system.
 /// </summary>
 public sealed class SiteModeHomeService : ISiteModeHomeService
 {
+    private readonly IHomepageContentService _homepageContentService;
     private readonly IReadOnlyDictionary<string, ISiteModeHomeModule> _modules;
     private readonly ISiteModeHomeModule _fallbackModule;
 
-    public SiteModeHomeService(IEnumerable<ISiteModeHomeModule> modules)
+    public SiteModeHomeService(
+        IHomepageContentService homepageContentService,
+        IEnumerable<ISiteModeHomeModule> modules)
     {
+        _homepageContentService = homepageContentService;
+
         var materialized = modules.ToArray();
         var duplicateKey = materialized
             .GroupBy(module => module.HomeKey, StringComparer.Ordinal)
@@ -46,14 +53,25 @@ public sealed class SiteModeHomeService : ISiteModeHomeService
                 $"Framework fallback home module '{FrameworkRuntimeStates.Fallback.Id}' is not registered.");
     }
 
-    public Task<SiteModeHomeResult> GetHomeAsync(
+    public async Task<SiteModeHomeResult> GetHomeAsync(
         SiteModeContext context,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(context);
 
+        if (context.ActiveMode is not null)
+        {
+            var homepage = await _homepageContentService.GetAsync(context, cancellationToken);
+            if (homepage is not null)
+            {
+                return new SiteModeHomeResult(
+                    "~/Views/Content/Homepage.cshtml",
+                    homepage);
+            }
+        }
+
         var key = context.ActiveModeId ?? FrameworkRuntimeStates.Fallback.Id;
         var module = _modules.GetValueOrDefault(key) ?? _fallbackModule;
-        return module.BuildAsync(cancellationToken);
+        return await module.BuildAsync(cancellationToken);
     }
 }
