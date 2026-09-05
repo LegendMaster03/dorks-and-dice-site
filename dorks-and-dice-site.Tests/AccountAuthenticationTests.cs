@@ -1,7 +1,6 @@
 using System.Net;
 using System.Text.RegularExpressions;
 using dorks_and_dice_site.Models.Identity;
-using dorks_and_dice_site.Models.Site;
 using dorks_and_dice_site.Services.Identity;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -51,7 +50,8 @@ public sealed class AccountAuthenticationTests
 
         Assert.True(factory.EmailSender.Messages.TryDequeue(out var confirmationMessage));
         Assert.NotNull(confirmationMessage);
-        Assert.Equal(SiteMode.DorksAndDice, confirmationMessage.SiteMode);
+        Assert.Equal("Dorks & Dice", confirmationMessage.SenderIdentity.DisplayName);
+        Assert.Equal("dorks-and-dice.com", confirmationMessage.SenderIdentity.Domain);
         Assert.Equal(email, confirmationMessage.Recipient);
         Assert.Contains("Dorks & Dice", confirmationMessage.Subject, StringComparison.Ordinal);
 
