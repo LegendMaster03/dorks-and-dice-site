@@ -18,10 +18,11 @@ public sealed class ToolHostApiController : ControllerBase
 
     public ToolHostApiController(
         IToolRegistry toolRegistry,
-        ICampaignAccessStore campaignAccessStore)
+        IWebHostEnvironment environment,
+        IConfiguration configuration)
     {
         _toolRegistry = toolRegistry;
-        _campaignAccessStore = campaignAccessStore;
+        _campaignAccessStore = new JsonCampaignAccessStore(environment, configuration);
     }
 
     [HttpGet("session")]
