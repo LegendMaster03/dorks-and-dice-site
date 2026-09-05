@@ -1,7 +1,7 @@
 using System.Text.Json;
 using dorks_and_dice_site.Models.Content;
-using dorks_and_dice_site.Models.Site;
 using dorks_and_dice_site.Services.Content;
+using dorks_and_dice_site.Services.Site;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -97,7 +97,7 @@ public sealed class PublishedContentWebApplicationFactory : WebApplicationFactor
             DateText = "August 12, 2026",
             LinkText = "Read article",
             Tags = [ContentTags.Article, "software-development"],
-            VisibleInModes = [SiteMode.Professional],
+            VisibleInModes = [BuiltInSiteModes.Professional.Id],
             Body = "## Freeing the Bees\n\n- Inspect the console\n- Fix the variation"
         });
         var article = await authoring.GetEditAsync("External", "legacy-bees-article");
@@ -152,7 +152,7 @@ public sealed class PublishedContentWebApplicationFactory : WebApplicationFactor
             Summary = "Professional cybersecurity experience.",
             LinkText = "View experience",
             Tags = [ContentTags.Experience, "cybersecurity"],
-            VisibleInModes = [SiteMode.Professional],
+            VisibleInModes = [BuiltInSiteModes.Professional.Id],
             Body = "## Experience Information"
         });
 
@@ -192,7 +192,7 @@ public sealed class PublishedContentWebApplicationFactory : WebApplicationFactor
                 LogoLinkUrl = logoUrl is null ? null : "https://example.test"
             },
             Tags = [ContentTags.Project, .. publicTags],
-            VisibleInModes = [SiteMode.Professional],
+            VisibleInModes = [BuiltInSiteModes.Professional.Id],
             Body = body
         };
 
@@ -206,7 +206,7 @@ public sealed class PublishedContentWebApplicationFactory : WebApplicationFactor
             IsListed = true,
             MetadataJson = JsonSerializer.Serialize(item),
             TagsText = string.Join('\n', item.Tags),
-            VisibleModesSelection = item.VisibleInModes.Select(mode => mode.ToString()).ToList(),
+            VisibleModesSelection = item.VisibleInModes.ToList(),
             BodyFormat = "markdown",
             Body = item.Body
         });
