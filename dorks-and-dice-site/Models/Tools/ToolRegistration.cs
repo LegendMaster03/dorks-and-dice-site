@@ -8,6 +8,19 @@ public enum ToolIntegrationType
     ProxiedApplication
 }
 
+public enum ToolHealthStatus
+{
+    NotConfigured,
+    Healthy,
+    Unhealthy
+}
+
+public sealed record ToolHealthResult(
+    ToolHealthStatus Status,
+    string Detail,
+    int? StatusCode,
+    long? DurationMilliseconds);
+
 public sealed class ToolRegistration
 {
     public Guid Id { get; set; }
@@ -35,8 +48,13 @@ public sealed class ToolRegistrationEditViewModel
     public string? UpstreamBaseUrl { get; set; }
     public string? FrontendEntryPoint { get; set; }
     public string? HealthPath { get; set; }
-    public bool DorksAndDiceMode { get; set; } = true;
-    public bool ProfessionalMode { get; set; }
+    public List<string> Modes { get; set; } = [SiteModeValues.DorksAndDiceModeValue];
     public bool AllowAnonymous { get; set; } = true;
     public bool Enabled { get; set; }
+}
+
+public sealed class DevelopmentToolListItemViewModel
+{
+    public required ToolRegistration Tool { get; init; }
+    public required ToolHealthResult Health { get; init; }
 }
