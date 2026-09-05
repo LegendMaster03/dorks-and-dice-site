@@ -99,6 +99,8 @@ public sealed class SiteModePresentationServiceTests
         public string GetTitleSuffix() => _title;
         public string GetDefaultMetaDescription() => "Synthetic description";
         public string GetFaviconPath() => "https://example.test/favicon.svg";
+        public string? GetDefaultMetaImagePath() => null;
+        public string? GetStructuredDataJson(string canonicalOrigin) => null;
         public ArticlesIndexPresentationViewModel GetArticlesIndexPresentation() => new()
         {
             MetaTitle = $"Articles - {_title}",
