@@ -58,13 +58,13 @@ builder.Services.AddSingleton<ISiteModePartialResolver, SiteModePartialResolver>
 builder.Services.AddSingleton<ISiteModeStylesheetResolver, SiteModeStylesheetResolver>();
 builder.Services.AddSingleton<ISiteModePresentationService, SiteModePresentationService>();
 builder.Services.AddSingleton<ISiteModeArchitectureSummaryService, SiteModeArchitectureSummaryService>();
-builder.Services.AddSingleton<ISiteModePresentationModule, DorksAndDicePresentationModule>();
-builder.Services.AddSingleton<ISiteModePresentationModule, ProfessionalPresentationModule>();
+builder.Services.AddSingleton<ISiteModePresentationModule, dorks_and_dice_site.Modes.DorksAndDice.DorksAndDicePresentationModule>();
+builder.Services.AddSingleton<ISiteModePresentationModule, dorks_and_dice_site.Modes.Professional.ProfessionalPresentationModule>();
 builder.Services.AddSingleton<ISiteModePresentationModule, DevelopmentPresentationModule>();
 builder.Services.AddSingleton<ISiteModePresentationModule, UnassignedPresentationModule>();
 builder.Services.AddScoped<ISiteModeHomeService, SiteModeHomeService>();
-builder.Services.AddScoped<ISiteModeHomeModule, DorksAndDiceHomeModule>();
-builder.Services.AddScoped<ISiteModeHomeModule, ProfessionalHomeModule>();
+builder.Services.AddScoped<ISiteModeHomeModule, dorks_and_dice_site.Modes.DorksAndDice.DorksAndDiceHomeModule>();
+builder.Services.AddScoped<ISiteModeHomeModule, dorks_and_dice_site.Modes.Professional.ProfessionalHomeModule>();
 builder.Services.AddScoped<ISiteModeHomeModule, FallbackHomeModule>();
 
 builder.Services.Configure<AccountEmailOptions>(
