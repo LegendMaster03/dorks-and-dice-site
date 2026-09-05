@@ -2,9 +2,7 @@
 @inject ISiteModeStylesheetResolver SiteModeStylesheetResolver
 @{
     var siteModeContext = Context.GetSiteModeContext();
-    var stylesheetPaths = SiteModeStylesheetResolver.GetStylesheetPaths(
-        siteModeContext.SiteMode,
-        siteModeContext.HasTrustedAccess);
+    var stylesheetPaths = SiteModeStylesheetResolver.GetStylesheetPaths(siteModeContext);
 }
 @foreach (var stylesheetPath in stylesheetPaths)
 {
