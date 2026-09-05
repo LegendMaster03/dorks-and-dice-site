@@ -48,7 +48,8 @@ public sealed class ToolRegistrationEditViewModel
     public string? UpstreamBaseUrl { get; set; }
     public string? FrontendEntryPoint { get; set; }
     public string? HealthPath { get; set; }
-    public List<string> Modes { get; set; } = [SiteModeValues.DorksAndDiceModeValue];
+    public bool DorksAndDiceMode { get; set; } = true;
+    public bool ProfessionalMode { get; set; }
     public bool AllowAnonymous { get; set; } = true;
     public bool Enabled { get; set; }
 }
