@@ -1,6 +1,5 @@
 using System.Security.Claims;
 using dorks_and_dice_site.Models.Identity;
-using dorks_and_dice_site.Models.Site;
 using dorks_and_dice_site.Models.Tools;
 using dorks_and_dice_site.Services.Site;
 using dorks_and_dice_site.Services.Tools;
@@ -58,16 +57,8 @@ public sealed class ToolHostContextController : ControllerBase
         return Ok(new ToolHostContext
         {
             ToolSlug = tool.Slug,
-            SiteMode = SiteModeValue(siteMode),
+            SiteMode = SiteModeValues.ToModeValue(siteMode),
             User = userContext
         });
     }
-
-    private static string SiteModeValue(SiteMode siteMode) => siteMode switch
-    {
-        SiteMode.DorksAndDice => SiteModeValues.DorksAndDiceModeValue,
-        SiteMode.Professional => SiteModeValues.ProfessionalModeValue,
-        SiteMode.Development => SiteModeValues.DevelopmentModeValue,
-        _ => SiteModeValues.UnassignedModeValue
-    };
 }
