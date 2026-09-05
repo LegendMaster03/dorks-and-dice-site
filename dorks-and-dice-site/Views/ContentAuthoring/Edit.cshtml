@@ -8,14 +8,17 @@
         : $"/editor/content/{document.Slug}/edit";
     var tagValues = document.TagsText
         .Split([',', '\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+    var hasHomepageTag = tagValues.Any(tag => string.Equals(tag, dorks_and_dice_site.Models.Content.ContentTags.Homepage, StringComparison.OrdinalIgnoreCase));
     var hasArticleTag = tagValues.Any(tag => string.Equals(tag, dorks_and_dice_site.Models.Content.ContentTags.Article, StringComparison.OrdinalIgnoreCase));
     var hasProjectTag = tagValues.Any(tag => string.Equals(tag, dorks_and_dice_site.Models.Content.ContentTags.Project, StringComparison.OrdinalIgnoreCase));
     var hasExperienceTag = tagValues.Any(tag => string.Equals(tag, dorks_and_dice_site.Models.Content.ContentTags.Experience, StringComparison.OrdinalIgnoreCase));
-    var detailHref = hasArticleTag
-        ? $"/articles/{document.Slug}"
-        : hasExperienceTag && !hasProjectTag
-            ? $"/resume/{document.Slug}?context=experience"
-            : $"/resume/{document.Slug}";
+    var detailHref = hasHomepageTag
+        ? "/"
+        : hasArticleTag
+            ? $"/articles/{document.Slug}"
+            : hasExperienceTag && !hasProjectTag
+                ? $"/resume/{document.Slug}?context=experience"
+                : $"/resume/{document.Slug}";
     var selectableModes = Model.Modes;
     IEnumerable<string> selectedModeValues = document.VisibleModesSelection.Count > 0
         ? document.VisibleModesSelection
