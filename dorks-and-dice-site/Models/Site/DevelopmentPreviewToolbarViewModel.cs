@@ -4,6 +4,7 @@ public sealed class DevelopmentPreviewToolbarViewModel
 {
     public string SelectedModeId { get; init; } = string.Empty;
     public List<DevelopmentPreviewModeOptionViewModel> ModeOptions { get; init; } = [];
+    public bool CanPreviewUnlisted { get; init; }
     public bool IncludeUnlistedArticles { get; init; }
     public bool RouteRestrictionMismatch { get; init; }
     public bool CanUseDeveloperTools { get; init; }
