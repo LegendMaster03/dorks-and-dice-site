@@ -62,8 +62,8 @@ public abstract class ContentAuthoringControllerBase : Controller
         if (!IsCentralAuthoring)
         {
             var modeContext = HttpContext.GetSiteModeContext();
-            modeDisplayName = modeContext.SyntheticMode?.DisplayName
-                ?? modeContext.ActiveMode?.DisplayName
+            modeDisplayName = modeContext.ActiveMode?.DisplayName
+                ?? modeContext.SyntheticMode?.DisplayName
                 ?? modeContext.ActiveModeId;
             entries = entries.Where(entry =>
                 ContentAuthoringModeAccess.CanEditItem(User, entry.Item, modeContext));
@@ -123,7 +123,7 @@ public abstract class ContentAuthoringControllerBase : Controller
             if (!IsCentralAuthoring)
             {
                 var modeContext = HttpContext.GetSiteModeContext();
-                if (modeContext.SyntheticMode is null)
+                if (!ContentAuthoringModeAccess.CanSelectModes(User, modeContext))
                 {
                     ContentAuthoringModeAccess.ForceNewDocumentMode(
                         model.Document,
@@ -205,9 +205,9 @@ public abstract class ContentAuthoringControllerBase : Controller
                 var modeContext = HttpContext.GetSiteModeContext();
                 if (!ContentAuthoringModeAccess.CanSelectModes(User, modeContext))
                 {
-                    // A normal mode editor can not use a crafted form post to re-target content
-                    // to another mode. Synthetic Development is globally authorized and may edit
-                    // the assignment explicitly.
+                    // A mode-scoped editor can not use a crafted form post to re-target content
+                    // to another mode. This remains true inside Development whenever a normal
+                    // preview mode is selected.
                     ContentAuthoringModeAccess.PreserveExistingDocumentModes(
                         model.Document,
                         current.Document);
@@ -235,7 +235,7 @@ public abstract class ContentAuthoringControllerBase : Controller
             if (!IsCentralAuthoring)
             {
                 var modeContext = HttpContext.GetSiteModeContext();
-                if (modeContext.SyntheticMode is null)
+                if (!ContentAuthoringModeAccess.CanSelectModes(User, modeContext))
                 {
                     ContentAuthoringModeAccess.ForceNewDocumentMode(
                         model.Document,
@@ -374,13 +374,6 @@ public abstract class ContentAuthoringControllerBase : Controller
         var modeContext = HttpContext.GetSiteModeContext();
         if (ContentAuthoringModeAccess.CanSelectModes(User, modeContext))
         {
-            if (forceNewMode && modeContext.ActiveModeId is { Length: > 0 } previewModeId)
-            {
-                // A selected normal preview target is a useful default for new content, but the
-                // synthetic editor remains free to change the assignment.
-                ContentAuthoringModeAccess.ForceNewDocumentMode(model.Document, previewModeId);
-            }
-
             model.AllowModeSelection = true;
             model.FixedModeDisplayName = null;
             model.Sources = ContentAuthoringSourceAccess.GetModeEditorSources(_sourceRegistry, modeContext)
