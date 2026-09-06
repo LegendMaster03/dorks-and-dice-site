@@ -47,5 +47,7 @@ public sealed class InitialContentMarkdownIntegrationTests
         var css = await _factory.CreateClient().GetStringAsync("/css/site.css");
         Assert.Matches(@"\.content-detail-body\s+img\s*\{[^}]*max-width:\s*100%;[^}]*height:\s*auto;", css);
         Assert.Matches(@"\.content-detail-body\s+table\s*\{[^}]*width:\s*100%;", css);
+        Assert.Contains(".content-homepage-body .resume-section > h2:first-child", css, StringComparison.Ordinal);
+        Assert.Contains(".content-homepage-body .card-body > h3:first-child", css, StringComparison.Ordinal);
     }
 }
