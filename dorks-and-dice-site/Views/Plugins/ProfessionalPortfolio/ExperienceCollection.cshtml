@@ -1,6 +1,8 @@
 @model IReadOnlyList<dorks_and_dice_site.Models.Content.ContentItem>
 
-@foreach (var experience in Model)
-{
-    @await Html.PartialAsync("~/Views/Plugins/ProfessionalPortfolio/_ExperienceCard.cshtml", experience)
-}
+<div class="professional-experience-collection">
+    @foreach (var experience in Model)
+    {
+        @await Html.PartialAsync("~/Views/Plugins/ProfessionalPortfolio/_ExperienceCard.cshtml", experience)
+    }
+</div>
