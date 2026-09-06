@@ -5,7 +5,7 @@
     }
     window[guardKey] = true;
 
-    const endpoint = "/plugins/minecraft-server-status/snapshot";
+    const endpoint = "/MinecraftServerStatus/Snapshot";
     const defaultDelayMilliseconds = 15000;
 
     function forEachField(name, callback) {
