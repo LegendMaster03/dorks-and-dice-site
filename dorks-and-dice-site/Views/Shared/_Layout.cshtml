@@ -55,10 +55,11 @@
     var activeModeId = siteModeContext.ActiveModeId;
     var canPreviewUnlisted = User.Identity?.IsAuthenticated == true
         && activeModeId is not null
-        && (User.IsInRole(AccountRoles.Admin)
-            || User.HasClaim(
-                AccountClaimTypes.ScopedRole,
-                $"{activeModeId}:{ScopedAccountRoles.Editor}"));
+        && (AccountRoleHierarchy.PrincipalHasGlobalRole(User, AccountRoles.Admin)
+            || AccountRoleHierarchy.PrincipalHasScopedRole(
+                User,
+                activeModeId,
+                ScopedAccountRoles.Editor));
     var previewModeOptions = SiteModeRegistry.All
         .Select(mode => new DevelopmentPreviewModeOptionViewModel
         {
