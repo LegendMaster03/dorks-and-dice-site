@@ -7,7 +7,7 @@ namespace dorks_and_dice_site.Tests;
 public sealed class ContentSourceSelectionTests
 {
     [Fact]
-    public void SyntheticStandardModeUsesItsStableIdComposition()
+    public void SyntheticNormalModeUsesItsStableIdComposition()
     {
         var registry = CreateRegistry();
         var context = new SiteModeContext
@@ -26,7 +26,7 @@ public sealed class ContentSourceSelectionTests
     }
 
     [Fact]
-    public void TrustedPreviewWithTargetUsesTargetComposition()
+    public void SyntheticDevelopmentWithPreviewTargetStillRequiresExplicitDatabaseSelection()
     {
         var registry = CreateRegistry();
         var context = new SiteModeContext
@@ -37,22 +37,20 @@ public sealed class ContentSourceSelectionTests
                 LegacyMode: null,
                 ViewFolder: "TestMode",
                 AssetFolder: "test-mode"),
-            FrameworkState = FrameworkRuntimeStates.TrustedPreview,
+            FrameworkState = SyntheticSiteModes.Development,
             IsDevelopmentPreview = true
         };
 
-        Assert.Equal(
-            ["Global", "ModeOnly"],
-            registry.GetSourcesForContext(context).Select(source => source.Key));
+        Assert.Empty(registry.GetSourcesForContext(context));
     }
 
     [Fact]
-    public void TrustedPreviewWithoutTargetHasNoNormalSiteSources()
+    public void SyntheticDevelopmentWithoutPreviewTargetHasNoImplicitSources()
     {
         var registry = CreateRegistry();
         var context = new SiteModeContext
         {
-            FrameworkState = FrameworkRuntimeStates.TrustedPreview,
+            FrameworkState = SyntheticSiteModes.Development,
             IsDevelopmentPreview = true
         };
 
@@ -74,7 +72,7 @@ public sealed class ContentSourceSelectionTests
     }
 
     [Fact]
-    public void TrustedPreviewSourceOverrideWinsOverSelectedMode()
+    public void SyntheticDevelopmentExplicitDatabaseSelectionWinsOverPreviewTarget()
     {
         var registry = CreateRegistry();
         var context = new SiteModeContext
@@ -85,7 +83,7 @@ public sealed class ContentSourceSelectionTests
                 LegacyMode: null,
                 ViewFolder: "TestMode",
                 AssetFolder: "test-mode"),
-            FrameworkState = FrameworkRuntimeStates.TrustedPreview,
+            FrameworkState = SyntheticSiteModes.Development,
             IsDevelopmentPreview = true,
             HasContentSourceOverride = true,
             EnabledContentSources = new HashSet<string>(["Override"], StringComparer.OrdinalIgnoreCase)
@@ -94,6 +92,27 @@ public sealed class ContentSourceSelectionTests
         Assert.Equal(
             ["Override"],
             registry.GetSourcesForContext(context).Select(source => source.Key));
+    }
+
+    [Fact]
+    public void SyntheticDevelopmentExplicitNoneRemainsEmpty()
+    {
+        var registry = CreateRegistry();
+        var context = new SiteModeContext
+        {
+            ActiveMode = new SiteModeDefinition(
+                Id: "test-mode",
+                DisplayName: "Test Mode",
+                LegacyMode: null,
+                ViewFolder: "TestMode",
+                AssetFolder: "test-mode"),
+            FrameworkState = SyntheticSiteModes.Development,
+            IsDevelopmentPreview = true,
+            HasContentSourceOverride = true,
+            EnabledContentSources = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        };
+
+        Assert.Empty(registry.GetSourcesForContext(context));
     }
 
     private static ContentSourceRegistry CreateRegistry()
