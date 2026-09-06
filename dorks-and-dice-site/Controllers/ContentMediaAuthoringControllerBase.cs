@@ -168,17 +168,25 @@ public abstract class ContentMediaAuthoringControllerBase : Controller
     private IReadOnlyList<ContentSourceDefinition> GetPoolSources() =>
         IsCentralAuthoring
             ? ContentAuthoringSourceAccess.GetCentralSources(_sourceRegistry)
-            : ContentAuthoringSourceAccess.GetModeEditorSources(_sourceRegistry);
+            : ContentAuthoringSourceAccess.GetModeEditorSources(
+                _sourceRegistry,
+                HttpContext.GetSiteModeContext());
 
     private string ResolvePageSource(string? source) =>
         IsCentralAuthoring
             ? ContentAuthoringSourceAccess.ResolveCentralSourceKey(_sourceRegistry, source)
-            : ContentAuthoringSourceAccess.ResolveModeEditorSourceKey(_sourceRegistry, source);
+            : ContentAuthoringSourceAccess.ResolveModeEditorSourceKey(
+                _sourceRegistry,
+                HttpContext.GetSiteModeContext(),
+                source);
 
     private string ResolvePoolSource(string? source) =>
         IsCentralAuthoring
             ? ContentAuthoringSourceAccess.ResolveCentralSourceKey(_sourceRegistry, source)
-            : ContentAuthoringSourceAccess.ResolveModeEditorSourceKey(_sourceRegistry, source);
+            : ContentAuthoringSourceAccess.ResolveModeEditorSourceKey(
+                _sourceRegistry,
+                HttpContext.GetSiteModeContext(),
+                source);
 
     private async Task<bool> CanEditPageAsync(
         string source,
@@ -196,11 +204,13 @@ public abstract class ContentMediaAuthoringControllerBase : Controller
             return false;
         }
 
-        var activeModeId = ContentAuthoringModeAccess.RequireActiveModeId(HttpContext.GetSiteModeContext());
         var item = new ContentItem
         {
             VisibleInModes = model.Document.VisibleModesSelection.ToList()
         };
-        return ContentAuthoringModeAccess.CanEditItem(User, item, activeModeId);
+        return ContentAuthoringModeAccess.CanEditItem(
+            User,
+            item,
+            HttpContext.GetSiteModeContext());
     }
 }
