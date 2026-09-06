@@ -109,6 +109,7 @@ public sealed class ContentController : Controller
         var canEdit = (await _authorizationService.AuthorizeAsync(
             User,
             AuthorizationPolicies.ModeEditor)).Succeeded;
+        var isSyntheticDevelopment = modeContext.SyntheticMode is not null;
         var backLinks = BuildBackLinks(item, contextTag);
         var viewModel = new ContentDetailViewModel
         {
@@ -116,9 +117,9 @@ public sealed class ContentController : Controller
             ContextTag = contextTag,
             RenderedBodyHtml = _bodyRenderer.Render(item.BodyFormat, item.Body),
             BackLinks = backLinks,
-            IsDevelopmentVisibilityOverride = modeContext.IsDevelopmentPreview
+            IsDevelopmentVisibilityOverride = isSyntheticDevelopment
                 && !item.IsVisibleInMode(modeContext.ActiveModeId),
-            IsDevelopmentPreview = modeContext.IsDevelopmentPreview,
+            IsDevelopmentPreview = isSyntheticDevelopment,
             EditHref = canEdit ? $"/editor/content/{item.Slug}/edit" : null
         };
 
