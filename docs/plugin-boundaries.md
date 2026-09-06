@@ -23,14 +23,14 @@ Each installed plugin has a manifest with:
 
 Startup validates duplicate IDs and missing dependencies before the plugin registers its services. The runtime catalog exposes installed manifests so future mode composition/export can validate required plugins.
 
-Plugin manifests and authored page configuration must not contain deployment secrets. Connection strings, credentials, and other protected infrastructure configuration remain deployment-owned.
+Plugin manifests and authored page configuration must not contain deployment secrets. Connection strings, credentials, network addresses, ports, and other protected infrastructure configuration remain deployment-owned.
 
 ## Page composition
 
 The shared page composer supports two extension paths:
 
 1. framework-owned components such as `content-collection`;
-2. plugin-contributed components such as `discord-widget`.
+2. plugin-contributed components such as `discord-widget` and `minecraft-server-status`.
 
 Parameterized component invocations use quoted key/value parameters and must occupy their own Markdown line. Parameterless component names may also be claimed by an installed page-component definition. Existing parameterless Markdown directives remain supported by the body renderer when no page component claims that name.
 
@@ -44,14 +44,28 @@ Provides the `professional-experience` and `professional-projects` content-colle
 
 ### `discord-widget`
 
-Provides the `discord-widget` page component. The iframe URL comes from deployment configuration (`Discord:WidgetUrl`), not from authored Markdown, so editors do not gain arbitrary iframe capability. Authored content may supply only the accessibility/display title, for example:
+Provides the `discord-widget` page component. The Discord server ID, theme, and accessibility/display title may be selected by authored content, but the component constructs the trusted Discord widget URL itself rather than granting arbitrary iframe capability. For example:
 
 ```markdown
-{{discord-widget title="Dorks & Dice Discord Server"}}
+{{discord-widget server-id="1281714470799806545" theme="dark" title="Dorks & Dice Discord Server"}}
 ```
 
-The default title is `Discord Server`; no deployment-specific site name is embedded in the plugin implementation.
+### `minecraft-server-status`
+
+Provides the `minecraft-server-status` page component and owns registration of the existing Minecraft status-query service. The working Minecraft protocol implementation remains unchanged; the plugin is the executable composition boundary that exposes its result to authored pages.
+
+The component is intentionally parameterless:
+
+```markdown
+{{minecraft-server-status}}
+```
+
+Host, port, protocol version, query timeout, and cache policy remain deployment configuration under `GameServers:Minecraft`. Authored Markdown can not redirect the status query to an arbitrary endpoint.
+
+Minecraft is the only currently supported game-server status implementation. Hytale support was explored previously. Similar status endpoints may exist, but no sufficiently documented or reliable interface was found, and the known alternatives would have required server modification. Hytale status integration is therefore deferred and is not part of the current supported feature set.
 
 ## Tools versus plugins
 
-Game Server Monitoring and Campaigns fit the Tool boundary better than the plugin boundary because they are domain applications/services with their own data or runtime behavior. A future generic Tool page-surface integration can allow authored pages to embed an approved compact Tool surface without moving the Tool's implementation into the main site process.
+Use a plugin when the capability is a small in-process extension whose useful surface is composition inside an existing page. Use a Tool when the capability is substantial enough to have its own application/service lifecycle, independent workflow, data boundary, or potential container/separate-host runtime.
+
+Minecraft server status fits the plugin boundary because its useful behavior is a compact status query and embedded presentation; it has no meaningful standalone workflow. Campaigns and other substantial interactive systems remain Tool candidates.
