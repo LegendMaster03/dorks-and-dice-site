@@ -1,6 +1,9 @@
+using System.Security.Claims;
 using dorks_and_dice_site.Models.Content;
+using dorks_and_dice_site.Models.Identity;
 using dorks_and_dice_site.Services.Content;
 using dorks_and_dice_site.Services.Content.Storage;
+using dorks_and_dice_site.Services.Identity;
 using dorks_and_dice_site.Services.Site;
 using Microsoft.Extensions.Configuration;
 
@@ -31,25 +34,78 @@ public sealed class ContentAuthoringNavigationTests
     }
 
     [Fact]
-    public void PreviewVisibleExternalSourceIsAvailableAlongsideAuthoringWorkspace()
+    public void ModeEditorUsesOnlyAuthoringWorkspace()
     {
         using var fixture = new SourceFixture();
-        var context = new SiteModeContext
-        {
-            ActiveMode = BuiltInSiteModes.Professional,
-            IsDevelopmentPreview = true,
-            HasContentSourceOverride = true,
-            EnabledContentSources = new HashSet<string>(["External"], StringComparer.OrdinalIgnoreCase)
-        };
 
-        var sources = ContentAuthoringSourceAccess.GetAccessibleSources(fixture.Registry, context);
+        var sources = ContentAuthoringSourceAccess.GetModeEditorSources(fixture.Registry);
 
-        Assert.Equal(["Local", "External"], sources.Select(source => source.Key));
+        Assert.Equal(["Local"], sources.Select(source => source.Key));
+        Assert.Equal(
+            "Local",
+            ContentAuthoringSourceAccess.ResolveModeEditorSourceKey(fixture.Registry, null));
+        Assert.Throws<InvalidOperationException>(() =>
+            ContentAuthoringSourceAccess.ResolveModeEditorSourceKey(fixture.Registry, "External"));
+    }
+
+    [Fact]
+    public void CentralAuthoringCanUseAllConfiguredSources()
+    {
+        using var fixture = new SourceFixture();
+
+        var sources = ContentAuthoringSourceAccess.GetCentralSources(fixture.Registry);
+
+        Assert.Equal(["Local", "External", "Hidden"], sources.Select(source => source.Key));
         Assert.Equal(
             "External",
-            ContentAuthoringSourceAccess.ResolveAccessibleSourceKey(fixture.Registry, context, "external"));
-        Assert.Throws<InvalidOperationException>(() =>
-            ContentAuthoringSourceAccess.ResolveAccessibleSourceKey(fixture.Registry, context, "Hidden"));
+            ContentAuthoringSourceAccess.ResolveCentralSourceKey(fixture.Registry, "external"));
+    }
+
+    [Fact]
+    public void ModeEditorCanEditOnlyAuthorizedActiveModeContent()
+    {
+        var dorksModeId = BuiltInSiteModes.DorksAndDice.Id;
+        var professionalModeId = BuiltInSiteModes.Professional.Id;
+        var principal = PrincipalWithScopedEditor(dorksModeId);
+
+        Assert.True(ContentAuthoringModeAccess.CanEditItem(
+            principal,
+            new ContentItem { VisibleInModes = [dorksModeId] },
+            dorksModeId));
+        Assert.False(ContentAuthoringModeAccess.CanEditItem(
+            principal,
+            new ContentItem { VisibleInModes = [professionalModeId] },
+            dorksModeId));
+        Assert.False(ContentAuthoringModeAccess.CanEditItem(
+            principal,
+            new ContentItem { VisibleInModes = [dorksModeId, professionalModeId] },
+            dorksModeId));
+    }
+
+    [Fact]
+    public void OwnerInheritanceAuthorizesSharedModeContentWithoutDirectEditorClaims()
+    {
+        var dorksModeId = BuiltInSiteModes.DorksAndDice.Id;
+        var professionalModeId = BuiltInSiteModes.Professional.Id;
+        var identity = new ClaimsIdentity(
+            [new Claim(ClaimTypes.Role, AccountRoles.Owner)],
+            authenticationType: "test",
+            nameType: ClaimTypes.Name,
+            roleType: ClaimTypes.Role);
+        var principal = new ClaimsPrincipal(identity);
+
+        Assert.True(ContentAuthoringModeAccess.CanEditItem(
+            principal,
+            new ContentItem { VisibleInModes = [dorksModeId, professionalModeId] },
+            dorksModeId));
+    }
+
+    private static ClaimsPrincipal PrincipalWithScopedEditor(string modeId)
+    {
+        var identity = new ClaimsIdentity(
+            [new Claim(AccountClaimTypes.ScopedRole, $"{modeId}:{ScopedAccountRoles.Editor}")],
+            authenticationType: "test");
+        return new ClaimsPrincipal(identity);
     }
 
     private sealed class SourceFixture : IDisposable
