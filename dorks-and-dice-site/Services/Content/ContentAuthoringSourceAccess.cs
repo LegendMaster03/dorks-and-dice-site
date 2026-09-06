@@ -1,18 +1,28 @@
 using dorks_and_dice_site.Services.Content.Storage;
+using dorks_and_dice_site.Services.Site;
 
 namespace dorks_and_dice_site.Services.Content;
 
 /// <summary>
-/// Defines source boundaries for the two authoring surfaces. Normal mode authoring is intentionally
-/// restricted to the configured authoring workspace. Cross-source inspection belongs to the trusted
-/// Development authoring surface.
+/// Defines source boundaries for the authoring surfaces. Normal hosted-mode authoring remains
+/// restricted to the configured authoring workspace. In Trusted Preview, the mode editor mirrors
+/// the request's content-source composition so the database-source filter controls which databases
+/// contribute articles to the editor index.
 /// </summary>
 public static class ContentAuthoringSourceAccess
 {
     public static IReadOnlyList<ContentSourceDefinition> GetModeEditorSources(
-        IContentSourceRegistry registry)
+        IContentSourceRegistry registry,
+        SiteModeContext modeContext)
     {
         ArgumentNullException.ThrowIfNull(registry);
+        ArgumentNullException.ThrowIfNull(modeContext);
+
+        if (modeContext.IsTrustedPreview)
+        {
+            return registry.GetSourcesForContext(modeContext);
+        }
+
         return [registry.GetSource(registry.AuthoringSourceKey)];
     }
 
@@ -29,14 +39,29 @@ public static class ContentAuthoringSourceAccess
 
     public static string ResolveModeEditorSourceKey(
         IContentSourceRegistry registry,
+        SiteModeContext modeContext,
         string? requestedSourceKey)
     {
         ArgumentNullException.ThrowIfNull(registry);
+        ArgumentNullException.ThrowIfNull(modeContext);
+
         var authoring = registry.GetSource(registry.AuthoringSourceKey);
         if (string.IsNullOrWhiteSpace(requestedSourceKey)
             || string.Equals(requestedSourceKey.Trim(), authoring.Key, StringComparison.OrdinalIgnoreCase))
         {
             return authoring.Key;
+        }
+
+        if (modeContext.IsTrustedPreview)
+        {
+            var requested = requestedSourceKey.Trim();
+            var source = GetModeEditorSources(registry, modeContext)
+                .SingleOrDefault(candidate =>
+                    string.Equals(candidate.Key, requested, StringComparison.OrdinalIgnoreCase));
+            if (source is not null)
+            {
+                return source.Key;
+            }
         }
 
         throw new InvalidOperationException(
