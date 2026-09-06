@@ -52,11 +52,12 @@ public sealed class ContentSecurityTests
             "markdown",
             "## Experience {#experience-section .resume-section-title}\n\n"
             + "![Portrait](/portrait.jpg){.profile-headshot .rounded-circle}\n\n"
-            + "[Download](/resume.pdf){.btn .btn-primary}");
+            + "[Download](/resume.pdf){.btn .btn-primary download=resume.pdf}");
 
         Assert.Contains("class=\"resume-section-title\"", html, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("class=\"profile-headshot rounded-circle\"", html, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("class=\"btn btn-primary\"", html, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("download=\"resume.pdf\"", html, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
