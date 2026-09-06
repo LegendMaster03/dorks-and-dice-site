@@ -32,6 +32,7 @@ public static class SiteRouteOwnership
         return IsFallbackPath(normalizedPath)
             || IsContentMediaPath(normalizedPath)
             || IsSharedStaticAssetPath(normalizedPath)
+            || IsPluginPath(normalizedPath)
             || IsFrameworkAssetPath(normalizedPath, FrameworkRuntimeStates.Fallback.AssetFolder)
             || IsSharedSystemPath(normalizedPath);
     }
@@ -109,6 +110,7 @@ public static class SiteRouteOwnership
         return IsModeAdaptivePath(path)
             || IsContentMediaPath(path)
             || IsSharedStaticAssetPath(path)
+            || IsPluginPath(path)
             || IsFrameworkAssetPath(path, FrameworkRuntimeStates.Fallback.AssetFolder)
             || IsSharedSystemPath(path);
     }
@@ -151,6 +153,9 @@ public static class SiteRouteOwnership
         // still requires a current revision reference from a page visible in the active mode.
         return path.StartsWith("/content/media/", StringComparison.Ordinal);
     }
+
+    private static bool IsPluginPath(string path) =>
+        path.StartsWith("/plugins/", StringComparison.Ordinal);
 
     private static bool IsFallbackPath(string path) => path == "/";
 
