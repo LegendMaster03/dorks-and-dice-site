@@ -96,14 +96,14 @@ public sealed class ContentAssetVisibilityTests
     [Fact]
     public async Task MediaUsesStableModeSourceCompositionWithoutLegacyEnumValue()
     {
-        var syntheticMode = new SiteModeDefinition(
+        var syntheticNormalMode = new SiteModeDefinition(
             Id: "test-mode",
             DisplayName: "Test Mode",
             LegacyMode: null,
             ViewFolder: "TestMode",
             AssetFolder: "test-mode");
-        using var fixture = new VisibilityFixture(syntheticMode);
-        await fixture.CreatePageAsync("Mode", "synthetic-page", syntheticMode.Id);
+        using var fixture = new VisibilityFixture(activeMode: syntheticNormalMode);
+        await fixture.CreatePageAsync("Mode", "synthetic-page", syntheticNormalMode.Id);
         var asset = await fixture.UploadAsync("Mode", "synthetic.png", 8);
         await fixture.ReferenceAsync("Mode", "synthetic-page", "Mode", asset);
 
@@ -113,11 +113,55 @@ public sealed class ContentAssetVisibilityTests
         Assert.Equal(asset.Sha256, file.Sha256);
     }
 
+    [Fact]
+    public async Task SyntheticDevelopmentServesSelectedDatabaseMediaAcrossModeAssignments()
+    {
+        var modeContext = new SiteModeContext
+        {
+            ActiveMode = BuiltInSiteModes.Professional,
+            FrameworkState = SyntheticSiteModes.Development,
+            HasTrustedAccess = true,
+            IsDevelopmentPreview = true,
+            HasContentSourceOverride = true,
+            EnabledContentSources = new HashSet<string>(["Mode"], StringComparer.OrdinalIgnoreCase)
+        };
+        using var fixture = new VisibilityFixture(modeContext: modeContext);
+        await fixture.CreatePageAsync("Mode", "development-page", BuiltInSiteModes.DorksAndDice.Id);
+        var asset = await fixture.UploadAsync("Mode", "development.png", 9);
+        await fixture.ReferenceAsync("Mode", "development-page", "Mode", asset);
+
+        var file = await fixture.Assets.GetForRequestAsync(asset.AssetKey, asset.FileName);
+
+        Assert.NotNull(file);
+        Assert.Equal(asset.Sha256, file.Sha256);
+    }
+
+    [Fact]
+    public async Task SyntheticDevelopmentWithNoSelectedDatabaseDoesNotFallBackToAuthoringMedia()
+    {
+        var modeContext = new SiteModeContext
+        {
+            FrameworkState = SyntheticSiteModes.Development,
+            HasTrustedAccess = true,
+            IsDevelopmentPreview = true,
+            HasContentSourceOverride = true,
+            EnabledContentSources = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        };
+        using var fixture = new VisibilityFixture(modeContext: modeContext);
+        await fixture.CreatePageAsync("Mode", "unselected-page", BuiltInSiteModes.DorksAndDice.Id);
+        var asset = await fixture.UploadAsync("Mode", "unselected.png", 10);
+        await fixture.ReferenceAsync("Mode", "unselected-page", "Mode", asset);
+
+        Assert.Null(await fixture.Assets.GetForRequestAsync(asset.AssetKey, asset.FileName));
+    }
+
     private sealed class VisibilityFixture : IDisposable
     {
         private readonly string _directory;
 
-        public VisibilityFixture(SiteModeDefinition? activeMode = null)
+        public VisibilityFixture(
+            SiteModeDefinition? activeMode = null,
+            SiteModeContext? modeContext = null)
         {
             activeMode ??= BuiltInSiteModes.Professional;
             _directory = Path.Combine(Path.GetTempPath(), $"content-visibility-{Guid.NewGuid():N}");
@@ -146,11 +190,12 @@ public sealed class ContentAssetVisibilityTests
                 registeredModes.Add(activeMode);
             }
 
-            var httpContext = new DefaultHttpContext();
-            httpContext.Items[SiteModeContext.HttpContextItemKey] = new SiteModeContext
+            modeContext ??= new SiteModeContext
             {
                 ActiveMode = activeMode
             };
+            var httpContext = new DefaultHttpContext();
+            httpContext.Items[SiteModeContext.HttpContextItemKey] = modeContext;
             var accessor = new HttpContextAccessor { HttpContext = httpContext };
             var repository = new CompositeContentRepository(accessor, Registry);
             var catalog = new ContentCatalogService(repository);
