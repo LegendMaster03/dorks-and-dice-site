@@ -25,16 +25,6 @@ public sealed class ModeScopedRoleAuthorizationHandler : AuthorizationHandler<Mo
             return Task.CompletedTask;
         }
 
-        // Global role inheritance is resolved from the same hierarchy shown in account
-        // management. Global Editor therefore remains valid on shared editor routes even
-        // when Trusted Preview has no normal site mode selected.
-        if (string.Equals(requirement.Role, ScopedAccountRoles.Editor, StringComparison.Ordinal)
-            && AccountRoleHierarchy.PrincipalHasGlobalRole(context.User, AccountRoles.GlobalEditor))
-        {
-            context.Succeed(requirement);
-            return Task.CompletedTask;
-        }
-
         var modeContext = httpContext.GetSiteModeContext();
         var scope = modeContext.ActiveModeId;
 
@@ -45,6 +35,9 @@ public sealed class ModeScopedRoleAuthorizationHandler : AuthorizationHandler<Mo
             AccountRoleScopes.TryGetScope(modeContext.SiteMode, out scope);
         }
 
+        // All scoped-role inheritance is resolved through the hierarchy. This allows Owner ->
+        // Admin -> Global Editor -> mode Editor inheritance without materializing redundant claims,
+        // while still requiring a concrete active mode for normal editor routes.
         if (scope is not null
             && AccountRoleHierarchy.PrincipalHasScopedRole(context.User, scope, requirement.Role))
         {
