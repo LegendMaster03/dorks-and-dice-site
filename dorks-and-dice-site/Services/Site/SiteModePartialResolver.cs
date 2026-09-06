@@ -49,9 +49,9 @@ public sealed class SiteModePartialResolver : ISiteModePartialResolver
             return context.ActiveMode.ViewFolder;
         }
 
-        if (context.IsTrustedPreview)
+        if (context.SyntheticMode is not null)
         {
-            return FrameworkRuntimeStates.TrustedPreview.ViewFolder;
+            return context.SyntheticMode.ViewFolder;
         }
 
         return FrameworkRuntimeStates.Fallback.ViewFolder;
