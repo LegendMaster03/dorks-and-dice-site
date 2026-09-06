@@ -22,14 +22,25 @@ public static class ModeScopedRoleAccess
             return false;
         }
 
-        // Synthetic Development is a global control-plane mode rather than a normal tenant
-        // scope. It receives no generated "Editor @ development" role. Editor authority in this
-        // context therefore comes from Global Editor (and its normal Admin/Owner inheritance).
         if (modeContext.SyntheticMode is not null)
         {
-            return modeContext.HasTrustedAccess
-                && string.Equals(role, ScopedAccountRoles.Editor, StringComparison.Ordinal)
-                && AccountRoleHierarchy.PrincipalHasGlobalRole(principal, AccountRoles.GlobalEditor);
+            if (!modeContext.HasTrustedAccess)
+            {
+                return false;
+            }
+
+            // Synthetic Development has no generated "Editor @ development" role. Global Editor
+            // authority applies across the control plane, while a scoped Editor may still use the
+            // editor when Development is previewing that editor's normal mode. This does not grant
+            // the scoped Editor authority over any other mode.
+            if (string.Equals(role, ScopedAccountRoles.Editor, StringComparison.Ordinal)
+                && AccountRoleHierarchy.PrincipalHasGlobalRole(principal, AccountRoles.GlobalEditor))
+            {
+                return true;
+            }
+
+            return modeContext.ActiveModeId is { Length: > 0 } previewModeId
+                && AccountRoleHierarchy.PrincipalHasScopedRole(principal, previewModeId, role);
         }
 
         var scope = modeContext.ActiveModeId;
