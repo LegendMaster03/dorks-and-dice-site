@@ -37,28 +37,38 @@ public static class SiteRouteOwnership
     }
 
     /// <summary>
-    /// Evaluates the request surface while Trusted Preview is active. The selected normal
-    /// mode keeps its normal route ownership, while Trusted Preview contributes only its
-    /// own framework assets and shared framework routes.
+    /// Evaluates the request surface while a synthetic control-plane mode is active. A selected
+    /// normal preview target keeps its normal route ownership, while the synthetic mode contributes
+    /// its own assets and shared framework routes. Developer route-inspection bypass remains a
+    /// separate trusted-access decision in middleware.
     /// </summary>
-    public static bool IsAllowedInTrustedPreview(PathString path, SiteModeDefinition? activeMode)
+    public static bool IsAllowedInSyntheticMode(
+        PathString path,
+        SyntheticSiteModeDefinition syntheticMode,
+        SiteModeDefinition? previewMode)
     {
+        ArgumentNullException.ThrowIfNull(syntheticMode);
+
         var normalizedPath = NormalizePath(path);
-        var selectedModeAllowsPath = activeMode is not null && IsAllowedInMode(path, activeMode);
+        var selectedModeAllowsPath = previewMode is not null && IsAllowedInMode(path, previewMode);
 
         return selectedModeAllowsPath
             || IsSharedStandardModePath(normalizedPath)
-            || IsFrameworkAssetPath(normalizedPath, FrameworkRuntimeStates.TrustedPreview.AssetFolder);
+            || IsFrameworkAssetPath(normalizedPath, syntheticMode.AssetFolder);
     }
+
+    // Compatibility name while callers/tests migrate from Trusted Preview terminology.
+    public static bool IsAllowedInTrustedPreview(PathString path, SiteModeDefinition? activeMode) =>
+        IsAllowedInSyntheticMode(path, SyntheticSiteModes.Development, activeMode);
 
     public static bool IsAllowedInRequest(
         PathString path,
         SiteModeDefinition? activeMode,
         FrameworkRuntimeStateDefinition? frameworkState)
     {
-        if (frameworkState == FrameworkRuntimeStates.TrustedPreview)
+        if (frameworkState is SyntheticSiteModeDefinition syntheticMode)
         {
-            return IsAllowedInTrustedPreview(path, activeMode);
+            return IsAllowedInSyntheticMode(path, syntheticMode, activeMode);
         }
 
         if (activeMode is not null)
@@ -70,8 +80,8 @@ public static class SiteRouteOwnership
     }
 
     /// <summary>
-    /// Compatibility bridge for enum-based callers that have not yet migrated to the
-    /// registry. New runtime code should pass SiteModeDefinition instead.
+    /// Compatibility bridge for enum-based callers that have not yet migrated to the registry.
+    /// New runtime code should pass a concrete normal or synthetic mode definition instead.
     /// </summary>
     public static bool IsAllowedInMode(PathString path, SiteMode siteMode)
     {
@@ -82,7 +92,10 @@ public static class SiteRouteOwnership
 
         return siteMode switch
         {
-            SiteMode.Development => IsAllowedInTrustedPreview(path, activeMode: null),
+            SiteMode.Development => IsAllowedInSyntheticMode(
+                path,
+                SyntheticSiteModes.Development,
+                previewMode: null),
             SiteMode.Unassigned => IsAllowedInFrameworkFallback(path),
             _ => false
         };
