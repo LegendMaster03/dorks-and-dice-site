@@ -31,10 +31,8 @@ public sealed class ModeEditorInheritanceIntegrationTests
         });
         Assert.Equal(HttpStatusCode.Redirect, (await LoginAsync(dorksClient, email)).StatusCode);
         var dorksLanding = await dorksClient.GetAsync("/editor");
-        Assert.Equal(HttpStatusCode.OK, dorksLanding.StatusCode);
-        var dorksHtml = await dorksLanding.Content.ReadAsStringAsync();
-        Assert.Contains("Dorks &amp; Dice Editor", dorksHtml, StringComparison.Ordinal);
-        Assert.DoesNotContain("Professional Editor", dorksHtml, StringComparison.Ordinal);
+        Assert.Equal(HttpStatusCode.Redirect, dorksLanding.StatusCode);
+        Assert.Equal("/editor/content", dorksLanding.Headers.Location?.OriginalString);
         Assert.Equal(HttpStatusCode.OK, (await dorksClient.GetAsync("/editor/content")).StatusCode);
 
         using var professionalClient = factory.CreateClient(new WebApplicationFactoryClientOptions
@@ -45,10 +43,8 @@ public sealed class ModeEditorInheritanceIntegrationTests
         });
         Assert.Equal(HttpStatusCode.Redirect, (await LoginAsync(professionalClient, email)).StatusCode);
         var professionalLanding = await professionalClient.GetAsync("/editor");
-        Assert.Equal(HttpStatusCode.OK, professionalLanding.StatusCode);
-        var professionalHtml = await professionalLanding.Content.ReadAsStringAsync();
-        Assert.Contains("Professional Editor", professionalHtml, StringComparison.Ordinal);
-        Assert.DoesNotContain("Dorks &amp; Dice Editor", professionalHtml, StringComparison.Ordinal);
+        Assert.Equal(HttpStatusCode.Redirect, professionalLanding.StatusCode);
+        Assert.Equal("/editor/content", professionalLanding.Headers.Location?.OriginalString);
         Assert.Equal(HttpStatusCode.OK, (await professionalClient.GetAsync("/editor/content")).StatusCode);
     }
 
