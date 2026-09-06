@@ -10,7 +10,7 @@ Existing behavior and security boundaries remain the compatibility target until 
 
 ## Primary acceptance criteria
 
-1. A developer can locate the primary implementation of a mode, tool, content subsystem, identity subsystem, fallback behavior, Trusted Preview feature, or deployment concern by browsing the directory tree without repository-wide search.
+1. A developer can locate the primary implementation of a mode, tool, content subsystem, identity subsystem, fallback behavior, Development/Trusted Preview feature, or deployment concern by browsing the directory tree without repository-wide search.
 2. Adding a normal site mode does not require editing shared identity code, presentation switches, stylesheet switches, tool-visibility switches, or preview-target allowlists.
 3. Scoped capabilities such as `Editor` are defined once and derived for registered normal modes.
 4. Tools remain a first-class subsystem. Plugins may be an integration/packaging mechanism but do not replace the Tool abstraction.
@@ -28,6 +28,7 @@ Existing behavior and security boundaries remain the compatibility target until 
 Reusable application mechanics that can eventually live independently of this deployment:
 
 - normal mode registration and resolution contracts
+- synthetic runtime mode contracts
 - framework fallback behavior
 - content and revision architecture
 - identity capability/scoping mechanics
@@ -35,7 +36,7 @@ Reusable application mechanics that can eventually live independently of this de
 - tool contracts and hosting abstractions
 - plugin contracts if introduced
 - shared presentation infrastructure
-- reusable Trusted Preview/global administration infrastructure
+- reusable Development/Trusted Preview global administration infrastructure
 - framework/module contract tests
 
 Framework code must not assume the existence of Professional or Dorks & Dice.
@@ -66,13 +67,17 @@ The long-term framework should ask whether the active mode provides a component 
 
 It therefore receives no content scope and no mode-scoped editor role.
 
-### Trusted Preview (`Development` legacy runtime state)
+### Synthetic Development mode (`Trusted Preview` compatibility terminology)
 
-`Development` is the existing runtime name for the global administrative/development surface referred to as Trusted Preview.
+`Development` is a framework-owned synthetic runtime mode. `Trusted Preview` remains compatibility terminology for the trusted control-plane surface that Development provides.
 
-Trusted Preview is not a peer site/tenant mode. It is a trusted control-plane feature for inspecting, administering, and previewing the composed system and its normal modes.
+Development is not a peer site/tenant mode and is not registered in the normal `ISiteModeRegistry`. It has its own stable runtime identity and presentation/asset metadata, but it does not receive normal deployment host/source policy or an automatically generated `Editor @ development` role.
 
-It receives no normal content scope or automatically generated mode-scoped editor role. Its authorization is global and security-sensitive.
+A Development request may also carry an `ActiveMode` that represents the normal mode currently being previewed. That preview target supplies normal-mode presentation and route context; it does not replace Development as the request's control-plane identity.
+
+Development authorization is global and security-sensitive. `Global Editor` authority, including normal `Admin`/`Owner` inheritance, governs the editor capability in the synthetic mode. A mode-scoped Editor does not become cross-mode merely because Development is active, and the `Dev` role does not itself imply Editor authority.
+
+Development content inspection spans normal mode assignments only after content-source composition. It has no implicit database policy: the developer database-source controls explicitly select the source set, including the valid state of selecting no databases. Normal mode source defaults and overrides must never be used as an implicit Development fallback.
 
 ### Tools
 
@@ -87,11 +92,11 @@ Tools may be enabled for one or more registered standard modes. Optional tool-to
 
 ### Deployment
 
-Deployment composes framework, standard modes, and tools for a specific installation. It owns:
+Deployment composes framework, standard modes, synthetic runtime modes, and tools for a specific installation. It owns:
 
-- host/domain to mode mappings
+- host/domain to mode mappings and trusted development ingress
 - canonical-host behavior
-- enabled modes
+- enabled normal modes
 - runtime content-source topology
 - identity/content database configuration
 - tool registry/runtime paths
@@ -139,9 +144,9 @@ SiteModeDefinition
 
 Normal content/scoped-editor behavior is baseline behavior rather than repeated feature flags.
 
-During migration, the current enum and `Unassigned`/`Development` values may remain as compatibility mappings. They should not determine the long-term public mode contract.
+During migration, the current enum and `Unassigned`/`Development` values may remain as compatibility mappings. They should not determine the long-term public normal-mode contract. Development's runtime contract is instead represented explicitly as a synthetic mode outside the normal registry.
 
-The registry must support synthetic/test normal modes without adding production enum values or identity configuration.
+The normal registry must support synthetic/test normal modes without adding production enum values or identity configuration. Those test modes are distinct from framework-owned synthetic runtime modes such as Development.
 
 ## Scoped capability model
 
@@ -161,7 +166,7 @@ Editor @ future-mode
 
 `Global Editor` inherits `Editor` for every applicable registered normal mode. `Admin` and `Owner` continue to inherit according to the account-role hierarchy.
 
-Fallback and Trusted Preview do not receive generated editor scopes.
+Fallback and synthetic Development do not receive generated editor scopes. Development resolves Editor capability from global editor authority rather than inventing a synthetic scoped role.
 
 Adding a normal mode must not require `AccountRoleScopes.<Mode>` constants or new named-mode authorization branches.
 
@@ -184,7 +189,9 @@ The tool-hosting closure document remains authoritative unless deliberately supe
 - mode/tool visibility fails closed
 - route ownership remains explicit
 - tool-private and Identity storage remain isolated
-- Trusted Preview remains a trusted global control plane rather than inheriting normal mode permissions
+- Development remains a trusted global control plane rather than inheriting normal mode permissions
+- Development database selection remains explicit and does not fall through to a preview target's normal source policy
+- normal mode-scoped Editors do not gain global editor authority in Development
 
 Security-sensitive decisions must not become arbitrary editable metadata merely for modularity.
 
@@ -215,7 +222,7 @@ Goal: a synthetic normal mode proves that identity/editor derivation works witho
 
 Migrate shared consumers incrementally, including:
 
-- Trusted Preview target enumeration
+- Development preview-target enumeration
 - tool visibility and management UI
 - stylesheet and presentation resolution
 - partial/view-root resolution
@@ -227,7 +234,7 @@ Route ownership remains an explicit security contract rather than becoming impli
 
 ### Stage 3 - Physical ownership consolidation
 
-The repository tree must communicate ownership. Standard site modes are visibly separate from framework fallback and Trusted Preview concerns.
+The repository tree must communicate ownership. Standard site modes are visibly separate from framework fallback and synthetic Development concerns.
 
 Likely logical shape:
 
@@ -242,6 +249,7 @@ Framework/
         Views/
         Assets/
     TrustedPreview/
+        DevelopmentRuntimeMode.cs
         ...
 
 Modes/
@@ -288,7 +296,7 @@ Do not add multi-content revisions or arbitrary per-article CSS execution solely
 ### Stage 7 - Test-suite restructuring
 
 - use existing integration tests as characterization coverage during migration
-- separate framework contracts, standard-mode tests, tool-hosting tests, Trusted Preview/security tests, deployment integration tests, and test support
+- separate framework contracts, standard-mode tests, tool-hosting tests, synthetic Development/security tests, deployment integration tests, and test support
 - parameterize repeated mode matrices where that preserves intent
 - retain focused policy tests and end-to-end security wiring tests where they protect different failure modes
 - remove tests only when equivalent coverage is demonstrable
@@ -297,14 +305,14 @@ Do not add multi-content revisions or arbitrary per-article CSS execution solely
 
 Prove that at least one real normal mode has no inappropriate dependency on another normal mode or this deployment's host configuration.
 
-Prove a synthetic consumer can add a mode through the intended public contracts without editing framework internals.
+Prove a synthetic consumer can add a normal mode through the intended public contracts without editing framework internals.
 
 Razor Class Library/project splitting remains a likely packaging technique but occurs only after logical boundaries are proven.
 
 ### Stage 9 - Security completion
 
 - perform an architectural threat-model review against the final repository and deployment
-- identify authentication, authorization, escalation, mode isolation, Trusted Preview, route ownership, content/media, tool-hosting, proxy, input-validation, and configuration/secrets attack surfaces
+- identify authentication, authorization, escalation, mode isolation, synthetic Development, route ownership, content/media, tool-hosting, proxy, input-validation, and configuration/secrets attack surfaces
 - prepare a detailed authorized penetration-test prompt for a Work session
 - remediate findings and rerun regression/security tests
 
@@ -316,21 +324,22 @@ This is not permission to add speculative product features. Durable boundaries a
 
 ## First concrete implementation milestone
 
-Before moving files, make the normal-mode registry authoritative while preserving behavior.
+Before moving files, make the normal-mode registry authoritative while preserving behavior and represent Development explicitly as a synthetic runtime mode rather than a normal registry entry or a collection of unrelated preview exceptions.
 
 Known initial consumers include:
 
 - `SiteModeValues`
 - `SiteModeMiddleware`
 - `SiteModeContext`
+- synthetic Development runtime metadata
 - `SiteModePartialResolver`
 - `SiteModeStylesheetResolver`
 - presentation registration/resolution
 - `SiteRouteOwnership`
 - `ContentSourceRegistry`
 - scoped editor-role derivation
-- Trusted Preview UI/validation
+- Development/Trusted Preview UI and validation
 - sitemap generation
 - tool visibility and tool-management mode selection
 
-The registry must become authoritative before physical file movement. Otherwise the current coupling would merely be relocated into cleaner-looking folders.
+The registry must become authoritative before physical file movement. Otherwise the current coupling would merely be relocated into cleaner-looking folders. Synthetic Development must remain outside that normal registry while using the same runtime contracts where a control-plane mode genuinely needs mode identity.
