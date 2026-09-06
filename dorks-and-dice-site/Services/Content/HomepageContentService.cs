@@ -1,5 +1,7 @@
 using dorks_and_dice_site.Models.Content;
+using dorks_and_dice_site.Services.Content.Storage;
 using dorks_and_dice_site.Services.Site;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace dorks_and_dice_site.Services.Content;
 
@@ -11,7 +13,7 @@ public interface IHomepageContentService
 }
 
 /// <summary>
-/// Resolves the single database-backed homepage document visible to a normal mode and composes
+/// Resolves the database-backed homepage document visible to a normal mode and composes
 /// its authored Markdown with installed page components. Mode definition storage is deliberately
 /// outside this service so the same page contract works whether normal modes ultimately remain
 /// compiled definitions or become runtime data.
@@ -20,13 +22,28 @@ public sealed class HomepageContentService : IHomepageContentService
 {
     private readonly IContentCatalogService _catalog;
     private readonly IContentPageComposer _pageComposer;
+    private readonly IContentSourceRegistry? _sourceRegistry;
+    private readonly ILogger<HomepageContentService> _logger;
 
+    // Compatibility constructor for focused unit fixtures. Runtime DI uses the full constructor
+    // so source precedence participates in duplicate recovery.
     public HomepageContentService(
         IContentCatalogService catalog,
         IContentPageComposer pageComposer)
+        : this(catalog, pageComposer, null, NullLogger<HomepageContentService>.Instance)
+    {
+    }
+
+    public HomepageContentService(
+        IContentCatalogService catalog,
+        IContentPageComposer pageComposer,
+        IContentSourceRegistry? sourceRegistry,
+        ILogger<HomepageContentService> logger)
     {
         _catalog = catalog;
         _pageComposer = pageComposer;
+        _sourceRegistry = sourceRegistry;
+        _logger = logger;
     }
 
     public async Task<HomepageContentViewModel?> GetAsync(
@@ -51,17 +68,74 @@ public sealed class HomepageContentService : IHomepageContentService
             return null;
         }
 
-        if (candidates.Count > 1)
-        {
-            throw new InvalidOperationException(
-                $"Site mode '{modeContext.ActiveModeId}' has multiple visible homepage documents. Exactly one homepage document may be active per mode.");
-        }
-
-        var item = candidates[0];
+        var item = ResolveCandidate(candidates, modeContext);
         return new HomepageContentViewModel
         {
             Item = item,
             Fragments = _pageComposer.Compose(item.BodyFormat, item.Body)
         };
+    }
+
+    private ContentItem ResolveCandidate(
+        IReadOnlyList<ContentItem> candidates,
+        SiteModeContext modeContext)
+    {
+        if (candidates.Count == 1)
+        {
+            return candidates[0];
+        }
+
+        IEnumerable<ContentItem> preferred = candidates;
+
+        // Content sources are composed base-to-override. If duplicate singleton homepage roles
+        // exist across different sources, a homepage in the highest-precedence selected source wins.
+        if (_sourceRegistry is not null)
+        {
+            var sourceRanks = _sourceRegistry
+                .GetSourcesForContext(modeContext)
+                .Select((source, index) => new { source.Key, Index = index })
+                .ToDictionary(pair => pair.Key, pair => pair.Index, StringComparer.OrdinalIgnoreCase);
+
+            var rankedCandidates = candidates
+                .Where(candidate => !string.IsNullOrWhiteSpace(candidate.SourceKey)
+                    && sourceRanks.ContainsKey(candidate.SourceKey))
+                .ToList();
+            if (rankedCandidates.Count > 0)
+            {
+                var highestRank = rankedCandidates.Max(candidate => sourceRanks[candidate.SourceKey]);
+                preferred = rankedCandidates.Where(candidate => sourceRanks[candidate.SourceKey] == highestRank);
+            }
+        }
+
+        var preferredList = preferred.ToList();
+
+        // A page assigned only to this mode is more specific than a legacy/shared homepage that
+        // happens to include the same mode. This gives dedicated mode homepages precedence while
+        // existing duplicate data is being repaired.
+        if (modeContext.ActiveModeId is { Length: > 0 } modeId)
+        {
+            var minimumModeCount = preferredList.Min(candidate => candidate.VisibleInModes.Count);
+            preferredList = preferredList
+                .Where(candidate => candidate.IsVisibleInMode(modeId)
+                    && candidate.VisibleInModes.Count == minimumModeCount)
+                .ToList();
+        }
+
+        // Revision IDs are monotonic within one source. Remaining duplicates therefore resolve to
+        // the most recently revised candidate, with stable ID as the final deterministic tie-breaker.
+        var selected = preferredList
+            .OrderByDescending(candidate => candidate.RevisionId)
+            .ThenBy(candidate => candidate.Id, StringComparer.OrdinalIgnoreCase)
+            .First();
+
+        _logger.LogWarning(
+            "Site mode {ModeId} has multiple visible homepage documents. Selected {SelectedId} from source {SourceKey}; candidates: {CandidateIds}",
+            modeContext.ActiveModeId,
+            selected.Id,
+            selected.SourceKey,
+            string.Join(", ", candidates.Select(candidate =>
+                $"{candidate.Id}@{candidate.SourceKey}#r{candidate.RevisionId}")));
+
+        return selected;
     }
 }
