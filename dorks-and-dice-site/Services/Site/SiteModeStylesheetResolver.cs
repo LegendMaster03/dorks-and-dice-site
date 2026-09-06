@@ -4,9 +4,6 @@ namespace dorks_and_dice_site.Services.Site;
 
 public sealed class SiteModeStylesheetResolver : ISiteModeStylesheetResolver
 {
-    // Trusted Preview still uses the legacy development asset location during migration.
-    private const string TrustedPreviewStylesheetPath = "~/site-modes/development/css/site.css";
-
     public IReadOnlyList<string> GetStylesheetPaths(SiteModeContext context)
     {
         ArgumentNullException.ThrowIfNull(context);
@@ -14,12 +11,12 @@ public sealed class SiteModeStylesheetResolver : ISiteModeStylesheetResolver
         var paths = new List<string>(2);
         if (context.ActiveMode is not null)
         {
-            paths.Add(BuildModeStylesheetPath(context.ActiveMode));
+            paths.Add(BuildStylesheetPath(context.ActiveMode.AssetFolder));
         }
 
-        if (context.IsTrustedPreview)
+        if (context.SyntheticMode is not null)
         {
-            paths.Add(TrustedPreviewStylesheetPath);
+            paths.Add(BuildStylesheetPath(context.SyntheticMode.AssetFolder));
         }
 
         return paths;
@@ -45,7 +42,7 @@ public sealed class SiteModeStylesheetResolver : ISiteModeStylesheetResolver
 
         if (includeDevelopmentTools)
         {
-            frameworkState = FrameworkRuntimeStates.TrustedPreview;
+            frameworkState = SyntheticSiteModes.Development;
         }
 
         return GetStylesheetPaths(new SiteModeContext
@@ -55,6 +52,6 @@ public sealed class SiteModeStylesheetResolver : ISiteModeStylesheetResolver
         });
     }
 
-    private static string BuildModeStylesheetPath(SiteModeDefinition mode) =>
-        $"~/site-modes/{mode.AssetFolder}/css/site.css";
+    private static string BuildStylesheetPath(string assetFolder) =>
+        $"~/site-modes/{assetFolder}/css/site.css";
 }
