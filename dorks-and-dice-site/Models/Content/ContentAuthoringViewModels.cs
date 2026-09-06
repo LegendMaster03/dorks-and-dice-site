@@ -44,12 +44,8 @@ public sealed class ContentAuthoringEditViewModel
 
 public sealed class ContentRevisionSummary
 {
-    // Database ids remain the concurrency/parent keys. The user-facing revision number is scoped to
-    // the page, so unrelated page revisions do not create apparent gaps in one page's history.
     public long RevisionId { get; init; }
     public long? ParentRevisionId { get; init; }
-    public int RevisionNumber { get; init; }
-    public int? ParentRevisionNumber { get; init; }
     public DateTime CreatedUtc { get; init; }
 }
 
