@@ -42,24 +42,4 @@ public sealed class ContentDatabaseManagementController : Controller
             return RedirectToAction(nameof(Index), new { source });
         }
     }
-
-    [HttpPost("push-all")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> PushAll(
-        string source,
-        string targetSource,
-        CancellationToken cancellationToken)
-    {
-        try
-        {
-            var count = await _authoringService.MoveAllAsync(source, targetSource, cancellationToken);
-            TempData["ContentDatabaseSuccess"] = $"Moved {count} content page(s) from {source} to {targetSource}.";
-            return RedirectToAction(nameof(Index), new { source = targetSource });
-        }
-        catch (InvalidOperationException ex)
-        {
-            TempData["ContentDatabaseError"] = ex.Message;
-            return RedirectToAction(nameof(Index), new { source });
-        }
-    }
 }
