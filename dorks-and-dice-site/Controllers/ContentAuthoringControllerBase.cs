@@ -62,22 +62,27 @@ public abstract class ContentAuthoringControllerBase : Controller
         if (!IsCentralAuthoring)
         {
             var modeContext = HttpContext.GetSiteModeContext();
-            var activeModeId = ContentAuthoringModeAccess.RequireActiveModeId(modeContext);
-            modeDisplayName = modeContext.ActiveMode?.DisplayName ?? activeModeId;
+            modeDisplayName = modeContext.SyntheticMode?.DisplayName
+                ?? modeContext.ActiveMode?.DisplayName
+                ?? modeContext.ActiveModeId;
             entries = entries.Where(entry =>
-                ContentAuthoringModeAccess.CanEditItem(User, entry.Item, activeModeId));
+                ContentAuthoringModeAccess.CanEditItem(User, entry.Item, modeContext));
         }
 
         var entryList = entries
             .OrderBy(entry => entry.Item.Title, StringComparer.OrdinalIgnoreCase)
             .ThenBy(entry => entry.SourceDisplayName, StringComparer.OrdinalIgnoreCase)
             .ToList();
+        var selectedSourceKey = sources.FirstOrDefault(source =>
+                string.Equals(source.Key, _authoringService.DefaultSourceKey, StringComparison.OrdinalIgnoreCase))?.Key
+            ?? sources.FirstOrDefault()?.Key
+            ?? _authoringService.DefaultSourceKey;
 
         return View("~/Views/ContentAuthoring/Index.cshtml", new ContentAuthoringIndexViewModel
         {
             Entries = entryList,
             Items = entryList.Select(entry => entry.Item).ToList(),
-            SelectedSourceKey = _authoringService.DefaultSourceKey,
+            SelectedSourceKey = selectedSourceKey,
             AuthoringSourceKey = _authoringService.DefaultSourceKey,
             Sources = sources.Select(source => new ContentAuthoringSourceOption
             {
@@ -93,9 +98,16 @@ public abstract class ContentAuthoringControllerBase : Controller
     [HttpGet("new")]
     public IActionResult New()
     {
-        var model = _authoringService.GetNew(_authoringService.DefaultSourceKey);
-        ConfigureEditModel(model, forceNewMode: true);
-        return View("~/Views/ContentAuthoring/Edit.cshtml", model);
+        try
+        {
+            var model = _authoringService.GetNew(ResolveSource(source: null));
+            ConfigureEditModel(model, forceNewMode: true);
+            return View("~/Views/ContentAuthoring/Edit.cshtml", model);
+        }
+        catch (InvalidOperationException)
+        {
+            return BadRequest();
+        }
     }
 
     [HttpPost("new")]
@@ -110,9 +122,13 @@ public abstract class ContentAuthoringControllerBase : Controller
             model.Document.SourceKey = ResolveSource(model.Document.SourceKey);
             if (!IsCentralAuthoring)
             {
-                ContentAuthoringModeAccess.ForceNewDocumentMode(
-                    model.Document,
-                    ContentAuthoringModeAccess.RequireActiveModeId(HttpContext.GetSiteModeContext()));
+                var modeContext = HttpContext.GetSiteModeContext();
+                if (modeContext.SyntheticMode is null)
+                {
+                    ContentAuthoringModeAccess.ForceNewDocumentMode(
+                        model.Document,
+                        ContentAuthoringModeAccess.RequireActiveModeId(modeContext));
+                }
             }
 
             var created = await _authoringService.CreateAsync(model.Document, cancellationToken);
@@ -183,10 +199,19 @@ public abstract class ContentAuthoringControllerBase : Controller
                     return NotFound();
                 }
 
-                // Stable identity and mode assignment are authority-controlled on the normal editor.
-                // A client can not use a crafted form post to re-target another mode.
+                // Stable identity remains authority-controlled on every editor surface.
                 model.Document.Id = current.Document.Id;
-                ContentAuthoringModeAccess.PreserveExistingDocumentModes(model.Document, current.Document);
+
+                var modeContext = HttpContext.GetSiteModeContext();
+                if (!ContentAuthoringModeAccess.CanSelectModes(User, modeContext))
+                {
+                    // A normal mode editor can not use a crafted form post to re-target content
+                    // to another mode. Synthetic Development is globally authorized and may edit
+                    // the assignment explicitly.
+                    ContentAuthoringModeAccess.PreserveExistingDocumentModes(
+                        model.Document,
+                        current.Document);
+                }
             }
 
             var saved = await _authoringService.SaveRevisionAsync(model.Document, cancellationToken);
@@ -209,9 +234,13 @@ public abstract class ContentAuthoringControllerBase : Controller
             model.Document.SourceKey = ResolveSource(model.Document.SourceKey);
             if (!IsCentralAuthoring)
             {
-                ContentAuthoringModeAccess.ForceNewDocumentMode(
-                    model.Document,
-                    ContentAuthoringModeAccess.RequireActiveModeId(HttpContext.GetSiteModeContext()));
+                var modeContext = HttpContext.GetSiteModeContext();
+                if (modeContext.SyntheticMode is null)
+                {
+                    ContentAuthoringModeAccess.ForceNewDocumentMode(
+                        model.Document,
+                        ContentAuthoringModeAccess.RequireActiveModeId(modeContext));
+                }
             }
 
             var fragments = _pageComposer.Compose(model.Document.BodyFormat, model.Document.Body);
@@ -312,12 +341,14 @@ public abstract class ContentAuthoringControllerBase : Controller
             return true;
         }
 
-        var activeModeId = ContentAuthoringModeAccess.RequireActiveModeId(HttpContext.GetSiteModeContext());
         var currentItem = new ContentItem
         {
             VisibleInModes = model.Document.VisibleModesSelection.ToList()
         };
-        return ContentAuthoringModeAccess.CanEditItem(User, currentItem, activeModeId);
+        return ContentAuthoringModeAccess.CanEditItem(
+            User,
+            currentItem,
+            HttpContext.GetSiteModeContext());
     }
 
     private void ConfigureEditModel(ContentAuthoringEditViewModel model, bool forceNewMode)
@@ -341,6 +372,27 @@ public abstract class ContentAuthoringControllerBase : Controller
         }
 
         var modeContext = HttpContext.GetSiteModeContext();
+        if (ContentAuthoringModeAccess.CanSelectModes(User, modeContext))
+        {
+            if (forceNewMode && modeContext.ActiveModeId is { Length: > 0 } previewModeId)
+            {
+                // A selected normal preview target is a useful default for new content, but the
+                // synthetic editor remains free to change the assignment.
+                ContentAuthoringModeAccess.ForceNewDocumentMode(model.Document, previewModeId);
+            }
+
+            model.AllowModeSelection = true;
+            model.FixedModeDisplayName = null;
+            model.Sources = ContentAuthoringSourceAccess.GetModeEditorSources(_sourceRegistry, modeContext)
+                .Select(source => new ContentAuthoringSourceOption
+                {
+                    Key = source.Key,
+                    DisplayName = source.DisplayName
+                })
+                .ToList();
+            return;
+        }
+
         var activeModeId = ContentAuthoringModeAccess.RequireActiveModeId(modeContext);
         if (forceNewMode)
         {
