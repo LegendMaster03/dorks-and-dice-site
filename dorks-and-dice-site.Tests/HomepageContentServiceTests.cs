@@ -16,7 +16,8 @@ public sealed class HomepageContentServiceTests
             Slug = "home",
             Title = "Home",
             BodyFormat = "markdown",
-            Body = "# Hello"
+            Body = "# Hello",
+            VisibleInModes = ["test-mode"]
         };
         var catalog = new TestContentCatalog([item]);
         var composer = new TestPageComposer();
