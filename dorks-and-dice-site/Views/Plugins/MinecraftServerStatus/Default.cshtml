@@ -2,37 +2,29 @@
 
 <div class="minecraft-server-status">
     <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
-        @if (Model.IsOnline)
-        {
-            <span class="badge text-bg-success">Online</span>
-        }
-        else
-        {
-            <span class="badge text-bg-secondary">Unavailable</span>
-        }
+        <span class="badge @(Model.IsOnline ? "text-bg-success" : "text-bg-secondary")"
+              data-minecraft-status-field="badge">@(Model.IsOnline ? "Online" : "Unavailable")</span>
 
-        @if (!string.IsNullOrWhiteSpace(Model.Version))
-        {
-            <span class="text-muted small">Version @Model.Version</span>
-        }
+        <span class="text-muted small"
+              data-minecraft-status-field="version"
+              hidden="@(!Model.IsOnline || string.IsNullOrWhiteSpace(Model.Version))">Version @Model.Version</span>
     </div>
 
-    @if (Model.IsOnline)
-    {
-        @if (!string.IsNullOrWhiteSpace(Model.Motd))
-        {
-            <p class="mb-2">@Model.Motd</p>
-        }
+    <p class="mb-2"
+       data-minecraft-status-field="motd"
+       hidden="@(!Model.IsOnline || string.IsNullOrWhiteSpace(Model.Motd))">@Model.Motd</p>
 
-        <p class="mb-0">
-            <strong>@(Model.OnlinePlayers ?? 0)</strong>
-            of
-            <strong>@(Model.MaximumPlayers?.ToString() ?? "?")</strong>
-            players online
-        </p>
-    }
-    else
-    {
-        <p class="text-muted small mb-0">Live server status is temporarily unavailable.</p>
-    }
+    <p class="mb-0"
+       data-minecraft-status-field="players"
+       hidden="@(!Model.IsOnline)">
+        <strong>@(Model.OnlinePlayers ?? 0)</strong>
+        of
+        <strong>@(Model.MaximumPlayers?.ToString() ?? "?")</strong>
+        players online
+    </p>
+
+    <p class="text-muted small mb-0"
+       data-minecraft-status-field="unavailable"
+       hidden="@Model.IsOnline">Live server status is temporarily unavailable.</p>
 </div>
+<script src="/plugins/minecraft-server-status/status.js" defer></script>
