@@ -27,7 +27,7 @@ public sealed class OwnerRoleIntegrationTests
         Assert.Equal(HttpStatusCode.Redirect, (await LoginAsync(client, email)).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/admin")).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/development")).StatusCode);
-        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/editor/content")).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/editor")).StatusCode);
     }
 
     [Fact]
