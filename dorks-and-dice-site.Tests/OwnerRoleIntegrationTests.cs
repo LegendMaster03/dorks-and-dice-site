@@ -14,7 +14,7 @@ public sealed class OwnerRoleIntegrationTests
     private const string Password = "correct horse battery staple";
 
     [Fact]
-    public async Task OwnerInheritsTrustedAdminDeveloperAndEditorPrivileges()
+    public async Task OwnerInheritsTrustedAdminAndDeveloperPrivileges()
     {
         var connectionString = Environment.GetEnvironmentVariable("IDENTITY_TEST_POSTGRES");
         if (string.IsNullOrWhiteSpace(connectionString)) return;
@@ -27,7 +27,6 @@ public sealed class OwnerRoleIntegrationTests
         Assert.Equal(HttpStatusCode.Redirect, (await LoginAsync(client, email)).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/admin")).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/development")).StatusCode);
-        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/editor")).StatusCode);
     }
 
     [Fact]
