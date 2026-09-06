@@ -12,7 +12,7 @@
     <a class="btn btn-outline-secondary" href="/development">Back to Development</a>
 </div>
 
-<p class="text-body-secondary">Database/source selection and movement are development operations. Content editing is handled separately by Editor.</p>
+<p class="text-body-secondary">Database/source selection and page movement are development operations. Content editing is handled separately by Editor.</p>
 
 @if (TempData["ContentDatabaseSuccess"] is string successMessage)
 {
@@ -35,27 +35,6 @@
             </select>
         </form>
     </div>
-
-    @if (Model.IsAuthoringWorkspace && Model.MoveTargets.Count > 0)
-    {
-        <div class="col-sm-6 col-lg-6">
-            <form class="d-flex gap-2 align-items-end" method="post" action="/development/databases/push-all"
-                  onsubmit="return confirm('Move every page from this source to the selected destination and remove the source copies?');">
-                @Html.AntiForgeryToken()
-                <input type="hidden" name="source" value="@Model.SelectedSourceKey" />
-                <div class="flex-grow-1">
-                    <label class="form-label" for="push-all-target">Destination</label>
-                    <select class="form-select" id="push-all-target" name="targetSource">
-                        @foreach (var target in Model.MoveTargets)
-                        {
-                            <option value="@target.Key">@target.DisplayName</option>
-                        }
-                    </select>
-                </div>
-                <button class="btn btn-warning" type="submit">Move all</button>
-            </form>
-        </div>
-    }
 </div>
 
 <div class="table-responsive">
@@ -83,7 +62,8 @@
                         <div class="d-flex flex-wrap gap-2">
                             @foreach (var target in Model.MoveTargets)
                             {
-                                <form method="post" action="/development/databases/@item.Slug/move">
+                                <form method="post" action="/development/databases/@item.Slug/move"
+                                      onsubmit="return confirm('Move this page and its owned media to @target.DisplayName? The move will refuse to overwrite an existing target page.');">
                                     @Html.AntiForgeryToken()
                                     <input type="hidden" name="source" value="@Model.SelectedSourceKey" />
                                     <input type="hidden" name="targetSource" value="@target.Key" />
