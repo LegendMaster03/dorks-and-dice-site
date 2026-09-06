@@ -32,6 +32,21 @@ public sealed class ContentAuthoringIntegrationTests
     }
 
     [Fact]
+    public async Task EditorEntryRoutesDirectlyToTheAvailableAuthoringSurface()
+    {
+        var modeEditor = await SendAsync(
+            "kylebarnett.com",
+            "/editor",
+            scopedRoles: $"{AccountRoleScopes.Professional}:{ScopedAccountRoles.Editor}");
+        Assert.Equal(HttpStatusCode.Redirect, modeEditor.StatusCode);
+        Assert.Equal("/editor/content", modeEditor.Headers.Location?.OriginalString);
+
+        var developer = await SendAsync("localhost", "/editor", roles: AccountRoles.Dev);
+        Assert.Equal(HttpStatusCode.Redirect, developer.StatusCode);
+        Assert.Equal("/development/content", developer.Headers.Location?.OriginalString);
+    }
+
+    [Fact]
     public async Task ScopedEditorCanNotEditAnotherSiteMode()
     {
         var response = await SendAsync(
@@ -71,6 +86,30 @@ public sealed class ContentAuthoringIntegrationTests
 
         var publicResponse = await SendAsync("kylebarnett.com", "/development/content", roles: AccountRoles.Dev);
         Assert.Equal(HttpStatusCode.Forbidden, publicResponse.StatusCode);
+    }
+
+    [Fact]
+    public async Task DevelopmentPreviewContentEditTargetsCentralAuthoringSource()
+    {
+        var client = _factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false
+        });
+        using var request = new HttpRequestMessage(
+            HttpMethod.Get,
+            "https://localhost/articles/freeing-the-bees-consolevariations-puzzle");
+        request.Headers.Host = "localhost";
+        request.Headers.Add(TestRoleAuthenticationHandler.RolesHeader, AccountRoles.Dev);
+        request.Headers.Add("Cookie", "DevelopmentPreviewSiteMode=professional");
+
+        var response = await client.SendAsync(request);
+        var html = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains(
+            "/development/content/freeing-the-bees-consolevariations-puzzle/edit?source=External",
+            html,
+            StringComparison.Ordinal);
     }
 
     [Fact]
