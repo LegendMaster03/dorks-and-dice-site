@@ -51,6 +51,46 @@ public sealed class ContentAuthoringIntegrationTests
     }
 
     [Fact]
+    public async Task OwnerEditorFollowsDevelopmentRibbonModeSelection()
+    {
+        const string articleTitle = "Freeing the Bees: Solving ConsoleVariations";
+        const string selectedExternal = "DevelopmentEnabledContentSources=External";
+
+        var dorksResponse = await SendAsync(
+            "localhost",
+            "/editor/content",
+            roles: AccountRoles.Owner,
+            cookie: $"DevelopmentPreviewSiteMode=dorks-and-dice; {selectedExternal}");
+        var dorksHtml = await dorksResponse.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, dorksResponse.StatusCode);
+        Assert.Contains("Dorks &amp; Dice Content Authoring", dorksHtml);
+        Assert.DoesNotContain(articleTitle, dorksHtml);
+
+        var professionalResponse = await SendAsync(
+            "localhost",
+            "/editor/content",
+            roles: AccountRoles.Owner,
+            cookie: $"DevelopmentPreviewSiteMode=professional; {selectedExternal}");
+        var professionalHtml = await professionalResponse.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, professionalResponse.StatusCode);
+        Assert.Contains("Professional Content Authoring", professionalHtml);
+        Assert.Contains(articleTitle, professionalHtml);
+
+        var developmentResponse = await SendAsync(
+            "localhost",
+            "/editor/content",
+            roles: AccountRoles.Owner,
+            cookie: $"DevelopmentPreviewSiteMode=development; {selectedExternal}");
+        var developmentHtml = await developmentResponse.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, developmentResponse.StatusCode);
+        Assert.Contains("Development Content Authoring", developmentHtml);
+        Assert.Contains(articleTitle, developmentHtml);
+    }
+
+    [Fact]
     public async Task DeveloperRoleDoesNotImplyModeEditorRole()
     {
         var response = await SendAsync("kylebarnett.com", "/editor/content", roles: AccountRoles.Dev);
@@ -159,7 +199,8 @@ public sealed class ContentAuthoringIntegrationTests
         string host,
         string path,
         string? roles = null,
-        string? scopedRoles = null)
+        string? scopedRoles = null,
+        string? cookie = null)
     {
         var client = _factory.CreateClient(new WebApplicationFactoryClientOptions
         {
@@ -174,6 +215,10 @@ public sealed class ContentAuthoringIntegrationTests
         if (!string.IsNullOrWhiteSpace(scopedRoles))
         {
             request.Headers.Add(TestRoleAuthenticationHandler.ScopedRolesHeader, scopedRoles);
+        }
+        if (!string.IsNullOrWhiteSpace(cookie))
+        {
+            request.Headers.Add("Cookie", cookie);
         }
         return await client.SendAsync(request);
     }
