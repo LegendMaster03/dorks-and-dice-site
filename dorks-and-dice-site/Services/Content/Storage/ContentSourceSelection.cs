@@ -3,9 +3,10 @@ using dorks_and_dice_site.Services.Site;
 namespace dorks_and_dice_site.Services.Content.Storage;
 
 /// <summary>
-/// Resolves the content-source composition for a request. Normal hosted modes use deployment
-/// source policy, framework fallback uses Global, and synthetic Development uses only the
-/// explicit database selection supplied by its trusted developer controls.
+/// Resolves content-source composition for a request. Normal hosted modes use deployment source
+/// policy. Synthetic Development may override that composition through the trusted developer
+/// database controls; without an explicit override, the selected normal preview mode keeps its
+/// configured source composition. Framework fallback uses Global sources.
 /// </summary>
 public static class ContentSourceSelection
 {
@@ -13,16 +14,21 @@ public static class ContentSourceSelection
         this IContentSourceRegistry registry,
         SiteModeContext modeContext)
     {
-        if (modeContext.SyntheticMode is not null)
+        if (modeContext.SyntheticMode is not null
+            && modeContext.IsDevelopmentPreview
+            && modeContext.HasContentSourceOverride)
         {
-            return modeContext.HasContentSourceOverride
-                ? registry.GetSourcesByKeys(modeContext.EnabledContentSources)
-                : [];
+            return registry.GetSourcesByKeys(modeContext.EnabledContentSources);
         }
 
         if (modeContext.ActiveModeId is { Length: > 0 } modeId)
         {
             return registry.GetDefaultSources(modeId);
+        }
+
+        if (modeContext.SyntheticMode is not null)
+        {
+            return [];
         }
 
         if (modeContext.IsFrameworkFallback)
