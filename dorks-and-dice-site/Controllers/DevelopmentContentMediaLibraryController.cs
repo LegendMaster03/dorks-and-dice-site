@@ -57,7 +57,7 @@ public sealed class DevelopmentContentMediaLibraryController : Controller
             source = ContentAuthoringSourceAccess.ResolveCentralSourceKey(_sources, source);
             if (file is null)
             {
-                TempData["ContentMediaError"] = "Choose an image to upload.";
+                TempData["ContentMediaError"] = "Choose an image or PDF to upload.";
                 return Redirect($"/development/media?source={Uri.EscapeDataString(source)}");
             }
 
@@ -65,6 +65,45 @@ public sealed class DevelopmentContentMediaLibraryController : Controller
             var asset = await _assets.UploadAsync(
                 source, file.FileName, file.ContentType, stream, file.Length, cancellationToken);
             TempData["ContentMediaSuccess"] = $"Stored '{asset.FileName}' in {source}.";
+            return Redirect($"/development/media?source={Uri.EscapeDataString(source)}");
+        }
+        catch (InvalidOperationException ex)
+        {
+            TempData["ContentMediaError"] = ex.Message;
+            return RedirectToAction(nameof(Index));
+        }
+    }
+
+    [HttpPost("{assetKey}/replace")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Replace(
+        string assetKey,
+        string? source,
+        IFormFile? file,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            source = ContentAuthoringSourceAccess.ResolveCentralSourceKey(_sources, source);
+            if (file is null)
+            {
+                TempData["ContentMediaError"] = "Choose a replacement file.";
+                return Redirect($"/development/media?source={Uri.EscapeDataString(source)}");
+            }
+
+            await using var stream = file.OpenReadStream();
+            var asset = await ContentAssetReplacement.ReplaceAsync(
+                _assets,
+                _sources,
+                source,
+                assetKey,
+                file.FileName,
+                file.ContentType,
+                stream,
+                file.Length,
+                cancellationToken);
+            TempData["ContentMediaSuccess"] =
+                $"Replaced '{asset.FileName}' in {source} without changing its stable media URL.";
             return Redirect($"/development/media?source={Uri.EscapeDataString(source)}");
         }
         catch (InvalidOperationException ex)
