@@ -90,26 +90,24 @@ public sealed class ContentCatalogService : IContentCatalogService
 
     private static bool IsEligibleForListing(ContentItem item, SiteModeContext modeContext)
     {
-        if (modeContext.ActiveModeId is not null)
-        {
-            return item.IsVisibleInMode(modeContext.ActiveModeId);
-        }
-
-        // Trusted Preview with no selected site preserves the former Development-mode
-        // inspection behavior. Framework fallback on an unmapped public host has no content
-        // identity and therefore lists nothing.
-        return modeContext.IsTrustedPreview;
-    }
-
-    private static bool CanInspectDetail(ContentItem item, SiteModeContext modeContext)
-    {
-        if (modeContext.IsDevelopmentPreview)
+        // Synthetic Development spans all normal mode assignments. Database/source composition
+        // has already happened below this service, so this does not bypass source restrictions.
+        if (modeContext.SyntheticMode is not null)
         {
             return true;
         }
 
-        return IsEligibleForListing(item, modeContext);
+        if (modeContext.ActiveModeId is { Length: > 0 } activeModeId)
+        {
+            return item.IsVisibleInMode(activeModeId);
+        }
+
+        // Framework fallback has no content identity and therefore lists nothing.
+        return false;
     }
+
+    private static bool CanInspectDetail(ContentItem item, SiteModeContext modeContext) =>
+        IsEligibleForListing(item, modeContext);
 
     private static SiteModeContext FromLegacyMode(SiteMode siteMode, bool isDevelopmentPreview)
     {
@@ -126,7 +124,8 @@ public sealed class ContentCatalogService : IContentCatalogService
         {
             return new SiteModeContext
             {
-                FrameworkState = FrameworkRuntimeStates.TrustedPreview,
+                FrameworkState = SyntheticSiteModes.Development,
+                HasTrustedAccess = true,
                 IsDevelopmentPreview = isDevelopmentPreview
             };
         }
