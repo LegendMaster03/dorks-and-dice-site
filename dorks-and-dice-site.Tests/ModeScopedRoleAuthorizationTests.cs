@@ -31,9 +31,9 @@ public sealed class ModeScopedRoleAuthorizationTests
     }
 
     [Fact]
-    public async Task SyntheticModeEditorAuthorizesFromStableModeIdWithoutEnumValue()
+    public async Task SyntheticNormalModeEditorAuthorizesFromStableModeIdWithoutEnumValue()
     {
-        var syntheticMode = new SiteModeDefinition(
+        var syntheticNormalMode = new SiteModeDefinition(
             Id: "test-mode",
             DisplayName: "Test Mode",
             LegacyMode: null,
@@ -43,7 +43,7 @@ public sealed class ModeScopedRoleAuthorizationTests
 
         Assert.True(await IsAuthorizedAsync(user, new SiteModeContext
         {
-            ActiveMode = syntheticMode
+            ActiveMode = syntheticNormalMode
         }));
         Assert.False(await IsAuthorizedAsync(user, new SiteModeContext
         {
@@ -52,9 +52,9 @@ public sealed class ModeScopedRoleAuthorizationTests
     }
 
     [Fact]
-    public async Task GlobalEditorAuthorizesSyntheticModeWithoutEnumValue()
+    public async Task GlobalEditorAuthorizesSyntheticNormalModeWithoutEnumValue()
     {
-        var syntheticMode = new SiteModeDefinition(
+        var syntheticNormalMode = new SiteModeDefinition(
             Id: "test-mode",
             DisplayName: "Test Mode",
             LegacyMode: null,
@@ -64,12 +64,12 @@ public sealed class ModeScopedRoleAuthorizationTests
 
         Assert.True(await IsAuthorizedAsync(user, new SiteModeContext
         {
-            ActiveMode = syntheticMode
+            ActiveMode = syntheticNormalMode
         }));
     }
 
     [Fact]
-    public async Task AdminInheritsGlobalEditorAuthorizationIncludingTrustedPreview()
+    public async Task AdminInheritsGlobalEditorAuthorizationForSyntheticDevelopment()
     {
         var user = CreateGlobalRoleUser(AccountRoles.Admin);
 
@@ -78,38 +78,46 @@ public sealed class ModeScopedRoleAuthorizationTests
             Assert.True(await IsAuthorizedAsync(user, editorRole.SiteMode));
         }
 
-        Assert.True(await IsAuthorizedAsync(user, TrustedPreviewContext()));
+        Assert.True(await IsAuthorizedAsync(user, SyntheticDevelopmentContext()));
         Assert.False(await IsAuthorizedAsync(user, SiteMode.Development));
     }
 
     [Fact]
-    public async Task GlobalEditorAuthorizesTrustedPreviewWithoutConcreteActiveMode()
+    public async Task GlobalEditorAuthorizesSyntheticDevelopmentWithoutPreviewTarget()
     {
         var user = CreateGlobalRoleUser(AccountRoles.GlobalEditor);
 
-        foreach (var editorRole in SiteModeEditorRoles.All)
-        {
-            Assert.True(await IsAuthorizedAsync(user, editorRole.SiteMode));
-        }
-
-        Assert.True(await IsAuthorizedAsync(user, TrustedPreviewContext()));
-        Assert.False(await IsAuthorizedAsync(user, SiteMode.Development));
+        Assert.True(await IsAuthorizedAsync(user, SyntheticDevelopmentContext()));
     }
 
     [Fact]
-    public async Task ScopedEditorDoesNotGainCrossModeAuthorityInTrustedPreview()
+    public async Task SyntheticDevelopmentUsesGlobalAuthorityEvenWithPreviewTarget()
+    {
+        var globalEditor = CreateGlobalRoleUser(AccountRoles.GlobalEditor);
+        var scopedEditor = CreateScopedEditor(
+            $"{BuiltInSiteModes.Professional.Id}:{ScopedAccountRoles.Editor}");
+        var context = SyntheticDevelopmentContext(BuiltInSiteModes.Professional);
+
+        Assert.True(await IsAuthorizedAsync(globalEditor, context));
+        Assert.False(await IsAuthorizedAsync(scopedEditor, context));
+        Assert.Equal(SiteMode.Development, context.SiteMode);
+        Assert.Equal(SyntheticSiteModes.Development.Id, context.RuntimeModeId);
+    }
+
+    [Fact]
+    public async Task ScopedEditorDoesNotGainCrossModeAuthorityInSyntheticDevelopment()
     {
         var user = CreateScopedEditor($"{AccountRoleScopes.DorksAndDice}:{ScopedAccountRoles.Editor}");
 
-        Assert.False(await IsAuthorizedAsync(user, TrustedPreviewContext()));
+        Assert.False(await IsAuthorizedAsync(user, SyntheticDevelopmentContext()));
     }
 
     [Fact]
-    public void EditorRootRedirectsGlobalEditorFromTrustedPreviewToContent()
+    public void EditorRootRedirectsGlobalEditorFromSyntheticDevelopmentToContent()
     {
         var user = CreateGlobalRoleUser(AccountRoles.GlobalEditor);
         var httpContext = new DefaultHttpContext { User = user };
-        httpContext.Items[SiteModeContext.HttpContextItemKey] = TrustedPreviewContext();
+        httpContext.Items[SiteModeContext.HttpContextItemKey] = SyntheticDevelopmentContext();
         var controller = new EditorController
         {
             ControllerContext = new ControllerContext { HttpContext = httpContext }
@@ -121,11 +129,31 @@ public sealed class ModeScopedRoleAuthorizationTests
     }
 
     [Fact]
-    public void EditorRootStillForbidsDevOnlyUserInTrustedPreview()
+    public void EditorRootRedirectsAuthorizedNormalModeEditorToContent()
+    {
+        var user = CreateScopedEditor(
+            $"{BuiltInSiteModes.DorksAndDice.Id}:{ScopedAccountRoles.Editor}");
+        var httpContext = new DefaultHttpContext { User = user };
+        httpContext.Items[SiteModeContext.HttpContextItemKey] = new SiteModeContext
+        {
+            ActiveMode = BuiltInSiteModes.DorksAndDice
+        };
+        var controller = new EditorController
+        {
+            ControllerContext = new ControllerContext { HttpContext = httpContext }
+        };
+
+        var result = Assert.IsType<RedirectResult>(controller.Index());
+
+        Assert.Equal("/editor/content", result.Url);
+    }
+
+    [Fact]
+    public void EditorRootStillForbidsDevOnlyUserInSyntheticDevelopment()
     {
         var user = CreateGlobalRoleUser(AccountRoles.Dev);
         var httpContext = new DefaultHttpContext { User = user };
-        httpContext.Items[SiteModeContext.HttpContextItemKey] = TrustedPreviewContext();
+        httpContext.Items[SiteModeContext.HttpContextItemKey] = SyntheticDevelopmentContext();
         var controller = new EditorController
         {
             ControllerContext = new ControllerContext { HttpContext = httpContext }
@@ -135,7 +163,7 @@ public sealed class ModeScopedRoleAuthorizationTests
     }
 
     [Fact]
-    public void EveryBuiltInModeAutomaticallyDefinesAChildEditorRole()
+    public void EveryBuiltInNormalModeAutomaticallyDefinesAChildEditorRole()
     {
         Assert.Equal(
             BuiltInSiteModes.All.Select(mode => mode.Id),
@@ -143,6 +171,12 @@ public sealed class ModeScopedRoleAuthorizationTests
         Assert.Equal(
             BuiltInSiteModes.All.Select(mode => mode.LegacyMode),
             SiteModeEditorRoles.All.Select(role => role.LegacySiteMode));
+        Assert.DoesNotContain(
+            SiteModeEditorRoles.All,
+            role => string.Equals(
+                role.Scope,
+                SyntheticSiteModes.Development.Id,
+                StringComparison.Ordinal));
 
         var globalEditor = AccountRoleHierarchy.GetGlobalRole(AccountRoles.GlobalEditor);
         Assert.Equal(
@@ -151,16 +185,16 @@ public sealed class ModeScopedRoleAuthorizationTests
     }
 
     [Fact]
-    public void SyntheticModeAutomaticallyGetsEditorRoleWithoutIdentityConfigurationChange()
+    public void SyntheticNormalModeAutomaticallyGetsEditorRoleWithoutIdentityConfigurationChange()
     {
-        var syntheticMode = new SiteModeDefinition(
+        var syntheticNormalMode = new SiteModeDefinition(
             Id: "test-mode",
             DisplayName: "Test Mode",
             LegacyMode: null,
             ViewFolder: "TestMode",
             AssetFolder: "test-mode");
 
-        var role = Assert.Single(SiteModeEditorRoleFactory.Create([syntheticMode]));
+        var role = Assert.Single(SiteModeEditorRoleFactory.Create([syntheticNormalMode]));
 
         Assert.Equal("test-mode", role.Scope);
         Assert.Equal("Test Mode Editor", role.RoleName);
@@ -190,7 +224,7 @@ public sealed class ModeScopedRoleAuthorizationTests
         var user = CreateGlobalRoleUser(AccountRoles.Dev);
 
         Assert.False(await IsAuthorizedAsync(user, SiteMode.DorksAndDice));
-        Assert.False(await IsAuthorizedAsync(user, TrustedPreviewContext()));
+        Assert.False(await IsAuthorizedAsync(user, SyntheticDevelopmentContext()));
     }
 
     private static ClaimsPrincipal CreateScopedEditor(string scopedRole)
@@ -215,9 +249,10 @@ public sealed class ModeScopedRoleAuthorizationTests
         return new ClaimsPrincipal(identity);
     }
 
-    private static SiteModeContext TrustedPreviewContext() => new()
+    private static SiteModeContext SyntheticDevelopmentContext(SiteModeDefinition? previewMode = null) => new()
     {
-        FrameworkState = FrameworkRuntimeStates.TrustedPreview,
+        ActiveMode = previewMode,
+        FrameworkState = SyntheticSiteModes.Development,
         HasTrustedAccess = true
     };
 
