@@ -91,25 +91,34 @@ public sealed class ModeScopedRoleAuthorizationTests
     }
 
     [Fact]
-    public async Task SyntheticDevelopmentUsesGlobalAuthorityEvenWithPreviewTarget()
+    public async Task SyntheticDevelopmentPreservesSelectedModeScopedEditorAccess()
     {
         var globalEditor = CreateGlobalRoleUser(AccountRoles.GlobalEditor);
-        var scopedEditor = CreateScopedEditor(
+        var professionalEditor = CreateScopedEditor(
             $"{BuiltInSiteModes.Professional.Id}:{ScopedAccountRoles.Editor}");
+        var dorksEditor = CreateScopedEditor(
+            $"{BuiltInSiteModes.DorksAndDice.Id}:{ScopedAccountRoles.Editor}");
         var context = SyntheticDevelopmentContext(BuiltInSiteModes.Professional);
 
         Assert.True(await IsAuthorizedAsync(globalEditor, context));
-        Assert.False(await IsAuthorizedAsync(scopedEditor, context));
+        Assert.True(await IsAuthorizedAsync(professionalEditor, context));
+        Assert.False(await IsAuthorizedAsync(dorksEditor, context));
         Assert.Equal(SiteMode.Development, context.SiteMode);
         Assert.Equal(SyntheticSiteModes.Development.Id, context.RuntimeModeId);
     }
 
     [Fact]
-    public async Task ScopedEditorDoesNotGainCrossModeAuthorityInSyntheticDevelopment()
+    public async Task ScopedEditorRequiresSelectedPreviewModeInSyntheticDevelopment()
     {
         var user = CreateScopedEditor($"{AccountRoleScopes.DorksAndDice}:{ScopedAccountRoles.Editor}");
 
         Assert.False(await IsAuthorizedAsync(user, SyntheticDevelopmentContext()));
+        Assert.True(await IsAuthorizedAsync(
+            user,
+            SyntheticDevelopmentContext(BuiltInSiteModes.DorksAndDice)));
+        Assert.False(await IsAuthorizedAsync(
+            user,
+            SyntheticDevelopmentContext(BuiltInSiteModes.Professional)));
     }
 
     [Fact]
@@ -138,6 +147,24 @@ public sealed class ModeScopedRoleAuthorizationTests
         {
             ActiveMode = BuiltInSiteModes.DorksAndDice
         };
+        var controller = new EditorController
+        {
+            ControllerContext = new ControllerContext { HttpContext = httpContext }
+        };
+
+        var result = Assert.IsType<RedirectResult>(controller.Index());
+
+        Assert.Equal("/editor/content", result.Url);
+    }
+
+    [Fact]
+    public void EditorRootRedirectsScopedEditorForMatchingDevelopmentPreviewTarget()
+    {
+        var user = CreateScopedEditor(
+            $"{BuiltInSiteModes.DorksAndDice.Id}:{ScopedAccountRoles.Editor}");
+        var httpContext = new DefaultHttpContext { User = user };
+        httpContext.Items[SiteModeContext.HttpContextItemKey] =
+            SyntheticDevelopmentContext(BuiltInSiteModes.DorksAndDice);
         var controller = new EditorController
         {
             ControllerContext = new ControllerContext { HttpContext = httpContext }
