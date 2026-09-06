@@ -49,6 +49,63 @@ body {
   width: 11rem;
 }
 
+/* Semantic wrappers used by the DB-authored Dorks & Dice homepage. Keep Bootstrap-like
+   layout behavior out of fragile standalone Markdown attribute lines. */
+.dorks-home-eyebrow {
+  color: var(--bs-primary);
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  margin-bottom: 0.5rem;
+}
+
+.dorks-home-eyebrow > p,
+.dorks-home-copy > p,
+.dorks-home-actions > p {
+  margin-bottom: 0;
+}
+
+.dorks-home-copy {
+  font-size: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.dorks-home-actions > p {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.dorks-home-glance table {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  background: transparent;
+  border-radius: 0;
+}
+
+.dorks-home-glance table thead {
+  display: none;
+}
+
+.dorks-home-glance table tbody,
+.dorks-home-glance table tr,
+.dorks-home-glance table td {
+  border: 0 !important;
+  background: transparent !important;
+}
+
+.dorks-home-glance table td {
+  padding: 0.25rem 0;
+  vertical-align: top;
+}
+
+.dorks-home-glance table td:first-child {
+  width: 42%;
+  padding-right: 1rem;
+  font-weight: 700;
+}
+
 .discord-panel {
   border-left: 4px solid #5865f2;
   background: linear-gradient(180deg, #ffffff 0%, #eef2ff 100%);
@@ -94,6 +151,14 @@ body.dark-mode .content-homepage-body table {
   background: #151824 !important;
   color: #e5e7eb;
   border-color: #303449 !important;
+}
+
+body.dark-mode .dorks-home-glance table,
+body.dark-mode .dorks-home-glance table tbody,
+body.dark-mode .dorks-home-glance table tr,
+body.dark-mode .dorks-home-glance table td {
+  background: transparent !important;
+  border-color: transparent !important;
 }
 
 body.dark-mode .text-muted {
