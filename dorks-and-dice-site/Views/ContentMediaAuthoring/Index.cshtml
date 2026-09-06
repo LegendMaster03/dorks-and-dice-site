@@ -52,13 +52,18 @@
             var previewUrl = $"{Model.RouteBase}/{Model.Slug}/media/{asset.AssetKey}/preview?source={Uri.EscapeDataString(asset.SourceKey)}";
             <div class="col"><article class="card h-100">
                 @if (asset.MediaType == "application/pdf")
-                    {
-                        <a class="p-3" href="@previewUrl" target="_blank" rel="noopener">Open PDF</a>
-                    }
-                    else
-                    {
-                        <img src="@previewUrl" class="card-img-top content-media-preview" alt="Preview of @asset.FileName" />
-                    }
+                {
+                    <div class="ratio ratio-4x3 border-bottom">
+                        <object class="w-100 h-100" data="@previewUrl" type="application/pdf" aria-label="Preview of @asset.FileName">
+                            <p class="p-3 mb-0">PDF preview is unavailable. <a href="@previewUrl" target="_blank" rel="noopener">Open PDF</a>.</p>
+                        </object>
+                    </div>
+                    <div class="px-3 pt-3"><a href="@previewUrl" target="_blank" rel="noopener">Open PDF in a new tab</a></div>
+                }
+                else
+                {
+                    <img src="@previewUrl" class="card-img-top content-media-preview" alt="Preview of @asset.FileName" />
+                }
                 <div class="card-body">
                     <h3 class="h6">@asset.FileName</h3>
                     <p class="small text-muted"><code>@asset.AssetKey</code></p>
@@ -89,7 +94,12 @@ else
                 <article class="card h-100">
                     @if (asset.MediaType == "application/pdf")
                     {
-                        <a class="p-3" href="@previewUrl" target="_blank" rel="noopener">Open PDF</a>
+                        <div class="ratio ratio-4x3 border-bottom">
+                            <object class="w-100 h-100" data="@previewUrl" type="application/pdf" aria-label="Preview of @asset.FileName">
+                                <p class="p-3 mb-0">PDF preview is unavailable. <a href="@previewUrl" target="_blank" rel="noopener">Open PDF</a>.</p>
+                            </object>
+                        </div>
+                        <div class="px-3 pt-3"><a href="@previewUrl" target="_blank" rel="noopener">Open PDF in a new tab</a></div>
                     }
                     else
                     {
