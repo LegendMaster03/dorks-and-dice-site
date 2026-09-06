@@ -52,16 +52,24 @@ public sealed class HomepageContentService : IHomepageContentService
     {
         ArgumentNullException.ThrowIfNull(modeContext);
 
-        if (modeContext.ActiveModeId is null)
+        if (modeContext.ActiveModeId is not { Length: > 0 } activeModeId)
         {
             return null;
         }
 
-        var candidates = await _catalog.GetByContextAsync(
+        var catalogCandidates = await _catalog.GetByContextAsync(
             ContentTags.Homepage,
             modeContext,
             includeUnlisted: true,
             cancellationToken);
+
+        // Synthetic Development intentionally allows a Dev to inspect content across normal modes.
+        // Homepage composition is different: the selected normal ribbon mode owns the '/' surface,
+        // so cross-mode inspection authority must not cause other modes' homepage documents to
+        // participate in that singleton selection.
+        var candidates = catalogCandidates
+            .Where(candidate => candidate.IsVisibleInMode(activeModeId))
+            .ToList();
 
         if (candidates.Count == 0)
         {
@@ -108,18 +116,10 @@ public sealed class HomepageContentService : IHomepageContentService
         }
 
         var preferredList = preferred.ToList();
-
-        // A page assigned only to this mode is more specific than a legacy/shared homepage that
-        // happens to include the same mode. This gives dedicated mode homepages precedence while
-        // existing duplicate data is being repaired.
-        if (modeContext.ActiveModeId is { Length: > 0 } modeId)
-        {
-            var minimumModeCount = preferredList.Min(candidate => candidate.VisibleInModes.Count);
-            preferredList = preferredList
-                .Where(candidate => candidate.IsVisibleInMode(modeId)
-                    && candidate.VisibleInModes.Count == minimumModeCount)
-                .ToList();
-        }
+        var minimumModeCount = preferredList.Min(candidate => candidate.VisibleInModes.Count);
+        preferredList = preferredList
+            .Where(candidate => candidate.VisibleInModes.Count == minimumModeCount)
+            .ToList();
 
         // Revision IDs are monotonic within one source. Remaining duplicates therefore resolve to
         // the most recently revised candidate, with stable ID as the final deterministic tie-breaker.
@@ -129,7 +129,7 @@ public sealed class HomepageContentService : IHomepageContentService
             .First();
 
         _logger.LogWarning(
-            "Site mode {ModeId} has multiple visible homepage documents. Selected {SelectedId} from source {SourceKey}; candidates: {CandidateIds}",
+            "Site mode {ModeId} has multiple homepage documents after active-mode filtering. Selected {SelectedId} from source {SourceKey}; candidates: {CandidateIds}",
             modeContext.ActiveModeId,
             selected.Id,
             selected.SourceKey,
