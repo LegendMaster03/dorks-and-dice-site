@@ -7,7 +7,27 @@ namespace dorks_and_dice_site.Tests;
 public sealed class ContentCatalogSyntheticModeTests
 {
     [Fact]
-    public async Task SyntheticDevelopmentListsContentAcrossNormalModeAssignments()
+    public async Task DeveloperInSyntheticDevelopmentListsContentAcrossNormalModeAssignments()
+    {
+        var dorks = Article("dorks", BuiltInSiteModes.DorksAndDice.Id);
+        var professional = Article("professional", BuiltInSiteModes.Professional.Id);
+        var catalog = new ContentCatalogService(new StubContentRepository([dorks, professional]));
+        var context = new SiteModeContext
+        {
+            ActiveMode = BuiltInSiteModes.Professional,
+            FrameworkState = SyntheticSiteModes.Development,
+            HasTrustedAccess = true,
+            IsDevelopmentPreview = true
+        };
+
+        var items = await catalog.GetByContextAsync(ContentTags.Article, context);
+
+        Assert.Equal(["dorks", "professional"], items.Select(item => item.Id));
+        Assert.Same(dorks, await catalog.GetForDetailAsync("dorks", context));
+    }
+
+    [Fact]
+    public async Task NonDeveloperTrustedPreviewRemainsBoundToSelectedMode()
     {
         var dorks = Article("dorks", BuiltInSiteModes.DorksAndDice.Id);
         var professional = Article("professional", BuiltInSiteModes.Professional.Id);
@@ -21,8 +41,8 @@ public sealed class ContentCatalogSyntheticModeTests
 
         var items = await catalog.GetByContextAsync(ContentTags.Article, context);
 
-        Assert.Equal(["dorks", "professional"], items.Select(item => item.Id));
-        Assert.Same(dorks, await catalog.GetForDetailAsync("dorks", context));
+        Assert.Equal(["professional"], items.Select(item => item.Id));
+        Assert.Null(await catalog.GetForDetailAsync("dorks", context));
     }
 
     [Fact]
