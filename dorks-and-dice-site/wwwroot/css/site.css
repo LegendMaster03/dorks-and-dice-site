@@ -166,6 +166,17 @@ body.dark-mode .image-modal-content img {
   font-size: 1rem;
 }
 
+/* Article heading margins are useful in prose, but database-backed homepages already get
+   vertical rhythm from their semantic layout wrappers and Bootstrap cards. Do not add a
+   second top margin to the first heading inside those containers. */
+.content-homepage-body > :first-child,
+.content-homepage-body .resume-section > h2:first-child,
+.content-homepage-body .resume-section > h3:first-child,
+.content-homepage-body .card-body > h2:first-child,
+.content-homepage-body .card-body > h3:first-child {
+  margin-top: 0;
+}
+
 .content-detail-body pre {
   overflow: auto;
   padding: 1rem;
