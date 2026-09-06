@@ -28,10 +28,15 @@ public static class ContentAssetReplacement
 
         var original = await assets.GetInfoFromSourceAsync(sourceKey, assetKey, cancellationToken)
             ?? throw new InvalidOperationException("Content media was not found in the selected source.");
+        var preexistingAssetKeys = (await assets.GetForSourceAsync(sourceKey, cancellationToken))
+            .Select(asset => asset.AssetKey)
+            .ToHashSet(StringComparer.Ordinal);
 
         // UploadAsync is the canonical validation boundary for size limits, passive SVG checks,
         // file signatures, supported media types, and SHA-256 calculation. The uploaded identity
-        // is used only as a validated staging record; the original identity is retained.
+        // is used only as a validated staging record; the original identity is retained. Capture
+        // the source inventory first so deduplication can never cause cleanup to delete an asset
+        // that already existed before this replacement attempt.
         var staged = await assets.UploadAsync(
             sourceKey,
             fileName,
@@ -39,14 +44,16 @@ public static class ContentAssetReplacement
             stream,
             declaredLength,
             cancellationToken);
+        var stagedWasCreatedForReplacement = !preexistingAssetKeys.Contains(staged.AssetKey);
 
         if (!string.Equals(staged.MediaType, original.MediaType, StringComparison.OrdinalIgnoreCase))
         {
-            await RemoveUnattachedStagingAssetAsync(
+            await RemoveReplacementStagingAssetAsync(
                 sources,
                 sourceKey,
                 staged.AssetKey,
                 original.AssetKey,
+                stagedWasCreatedForReplacement,
                 cancellationToken);
             throw new InvalidOperationException(
                 $"Replacement media must keep the existing media type '{original.MediaType}'.");
@@ -54,13 +61,12 @@ public static class ContentAssetReplacement
 
         if (string.Equals(staged.Sha256, original.Sha256, StringComparison.OrdinalIgnoreCase))
         {
-            // UploadAsync may have returned the original asset itself or an existing identical
-            // asset. Either case is a true no-op and must not create a new media identity.
-            await RemoveUnattachedStagingAssetAsync(
+            await RemoveReplacementStagingAssetAsync(
                 sources,
                 sourceKey,
                 staged.AssetKey,
                 original.AssetKey,
+                stagedWasCreatedForReplacement,
                 cancellationToken);
             return original;
         }
@@ -84,7 +90,8 @@ public static class ContentAssetReplacement
         originalRecord.Data = stagedRecord.Data.ToArray();
         await context.SaveChangesAsync(cancellationToken);
 
-        if (!string.Equals(stagedRecord.AssetKey, originalRecord.AssetKey, StringComparison.Ordinal))
+        if (stagedWasCreatedForReplacement
+            && !string.Equals(stagedRecord.AssetKey, originalRecord.AssetKey, StringComparison.Ordinal))
         {
             var stagingIsAttached = await context.PageAssets
                 .AnyAsync(link => link.AssetId == stagedRecord.Id, cancellationToken);
@@ -101,14 +108,16 @@ public static class ContentAssetReplacement
             ?? throw new InvalidOperationException("Replaced content media could not be reloaded.");
     }
 
-    private static async Task RemoveUnattachedStagingAssetAsync(
+    private static async Task RemoveReplacementStagingAssetAsync(
         IContentSourceRegistry sources,
         string sourceKey,
         string stagedAssetKey,
         string originalAssetKey,
+        bool stagedWasCreatedForReplacement,
         CancellationToken cancellationToken)
     {
-        if (string.Equals(stagedAssetKey, originalAssetKey, StringComparison.Ordinal))
+        if (!stagedWasCreatedForReplacement
+            || string.Equals(stagedAssetKey, originalAssetKey, StringComparison.Ordinal))
         {
             return;
         }
