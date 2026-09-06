@@ -32,28 +32,22 @@ public sealed class ContentDatabaseManagementController : Controller
     {
         try
         {
+            var sourceIndex = await _authoringService.GetIndexAsync(source, cancellationToken);
+            var sourceItem = sourceIndex.Items.SingleOrDefault(item =>
+                string.Equals(item.Slug, slug, StringComparison.OrdinalIgnoreCase))
+                ?? throw new InvalidOperationException($"Content page '{slug}' no longer exists in {source}.");
+
+            var targetIndex = await _authoringService.GetIndexAsync(targetSource, cancellationToken);
+            if (targetIndex.Items.Any(item =>
+                    string.Equals(item.Id, sourceItem.Id, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(item.Slug, sourceItem.Slug, StringComparison.OrdinalIgnoreCase)))
+            {
+                throw new InvalidOperationException(
+                    $"The target source already contains a page using stable ID '{sourceItem.Id}' or slug '{sourceItem.Slug}'. Use a deliberate reconciliation workflow instead of Move.");
+            }
+
             await _authoringService.MoveAsync(source, targetSource, slug, cancellationToken);
             TempData["ContentDatabaseSuccess"] = $"Moved '{slug}' from {source} to {targetSource}.";
-            return RedirectToAction(nameof(Index), new { source = targetSource });
-        }
-        catch (InvalidOperationException ex)
-        {
-            TempData["ContentDatabaseError"] = ex.Message;
-            return RedirectToAction(nameof(Index), new { source });
-        }
-    }
-
-    [HttpPost("push-all")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> PushAll(
-        string source,
-        string targetSource,
-        CancellationToken cancellationToken)
-    {
-        try
-        {
-            var count = await _authoringService.MoveAllAsync(source, targetSource, cancellationToken);
-            TempData["ContentDatabaseSuccess"] = $"Moved {count} content page(s) from {source} to {targetSource}.";
             return RedirectToAction(nameof(Index), new { source = targetSource });
         }
         catch (InvalidOperationException ex)
