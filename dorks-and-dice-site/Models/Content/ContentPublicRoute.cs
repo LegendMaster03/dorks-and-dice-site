@@ -8,8 +8,13 @@ public static class ContentPublicRoute
 {
     public static string GetPath(string slug, IEnumerable<string> tags)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(slug);
         ArgumentNullException.ThrowIfNull(tags);
+        if (string.IsNullOrWhiteSpace(slug))
+        {
+            // New authoring documents do not have a route yet. Their editor does not render the
+            // View page action, but route calculation still occurs while constructing the view.
+            return string.Empty;
+        }
 
         var tagSet = tags.ToHashSet(StringComparer.OrdinalIgnoreCase);
         if (tagSet.Contains(ContentTags.Homepage))
