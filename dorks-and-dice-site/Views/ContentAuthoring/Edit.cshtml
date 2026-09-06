@@ -4,8 +4,8 @@
     ViewData["Title"] = document.IsNew ? "New Content" : $"Edit {document.Id}";
     ViewData["Robots"] = "noindex, nofollow";
     var saveAction = document.IsNew
-        ? "/editor/content/new"
-        : $"/editor/content/{document.Slug}/edit";
+        ? $"{Model.RouteBase}/new"
+        : $"{Model.RouteBase}/{document.Slug}/edit";
     var tagValues = document.TagsText
         .Split([',', '\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
     var detailHref = dorks_and_dice_site.Models.Content.ContentPublicRoute.GetPath(document.Slug, tagValues);
@@ -15,20 +15,23 @@
         ? document.VisibleModesSelection
         : document.VisibleModesText.Split([',', '\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
     var selectedModes = selectedModeValues.ToHashSet(StringComparer.OrdinalIgnoreCase);
+    var selectedModeLabels = selectedModes
+        .Select(modeId => selectableModes.FirstOrDefault(mode => string.Equals(mode.Id, modeId, StringComparison.OrdinalIgnoreCase))?.DisplayName ?? modeId)
+        .ToList();
 }
 
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
     <div>
-        <p class="text-uppercase text-muted small mb-1">Editor</p>
+        <p class="text-uppercase text-muted small mb-1">@(Model.IsCentralAuthoring ? "Development" : "Editor")</p>
         <h1 class="h3 mb-0">@(document.IsNew ? "New content page" : $"Edit {document.Id}")</h1>
     </div>
     <div class="d-flex flex-wrap gap-2">
         @if (!document.IsNew)
         {
             <a class="btn btn-outline-primary" href="@detailHref">View page</a>
-            <a class="btn btn-outline-primary" href="/editor/content/@document.Slug/media?source=@encodedSource">Media dependencies</a>
+            <a class="btn btn-outline-primary" href="@($"{Model.RouteBase}/{document.Slug}/media?source={encodedSource}")">Media dependencies</a>
         }
-        <a class="btn btn-outline-secondary" href="/editor/content">Back to content</a>
+        <a class="btn btn-outline-secondary" href="@Model.RouteBase">Back to content</a>
     </div>
 </div>
 
@@ -68,25 +71,37 @@
         <div class="col-lg-6">
             <label class="form-label">Visible site modes</label>
             <input asp-for="Document.VisibleModesText" type="hidden" value="" />
-            <div class="dropdown">
-                <button class="btn btn-outline-secondary dropdown-toggle w-100 text-start" type="button"
-                        id="visible-mode-dropdown" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
-                    <span id="visible-mode-summary">Select visible modes</span>
-                </button>
-                <div class="dropdown-menu w-100 p-3" aria-labelledby="visible-mode-dropdown">
-                    @foreach (var mode in selectableModes)
-                    {
-                        var modeId = mode.Id;
-                        <div class="form-check">
-                            <input class="form-check-input content-visible-mode" type="checkbox"
-                                   name="Document.VisibleModesSelection" value="@modeId" id="visible-mode-@modeId"
-                                   checked="@(selectedModes.Contains(modeId))" />
-                            <label class="form-check-label" for="visible-mode-@modeId">@mode.DisplayName</label>
-                        </div>
-                    }
+            @if (Model.AllowModeSelection)
+            {
+                <div class="dropdown">
+                    <button class="btn btn-outline-secondary dropdown-toggle w-100 text-start" type="button"
+                            id="visible-mode-dropdown" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
+                        <span id="visible-mode-summary">Select visible modes</span>
+                    </button>
+                    <div class="dropdown-menu w-100 p-3" aria-labelledby="visible-mode-dropdown">
+                        @foreach (var mode in selectableModes)
+                        {
+                            var modeId = mode.Id;
+                            <div class="form-check">
+                                <input class="form-check-input content-visible-mode" type="checkbox"
+                                       name="Document.VisibleModesSelection" value="@modeId" id="visible-mode-@modeId"
+                                       checked="@(selectedModes.Contains(modeId))" />
+                                <label class="form-check-label" for="visible-mode-@modeId">@mode.DisplayName</label>
+                            </div>
+                        }
+                    </div>
                 </div>
-            </div>
-            <div class="form-text">Choose one or more registered site modes. Framework fallback and Trusted Preview are not content visibility targets.</div>
+                <div class="form-text">Choose one or more registered site modes. Framework fallback and Trusted Preview are not content visibility targets.</div>
+            }
+            else
+            {
+                @foreach (var modeId in selectedModes)
+                {
+                    <input type="hidden" name="Document.VisibleModesSelection" value="@modeId" />
+                }
+                <div class="form-control bg-body-tertiary">@string.Join(", ", selectedModeLabels)</div>
+                <div class="form-text">Mode assignment is controlled by the active mode editor. Cross-mode assignment is available only from Development.</div>
+            }
         </div>
     </div>
 
@@ -202,7 +217,7 @@
 
     <div class="d-flex flex-wrap gap-2 mb-4">
         <button class="btn btn-primary" type="submit">@(document.IsNew ? "Create page" : "Save revision")</button>
-        <button class="btn btn-outline-secondary" type="submit" formaction="/editor/content/preview">Preview body</button>
+        <button class="btn btn-outline-secondary" type="submit" formaction="@($"{Model.RouteBase}/preview")">Preview body</button>
     </div>
 </form>
 
@@ -223,6 +238,12 @@
 
 @if (!document.IsNew && Model.History.Count > 0)
 {
+    var revisionNumbers = Model.History
+        .OrderBy(revision => revision.CreatedUtc)
+        .ThenBy(revision => revision.RevisionId)
+        .Select((revision, index) => new { revision.RevisionId, Number = index + 1 })
+        .ToDictionary(entry => entry.RevisionId, entry => entry.Number);
+
     <section class="mt-4">
         <h2 class="h5">Revision history</h2>
         <div class="table-responsive">
@@ -237,9 +258,14 @@
                 <tbody>
                     @foreach (var revision in Model.History)
                     {
+                        var revisionNumber = revisionNumbers[revision.RevisionId];
+                        var parentNumber = revision.ParentRevisionId is long parentId
+                            && revisionNumbers.TryGetValue(parentId, out var resolvedParentNumber)
+                                ? resolvedParentNumber.ToString()
+                                : "Initial";
                         <tr class="@(revision.RevisionId == document.ExpectedRevisionId ? "table-active" : string.Empty)">
-                            <th scope="row">@revision.RevisionId</th>
-                            <td>@(revision.ParentRevisionId?.ToString() ?? "Initial")</td>
+                            <th scope="row">@revisionNumber</th>
+                            <td>@parentNumber</td>
                             <td>@revision.CreatedUtc.ToString("u")</td>
                         </tr>
                     }
