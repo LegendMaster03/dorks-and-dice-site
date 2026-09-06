@@ -29,19 +29,19 @@ public sealed class SiteModeRegistryTests
     }
 
     [Fact]
-    public void SyntheticModeGetsNormalModeBehaviorWithoutProductionEnumValue()
+    public void RegisteredModeWithoutLegacyEnumGetsNormalModeBehavior()
     {
-        var syntheticMode = new SiteModeDefinition(
+        var testMode = new SiteModeDefinition(
             Id: "test-mode",
             DisplayName: "Test Mode",
             LegacyMode: null,
             ViewFolder: "TestMode",
             AssetFolder: "test-mode");
-        var registry = new SiteModeRegistry(BuiltInSiteModes.All.Append(syntheticMode));
+        var registry = new SiteModeRegistry(BuiltInSiteModes.All.Append(testMode));
 
         var registered = registry.GetById("test-mode");
 
-        Assert.Same(syntheticMode, registered);
+        Assert.Same(testMode, registered);
         Assert.Null(registered.LegacyMode);
         Assert.True(registered.SupportsContent);
         Assert.True(registered.SupportsScopedEditor);
@@ -49,9 +49,9 @@ public sealed class SiteModeRegistryTests
     }
 
     [Fact]
-    public void SyntheticModeOwnsRoutesAndAssetsWithoutProductionEnumValue()
+    public void RegisteredModeWithoutLegacyEnumOwnsRoutesAndAssets()
     {
-        var syntheticMode = new SiteModeDefinition(
+        var testMode = new SiteModeDefinition(
             Id: "test-mode",
             DisplayName: "Test Mode",
             LegacyMode: null,
@@ -61,22 +61,23 @@ public sealed class SiteModeRegistryTests
             OwnedRoutePrefixes = ["/test-area"]
         };
 
-        Assert.True(SiteRouteOwnership.IsAllowedInMode("/", syntheticMode));
-        Assert.True(SiteRouteOwnership.IsAllowedInMode("/articles/example", syntheticMode));
-        Assert.True(SiteRouteOwnership.IsAllowedInMode("/test-area", syntheticMode));
-        Assert.True(SiteRouteOwnership.IsAllowedInMode("/test-area/nested", syntheticMode));
-        Assert.True(SiteRouteOwnership.IsAllowedInMode("/site-modes/test-assets/css/site.css", syntheticMode));
-        Assert.False(SiteRouteOwnership.IsAllowedInMode("/resume", syntheticMode));
-        Assert.False(SiteRouteOwnership.IsAllowedInMode("/site-modes/professional/css/site.css", syntheticMode));
+        Assert.True(SiteRouteOwnership.IsAllowedInMode("/", testMode));
+        Assert.True(SiteRouteOwnership.IsAllowedInMode("/articles/example", testMode));
+        Assert.True(SiteRouteOwnership.IsAllowedInMode("/test-area", testMode));
+        Assert.True(SiteRouteOwnership.IsAllowedInMode("/test-area/nested", testMode));
+        Assert.True(SiteRouteOwnership.IsAllowedInMode("/site-modes/test-assets/css/site.css", testMode));
+        Assert.False(SiteRouteOwnership.IsAllowedInMode("/resume", testMode));
+        Assert.False(SiteRouteOwnership.IsAllowedInMode("/site-modes/professional/css/site.css", testMode));
     }
 
     [Fact]
-    public void FrameworkRuntimeStatesRemainAvailableOnlyAsCompatibilityMetadata()
+    public void FrameworkFallbackAndSyntheticDevelopmentStayOutsideNormalRegistry()
     {
         Assert.Equal(SiteMode.Unassigned, FrameworkRuntimeStates.Fallback.LegacyMode);
         Assert.Equal("unassigned", FrameworkRuntimeStates.Fallback.Id);
-        Assert.Equal(SiteMode.Development, FrameworkRuntimeStates.TrustedPreview.LegacyMode);
-        Assert.Equal("development", FrameworkRuntimeStates.TrustedPreview.Id);
+        Assert.Same(SyntheticSiteModes.Development, FrameworkRuntimeStates.TrustedPreview);
+        Assert.Equal(SiteMode.Development, SyntheticSiteModes.Development.LegacyMode);
+        Assert.Equal("development", SyntheticSiteModes.Development.Id);
 
         var registry = new SiteModeRegistry(BuiltInSiteModes.All);
         Assert.False(registry.TryGetByLegacyMode(SiteMode.Unassigned, out _));
@@ -84,15 +85,15 @@ public sealed class SiteModeRegistryTests
     }
 
     [Fact]
-    public async Task TrustedPreviewCanTargetSyntheticRegisteredModeWithoutEnumValue()
+    public async Task SyntheticDevelopmentCanPreviewRegisteredModeWithoutEnumValue()
     {
-        var syntheticMode = new SiteModeDefinition(
+        var testMode = new SiteModeDefinition(
             Id: "test-mode",
             DisplayName: "Test Mode",
             LegacyMode: null,
             ViewFolder: "TestMode",
             AssetFolder: "test-mode");
-        var registry = new SiteModeRegistry(BuiltInSiteModes.All.Append(syntheticMode));
+        var registry = new SiteModeRegistry(BuiltInSiteModes.All.Append(testMode));
         SiteModeContext? captured = null;
         var middleware = new SiteModeMiddleware(
             context =>
@@ -109,23 +110,30 @@ public sealed class SiteModeRegistryTests
         await middleware.InvokeAsync(context);
 
         Assert.NotNull(captured);
-        Assert.Same(syntheticMode, captured.ActiveMode);
+        Assert.Same(testMode, captured.ActiveMode);
         Assert.Equal("test-mode", captured.ActiveModeId);
-        Assert.Same(FrameworkRuntimeStates.TrustedPreview, captured.FrameworkState);
+        Assert.Same(SyntheticSiteModes.Development, captured.SyntheticMode);
         Assert.True(captured.IsTrustedPreview);
         Assert.False(captured.IsFrameworkFallback);
-        Assert.Equal(SiteMode.Unassigned, captured.SiteMode);
+        Assert.Equal(SiteMode.Development, captured.SiteMode);
+        Assert.Equal(SyntheticSiteModes.Development.Id, captured.RuntimeModeId);
     }
 
     [Fact]
-    public void TrustedPreviewAddsFrameworkAssetsWithoutExpandingSelectedLiveMode()
+    public void SyntheticDevelopmentAddsFrameworkAssetsWithoutExpandingSelectedLiveModeRoutes()
     {
         var selectedMode = BuiltInSiteModes.DorksAndDice;
-        const string trustedPreviewAsset = "/site-modes/development/css/site.css";
+        const string developmentAsset = "/site-modes/development/css/site.css";
 
-        Assert.False(SiteRouteOwnership.IsAllowedInMode(trustedPreviewAsset, selectedMode));
-        Assert.True(SiteRouteOwnership.IsAllowedInTrustedPreview(trustedPreviewAsset, selectedMode));
-        Assert.False(SiteRouteOwnership.IsAllowedInTrustedPreview("/resume", selectedMode));
+        Assert.False(SiteRouteOwnership.IsAllowedInMode(developmentAsset, selectedMode));
+        Assert.True(SiteRouteOwnership.IsAllowedInSyntheticMode(
+            developmentAsset,
+            SyntheticSiteModes.Development,
+            selectedMode));
+        Assert.False(SiteRouteOwnership.IsAllowedInSyntheticMode(
+            "/resume",
+            SyntheticSiteModes.Development,
+            selectedMode));
     }
 
     [Fact]
@@ -155,9 +163,9 @@ public sealed class SiteModeRegistryTests
     }
 
     [Fact]
-    public void StylesheetResolverUsesModeAssetMetadataForSyntheticMode()
+    public void StylesheetResolverUsesModeAssetMetadataForRegisteredModeWithoutEnum()
     {
-        var syntheticMode = new SiteModeDefinition(
+        var testMode = new SiteModeDefinition(
             Id: "test-mode",
             DisplayName: "Test Mode",
             LegacyMode: null,
@@ -167,21 +175,21 @@ public sealed class SiteModeRegistryTests
 
         var paths = resolver.GetStylesheetPaths(new SiteModeContext
         {
-            ActiveMode = syntheticMode
+            ActiveMode = testMode
         });
 
         Assert.Equal(["~/site-modes/custom-test-assets/css/site.css"], paths);
     }
 
     [Fact]
-    public void TrustedPreviewStylesheetIsAnOverlayOnSelectedMode()
+    public void SyntheticDevelopmentStylesheetIsAnOverlayOnSelectedMode()
     {
         var resolver = new SiteModeStylesheetResolver();
 
         var paths = resolver.GetStylesheetPaths(new SiteModeContext
         {
             ActiveMode = BuiltInSiteModes.DorksAndDice,
-            FrameworkState = FrameworkRuntimeStates.TrustedPreview
+            FrameworkState = SyntheticSiteModes.Development
         });
 
         Assert.Equal(
