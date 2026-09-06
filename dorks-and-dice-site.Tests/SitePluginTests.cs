@@ -1,5 +1,6 @@
 using dorks_and_dice_site.Framework.Plugins;
 using dorks_and_dice_site.Plugins.DiscordWidget;
+using dorks_and_dice_site.Plugins.MinecraftServerStatus;
 using dorks_and_dice_site.Plugins.ProfessionalPortfolio;
 using dorks_and_dice_site.Services.Content;
 using Microsoft.Extensions.DependencyInjection;
@@ -15,7 +16,8 @@ public sealed class SitePluginTests
         services.AddSitePlugins(
         [
             new ProfessionalPortfolioPlugin(),
-            new DiscordWidgetPlugin()
+            new DiscordWidgetPlugin(),
+            new MinecraftServerStatusPlugin()
         ]);
 
         using var provider = services.BuildServiceProvider();
@@ -27,9 +29,12 @@ public sealed class SitePluginTests
         Assert.Equal("1.0.0", portfolioManifest.Version);
         Assert.True(catalog.TryGetById("discord-widget", out var discordManifest));
         Assert.Equal("1.1.0", discordManifest.Version);
+        Assert.True(catalog.TryGetById("minecraft-server-status", out var minecraftManifest));
+        Assert.Equal("1.0.0", minecraftManifest.Version);
         Assert.Contains(presentations, presentation => presentation.Key == "professional-experience");
         Assert.Contains(presentations, presentation => presentation.Key == "professional-projects");
         Assert.Contains(pageComponents, component => component.Name == "discord-widget");
+        Assert.Contains(pageComponents, component => component.Name == "minecraft-server-status");
     }
 
     [Fact]
@@ -59,6 +64,25 @@ public sealed class SitePluginTests
                 ["theme"] = "neon"
             }));
         Assert.Contains("theme", invalidTheme.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void MinecraftServerStatusHasNoAuthoredInfrastructureParameters()
+    {
+        var services = new ServiceCollection();
+        services.AddSitePlugins([new MinecraftServerStatusPlugin()]);
+
+        using var provider = services.BuildServiceProvider();
+        var component = Assert.Single(provider.GetServices<IContentPageComponentDefinition>());
+
+        component.Validate(new Dictionary<string, string>());
+
+        var exception = Assert.Throws<InvalidOperationException>(() =>
+            component.Validate(new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["host"] = "example.invalid"
+            }));
+        Assert.Contains("does not support parameter 'host'", exception.Message, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
