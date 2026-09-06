@@ -132,10 +132,26 @@ body {
   margin: 0;
 }
 
+.dorks-home-campaign-card .dorks-home-campaign-title > h3 {
+  font-size: calc(1.275rem + 0.3vw);
+  line-height: 1.2;
+  margin: 0 0 0.5rem;
+}
+
+.dorks-home-campaign-card .dorks-home-campaign-title > p {
+  margin-bottom: 0;
+}
+
 @media (min-width: 768px) {
   .dorks-home-section-header {
     flex-direction: row;
     align-items: flex-end;
+  }
+}
+
+@media (min-width: 1200px) {
+  .dorks-home-campaign-card .dorks-home-campaign-title > h3 {
+    font-size: 1.5rem;
   }
 }
 
