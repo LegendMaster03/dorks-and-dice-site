@@ -8,15 +8,16 @@
     var showAnonymousLogin = siteModeContext.ActiveMode?.ShowAnonymousLoginInNavigation ?? true;
     var hasTrustedAccess = siteModeContext.HasTrustedAccess;
     var activeModeId = siteModeContext.ActiveModeId;
-    var canUseEditor = activeModeId is not null
-        && AccountRoleHierarchy.PrincipalHasScopedRole(
-            User,
-            activeModeId,
-            ScopedAccountRoles.Editor);
     var canAdminister = hasTrustedAccess
         && AccountRoleHierarchy.PrincipalHasGlobalRole(User, AccountRoles.Admin);
     var canUseDevelopmentTools = hasTrustedAccess
         && AccountRoleHierarchy.PrincipalHasGlobalRole(User, AccountRoles.Dev);
+    var canUseModeEditor = activeModeId is not null
+        && AccountRoleHierarchy.PrincipalHasScopedRole(
+            User,
+            activeModeId,
+            ScopedAccountRoles.Editor);
+    var canUseEditor = canUseDevelopmentTools || canUseModeEditor;
 }
 @if (User.Identity?.IsAuthenticated == true)
 {
