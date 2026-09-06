@@ -280,15 +280,30 @@ public abstract class ContentAuthoringControllerBase : Controller
         return Json(new { html });
     }
 
-    private IReadOnlyList<ContentSourceDefinition> GetSources() =>
-        IsCentralAuthoring
-            ? ContentAuthoringSourceAccess.GetCentralSources(_sourceRegistry)
-            : ContentAuthoringSourceAccess.GetModeEditorSources(_sourceRegistry);
+    private IReadOnlyList<ContentSourceDefinition> GetSources()
+    {
+        if (IsCentralAuthoring)
+        {
+            return ContentAuthoringSourceAccess.GetCentralSources(_sourceRegistry);
+        }
 
-    private string ResolveSource(string? source) =>
-        IsCentralAuthoring
-            ? ContentAuthoringSourceAccess.ResolveCentralSourceKey(_sourceRegistry, source)
-            : ContentAuthoringSourceAccess.ResolveModeEditorSourceKey(_sourceRegistry, source);
+        return ContentAuthoringSourceAccess.GetModeEditorSources(
+            _sourceRegistry,
+            HttpContext.GetSiteModeContext());
+    }
+
+    private string ResolveSource(string? source)
+    {
+        if (IsCentralAuthoring)
+        {
+            return ContentAuthoringSourceAccess.ResolveCentralSourceKey(_sourceRegistry, source);
+        }
+
+        return ContentAuthoringSourceAccess.ResolveModeEditorSourceKey(
+            _sourceRegistry,
+            HttpContext.GetSiteModeContext(),
+            source);
+    }
 
     private bool CanEditCurrentModel(ContentAuthoringEditViewModel model)
     {
@@ -342,7 +357,7 @@ public abstract class ContentAuthoringControllerBase : Controller
                 DisplayName = model.FixedModeDisplayName
             }
         ];
-        model.Sources = ContentAuthoringSourceAccess.GetModeEditorSources(_sourceRegistry)
+        model.Sources = ContentAuthoringSourceAccess.GetModeEditorSources(_sourceRegistry, modeContext)
             .Select(source => new ContentAuthoringSourceOption
             {
                 Key = source.Key,
