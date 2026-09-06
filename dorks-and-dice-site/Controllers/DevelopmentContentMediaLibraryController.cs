@@ -22,55 +22,70 @@ public sealed class DevelopmentContentMediaLibraryController : Controller
     }
 
     [HttpGet("")]
-    public async Task<IActionResult> Index(CancellationToken cancellationToken)
+    public async Task<IActionResult> Index(string? source, CancellationToken cancellationToken)
     {
-        var source = _sources.AuthoringSourceKey;
-        return View("~/Views/ContentMediaLibrary/Index.cshtml", new ContentAssetLibraryViewModel
+        try
         {
-            SourceKey = source,
-            Sources = ContentAuthoringSourceAccess.GetCentralSources(_sources)
-                .Select(item => new ContentAuthoringSourceOption
-                {
-                    Key = item.Key,
-                    DisplayName = item.DisplayName
-                })
-                .ToList(),
-            Assets = (await _assets.GetForSourceAsync(source, cancellationToken)).ToList(),
-            RouteBase = "/development/media",
-            IsCentralAuthoring = true
-        });
+            source = ContentAuthoringSourceAccess.ResolveCentralSourceKey(_sources, source);
+            return View("~/Views/ContentMediaLibrary/Index.cshtml", new ContentAssetLibraryViewModel
+            {
+                SourceKey = source,
+                Sources = ContentAuthoringSourceAccess.GetCentralSources(_sources)
+                    .Select(item => new ContentAuthoringSourceOption
+                    {
+                        Key = item.Key,
+                        DisplayName = item.DisplayName
+                    })
+                    .ToList(),
+                Assets = (await _assets.GetForSourceAsync(source, cancellationToken)).ToList(),
+                RouteBase = "/development/media",
+                IsCentralAuthoring = true
+            });
+        }
+        catch (InvalidOperationException)
+        {
+            return BadRequest();
+        }
     }
 
     [HttpPost("upload")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Upload(IFormFile? file, CancellationToken cancellationToken)
+    public async Task<IActionResult> Upload(string? source, IFormFile? file, CancellationToken cancellationToken)
     {
-        var source = _sources.AuthoringSourceKey;
-        if (file is null)
-        {
-            TempData["ContentMediaError"] = "Choose an image to upload.";
-            return RedirectToAction(nameof(Index));
-        }
-
         try
         {
+            source = ContentAuthoringSourceAccess.ResolveCentralSourceKey(_sources, source);
+            if (file is null)
+            {
+                TempData["ContentMediaError"] = "Choose an image to upload.";
+                return Redirect($"/development/media?source={Uri.EscapeDataString(source)}");
+            }
+
             await using var stream = file.OpenReadStream();
             var asset = await _assets.UploadAsync(
                 source, file.FileName, file.ContentType, stream, file.Length, cancellationToken);
-            TempData["ContentMediaSuccess"] = $"Stored '{asset.FileName}'.";
+            TempData["ContentMediaSuccess"] = $"Stored '{asset.FileName}' in {source}.";
+            return Redirect($"/development/media?source={Uri.EscapeDataString(source)}");
         }
         catch (InvalidOperationException ex)
         {
             TempData["ContentMediaError"] = ex.Message;
+            return RedirectToAction(nameof(Index));
         }
-
-        return RedirectToAction(nameof(Index));
     }
 
     [HttpGet("{assetKey}/preview")]
-    public async Task<IActionResult> Preview(string assetKey, CancellationToken cancellationToken)
+    public async Task<IActionResult> Preview(string assetKey, string? source, CancellationToken cancellationToken)
     {
-        var asset = await _assets.GetFromSourceAsync(_sources.AuthoringSourceKey, assetKey, cancellationToken);
-        return asset is null ? NotFound() : File(asset.Data, asset.MediaType);
+        try
+        {
+            source = ContentAuthoringSourceAccess.ResolveCentralSourceKey(_sources, source);
+            var asset = await _assets.GetFromSourceAsync(source, assetKey, cancellationToken);
+            return asset is null ? NotFound() : File(asset.Data, asset.MediaType);
+        }
+        catch (InvalidOperationException)
+        {
+            return NotFound();
+        }
     }
 }
