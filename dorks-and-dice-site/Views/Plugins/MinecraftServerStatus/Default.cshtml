@@ -1,0 +1,38 @@
+@model dorks_and_dice_site.Models.GameServers.Minecraft.MinecraftServerStatus
+
+<div class="minecraft-server-status">
+    <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+        @if (Model.IsOnline)
+        {
+            <span class="badge text-bg-success">Online</span>
+        }
+        else
+        {
+            <span class="badge text-bg-secondary">Unavailable</span>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(Model.Version))
+        {
+            <span class="text-muted small">Version @Model.Version</span>
+        }
+    </div>
+
+    @if (Model.IsOnline)
+    {
+        @if (!string.IsNullOrWhiteSpace(Model.Motd))
+        {
+            <p class="mb-2">@Model.Motd</p>
+        }
+
+        <p class="mb-0">
+            <strong>@(Model.OnlinePlayers ?? 0)</strong>
+            of
+            <strong>@(Model.MaximumPlayers?.ToString() ?? "?")</strong>
+            players online
+        </p>
+    }
+    else
+    {
+        <p class="text-muted small mb-0">Live server status is temporarily unavailable.</p>
+    }
+</div>
