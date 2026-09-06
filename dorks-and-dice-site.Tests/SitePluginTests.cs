@@ -30,11 +30,17 @@ public sealed class SitePluginTests
         Assert.True(catalog.TryGetById("discord-widget", out var discordManifest));
         Assert.Equal("1.1.0", discordManifest.Version);
         Assert.True(catalog.TryGetById("minecraft-server-status", out var minecraftManifest));
-        Assert.Equal("1.0.0", minecraftManifest.Version);
+        Assert.Equal("1.1.0", minecraftManifest.Version);
         Assert.Contains(presentations, presentation => presentation.Key == "professional-experience");
         Assert.Contains(presentations, presentation => presentation.Key == "professional-projects");
         Assert.Contains(pageComponents, component => component.Name == "discord-widget");
         Assert.Contains(pageComponents, component => component.Name == "minecraft-server-status");
+        Assert.Contains(pageComponents, component => component.Name == "minecraft-server-status-badge");
+        Assert.Contains(pageComponents, component => component.Name == "minecraft-server-motd");
+        Assert.Contains(pageComponents, component => component.Name == "minecraft-server-online-players");
+        Assert.Contains(pageComponents, component => component.Name == "minecraft-server-maximum-players");
+        Assert.Contains(pageComponents, component => component.Name == "minecraft-server-players");
+        Assert.Contains(pageComponents, component => component.Name == "minecraft-server-version");
     }
 
     [Fact]
@@ -73,16 +79,20 @@ public sealed class SitePluginTests
         services.AddSitePlugins([new MinecraftServerStatusPlugin()]);
 
         using var provider = services.BuildServiceProvider();
-        var component = Assert.Single(provider.GetServices<IContentPageComponentDefinition>());
+        var components = provider.GetServices<IContentPageComponentDefinition>().ToList();
 
-        component.Validate(new Dictionary<string, string>());
+        Assert.Equal(7, components.Count);
+        foreach (var component in components)
+        {
+            component.Validate(new Dictionary<string, string>());
 
-        var exception = Assert.Throws<InvalidOperationException>(() =>
-            component.Validate(new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-            {
-                ["host"] = "example.invalid"
-            }));
-        Assert.Contains("does not support parameter 'host'", exception.Message, StringComparison.OrdinalIgnoreCase);
+            var exception = Assert.Throws<InvalidOperationException>(() =>
+                component.Validate(new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["host"] = "example.invalid"
+                }));
+            Assert.Contains("does not support parameter 'host'", exception.Message, StringComparison.OrdinalIgnoreCase);
+        }
     }
 
     [Fact]
