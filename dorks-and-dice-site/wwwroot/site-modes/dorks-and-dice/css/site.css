@@ -106,6 +106,34 @@ body {
   font-weight: 700;
 }
 
+.dorks-home-section-header {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.dorks-home-section-heading > p:first-child {
+  color: var(--bs-primary);
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  margin-bottom: 0.25rem;
+}
+
+.dorks-home-section-heading > h2 {
+  font-size: 1.75rem;
+  margin: 0;
+}
+
+@media (min-width: 768px) {
+  .dorks-home-section-header {
+    flex-direction: row;
+    align-items: flex-end;
+  }
+}
+
 .discord-panel {
   border-left: 4px solid #5865f2;
   background: linear-gradient(180deg, #ffffff 0%, #eef2ff 100%);
