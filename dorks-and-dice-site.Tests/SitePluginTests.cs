@@ -25,10 +25,40 @@ public sealed class SitePluginTests
 
         Assert.True(catalog.TryGetById("professional-portfolio", out var portfolioManifest));
         Assert.Equal("1.0.0", portfolioManifest.Version);
-        Assert.True(catalog.TryGetById("discord-widget", out _));
+        Assert.True(catalog.TryGetById("discord-widget", out var discordManifest));
+        Assert.Equal("1.1.0", discordManifest.Version);
         Assert.Contains(presentations, presentation => presentation.Key == "professional-experience");
         Assert.Contains(presentations, presentation => presentation.Key == "professional-projects");
         Assert.Contains(pageComponents, component => component.Name == "discord-widget");
+    }
+
+    [Fact]
+    public void DiscordWidgetRequiresServerIdAndRestrictsTheme()
+    {
+        var services = new ServiceCollection();
+        services.AddSitePlugins([new DiscordWidgetPlugin()]);
+
+        using var provider = services.BuildServiceProvider();
+        var component = Assert.Single(provider.GetServices<IContentPageComponentDefinition>());
+
+        var missingId = Assert.Throws<InvalidOperationException>(() =>
+            component.Validate(new Dictionary<string, string>()));
+        Assert.Contains("server-id", missingId.Message, StringComparison.OrdinalIgnoreCase);
+
+        component.Validate(new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["server-id"] = "1281714470799806545",
+            ["theme"] = "dark",
+            ["title"] = "Dorks & Dice Discord Server"
+        });
+
+        var invalidTheme = Assert.Throws<InvalidOperationException>(() =>
+            component.Validate(new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["server-id"] = "1281714470799806545",
+                ["theme"] = "neon"
+            }));
+        Assert.Contains("theme", invalidTheme.Message, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
