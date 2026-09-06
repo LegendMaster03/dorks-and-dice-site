@@ -1,22 +1,30 @@
 @model dorks_and_dice_site.Models.Content.ContentAuthoringIndexViewModel
 @using dorks_and_dice_site.Models.Content
 @{
-    ViewData["Title"] = "Content Authoring";
+    ViewData["Title"] = Model.IsCentralAuthoring ? "Central Content Authoring" : "Content Authoring";
     ViewData["Robots"] = "noindex, nofollow";
+    var mediaHref = Model.IsCentralAuthoring ? "/development/media" : "/editor/media";
 }
 
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
     <div>
-        <p class="text-uppercase text-muted small mb-1">Editor</p>
-        <h1 class="h3 mb-0">Content Authoring</h1>
+        <p class="text-uppercase text-muted small mb-1">@(Model.IsCentralAuthoring ? "Development" : "Editor")</p>
+        <h1 class="h3 mb-0">@(Model.IsCentralAuthoring ? "Central Content Authoring" : $"{Model.ModeDisplayName} Content Authoring")</h1>
     </div>
     <div class="d-flex gap-2">
-        <a class="btn btn-outline-primary" href="/editor/media">Media library</a>
-        <a class="btn btn-primary" href="/editor/content/new">New content</a>
+        <a class="btn btn-outline-primary" href="@mediaHref">Media library</a>
+        <a class="btn btn-primary" href="@($"{Model.RouteBase}/new")">New content</a>
     </div>
 </div>
 
-<p class="text-muted">Create, review, and edit content available to the current preview. The configured authoring workspace is always included even when it is not part of the current preview composition.</p>
+@if (Model.IsCentralAuthoring)
+{
+    <p class="text-muted">Development-only authoring across configured content sources and site modes. Use this surface for cross-mode composition and source-level work.</p>
+}
+else
+{
+    <p class="text-muted">Create and edit content for <strong>@Model.ModeDisplayName</strong>. This editor is bound to the active mode and the configured authoring workspace; cross-mode assignment is available only from Development.</p>
+}
 
 <div class="table-responsive">
     <table class="table align-middle">
@@ -37,7 +45,7 @@
                 var item = entry.Item;
                 var contexts = item.Tags.Where(ContentTags.IsContext).ToList();
                 var detailHref = ContentPublicRoute.GetPath(item.Slug, item.Tags);
-                var editHref = $"/editor/content/{item.Slug}/edit?source={Uri.EscapeDataString(entry.SourceKey)}";
+                var editHref = $"{Model.RouteBase}/{item.Slug}/edit?source={Uri.EscapeDataString(entry.SourceKey)}";
                 <tr>
                     <th scope="row">@item.Title</th>
                     <td>@string.Join(", ", contexts)</td>
