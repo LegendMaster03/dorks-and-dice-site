@@ -90,9 +90,11 @@ public sealed class ContentCatalogService : IContentCatalogService
 
     private static bool IsEligibleForListing(ContentItem item, SiteModeContext modeContext)
     {
-        // Synthetic Development spans all normal mode assignments. Database/source composition
-        // has already happened below this service, so this does not bypass source restrictions.
-        if (modeContext.SyntheticMode is not null)
+        // Cross-mode inspection is a developer capability of synthetic Development, not a
+        // consequence of merely being on the trusted preview surface. Database/source composition
+        // has already happened below this service, so developer inspection can not bypass the
+        // selected source set.
+        if (modeContext.SyntheticMode is not null && modeContext.IsDevelopmentPreview)
         {
             return true;
         }
@@ -102,7 +104,8 @@ public sealed class ContentCatalogService : IContentCatalogService
             return item.IsVisibleInMode(activeModeId);
         }
 
-        // Framework fallback has no content identity and therefore lists nothing.
+        // Framework fallback and a synthetic root without developer inspection authority expose
+        // no normal-mode content.
         return false;
     }
 
