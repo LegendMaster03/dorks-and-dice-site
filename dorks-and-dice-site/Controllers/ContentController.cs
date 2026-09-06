@@ -106,9 +106,22 @@ public sealed class ContentController : Controller
             ViewData["MetaImage"] = item.MetaImage;
         }
 
-        var canEdit = (await _authorizationService.AuthorizeAsync(
+        var canUseCentralAuthoring = (await _authorizationService.AuthorizeAsync(
             User,
-            AuthorizationPolicies.ModeEditor)).Succeeded;
+            AuthorizationPolicies.DevAccess)).Succeeded;
+        var canUseModeAuthoring = !canUseCentralAuthoring
+            && (await _authorizationService.AuthorizeAsync(
+                User,
+                AuthorizationPolicies.ModeEditor)).Succeeded;
+        var sourceQuery = string.IsNullOrWhiteSpace(item.SourceKey)
+            ? string.Empty
+            : $"?source={Uri.EscapeDataString(item.SourceKey)}";
+        var editHref = canUseCentralAuthoring
+            ? $"/development/content/{item.Slug}/edit{sourceQuery}"
+            : canUseModeAuthoring
+                ? $"/editor/content/{item.Slug}/edit{sourceQuery}"
+                : null;
+
         var backLinks = BuildBackLinks(item, contextTag);
         var viewModel = new ContentDetailViewModel
         {
@@ -119,7 +132,7 @@ public sealed class ContentController : Controller
             IsDevelopmentVisibilityOverride = modeContext.IsDevelopmentPreview
                 && !item.IsVisibleInMode(modeContext.ActiveModeId),
             IsDevelopmentPreview = modeContext.IsDevelopmentPreview,
-            EditHref = canEdit ? $"/editor/content/{item.Slug}/edit" : null
+            EditHref = editHref
         };
 
         return View("~/Views/Content/Details.cshtml", viewModel);
