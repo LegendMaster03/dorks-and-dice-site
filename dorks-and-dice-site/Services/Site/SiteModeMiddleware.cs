@@ -26,7 +26,7 @@ public sealed class SiteModeMiddleware
         var hasTrustedAccess = TrustedAccessEvaluator.IsAuthorized(context, _options);
         var hasDeveloperAccess = hasTrustedAccess
             && context.User.Identity?.IsAuthenticated == true
-            && context.User.IsInRole(AccountRoles.Dev);
+            && AccountRoleHierarchy.PrincipalHasGlobalRole(context.User, AccountRoles.Dev);
 
         var previewModeValue = GetTrustedPreviewModeValue(context);
         var resolution = ResolveRequestMode(
@@ -162,14 +162,11 @@ public sealed class SiteModeMiddleware
             return false;
         }
 
-        if (user.IsInRole(AccountRoles.Admin))
-        {
-            return true;
-        }
-
-        return user.HasClaim(
-            AccountClaimTypes.ScopedRole,
-            $"{activeMode.Id}:{ScopedAccountRoles.Editor}");
+        return AccountRoleHierarchy.PrincipalHasGlobalRole(user, AccountRoles.Admin)
+            || AccountRoleHierarchy.PrincipalHasScopedRole(
+                user,
+                activeMode.Id,
+                ScopedAccountRoles.Editor);
     }
 
     private readonly record struct RequestModeResolution(
