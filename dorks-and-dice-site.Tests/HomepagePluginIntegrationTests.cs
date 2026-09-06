@@ -158,7 +158,7 @@ public sealed class HomepagePluginIntegrationTests
 
         using var snapshotRequest = new HttpRequestMessage(
             HttpMethod.Get,
-            "https://dorks-and-dice.com/plugins/minecraft-server-status/snapshot");
+            "https://dorks-and-dice.com/MinecraftServerStatus/Snapshot");
         snapshotRequest.Headers.Host = "dorks-and-dice.com";
         var snapshotResponse = await client.SendAsync(snapshotRequest);
         var json = await snapshotResponse.Content.ReadAsStringAsync();
