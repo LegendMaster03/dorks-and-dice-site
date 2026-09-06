@@ -57,6 +57,33 @@ public sealed class ContentPageComposerTests
     }
 
     [Fact]
+    public void DescendingFenceLengthsPreserveNestedGridContainers()
+    {
+        var composer = CreateComposer();
+        var body = """
+            ::::: {.test-section}
+            :::: {.row}
+            ::: {.col-md-6}
+            Left
+            :::
+            ::: {.col-md-6}
+            Right
+            :::
+            ::::
+            :::::
+            """;
+
+        var fragment = Assert.Single(composer.Compose("markdown", body));
+        var html = fragment.RenderedHtml!;
+
+        Assert.Contains("class=\"test-section\"", html, StringComparison.Ordinal);
+        Assert.Contains("class=\"row\"", html, StringComparison.Ordinal);
+        Assert.Equal(2, CountOccurrences(html, "class=\"col-md-6\""));
+        Assert.Contains("Left", html, StringComparison.Ordinal);
+        Assert.Contains("Right", html, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void InstalledParameterlessPageComponentBecomesInvocation()
     {
         var composer = new ContentPageComposer(
@@ -115,6 +142,19 @@ public sealed class ContentPageComposerTests
         var fragment = Assert.Single(fragments);
         Assert.Contains("content-note", fragment.RenderedHtml, StringComparison.Ordinal);
         Assert.Contains("Text", fragment.RenderedHtml, StringComparison.Ordinal);
+    }
+
+    private static int CountOccurrences(string value, string search)
+    {
+        var count = 0;
+        var index = 0;
+        while ((index = value.IndexOf(search, index, StringComparison.Ordinal)) >= 0)
+        {
+            count++;
+            index += search.Length;
+        }
+
+        return count;
     }
 
     private static ContentPageComposer CreateComposer() => new(
