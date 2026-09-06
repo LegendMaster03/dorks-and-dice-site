@@ -3,7 +3,9 @@ using Microsoft.Extensions.Options;
 
 namespace dorks_and_dice_site.Plugins.MinecraftServerStatus;
 
-public sealed class MinecraftServerStatusController : Controller
+[ApiController]
+[Route("plugins/minecraft-server-status")]
+public sealed class MinecraftServerStatusController : ControllerBase
 {
     private readonly IMinecraftServerStatusSnapshotStore _store;
     private readonly MinecraftServerOptions _options;
@@ -16,11 +18,12 @@ public sealed class MinecraftServerStatusController : Controller
         _options = options.Value;
     }
 
+    [HttpGet("snapshot")]
     [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
     public IActionResult Snapshot()
     {
         var status = _store.Current;
-        return Json(new
+        return Ok(new
         {
             status.IsOnline,
             status.Motd,
