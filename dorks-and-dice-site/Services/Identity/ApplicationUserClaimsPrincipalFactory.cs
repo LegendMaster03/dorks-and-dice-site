@@ -26,10 +26,11 @@ public sealed class ApplicationUserClaimsPrincipalFactory
 
         var directRoles = await _userManager.GetRolesAsync(user);
 
-        // Materialize only inherited Trusted Access roles that existing ASP.NET
-        // authorization policies require as role claims. Non-trusted descendants are
-        // resolved from AccountRoleHierarchy at authorization time so a trusted parent
-        // can not leak editor authority onto an untrusted request.
+        // Materialize inherited Trusted Access roles that existing ASP.NET authorization
+        // policies require as role claims. On public requests the claims transformation strips
+        // those Trusted-only roles while preserving any non-privileged role they inherit, such
+        // as Global Editor, so safe editor authority remains available without exposing Admin,
+        // Owner, or Dev authority.
         foreach (var directRole in directRoles)
         {
             foreach (var inheritedRole in AccountRoleHierarchy.GetInheritedGlobalRoles(directRole))
