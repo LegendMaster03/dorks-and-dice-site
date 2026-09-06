@@ -80,6 +80,39 @@ public sealed class ContentAssetReplacementTests
     }
 
     [Fact]
+    public async Task ReplacementWithExistingDeduplicatedBytesDoesNotDeleteExistingAsset()
+    {
+        using var fixture = new ReplacementFixture();
+        var assets = new ContentAssetService(fixture.Registry, new HttpContextAccessor(), null!);
+
+        var sharedBytes = PngBytes(4, 5, 6);
+        await using var sharedStream = new MemoryStream(sharedBytes);
+        var shared = await assets.UploadAsync("Source", "shared.png", "image/png", sharedStream, sharedBytes.Length);
+
+        var originalBytes = PngBytes(1, 2, 3);
+        await using var originalStream = new MemoryStream(originalBytes);
+        var original = await assets.UploadAsync("Source", "original.png", "image/png", originalStream, originalBytes.Length);
+
+        await using var replacementStream = new MemoryStream(sharedBytes);
+        var replaced = await ContentAssetReplacement.ReplaceAsync(
+            assets,
+            fixture.Registry,
+            "Source",
+            original.AssetKey,
+            "replacement.png",
+            "image/png",
+            replacementStream,
+            sharedBytes.Length);
+
+        Assert.Equal(original.AssetKey, replaced.AssetKey);
+        Assert.Equal(shared.Sha256, replaced.Sha256);
+        var remaining = await assets.GetForSourceAsync("Source");
+        Assert.Equal(2, remaining.Count);
+        Assert.Contains(remaining, asset => asset.AssetKey == original.AssetKey);
+        Assert.Contains(remaining, asset => asset.AssetKey == shared.AssetKey);
+    }
+
+    [Fact]
     public async Task ReplacementRejectsMediaTypeChangeWithoutLeavingStagingAsset()
     {
         using var fixture = new ReplacementFixture();
