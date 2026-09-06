@@ -34,18 +34,43 @@ public sealed class ContentAuthoringNavigationTests
     }
 
     [Fact]
-    public void ModeEditorUsesOnlyAuthoringWorkspace()
+    public void HostedModeEditorUsesOnlyAuthoringWorkspace()
     {
         using var fixture = new SourceFixture();
+        var modeContext = new SiteModeContext
+        {
+            ActiveMode = BuiltInSiteModes.Professional
+        };
 
-        var sources = ContentAuthoringSourceAccess.GetModeEditorSources(fixture.Registry);
+        var sources = ContentAuthoringSourceAccess.GetModeEditorSources(fixture.Registry, modeContext);
 
         Assert.Equal(["Local"], sources.Select(source => source.Key));
         Assert.Equal(
             "Local",
-            ContentAuthoringSourceAccess.ResolveModeEditorSourceKey(fixture.Registry, null));
+            ContentAuthoringSourceAccess.ResolveModeEditorSourceKey(fixture.Registry, modeContext, null));
         Assert.Throws<InvalidOperationException>(() =>
-            ContentAuthoringSourceAccess.ResolveModeEditorSourceKey(fixture.Registry, "External"));
+            ContentAuthoringSourceAccess.ResolveModeEditorSourceKey(fixture.Registry, modeContext, "External"));
+    }
+
+    [Fact]
+    public void TrustedPreviewModeEditorUsesSelectedDatabaseSources()
+    {
+        using var fixture = new SourceFixture();
+        var modeContext = new SiteModeContext
+        {
+            ActiveMode = BuiltInSiteModes.Professional,
+            FrameworkState = FrameworkRuntimeStates.TrustedPreview,
+            IsDevelopmentPreview = true,
+            HasContentSourceOverride = true,
+            EnabledContentSources = new HashSet<string>(["External"], StringComparer.OrdinalIgnoreCase)
+        };
+
+        var sources = ContentAuthoringSourceAccess.GetModeEditorSources(fixture.Registry, modeContext);
+
+        Assert.Equal(["External"], sources.Select(source => source.Key));
+        Assert.Equal(
+            "External",
+            ContentAuthoringSourceAccess.ResolveModeEditorSourceKey(fixture.Registry, modeContext, "external"));
     }
 
     [Fact]
