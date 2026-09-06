@@ -343,13 +343,6 @@ public sealed class ContentAssetService : IContentAssetService
             }
         }
 
-        if (assetSources.Count == 0 && modeContext.IsDevelopmentPreview)
-        {
-            var authoringSource = _sourceRegistry.GetSource(_sourceRegistry.AuthoringSourceKey);
-            pageSources = [authoringSource];
-            assetSources = [authoringSource];
-        }
-
         for (var index = assetSources.Count - 1; index >= 0; index--)
         {
             var source = assetSources[index];
@@ -415,6 +408,7 @@ public sealed class ContentAssetService : IContentAssetService
     {
         var visibleModeId = modeContext.ActiveModeId;
         var legacyVisibleMode = modeContext.ActiveMode?.LegacyMode?.ToString();
+        var isSyntheticMode = modeContext.SyntheticMode is not null;
 
         for (var pageSourceIndex = 0; pageSourceIndex < pageSources.Count; pageSourceIndex++)
         {
@@ -437,7 +431,7 @@ public sealed class ContentAssetService : IContentAssetService
                             dependency.PageId == page.Id
                             && dependency.AssetSourceKey == assetSourceKey
                             && dependency.AssetKey == assetKey))
-                    && (modeContext.IsDevelopmentPreview
+                    && (isSyntheticMode
                         || (visibleModeId != null
                             && context.RevisionModes.Any(mode =>
                                 mode.RevisionId == page.CurrentRevisionId
@@ -448,7 +442,7 @@ public sealed class ContentAssetService : IContentAssetService
 
             foreach (var page in referencingPages)
             {
-                if (modeContext.IsDevelopmentPreview)
+                if (isSyntheticMode)
                 {
                     var visiblePage = await _catalog.GetForDetailAsync(
                         page.Slug,
@@ -540,7 +534,7 @@ public sealed class ContentAssetService : IContentAssetService
 
         return new SiteModeContext
         {
-            FrameworkState = FrameworkRuntimeStates.TrustedPreview,
+            FrameworkState = SyntheticSiteModes.Development,
             IsDevelopmentPreview = true
         };
     }
