@@ -67,7 +67,7 @@ public sealed class ModeScopedRoleAuthorizationTests
     }
 
     [Fact]
-    public async Task AdminInheritsGlobalEditorAuthorizationFromHierarchy()
+    public async Task AdminInheritsGlobalEditorAuthorizationForActiveModesOnly()
     {
         var user = CreateGlobalRoleUser(AccountRoles.Admin);
 
@@ -76,11 +76,11 @@ public sealed class ModeScopedRoleAuthorizationTests
             Assert.True(await IsAuthorizedAsync(user, editorRole.SiteMode));
         }
 
-        Assert.True(await IsAuthorizedAsync(user, SiteMode.Development));
+        Assert.False(await IsAuthorizedAsync(user, SiteMode.Development));
     }
 
     [Fact]
-    public async Task GlobalEditorAuthorizesSharedEditorRoutesInEveryPreviewMode()
+    public async Task GlobalEditorRequiresConcreteActiveMode()
     {
         var user = CreateGlobalRoleUser(AccountRoles.GlobalEditor);
 
@@ -89,7 +89,12 @@ public sealed class ModeScopedRoleAuthorizationTests
             Assert.True(await IsAuthorizedAsync(user, editorRole.SiteMode));
         }
 
-        Assert.True(await IsAuthorizedAsync(user, SiteMode.Development));
+        Assert.False(await IsAuthorizedAsync(user, SiteMode.Development));
+        Assert.False(await IsAuthorizedAsync(user, new SiteModeContext
+        {
+            FrameworkState = FrameworkRuntimeStates.TrustedPreview,
+            HasTrustedAccess = true
+        }));
     }
 
     [Fact]
