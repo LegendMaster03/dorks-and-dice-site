@@ -126,9 +126,16 @@ public sealed class SiteModePresentationService : ISiteModePresentationService
 
     private static string GetPresentationKey(SiteModeContext context)
     {
+        // A selected normal preview target supplies the page presentation while synthetic
+        // Development contributes its own diagnostics stylesheet and control-plane UI separately.
         if (context.ActiveMode is not null)
         {
             return context.ActiveMode.Id;
+        }
+
+        if (context.SyntheticMode is not null)
+        {
+            return context.SyntheticMode.Id;
         }
 
         if (context.FrameworkState is not null)
