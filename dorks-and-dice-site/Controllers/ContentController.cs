@@ -109,6 +109,8 @@ public sealed class ContentController : Controller
         var canUseCentralAuthoring = (await _authorizationService.AuthorizeAsync(
             User,
             AuthorizationPolicies.DevAccess)).Succeeded;
+        var centralAuthoringAppliesToPage = canUseCentralAuthoring
+            && (modeContext.ActiveModeId is null || item.IsVisibleInMode(modeContext.ActiveModeId));
         var canUseModeAuthoring = !canUseCentralAuthoring
             && (await _authorizationService.AuthorizeAsync(
                 User,
@@ -116,7 +118,7 @@ public sealed class ContentController : Controller
         var sourceQuery = string.IsNullOrWhiteSpace(item.SourceKey)
             ? string.Empty
             : $"?source={Uri.EscapeDataString(item.SourceKey)}";
-        var editHref = canUseCentralAuthoring
+        var editHref = centralAuthoringAppliesToPage
             ? $"/development/content/{item.Slug}/edit{sourceQuery}"
             : canUseModeAuthoring
                 ? $"/editor/content/{item.Slug}/edit{sourceQuery}"
