@@ -88,6 +88,15 @@ public static class AccountRoleHierarchy
             return true;
         }
 
+        // Global Editor is semantic authority over every mode's Editor capability, including modes
+        // registered after startup/persisted in the future. Do not make authorization depend on a
+        // static enumeration of known mode scopes. Admin and Owner inherit Global Editor normally.
+        if (string.Equals(role, ScopedAccountRoles.Editor, StringComparison.Ordinal)
+            && PrincipalHasGlobalRole(principal, AccountRoles.GlobalEditor))
+        {
+            return true;
+        }
+
         return GlobalRoleNames.Any(sourceRole =>
             principal.IsInRole(sourceRole) && InheritsScopedRole(sourceRole, scope, role));
     }
