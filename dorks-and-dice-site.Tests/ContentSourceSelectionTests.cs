@@ -26,7 +26,7 @@ public sealed class ContentSourceSelectionTests
     }
 
     [Fact]
-    public void SyntheticDevelopmentWithPreviewTargetStillRequiresExplicitDatabaseSelection()
+    public void SyntheticDevelopmentWithoutExplicitOverrideUsesPreviewTargetComposition()
     {
         var registry = CreateRegistry();
         var context = new SiteModeContext
@@ -41,7 +41,9 @@ public sealed class ContentSourceSelectionTests
             IsDevelopmentPreview = true
         };
 
-        Assert.Empty(registry.GetSourcesForContext(context));
+        Assert.Equal(
+            ["Global", "ModeOnly"],
+            registry.GetSourcesForContext(context).Select(source => source.Key));
     }
 
     [Fact]
@@ -113,6 +115,28 @@ public sealed class ContentSourceSelectionTests
         };
 
         Assert.Empty(registry.GetSourcesForContext(context));
+    }
+
+    [Fact]
+    public void NonDeveloperTrustedPreviewIgnoresDeveloperDatabaseOverride()
+    {
+        var registry = CreateRegistry();
+        var context = new SiteModeContext
+        {
+            ActiveMode = new SiteModeDefinition(
+                Id: "test-mode",
+                DisplayName: "Test Mode",
+                LegacyMode: null,
+                ViewFolder: "TestMode",
+                AssetFolder: "test-mode"),
+            FrameworkState = SyntheticSiteModes.Development,
+            HasContentSourceOverride = true,
+            EnabledContentSources = new HashSet<string>(["Override"], StringComparer.OrdinalIgnoreCase)
+        };
+
+        Assert.Equal(
+            ["Global", "ModeOnly"],
+            registry.GetSourcesForContext(context).Select(source => source.Key));
     }
 
     private static ContentSourceRegistry CreateRegistry()
