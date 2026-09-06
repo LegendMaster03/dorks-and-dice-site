@@ -17,6 +17,12 @@ public sealed class ContentAuthoringNavigationTests
     }
 
     [Fact]
+    public void UnsavedContentHasNoPublicRouteYet()
+    {
+        Assert.Equal(string.Empty, ContentPublicRoute.GetPath(string.Empty, [ContentTags.Article]));
+    }
+
+    [Fact]
     public void ExperienceOnlyPublicRoutePreservesExperienceContext()
     {
         Assert.Equal(
