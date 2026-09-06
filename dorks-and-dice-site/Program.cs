@@ -5,10 +5,10 @@ using dorks_and_dice_site.Framework.Plugins;
 using dorks_and_dice_site.Models.Identity;
 using dorks_and_dice_site.Models.Site;
 using dorks_and_dice_site.Plugins.DiscordWidget;
+using dorks_and_dice_site.Plugins.MinecraftServerStatus;
 using dorks_and_dice_site.Plugins.ProfessionalPortfolio;
 using dorks_and_dice_site.Services.Resume;
 using dorks_and_dice_site.Services.Content.Storage;
-using dorks_and_dice_site.Services.GameServers.Minecraft;
 using dorks_and_dice_site.Services.Identity;
 using dorks_and_dice_site.Services.Site;
 using dorks_and_dice_site.Services.Tools;
@@ -24,14 +24,12 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllersWithViews();
-builder.Services.Configure<MinecraftServerOptions>(
-    builder.Configuration.GetSection(MinecraftServerOptions.SectionName));
-builder.Services.AddSingleton<IMinecraftServerStatusService, MinecraftServerStatusService>();
 builder.Services.AddContentStorage(builder.Configuration, builder.Environment.ContentRootPath);
 builder.Services.AddSitePlugins(
 [
     new ProfessionalPortfolioPlugin(),
-    new DiscordWidgetPlugin()
+    new DiscordWidgetPlugin(),
+    new MinecraftServerStatusPlugin()
 ]);
 builder.Services.AddScoped<IResumeContentService, ResumeContentService>();
 builder.Services.AddSingleton<IToolRegistry, JsonToolRegistry>();
