@@ -44,6 +44,22 @@ public sealed class ContentSecurityTests
     }
 
     [Fact]
+    public void RendererPreservesSafeAuthoredPresentationClasses()
+    {
+        var renderer = new ContentBodyRenderer(Array.Empty<IContentDirectiveRenderer>());
+
+        var html = renderer.Render(
+            "markdown",
+            "## Experience {#experience-section .resume-section-title}\n\n"
+            + "![Portrait](/portrait.jpg){.profile-headshot .rounded-circle}\n\n"
+            + "[Download](/resume.pdf){.btn .btn-primary}");
+
+        Assert.Contains("class=\"resume-section-title\"", html, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("class=\"profile-headshot rounded-circle\"", html, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("class=\"btn btn-primary\"", html, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void RendererRejectsUnknownApplicationDirective()
     {
         var renderer = new ContentBodyRenderer(Array.Empty<IContentDirectiveRenderer>());
