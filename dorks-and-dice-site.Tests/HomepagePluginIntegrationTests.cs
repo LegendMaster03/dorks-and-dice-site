@@ -1,8 +1,7 @@
 using System.Net;
 using dorks_and_dice_site.Models.Content;
-using dorks_and_dice_site.Models.GameServers.Minecraft;
+using dorks_and_dice_site.Plugins.MinecraftServerStatus;
 using dorks_and_dice_site.Services.Content;
-using dorks_and_dice_site.Services.GameServers.Minecraft;
 using dorks_and_dice_site.Services.Site;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
