@@ -66,7 +66,12 @@ else
     <div class="col"><article class="card h-100">
         @if (asset.MediaType == "application/pdf")
         {
-            <a class="p-3" href="@previewHref" target="_blank" rel="noopener">Open PDF</a>
+            <div class="ratio ratio-4x3 border-bottom">
+                <object class="w-100 h-100" data="@previewHref" type="application/pdf" aria-label="Preview of @asset.FileName">
+                    <p class="p-3 mb-0">PDF preview is unavailable. <a href="@previewHref" target="_blank" rel="noopener">Open PDF</a>.</p>
+                </object>
+            </div>
+            <div class="px-3 pt-3"><a href="@previewHref" target="_blank" rel="noopener">Open PDF in a new tab</a></div>
         }
         else
         {
