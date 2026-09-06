@@ -42,7 +42,7 @@ public sealed class ContentMediaLibraryController : Controller
         var source = _sources.AuthoringSourceKey;
         if (file is null)
         {
-            TempData["ContentMediaError"] = "Choose an image to upload.";
+            TempData["ContentMediaError"] = "Choose an image or PDF to upload.";
             return RedirectToAction(nameof(Index));
         }
 
@@ -52,6 +52,44 @@ public sealed class ContentMediaLibraryController : Controller
             var asset = await _assets.UploadAsync(
                 source, file.FileName, file.ContentType, stream, file.Length, cancellationToken);
             TempData["ContentMediaSuccess"] = $"Stored '{asset.FileName}'.";
+        }
+        catch (InvalidOperationException ex)
+        {
+            TempData["ContentMediaError"] = ex.Message;
+        }
+
+        return RedirectToAction(nameof(Index));
+    }
+
+    [HttpPost("{assetKey}/replace")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Replace(
+        string assetKey,
+        IFormFile? file,
+        CancellationToken cancellationToken)
+    {
+        var source = _sources.AuthoringSourceKey;
+        if (file is null)
+        {
+            TempData["ContentMediaError"] = "Choose a replacement file.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        try
+        {
+            await using var stream = file.OpenReadStream();
+            var asset = await ContentAssetReplacement.ReplaceAsync(
+                _assets,
+                _sources,
+                source,
+                assetKey,
+                file.FileName,
+                file.ContentType,
+                stream,
+                file.Length,
+                cancellationToken);
+            TempData["ContentMediaSuccess"] =
+                $"Replaced '{asset.FileName}' without changing its stable media URL.";
         }
         catch (InvalidOperationException ex)
         {
