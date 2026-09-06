@@ -5,9 +5,8 @@ namespace dorks_and_dice_site.Services.Content;
 
 /// <summary>
 /// Defines source boundaries for the authoring surfaces. Normal hosted-mode authoring remains
-/// restricted to the configured authoring workspace. In Trusted Preview, the mode editor mirrors
-/// the request's content-source composition so the database-source filter controls which databases
-/// contribute articles to the editor index.
+/// restricted to the configured authoring workspace. Synthetic Development mirrors the request's
+/// explicit content-source composition so its database-source filter remains authoritative.
 /// </summary>
 public static class ContentAuthoringSourceAccess
 {
@@ -18,7 +17,7 @@ public static class ContentAuthoringSourceAccess
         ArgumentNullException.ThrowIfNull(registry);
         ArgumentNullException.ThrowIfNull(modeContext);
 
-        if (modeContext.IsTrustedPreview)
+        if (modeContext.SyntheticMode is not null)
         {
             return registry.GetSourcesForContext(modeContext);
         }
@@ -45,27 +44,23 @@ public static class ContentAuthoringSourceAccess
         ArgumentNullException.ThrowIfNull(registry);
         ArgumentNullException.ThrowIfNull(modeContext);
 
-        var authoring = registry.GetSource(registry.AuthoringSourceKey);
-        if (string.IsNullOrWhiteSpace(requestedSourceKey)
-            || string.Equals(requestedSourceKey.Trim(), authoring.Key, StringComparison.OrdinalIgnoreCase))
+        var sources = GetModeEditorSources(registry, modeContext);
+        if (string.IsNullOrWhiteSpace(requestedSourceKey))
         {
-            return authoring.Key;
+            var authoring = sources.FirstOrDefault(source =>
+                string.Equals(source.Key, registry.AuthoringSourceKey, StringComparison.OrdinalIgnoreCase));
+            return authoring?.Key
+                ?? sources.FirstOrDefault()?.Key
+                ?? throw new InvalidOperationException(
+                    "No content database is selected for the editor in this mode.");
         }
 
-        if (modeContext.IsTrustedPreview)
-        {
-            var requested = requestedSourceKey.Trim();
-            var source = GetModeEditorSources(registry, modeContext)
-                .SingleOrDefault(candidate =>
-                    string.Equals(candidate.Key, requested, StringComparison.OrdinalIgnoreCase));
-            if (source is not null)
-            {
-                return source.Key;
-            }
-        }
-
-        throw new InvalidOperationException(
-            $"Content source '{requestedSourceKey}' is not available to the mode editor.");
+        var requested = requestedSourceKey.Trim();
+        var source = sources.SingleOrDefault(candidate =>
+            string.Equals(candidate.Key, requested, StringComparison.OrdinalIgnoreCase));
+        return source?.Key
+            ?? throw new InvalidOperationException(
+                $"Content source '{requestedSourceKey}' is not available to the mode editor.");
     }
 
     public static string ResolveCentralSourceKey(
