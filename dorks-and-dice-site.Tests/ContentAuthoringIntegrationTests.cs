@@ -25,7 +25,7 @@ public sealed class ContentAuthoringIntegrationTests
         var html = await response.Content.ReadAsStringAsync();
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.Contains("Content Authoring", html);
+        Assert.Contains("Professional Content Authoring", html);
         Assert.Contains("New content", html);
         Assert.DoesNotContain("Content database", html);
         Assert.DoesNotContain("Push all", html);
@@ -43,19 +43,34 @@ public sealed class ContentAuthoringIntegrationTests
     }
 
     [Fact]
-    public async Task AdminActsAsGlobalEditorOnTrustedHost()
+    public async Task AdminInheritanceGrantsModeEditorOnPublicHost()
     {
-        var response = await SendAsync("localhost", "/editor/content", roles: AccountRoles.Admin);
+        var response = await SendAsync("kylebarnett.com", "/editor/content", roles: AccountRoles.Admin);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
     [Fact]
-    public async Task DeveloperRoleDoesNotImplyEditorRole()
+    public async Task DeveloperRoleDoesNotImplyModeEditorRole()
     {
-        var response = await SendAsync("localhost", "/editor/content", roles: AccountRoles.Dev);
+        var response = await SendAsync("kylebarnett.com", "/editor/content", roles: AccountRoles.Dev);
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task CentralContentAuthoringIsDeveloperOnlyAndTrustedOnly()
+    {
+        var trusted = await SendAsync("localhost", "/development/content", roles: AccountRoles.Dev);
+        var trustedHtml = await trusted.Content.ReadAsStringAsync();
+        Assert.Equal(HttpStatusCode.OK, trusted.StatusCode);
+        Assert.Contains("Central Content Authoring", trustedHtml);
+
+        var adminOnly = await SendAsync("localhost", "/development/content", roles: AccountRoles.Admin);
+        Assert.Equal(HttpStatusCode.Forbidden, adminOnly.StatusCode);
+
+        var publicResponse = await SendAsync("kylebarnett.com", "/development/content", roles: AccountRoles.Dev);
+        Assert.Equal(HttpStatusCode.Forbidden, publicResponse.StatusCode);
     }
 
     [Fact]
@@ -71,9 +86,9 @@ public sealed class ContentAuthoringIntegrationTests
     }
 
     [Fact]
-    public async Task EditorPageRetainsVisualAndMetadataEditors()
+    public async Task ModeEditorPageRetainsEditorsButLocksModeAssignment()
     {
-        var response = await SendAsync("localhost", "/editor/content/new", roles: AccountRoles.Admin);
+        var response = await SendAsync("kylebarnett.com", "/editor/content/new", roles: AccountRoles.Admin);
         var html = await response.Content.ReadAsStringAsync();
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -87,6 +102,19 @@ public sealed class ContentAuthoringIntegrationTests
         Assert.Contains("data-meta-path=\"title\"", html);
         Assert.Contains("data-meta-path=\"presentations.project.title\"", html);
         Assert.Contains("content-metadata-editor.js", html);
+        Assert.Contains("Mode assignment is controlled by the active mode editor", html);
+        Assert.DoesNotContain("id=\"visible-mode-dropdown\"", html);
+        Assert.DoesNotContain("visible-mode-dorks-and-dice", html);
+    }
+
+    [Fact]
+    public async Task CentralAuthoringRetainsCrossModeSelection()
+    {
+        var response = await SendAsync("localhost", "/development/content/new", roles: AccountRoles.Dev);
+        var html = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("id=\"visible-mode-dropdown\"", html);
         Assert.Contains("visible-mode-professional", html);
         Assert.Contains("visible-mode-dorks-and-dice", html);
         Assert.DoesNotContain("visible-mode-Development", html);
@@ -97,8 +125,8 @@ public sealed class ContentAuthoringIntegrationTests
     public async Task VisualEditorRendersSafeMarkdownAndProtectsDirectives()
     {
         var client = _factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
-        var get = new HttpRequestMessage(HttpMethod.Get, "https://localhost/editor/content/new");
-        get.Headers.Host = "localhost";
+        var get = new HttpRequestMessage(HttpMethod.Get, "https://kylebarnett.com/editor/content/new");
+        get.Headers.Host = "kylebarnett.com";
         get.Headers.Add(TestRoleAuthenticationHandler.RolesHeader, AccountRoles.Admin);
         var page = await client.SendAsync(get);
         var pageHtml = await page.Content.ReadAsStringAsync();
@@ -107,8 +135,8 @@ public sealed class ContentAuthoringIntegrationTests
             .Groups["token"].Value;
         Assert.NotEmpty(token);
 
-        var post = new HttpRequestMessage(HttpMethod.Post, "https://localhost/editor/content/visual/render");
-        post.Headers.Host = "localhost";
+        var post = new HttpRequestMessage(HttpMethod.Post, "https://kylebarnett.com/editor/content/visual/render");
+        post.Headers.Host = "kylebarnett.com";
         post.Headers.Add(TestRoleAuthenticationHandler.RolesHeader, AccountRoles.Admin);
         post.Content = new FormUrlEncodedContent(new Dictionary<string, string>
         {
