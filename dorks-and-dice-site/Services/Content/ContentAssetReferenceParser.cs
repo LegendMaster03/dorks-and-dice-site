@@ -21,7 +21,7 @@ internal static partial class ContentAssetReferenceParser
     }
 
     [GeneratedRegex(
-        @"/content/media/(?<key>[0-9a-f]{32})/[A-Za-z0-9_-]+\.(?:jpg|jpeg|png|webp|gif)",
+        @"/content/media/(?<key>[0-9a-f]{32})/[A-Za-z0-9_-]+\.(?:jpg|jpeg|png|webp|gif|pdf|svg)",
         RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.IgnoreCase)]
     private static partial Regex ManagedMediaUrlPattern();
 }

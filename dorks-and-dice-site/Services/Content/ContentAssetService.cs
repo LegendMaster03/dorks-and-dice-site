@@ -56,7 +56,9 @@ public sealed class ContentAssetService : IContentAssetService
             ["image/jpeg"] = ".jpg",
             ["image/png"] = ".png",
             ["image/webp"] = ".webp",
-            ["image/gif"] = ".gif"
+            ["image/gif"] = ".gif",
+            ["application/pdf"] = ".pdf",
+            ["image/svg+xml"] = ".svg"
         };
 
     private readonly IContentSourceRegistry _sourceRegistry;
@@ -175,27 +177,27 @@ public sealed class ContentAssetService : IContentAssetService
     {
         if (declaredLength <= 0)
         {
-            throw new InvalidOperationException("Choose a non-empty image file.");
+            throw new InvalidOperationException("Choose a non-empty media file.");
         }
         if (declaredLength > ContentInputPolicy.MaxAssetUploadBytes)
         {
             throw new InvalidOperationException(
-                $"Image exceeds the {ContentInputPolicy.MaxAssetUploadBytes / (1024 * 1024)} MB upload limit.");
+                $"Media exceeds the {ContentInputPolicy.MaxAssetUploadBytes / (1024 * 1024)} MB upload limit.");
         }
         if (!AllowedMediaTypes.TryGetValue(mediaType, out var extension))
         {
-            throw new InvalidOperationException("Supported image types are JPEG, PNG, WebP, and GIF.");
+            throw new InvalidOperationException("Supported media types are JPEG, PNG, WebP, GIF, passive SVG, and PDF.");
         }
 
         await using var buffer = new MemoryStream(capacity: (int)Math.Min(declaredLength, ContentInputPolicy.MaxAssetUploadBytes));
         await stream.CopyToAsync(buffer, cancellationToken);
         if (buffer.Length <= 0 || buffer.Length > ContentInputPolicy.MaxAssetUploadBytes)
         {
-            throw new InvalidOperationException("Image upload size is invalid.");
+            throw new InvalidOperationException("Media upload size is invalid.");
         }
 
         var data = buffer.ToArray();
-        ValidateImageSignature(mediaType, data);
+        ValidateMediaSignature(mediaType, data);
         var normalizedFileName = NormalizeFileName(fileName, extension);
         var sha256 = Convert.ToHexString(SHA256.HashData(data)).ToLowerInvariant();
         var source = _sourceRegistry.GetSource(sourceKey);
@@ -559,7 +561,9 @@ public sealed class ContentAssetService : IContentAssetService
             Sha256 = sha256,
             CreatedUtc = createdUtc,
             Url = url,
-            MarkdownReference = $"![Alt text]({url})",
+            MarkdownReference = mediaType == "application/pdf"
+                ? $"[{fileName}]({url})"
+                : $"![Alt text]({url})",
             Relationship = relationship,
             SourceKey = sourceKey
         };
@@ -604,11 +608,13 @@ public sealed class ContentAssetService : IContentAssetService
         return safeBaseName + extension;
     }
 
-    private static void ValidateImageSignature(string mediaType, byte[] data)
+    private static void ValidateMediaSignature(string mediaType, byte[] data)
     {
         var span = data.AsSpan();
         var valid = mediaType.ToLowerInvariant() switch
         {
+            "image/svg+xml" => PassiveSvgValidator.IsValid(data),
+            "application/pdf" => span.StartsWith("%PDF-"u8),
             "image/jpeg" => span.Length >= 3 && span[0] == 0xff && span[1] == 0xd8 && span[2] == 0xff,
             "image/png" => span.StartsWith(new byte[] { 0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a }),
             "image/gif" => span.StartsWith("GIF87a"u8) || span.StartsWith("GIF89a"u8),
@@ -618,7 +624,7 @@ public sealed class ContentAssetService : IContentAssetService
 
         if (!valid)
         {
-            throw new InvalidOperationException("The uploaded file does not match its declared image type.");
+            throw new InvalidOperationException("The uploaded file does not match its declared media type.");
         }
     }
 

@@ -35,6 +35,11 @@ public sealed class ContentMediaController : Controller
             return NotFound();
         }
 
+        if (asset.MediaType == "image/svg+xml")
+        {
+            Response.Headers.ContentSecurityPolicy = "default-src 'none'; style-src 'unsafe-inline'; sandbox";
+        }
+        Response.Headers.XContentTypeOptions = "nosniff";
         Response.Headers.CacheControl = "public, max-age=31536000, immutable";
         Response.Headers.ETag = $"\"sha256-{asset.Sha256}\"";
         return File(asset.Data, asset.MediaType);

@@ -50,8 +50,8 @@ else
     }
     <div class="row g-3 align-items-end">
         <div class="col-md-8">
-            <label class="form-label" for="file">Upload image</label>
-            <input class="form-control" id="file" name="file" type="file" accept="image/jpeg,image/png,image/webp,image/gif" required />
+            <label class="form-label" for="file">Upload image or PDF</label>
+            <input class="form-control" id="file" name="file" type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/svg+xml,application/pdf" required />
         </div>
         <div class="col-md-4"><button class="btn btn-primary w-100" type="submit">Upload media</button></div>
     </div>
@@ -64,7 +64,14 @@ else
         ? $"{Model.RouteBase}/{asset.AssetKey}/preview?source={encodedSource}"
         : $"{Model.RouteBase}/{asset.AssetKey}/preview";
     <div class="col"><article class="card h-100">
-        <img class="card-img-top content-media-preview" src="@previewHref" alt="Preview of @asset.FileName" />
+        @if (asset.MediaType == "application/pdf")
+        {
+            <a class="p-3" href="@previewHref" target="_blank" rel="noopener">Open PDF</a>
+        }
+        else
+        {
+            <img class="card-img-top content-media-preview" src="@previewHref" alt="Preview of @asset.FileName" />
+        }
         <div class="card-body">
             <h2 class="h6">@asset.FileName</h2>
             <code class="small text-break">@asset.AssetKey</code>

@@ -51,7 +51,14 @@
         {
             var previewUrl = $"{Model.RouteBase}/{Model.Slug}/media/{asset.AssetKey}/preview?source={Uri.EscapeDataString(asset.SourceKey)}";
             <div class="col"><article class="card h-100">
-                <img src="@previewUrl" class="card-img-top content-media-preview" alt="Preview of @asset.FileName" />
+                @if (asset.MediaType == "application/pdf")
+                    {
+                        <a class="p-3" href="@previewUrl" target="_blank" rel="noopener">Open PDF</a>
+                    }
+                    else
+                    {
+                        <img src="@previewUrl" class="card-img-top content-media-preview" alt="Preview of @asset.FileName" />
+                    }
                 <div class="card-body">
                     <h3 class="h6">@asset.FileName</h3>
                     <p class="small text-muted"><code>@asset.AssetKey</code></p>
@@ -80,7 +87,14 @@ else
             var previewUrl = $"{Model.RouteBase}/{Model.Slug}/media/{asset.AssetKey}/preview?source={Uri.EscapeDataString(asset.SourceKey)}";
             <div class="col">
                 <article class="card h-100">
-                    <img src="@previewUrl" class="card-img-top content-media-preview" alt="Preview of @asset.FileName" />
+                    @if (asset.MediaType == "application/pdf")
+                    {
+                        <a class="p-3" href="@previewUrl" target="_blank" rel="noopener">Open PDF</a>
+                    }
+                    else
+                    {
+                        <img src="@previewUrl" class="card-img-top content-media-preview" alt="Preview of @asset.FileName" />
+                    }
                     <div class="card-body">
                         <h2 class="h6">@asset.FileName</h2>
                         <p class="badge text-bg-secondary">@(asset.Relationship ?? "global")</p>
@@ -94,7 +108,7 @@ else
                         </dl>
                         <label class="form-label" for="markdown-@asset.AssetKey">Markdown reference</label>
                         <input id="markdown-@asset.AssetKey" class="form-control font-monospace" value="@asset.MarkdownReference" readonly />
-                        <div class="form-text">Replace <code>Alt text</code> with a meaningful description before inserting it into the body.</div>
+                        <div class="form-text">Use meaningful link text or image alt text before inserting the reference into the body.</div>
                         <label class="form-label mt-3" for="url-@asset.AssetKey">Stable media URL</label>
                         <input id="url-@asset.AssetKey" class="form-control font-monospace" value="@asset.Url" readonly />
                         <form method="post" action="@($"{Model.RouteBase}/{Model.Slug}/media/detach")" class="mt-3">
