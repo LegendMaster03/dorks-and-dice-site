@@ -30,6 +30,8 @@ public sealed class ContentAssetAuthoringViewModel
     public List<ContentAssetInfo> Assets { get; init; } = [];
     public List<ContentAssetInfo> AvailableAssets { get; init; } = [];
     public string SearchQuery { get; init; } = string.Empty;
+    public string RouteBase { get; init; } = "/editor/content";
+    public bool IsCentralAuthoring { get; init; }
 }
 
 public sealed class ContentAssetLibraryViewModel
@@ -37,4 +39,6 @@ public sealed class ContentAssetLibraryViewModel
     public string SourceKey { get; init; } = string.Empty;
     public List<ContentAuthoringSourceOption> Sources { get; init; } = [];
     public List<ContentAssetInfo> Assets { get; init; } = [];
+    public string RouteBase { get; init; } = "/editor/media";
+    public bool IsCentralAuthoring { get; init; }
 }
