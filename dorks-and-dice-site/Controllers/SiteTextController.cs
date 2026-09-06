@@ -100,6 +100,10 @@ public sealed partial class SiteTextController : Controller
         return Content(output.ToString(), "text/plain; charset=utf-8");
     }
 
+    [HttpGet("/site-modes/professional/files/kyle-resume.txt")]
+    public IActionResult LegacyProfessionalTextResume() =>
+        RedirectPermanent("/site.txt");
+
     private async Task<IReadOnlyList<ContentItem>> GetPublicItemsAsync(
         SiteModeContext modeContext,
         CancellationToken cancellationToken)
