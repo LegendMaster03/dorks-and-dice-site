@@ -38,8 +38,8 @@ public static class SiteRouteOwnership
 
     /// <summary>
     /// Evaluates the request surface while Trusted Preview is active. The selected normal
-    /// mode keeps its normal route ownership, while Trusted Preview contributes only its
-    /// own framework assets and shared framework routes.
+    /// mode keeps its normal route ownership, while Trusted Preview contributes its own
+    /// framework assets and Development control-plane routes.
     /// </summary>
     public static bool IsAllowedInTrustedPreview(PathString path, SiteModeDefinition? activeMode)
     {
@@ -48,6 +48,7 @@ public static class SiteRouteOwnership
 
         return selectedModeAllowsPath
             || IsSharedStandardModePath(normalizedPath)
+            || IsDevelopmentPath(normalizedPath)
             || IsFrameworkAssetPath(normalizedPath, FrameworkRuntimeStates.TrustedPreview.AssetFolder);
     }
 
@@ -125,12 +126,14 @@ public static class SiteRouteOwnership
             || path.StartsWith("/editor/", StringComparison.Ordinal)
             || path == "/admin"
             || path.StartsWith("/admin/", StringComparison.Ordinal)
-            || path == "/development"
-            || path.StartsWith("/development/", StringComparison.Ordinal)
             || path == "/home/notfoundpage"
             || path == "/home/error"
             || path == "/home/routeresolutionissue";
     }
+
+    private static bool IsDevelopmentPath(string path) =>
+        path == "/development"
+        || path.StartsWith("/development/", StringComparison.Ordinal);
 
     private static bool IsContentMediaPath(string path)
     {
