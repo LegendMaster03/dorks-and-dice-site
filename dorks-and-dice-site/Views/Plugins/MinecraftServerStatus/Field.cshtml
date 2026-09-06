@@ -1,0 +1,38 @@
+@model dorks_and_dice_site.Plugins.MinecraftServerStatus.MinecraftServerStatusFieldViewModel
+@{
+    var status = Model.Status;
+}
+
+@switch (Model.Field)
+{
+    case "badge":
+        <span class="badge @(status.IsOnline ? "text-bg-success" : "text-bg-secondary")"
+              data-minecraft-status-field="badge">@(status.IsOnline ? "Online" : "Unavailable")</span>
+        break;
+
+    case "motd":
+        <span data-minecraft-status-field="motd" hidden="@(!status.IsOnline || string.IsNullOrWhiteSpace(status.Motd))">@status.Motd</span>
+        break;
+
+    case "online-players":
+        <span data-minecraft-status-field="online-players" hidden="@(!status.IsOnline)">@(status.OnlinePlayers ?? 0)</span>
+        break;
+
+    case "maximum-players":
+        <span data-minecraft-status-field="maximum-players" hidden="@(!status.IsOnline)">@(status.MaximumPlayers?.ToString() ?? "?")</span>
+        break;
+
+    case "players":
+        <span data-minecraft-status-field="players" hidden="@(!status.IsOnline)">
+            <strong>@(status.OnlinePlayers ?? 0)</strong>
+            of
+            <strong>@(status.MaximumPlayers?.ToString() ?? "?")</strong>
+            players online
+        </span>
+        break;
+
+    case "version":
+        <span data-minecraft-status-field="version" hidden="@(!status.IsOnline || string.IsNullOrWhiteSpace(status.Version))">Version @status.Version</span>
+        break;
+}
+<script src="/plugins/minecraft-server-status/status.js" defer></script>
