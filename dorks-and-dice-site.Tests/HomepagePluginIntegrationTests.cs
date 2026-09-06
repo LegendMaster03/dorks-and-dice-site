@@ -29,7 +29,7 @@ public sealed class HomepagePluginIntegrationTests
             model.Document.Body = """
                 # Dorks & Dice Fixture
 
-                {{discord-widget title="Dorks & Dice Discord Server"}}
+                {{discord-widget server-id="123456789" theme="dark" title="Dorks & Dice Discord Server"}}
                 """;
             await authoring.CreateAsync(model.Document);
         }
