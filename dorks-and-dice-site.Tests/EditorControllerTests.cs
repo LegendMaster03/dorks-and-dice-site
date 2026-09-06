@@ -1,6 +1,5 @@
 using System.Security.Claims;
 using dorks_and_dice_site.Controllers;
-using dorks_and_dice_site.Models.Editor;
 using dorks_and_dice_site.Models.Identity;
 using dorks_and_dice_site.Services.Identity;
 using dorks_and_dice_site.Services.Site;
@@ -12,7 +11,7 @@ namespace dorks_and_dice_site.Tests;
 public sealed class EditorControllerTests
 {
     [Fact]
-    public void SyntheticScopedEditorUsesActiveModeWithoutNamedModeLogic()
+    public void SyntheticNormalModeScopedEditorRedirectsDirectlyToContent()
     {
         var syntheticMode = new SiteModeDefinition(
             Id: "test-mode",
@@ -24,19 +23,15 @@ public sealed class EditorControllerTests
             CreateScopedEditor("test-mode"),
             new SiteModeContext { ActiveMode = syntheticMode });
 
-        var result = Assert.IsType<ViewResult>(controller.Index());
-        var model = Assert.IsType<EditorIndexViewModel>(result.Model);
-        var option = Assert.Single(model.Modes);
+        var result = Assert.IsType<RedirectResult>(controller.Index());
 
-        Assert.Equal("test-mode", option.ModeId);
-        Assert.Equal("Test Mode", option.DisplayName);
-        Assert.Equal("/editor/content", option.EditorHref);
+        Assert.Equal("/editor/content", result.Url);
     }
 
     [Fact]
-    public void TrustedPreviewKeepsEditorBoundToSelectedMode()
+    public void SyntheticDevelopmentKeepsScopedEditorBoundToSelectedPreviewMode()
     {
-        var syntheticMode = new SiteModeDefinition(
+        var syntheticNormalMode = new SiteModeDefinition(
             Id: "test-mode",
             DisplayName: "Test Mode",
             LegacyMode: null,
@@ -46,27 +41,24 @@ public sealed class EditorControllerTests
             CreateScopedEditor("test-mode"),
             new SiteModeContext
             {
-                ActiveMode = syntheticMode,
-                FrameworkState = FrameworkRuntimeStates.TrustedPreview,
+                ActiveMode = syntheticNormalMode,
+                FrameworkState = SyntheticSiteModes.Development,
                 HasTrustedAccess = true
             });
 
-        var result = Assert.IsType<ViewResult>(controller.Index());
-        var model = Assert.IsType<EditorIndexViewModel>(result.Model);
-        var option = Assert.Single(model.Modes);
+        var result = Assert.IsType<RedirectResult>(controller.Index());
 
-        Assert.True(model.IsTrustedPreview);
-        Assert.Equal("/editor/content", option.EditorHref);
+        Assert.Equal("/editor/content", result.Url);
     }
 
     [Fact]
-    public void EditorLandingRequiresAnActiveAuthorizedMode()
+    public void ScopedEditorRequiresSelectedPreviewModeAtSyntheticDevelopmentRoot()
     {
         var controller = CreateController(
             CreateScopedEditor("test-mode"),
             new SiteModeContext
             {
-                FrameworkState = FrameworkRuntimeStates.TrustedPreview,
+                FrameworkState = SyntheticSiteModes.Development,
                 HasTrustedAccess = true
             });
 
