@@ -15,8 +15,19 @@ public sealed class EditorController : Controller
     {
         var modeContext = HttpContext.GetSiteModeContext();
         var activeMode = modeContext.ActiveMode;
-        if (activeMode is null
-            || !AccountRoleHierarchy.PrincipalHasScopedRole(
+        if (activeMode is null)
+        {
+            if (modeContext.IsTrustedPreview
+                && modeContext.HasTrustedAccess
+                && AccountRoleHierarchy.PrincipalHasGlobalRole(User, AccountRoles.GlobalEditor))
+            {
+                return Redirect("/editor/content");
+            }
+
+            return Forbid();
+        }
+
+        if (!AccountRoleHierarchy.PrincipalHasScopedRole(
                 User,
                 activeMode.Id,
                 ScopedAccountRoles.Editor))

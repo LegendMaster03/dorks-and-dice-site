@@ -28,6 +28,18 @@ public sealed class ModeScopedRoleAuthorizationHandler : AuthorizationHandler<Mo
         var modeContext = httpContext.GetSiteModeContext();
         var scope = modeContext.ActiveModeId;
 
+        // Trusted Preview has no concrete active mode at its root. Global Editor authority is
+        // intentionally valid across every mode, so it can satisfy an Editor requirement there
+        // without turning a mode-scoped Editor or Dev-only account into a global editor.
+        if (modeContext.IsTrustedPreview
+            && modeContext.HasTrustedAccess
+            && string.Equals(requirement.Role, ScopedAccountRoles.Editor, StringComparison.Ordinal)
+            && AccountRoleHierarchy.PrincipalHasGlobalRole(context.User, AccountRoles.GlobalEditor))
+        {
+            context.Succeed(requirement);
+            return Task.CompletedTask;
+        }
+
         // Temporary compatibility for tests/callers that still construct SiteModeContext
         // using only the legacy enum. Runtime middleware now supplies ActiveMode directly.
         if (scope is null)

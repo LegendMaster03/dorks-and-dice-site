@@ -1,10 +1,12 @@
 using System.Security.Claims;
+using dorks_and_dice_site.Controllers;
 using dorks_and_dice_site.Models.Identity;
 using dorks_and_dice_site.Models.Site;
 using dorks_and_dice_site.Services.Identity;
 using dorks_and_dice_site.Services.Site;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 
 namespace dorks_and_dice_site.Tests;
 
@@ -67,7 +69,7 @@ public sealed class ModeScopedRoleAuthorizationTests
     }
 
     [Fact]
-    public async Task AdminInheritsGlobalEditorAuthorizationForActiveModesOnly()
+    public async Task AdminInheritsGlobalEditorAuthorizationIncludingTrustedPreview()
     {
         var user = CreateGlobalRoleUser(AccountRoles.Admin);
 
@@ -76,11 +78,12 @@ public sealed class ModeScopedRoleAuthorizationTests
             Assert.True(await IsAuthorizedAsync(user, editorRole.SiteMode));
         }
 
+        Assert.True(await IsAuthorizedAsync(user, TrustedPreviewContext()));
         Assert.False(await IsAuthorizedAsync(user, SiteMode.Development));
     }
 
     [Fact]
-    public async Task GlobalEditorRequiresConcreteActiveMode()
+    public async Task GlobalEditorAuthorizesTrustedPreviewWithoutConcreteActiveMode()
     {
         var user = CreateGlobalRoleUser(AccountRoles.GlobalEditor);
 
@@ -89,12 +92,46 @@ public sealed class ModeScopedRoleAuthorizationTests
             Assert.True(await IsAuthorizedAsync(user, editorRole.SiteMode));
         }
 
+        Assert.True(await IsAuthorizedAsync(user, TrustedPreviewContext()));
         Assert.False(await IsAuthorizedAsync(user, SiteMode.Development));
-        Assert.False(await IsAuthorizedAsync(user, new SiteModeContext
+    }
+
+    [Fact]
+    public async Task ScopedEditorDoesNotGainCrossModeAuthorityInTrustedPreview()
+    {
+        var user = CreateScopedEditor($"{AccountRoleScopes.DorksAndDice}:{ScopedAccountRoles.Editor}");
+
+        Assert.False(await IsAuthorizedAsync(user, TrustedPreviewContext()));
+    }
+
+    [Fact]
+    public void EditorRootRedirectsGlobalEditorFromTrustedPreviewToContent()
+    {
+        var user = CreateGlobalRoleUser(AccountRoles.GlobalEditor);
+        var httpContext = new DefaultHttpContext { User = user };
+        httpContext.Items[SiteModeContext.HttpContextItemKey] = TrustedPreviewContext();
+        var controller = new EditorController
         {
-            FrameworkState = FrameworkRuntimeStates.TrustedPreview,
-            HasTrustedAccess = true
-        }));
+            ControllerContext = new ControllerContext { HttpContext = httpContext }
+        };
+
+        var result = Assert.IsType<RedirectResult>(controller.Index());
+
+        Assert.Equal("/editor/content", result.Url);
+    }
+
+    [Fact]
+    public void EditorRootStillForbidsDevOnlyUserInTrustedPreview()
+    {
+        var user = CreateGlobalRoleUser(AccountRoles.Dev);
+        var httpContext = new DefaultHttpContext { User = user };
+        httpContext.Items[SiteModeContext.HttpContextItemKey] = TrustedPreviewContext();
+        var controller = new EditorController
+        {
+            ControllerContext = new ControllerContext { HttpContext = httpContext }
+        };
+
+        Assert.IsType<ForbidResult>(controller.Index());
     }
 
     [Fact]
@@ -153,6 +190,7 @@ public sealed class ModeScopedRoleAuthorizationTests
         var user = CreateGlobalRoleUser(AccountRoles.Dev);
 
         Assert.False(await IsAuthorizedAsync(user, SiteMode.DorksAndDice));
+        Assert.False(await IsAuthorizedAsync(user, TrustedPreviewContext()));
     }
 
     private static ClaimsPrincipal CreateScopedEditor(string scopedRole)
@@ -176,6 +214,12 @@ public sealed class ModeScopedRoleAuthorizationTests
         authenticationType: "test");
         return new ClaimsPrincipal(identity);
     }
+
+    private static SiteModeContext TrustedPreviewContext() => new()
+    {
+        FrameworkState = FrameworkRuntimeStates.TrustedPreview,
+        HasTrustedAccess = true
+    };
 
     private static Task<bool> IsAuthorizedAsync(ClaimsPrincipal user, SiteMode siteMode) =>
         IsAuthorizedAsync(user, new SiteModeContext
