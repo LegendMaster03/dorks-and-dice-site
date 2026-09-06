@@ -169,6 +169,16 @@ public sealed class HomepagePluginIntegrationTests
         Assert.Contains("\"onlinePlayers\":3", json, StringComparison.Ordinal);
         Assert.Contains("\"maximumPlayers\":20", json, StringComparison.Ordinal);
         Assert.Contains("\"version\":\"26.2\"", json, StringComparison.Ordinal);
+
+        using var scriptRequest = new HttpRequestMessage(
+            HttpMethod.Get,
+            "https://dorks-and-dice.com/plugins/minecraft-server-status/status.js");
+        scriptRequest.Headers.Host = "dorks-and-dice.com";
+        var scriptResponse = await client.SendAsync(scriptRequest);
+        var script = await scriptResponse.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, scriptResponse.StatusCode);
+        Assert.Contains("data-minecraft-status-field", script, StringComparison.Ordinal);
     }
 
     private static WebApplicationFactory<Program> WithMinecraftSnapshot(
