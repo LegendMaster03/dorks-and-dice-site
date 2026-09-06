@@ -6,9 +6,11 @@ using dorks_and_dice_site.Services.Site;
 namespace dorks_and_dice_site.Services.Content;
 
 /// <summary>
-/// Centralizes mode-aware content authoring rules. Normal editor requests are bound to one normal
-/// mode. Synthetic Development preserves that scope unless the caller has both developer preview
-/// capability and Global Editor authority, in which case the editor may span normal modes.
+/// Centralizes mode-aware content authoring rules. A selected normal mode always scopes the
+/// editor to that mode, including when the request is hosted inside synthetic Development.
+/// Synthetic Development becomes a global authoring context only when Development itself is the
+/// selected ribbon mode and the caller has both developer preview capability and Global Editor
+/// authority.
 /// </summary>
 public static class ContentAuthoringModeAccess
 {
@@ -79,6 +81,7 @@ public static class ContentAuthoringModeAccess
         ClaimsPrincipal principal,
         SiteModeContext modeContext) =>
         modeContext.SyntheticMode is not null
+        && modeContext.ActiveMode is null
         && modeContext.HasTrustedAccess
         && modeContext.IsDevelopmentPreview
         && AccountRoleHierarchy.PrincipalHasGlobalRole(principal, AccountRoles.GlobalEditor);
