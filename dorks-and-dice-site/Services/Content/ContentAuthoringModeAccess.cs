@@ -7,8 +7,8 @@ namespace dorks_and_dice_site.Services.Content;
 
 /// <summary>
 /// Centralizes mode-aware content authoring rules. Normal editor requests are bound to one normal
-/// mode. Synthetic Development is a global editor context and can span normal mode assignments,
-/// while still relying on the caller's Global Editor authority.
+/// mode. Synthetic Development preserves that scope unless the caller has both developer preview
+/// capability and Global Editor authority, in which case the editor may span normal modes.
 /// </summary>
 public static class ContentAuthoringModeAccess
 {
@@ -29,14 +29,17 @@ public static class ContentAuthoringModeAccess
     {
         ArgumentNullException.ThrowIfNull(modeContext);
 
-        if (modeContext.SyntheticMode is not null)
+        if (CanUseGlobalDevelopmentAuthoring(principal, modeContext))
         {
-            return modeContext.HasTrustedAccess
-                && AccountRoleHierarchy.PrincipalHasGlobalRole(principal, AccountRoles.GlobalEditor)
-                && item.VisibleInModes.All(modeId => CanEditMode(principal, modeId));
+            return item.VisibleInModes.All(modeId => CanEditMode(principal, modeId));
         }
 
-        return CanEditItem(principal, item, RequireActiveModeId(modeContext));
+        if (modeContext.ActiveModeId is { Length: > 0 } activeModeId)
+        {
+            return CanEditItem(principal, item, activeModeId);
+        }
+
+        return false;
     }
 
     public static bool CanEditItem(
@@ -49,16 +52,14 @@ public static class ContentAuthoringModeAccess
             return false;
         }
 
-        // Shared content affects every assigned mode. A normal mode editor may edit it only when
+        // Shared content affects every assigned mode. A normal/scoped editor may edit it only when
         // the principal has Editor authority for every affected mode. Assignment itself remains
-        // immutable on the normal editor surface.
+        // immutable on the scoped editor surface.
         return item.VisibleInModes.All(modeId => CanEditMode(principal, modeId));
     }
 
     public static bool CanSelectModes(ClaimsPrincipal principal, SiteModeContext modeContext) =>
-        modeContext.SyntheticMode is not null
-        && modeContext.HasTrustedAccess
-        && AccountRoleHierarchy.PrincipalHasGlobalRole(principal, AccountRoles.GlobalEditor);
+        CanUseGlobalDevelopmentAuthoring(principal, modeContext);
 
     public static void ForceNewDocumentMode(ContentAuthoringDocument document, string activeModeId)
     {
@@ -73,4 +74,12 @@ public static class ContentAuthoringModeAccess
         submitted.VisibleModesSelection = current.VisibleModesSelection.ToList();
         submitted.VisibleModesText = current.VisibleModesText;
     }
+
+    private static bool CanUseGlobalDevelopmentAuthoring(
+        ClaimsPrincipal principal,
+        SiteModeContext modeContext) =>
+        modeContext.SyntheticMode is not null
+        && modeContext.HasTrustedAccess
+        && modeContext.IsDevelopmentPreview
+        && AccountRoleHierarchy.PrincipalHasGlobalRole(principal, AccountRoles.GlobalEditor);
 }
