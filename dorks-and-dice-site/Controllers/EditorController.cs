@@ -1,4 +1,3 @@
-using dorks_and_dice_site.Models.Editor;
 using dorks_and_dice_site.Services.Identity;
 using dorks_and_dice_site.Services.Site;
 using Microsoft.AspNetCore.Authorization;
@@ -14,39 +13,17 @@ public sealed class EditorController : Controller
     public IActionResult Index()
     {
         var modeContext = HttpContext.GetSiteModeContext();
-        var activeMode = modeContext.ActiveMode;
-        if (activeMode is null)
-        {
-            if (modeContext.IsTrustedPreview
-                && modeContext.HasTrustedAccess
-                && AccountRoleHierarchy.PrincipalHasGlobalRole(User, AccountRoles.GlobalEditor))
-            {
-                return Redirect("/editor/content");
-            }
-
-            return Forbid();
-        }
-
-        if (!AccountRoleHierarchy.PrincipalHasScopedRole(
+        if (!ModeScopedRoleAccess.PrincipalHasRoleForContext(
                 User,
-                activeMode.Id,
+                modeContext,
                 ScopedAccountRoles.Editor))
         {
             return Forbid();
         }
 
-        return View(new EditorIndexViewModel
-        {
-            IsTrustedPreview = modeContext.HasTrustedAccess,
-            Modes =
-            [
-                new EditorModeOption
-                {
-                    ModeId = activeMode.Id,
-                    DisplayName = activeMode.DisplayName,
-                    EditorHref = "/editor/content"
-                }
-            ]
-        });
+        // The editor landing page no longer chooses a mode. Normal hosted requests already have
+        // a mode and synthetic Development intentionally spans normal modes, so the compatibility
+        // route can go directly to the content workspace.
+        return Redirect("/editor/content");
     }
 }
