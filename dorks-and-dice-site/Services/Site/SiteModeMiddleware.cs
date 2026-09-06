@@ -28,7 +28,7 @@ public sealed class SiteModeMiddleware
             && context.User.Identity?.IsAuthenticated == true
             && AccountRoleHierarchy.PrincipalHasGlobalRole(context.User, AccountRoles.Dev);
 
-        var previewModeValue = GetTrustedPreviewModeValue(context);
+        var previewModeValue = GetDevelopmentPreviewModeValue(context);
         var resolution = ResolveRequestMode(
             hostedModeId,
             hasTrustedAccess,
@@ -61,7 +61,7 @@ public sealed class SiteModeMiddleware
         // Developers intentionally retain the ability to inspect a route that the selected
         // live mode would reject; the preview UI surfaces that mismatch. Other callers,
         // including trusted non-Dev editors, remain bounded by the selected mode plus the
-        // Trusted Preview framework surface.
+        // synthetic Development control-plane surface.
         if (!hasDeveloperAccess && !isAllowedInRequest)
         {
             context.Request.Path = "/Home/NotFoundPage";
@@ -88,7 +88,7 @@ public sealed class SiteModeMiddleware
         if (hasTrustedAccess)
         {
             _siteModeRegistry.TryGetById(previewModeValue, out var previewMode);
-            return new RequestModeResolution(previewMode, FrameworkRuntimeStates.TrustedPreview);
+            return new RequestModeResolution(previewMode, SyntheticSiteModes.Development);
         }
 
         if (hostedModeId is not null
@@ -102,14 +102,14 @@ public sealed class SiteModeMiddleware
             FrameworkRuntimeStates.Fallback);
     }
 
-    private string GetTrustedPreviewModeValue(HttpContext context)
+    private string GetDevelopmentPreviewModeValue(HttpContext context)
     {
         var previewModeValue = context.Request.Cookies[SiteModeValues.DevelopmentSiteModeCookie]
-            ?? FrameworkRuntimeStates.TrustedPreview.Id;
+            ?? SyntheticSiteModes.Development.Id;
 
         if (string.Equals(
                 previewModeValue,
-                FrameworkRuntimeStates.TrustedPreview.Id,
+                SyntheticSiteModes.Development.Id,
                 StringComparison.Ordinal))
         {
             return previewModeValue;
@@ -117,7 +117,7 @@ public sealed class SiteModeMiddleware
 
         return _siteModeRegistry.TryGetById(previewModeValue, out _)
             ? previewModeValue
-            : FrameworkRuntimeStates.TrustedPreview.Id;
+            : SyntheticSiteModes.Development.Id;
     }
 
     private static bool GetIncludeUnlistedArticles(HttpContext context, bool hasEditorPreviewAccess)
