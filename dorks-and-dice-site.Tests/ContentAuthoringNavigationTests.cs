@@ -53,13 +53,13 @@ public sealed class ContentAuthoringNavigationTests
     }
 
     [Fact]
-    public void TrustedPreviewModeEditorUsesSelectedDatabaseSources()
+    public void SyntheticDevelopmentEditorUsesOnlySelectedDatabaseSources()
     {
         using var fixture = new SourceFixture();
         var modeContext = new SiteModeContext
         {
             ActiveMode = BuiltInSiteModes.Professional,
-            FrameworkState = FrameworkRuntimeStates.TrustedPreview,
+            FrameworkState = SyntheticSiteModes.Development,
             IsDevelopmentPreview = true,
             HasContentSourceOverride = true,
             EnabledContentSources = new HashSet<string>(["External"], StringComparer.OrdinalIgnoreCase)
@@ -70,7 +70,29 @@ public sealed class ContentAuthoringNavigationTests
         Assert.Equal(["External"], sources.Select(source => source.Key));
         Assert.Equal(
             "External",
+            ContentAuthoringSourceAccess.ResolveModeEditorSourceKey(fixture.Registry, modeContext, null));
+        Assert.Equal(
+            "External",
             ContentAuthoringSourceAccess.ResolveModeEditorSourceKey(fixture.Registry, modeContext, "external"));
+        Assert.Throws<InvalidOperationException>(() =>
+            ContentAuthoringSourceAccess.ResolveModeEditorSourceKey(fixture.Registry, modeContext, "Local"));
+    }
+
+    [Fact]
+    public void SyntheticDevelopmentEditorWithNoDatabaseSelectionHasNoFallbackSource()
+    {
+        using var fixture = new SourceFixture();
+        var modeContext = new SiteModeContext
+        {
+            FrameworkState = SyntheticSiteModes.Development,
+            IsDevelopmentPreview = true,
+            HasContentSourceOverride = true,
+            EnabledContentSources = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        };
+
+        Assert.Empty(ContentAuthoringSourceAccess.GetModeEditorSources(fixture.Registry, modeContext));
+        Assert.Throws<InvalidOperationException>(() =>
+            ContentAuthoringSourceAccess.ResolveModeEditorSourceKey(fixture.Registry, modeContext, null));
     }
 
     [Fact]
@@ -108,16 +130,49 @@ public sealed class ContentAuthoringNavigationTests
     }
 
     [Fact]
+    public void GlobalEditorCanEditCrossModeContentInSyntheticDevelopment()
+    {
+        var principal = PrincipalWithGlobalRole(AccountRoles.GlobalEditor);
+        var context = new SiteModeContext
+        {
+            ActiveMode = BuiltInSiteModes.Professional,
+            FrameworkState = SyntheticSiteModes.Development,
+            HasTrustedAccess = true
+        };
+        var item = new ContentItem
+        {
+            VisibleInModes = [BuiltInSiteModes.DorksAndDice.Id, BuiltInSiteModes.Professional.Id]
+        };
+
+        Assert.True(ContentAuthoringModeAccess.CanEditItem(principal, item, context));
+        Assert.True(ContentAuthoringModeAccess.CanSelectModes(principal, context));
+    }
+
+    [Fact]
+    public void ScopedEditorCanNotUseSyntheticDevelopmentAsCrossModeEditor()
+    {
+        var principal = PrincipalWithScopedEditor(BuiltInSiteModes.Professional.Id);
+        var context = new SiteModeContext
+        {
+            ActiveMode = BuiltInSiteModes.Professional,
+            FrameworkState = SyntheticSiteModes.Development,
+            HasTrustedAccess = true
+        };
+        var item = new ContentItem
+        {
+            VisibleInModes = [BuiltInSiteModes.Professional.Id]
+        };
+
+        Assert.False(ContentAuthoringModeAccess.CanEditItem(principal, item, context));
+        Assert.False(ContentAuthoringModeAccess.CanSelectModes(principal, context));
+    }
+
+    [Fact]
     public void OwnerInheritanceAuthorizesSharedModeContentWithoutDirectEditorClaims()
     {
         var dorksModeId = BuiltInSiteModes.DorksAndDice.Id;
         var professionalModeId = BuiltInSiteModes.Professional.Id;
-        var identity = new ClaimsIdentity(
-            [new Claim(ClaimTypes.Role, AccountRoles.Owner)],
-            authenticationType: "test",
-            nameType: ClaimTypes.Name,
-            roleType: ClaimTypes.Role);
-        var principal = new ClaimsPrincipal(identity);
+        var principal = PrincipalWithGlobalRole(AccountRoles.Owner);
 
         Assert.True(ContentAuthoringModeAccess.CanEditItem(
             principal,
@@ -130,6 +185,16 @@ public sealed class ContentAuthoringNavigationTests
         var identity = new ClaimsIdentity(
             [new Claim(AccountClaimTypes.ScopedRole, $"{modeId}:{ScopedAccountRoles.Editor}")],
             authenticationType: "test");
+        return new ClaimsPrincipal(identity);
+    }
+
+    private static ClaimsPrincipal PrincipalWithGlobalRole(string role)
+    {
+        var identity = new ClaimsIdentity(
+            [new Claim(ClaimTypes.Role, role)],
+            authenticationType: "test",
+            nameType: ClaimTypes.Name,
+            roleType: ClaimTypes.Role);
         return new ClaimsPrincipal(identity);
     }
 
