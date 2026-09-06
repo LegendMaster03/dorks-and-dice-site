@@ -1,41 +1,22 @@
 @using dorks_and_dice_site.Models.Identity
 @using dorks_and_dice_site.Services.Identity
 @using dorks_and_dice_site.Services.Site
-@inject ISiteModeRegistry SiteModeRegistry
-@inject SiteModeOptions SiteHosting
 @{
     var displayName = User.FindFirst(AccountClaimTypes.DisplayName)?.Value;
     var returnUrl = $"{Context.Request.Path}{Context.Request.QueryString}";
     var siteModeContext = Context.GetSiteModeContext();
     var showAnonymousLogin = siteModeContext.ActiveMode?.ShowAnonymousLoginInNavigation ?? true;
     var hasTrustedAccess = siteModeContext.HasTrustedAccess;
-    var isAdmin = User.IsInRole(AccountRoles.Admin);
-    var hasGlobalEditor = AccountRoleHierarchy.PrincipalHasGlobalRole(User, AccountRoles.GlobalEditor);
-    var editorScopes = User.Claims
-        .Where(claim => string.Equals(claim.Type, AccountClaimTypes.ScopedRole, StringComparison.Ordinal))
-        .Select(claim => claim.Value)
-        .Where(value => value.EndsWith($":{ScopedAccountRoles.Editor}", StringComparison.Ordinal))
-        .Select(value => value[..value.LastIndexOf(':')])
-        .ToHashSet(StringComparer.OrdinalIgnoreCase);
-    var editorModes = SiteModeRegistry.All
-        .Where(mode => hasGlobalEditor || editorScopes.Contains(mode.Id))
-        .ToList();
-    var canUseEditor = editorModes.Count > 0;
-    var singleEditorMode = !hasGlobalEditor && editorModes.Count == 1 ? editorModes[0] : null;
-    string? singleEditorHref = null;
-    if (singleEditorMode is not null)
-    {
-        if (string.Equals(siteModeContext.ActiveModeId, singleEditorMode.Id, StringComparison.OrdinalIgnoreCase))
-        {
-            singleEditorHref = "/editor/content";
-        }
-        else if (SiteHosting.TryGetCanonicalHost(singleEditorMode.Id, out var canonicalHost))
-        {
-            singleEditorHref = $"https://{canonicalHost}/editor/content";
-        }
-    }
-    var canAdminister = hasTrustedAccess && isAdmin;
-    var canUseDevelopmentTools = hasTrustedAccess && User.IsInRole(AccountRoles.Dev);
+    var activeModeId = siteModeContext.ActiveModeId;
+    var canUseEditor = activeModeId is not null
+        && AccountRoleHierarchy.PrincipalHasScopedRole(
+            User,
+            activeModeId,
+            ScopedAccountRoles.Editor);
+    var canAdminister = hasTrustedAccess
+        && AccountRoleHierarchy.PrincipalHasGlobalRole(User, AccountRoles.Admin);
+    var canUseDevelopmentTools = hasTrustedAccess
+        && AccountRoleHierarchy.PrincipalHasGlobalRole(User, AccountRoles.Dev);
 }
 @if (User.Identity?.IsAuthenticated == true)
 {
@@ -53,18 +34,7 @@
             @if (canUseEditor)
             {
                 <li>
-                    @if (hasTrustedAccess && singleEditorMode is not null)
-                    {
-                        <form method="post" action="/development-preview">
-                            <input type="hidden" name="siteMode" value="@singleEditorMode.Id" />
-                            <input type="hidden" name="returnUrl" value="/editor/content" />
-                            <button type="submit" class="dropdown-item">Editor</button>
-                        </form>
-                    }
-                    else
-                    {
-                        <a class="dropdown-item" href="@(singleEditorMode is null || singleEditorHref is null ? "/editor" : singleEditorHref)">Editor</a>
-                    }
+                    <a class="dropdown-item" href="/editor">Editor</a>
                 </li>
             }
             @if (canAdminister)
