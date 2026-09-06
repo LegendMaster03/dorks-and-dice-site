@@ -130,14 +130,37 @@ public sealed class ContentAuthoringNavigationTests
     }
 
     [Fact]
-    public void GlobalEditorCanEditCrossModeContentInSyntheticDevelopment()
+    public void GlobalEditorInSelectedPreviewModeRemainsModeScoped()
     {
         var principal = PrincipalWithGlobalRole(AccountRoles.GlobalEditor);
         var context = new SiteModeContext
         {
             ActiveMode = BuiltInSiteModes.Professional,
             FrameworkState = SyntheticSiteModes.Development,
-            HasTrustedAccess = true
+            HasTrustedAccess = true,
+            IsDevelopmentPreview = true
+        };
+
+        Assert.True(ContentAuthoringModeAccess.CanEditItem(
+            principal,
+            new ContentItem { VisibleInModes = [BuiltInSiteModes.Professional.Id] },
+            context));
+        Assert.False(ContentAuthoringModeAccess.CanEditItem(
+            principal,
+            new ContentItem { VisibleInModes = [BuiltInSiteModes.DorksAndDice.Id] },
+            context));
+        Assert.False(ContentAuthoringModeAccess.CanSelectModes(principal, context));
+    }
+
+    [Fact]
+    public void GlobalEditorAtDevelopmentRootCanEditAcrossModesAndSelectModes()
+    {
+        var principal = PrincipalWithGlobalRole(AccountRoles.GlobalEditor);
+        var context = new SiteModeContext
+        {
+            FrameworkState = SyntheticSiteModes.Development,
+            HasTrustedAccess = true,
+            IsDevelopmentPreview = true
         };
         var item = new ContentItem
         {
@@ -149,7 +172,7 @@ public sealed class ContentAuthoringNavigationTests
     }
 
     [Fact]
-    public void ScopedEditorCanNotUseSyntheticDevelopmentAsCrossModeEditor()
+    public void ScopedEditorInSelectedDevelopmentPreviewRemainsScopedToThatMode()
     {
         var principal = PrincipalWithScopedEditor(BuiltInSiteModes.Professional.Id);
         var context = new SiteModeContext
@@ -158,12 +181,15 @@ public sealed class ContentAuthoringNavigationTests
             FrameworkState = SyntheticSiteModes.Development,
             HasTrustedAccess = true
         };
-        var item = new ContentItem
-        {
-            VisibleInModes = [BuiltInSiteModes.Professional.Id]
-        };
 
-        Assert.False(ContentAuthoringModeAccess.CanEditItem(principal, item, context));
+        Assert.True(ContentAuthoringModeAccess.CanEditItem(
+            principal,
+            new ContentItem { VisibleInModes = [BuiltInSiteModes.Professional.Id] },
+            context));
+        Assert.False(ContentAuthoringModeAccess.CanEditItem(
+            principal,
+            new ContentItem { VisibleInModes = [BuiltInSiteModes.DorksAndDice.Id] },
+            context));
         Assert.False(ContentAuthoringModeAccess.CanSelectModes(principal, context));
     }
 
