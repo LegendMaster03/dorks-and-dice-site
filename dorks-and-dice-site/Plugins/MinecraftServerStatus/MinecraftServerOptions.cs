@@ -10,4 +10,5 @@ public sealed class MinecraftServerOptions
     public int TimeoutMilliseconds { get; set; } = 2000;
     public int CacheSeconds { get; set; } = 30;
     public int FailureCacheSeconds { get; set; } = 10;
+    public int ClientRefreshSeconds { get; set; } = 15;
 }
