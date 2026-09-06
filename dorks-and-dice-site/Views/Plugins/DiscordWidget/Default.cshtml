@@ -1,18 +1,11 @@
 @model dorks_and_dice_site.Plugins.DiscordWidget.DiscordWidgetViewModel
 
-@if (!string.IsNullOrWhiteSpace(Model.WidgetUrl))
-{
-    <div class="discord-widget-wrapper">
-        <iframe title="@Model.Title"
-                src="@Model.WidgetUrl"
-                width="350"
-                height="500"
-                allowtransparency="true"
-                frameborder="0"
-                sandbox="allow-popups allow-popups-to-escape-sandbox allow-same-origin allow-scripts"></iframe>
-    </div>
-}
-else
-{
-    <div class="alert alert-warning mb-0" role="alert">Discord widget URL is not configured.</div>
-}
+<div class="discord-widget-wrapper">
+    <iframe title="@Model.Title"
+            src="@Model.WidgetUrl"
+            width="350"
+            height="500"
+            allowtransparency="true"
+            frameborder="0"
+            sandbox="allow-popups allow-popups-to-escape-sandbox allow-same-origin allow-scripts"></iframe>
+</div>
