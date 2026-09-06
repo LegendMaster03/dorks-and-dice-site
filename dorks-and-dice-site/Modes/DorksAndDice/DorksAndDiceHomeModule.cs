@@ -1,4 +1,4 @@
-using dorks_and_dice_site.Services.GameServers.Minecraft;
+using dorks_and_dice_site.Plugins.MinecraftServerStatus;
 using dorks_and_dice_site.Services.Site;
 
 namespace dorks_and_dice_site.Modes.DorksAndDice;
