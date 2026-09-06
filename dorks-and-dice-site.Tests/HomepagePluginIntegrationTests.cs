@@ -1,7 +1,10 @@
 using System.Net;
 using dorks_and_dice_site.Models.Content;
+using dorks_and_dice_site.Models.GameServers.Minecraft;
 using dorks_and_dice_site.Services.Content;
+using dorks_and_dice_site.Services.GameServers.Minecraft;
 using dorks_and_dice_site.Services.Site;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -44,5 +47,72 @@ public sealed class HomepagePluginIntegrationTests
         Assert.Contains("Dorks &amp; Dice Discord Server", html, StringComparison.Ordinal);
         Assert.Contains("https://discord.com/widget?id=123456789&amp;theme=dark", html, StringComparison.Ordinal);
         Assert.DoesNotContain("{{discord-widget", html, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task DorksDbHomepageRendersInstalledMinecraftStatusPlugin()
+    {
+        using var rootFactory = new PublishedContentWebApplicationFactory();
+        using var factory = rootFactory.WithWebHostBuilder(builder =>
+        {
+            builder.ConfigureServices(services =>
+            {
+                var existing = services.Single(
+                    descriptor => descriptor.ServiceType == typeof(IMinecraftServerStatusService));
+                services.Remove(existing);
+                services.AddSingleton<IMinecraftServerStatusService>(new StubMinecraftServerStatusService());
+            });
+        });
+        var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false
+        });
+
+        using (var scope = factory.Services.CreateScope())
+        {
+            var authoring = scope.ServiceProvider.GetRequiredService<IContentAuthoringService>();
+            var model = authoring.GetNew("External");
+            model.Document.Id = "dorks-and-dice-home-minecraft";
+            model.Document.Slug = "dorks-and-dice-home-minecraft";
+            model.Document.TagsText = ContentTags.Homepage;
+            model.Document.VisibleModesSelection = [BuiltInSiteModes.DorksAndDice.Id];
+            model.Document.Body = """
+                # Dorks & Dice Fixture
+
+                ### Minecraft
+
+                Server launched October 17, 2025.
+
+                {{minecraft-server-status}}
+                """;
+            await authoring.CreateAsync(model.Document);
+        }
+
+        using var request = new HttpRequestMessage(HttpMethod.Get, "https://dorks-and-dice.com/");
+        request.Headers.Host = "dorks-and-dice.com";
+        var response = await client.SendAsync(request);
+        var html = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("Minecraft", html, StringComparison.Ordinal);
+        Assert.Contains("Server launched October 17, 2025.", html, StringComparison.Ordinal);
+        Assert.Contains("Online", html, StringComparison.Ordinal);
+        Assert.Contains("The Fools", html, StringComparison.Ordinal);
+        Assert.Contains("3", html, StringComparison.Ordinal);
+        Assert.Contains("20", html, StringComparison.Ordinal);
+        Assert.Contains("Version 26.2", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("{{minecraft-server-status", html, StringComparison.Ordinal);
+    }
+
+    private sealed class StubMinecraftServerStatusService : IMinecraftServerStatusService
+    {
+        public Task<MinecraftServerStatus> GetStatusAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult(new MinecraftServerStatus(
+                IsOnline: true,
+                Motd: "The Fools",
+                Version: "26.2",
+                OnlinePlayers: 3,
+                MaximumPlayers: 20,
+                CheckedAt: DateTimeOffset.UtcNow));
     }
 }
