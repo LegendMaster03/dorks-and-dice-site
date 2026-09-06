@@ -36,12 +36,20 @@ public sealed class ContentAuthoringEditViewModel
     public List<ContentAuthoringModeOption> Modes { get; set; } = [];
     public string? RenderedPreviewHtml { get; set; }
     public List<ContentRevisionSummary> History { get; set; } = [];
+    public string RouteBase { get; set; } = "/editor/content";
+    public bool IsCentralAuthoring { get; set; }
+    public bool AllowModeSelection { get; set; } = true;
+    public string? FixedModeDisplayName { get; set; }
 }
 
 public sealed class ContentRevisionSummary
 {
+    // Database ids remain the concurrency/parent keys. The user-facing revision number is scoped to
+    // the page, so unrelated page revisions do not create apparent gaps in one page's history.
     public long RevisionId { get; init; }
     public long? ParentRevisionId { get; init; }
+    public int RevisionNumber { get; init; }
+    public int? ParentRevisionNumber { get; init; }
     public DateTime CreatedUtc { get; init; }
 }
 
@@ -55,6 +63,9 @@ public sealed class ContentAuthoringIndexViewModel
         SelectedSourceKey, AuthoringSourceKey, StringComparison.OrdinalIgnoreCase);
     public List<ContentAuthoringSourceOption> Sources { get; init; } = [];
     public List<ContentAuthoringSourceOption> MoveTargets { get; init; } = [];
+    public string RouteBase { get; init; } = "/editor/content";
+    public bool IsCentralAuthoring { get; init; }
+    public string? ModeDisplayName { get; init; }
 }
 
 public sealed class ContentAuthoringIndexEntryViewModel
