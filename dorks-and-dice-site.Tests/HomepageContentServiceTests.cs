@@ -60,22 +60,43 @@ public sealed class HomepageContentServiceTests
     }
 
     [Fact]
-    public async Task MultipleVisibleHomepageDocumentsAreRejected()
+    public async Task MultipleVisibleHomepageDocumentsSelectMostSpecificNewestRevision()
     {
-        var catalog = new TestContentCatalog(
-        [
-            new ContentItem { Id = "home-one", Slug = "home-one", Title = "Home One" },
-            new ContentItem { Id = "home-two", Slug = "home-two", Title = "Home Two" }
-        ]);
+        var shared = new ContentItem
+        {
+            Id = "shared-home",
+            Slug = "shared-home",
+            Title = "Shared Home",
+            RevisionId = 30,
+            VisibleInModes = [BuiltInSiteModes.Professional.Id, BuiltInSiteModes.DorksAndDice.Id]
+        };
+        var olderDedicated = new ContentItem
+        {
+            Id = "dorks-home-old",
+            Slug = "dorks-home-old",
+            Title = "Dorks Home Old",
+            RevisionId = 10,
+            VisibleInModes = [BuiltInSiteModes.DorksAndDice.Id]
+        };
+        var newestDedicated = new ContentItem
+        {
+            Id = "dorks-home-new",
+            Slug = "dorks-home-new",
+            Title = "Dorks Home New",
+            RevisionId = 20,
+            VisibleInModes = [BuiltInSiteModes.DorksAndDice.Id]
+        };
+        var catalog = new TestContentCatalog([shared, olderDedicated, newestDedicated]);
         var service = new HomepageContentService(catalog, new TestPageComposer());
         var context = new SiteModeContext
         {
             ActiveMode = BuiltInSiteModes.DorksAndDice
         };
 
-        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => service.GetAsync(context));
+        var result = await service.GetAsync(context);
 
-        Assert.Contains("multiple visible homepage documents", exception.Message, StringComparison.Ordinal);
+        Assert.NotNull(result);
+        Assert.Same(newestDedicated, result.Item);
     }
 
     private sealed class TestPageComposer : IContentPageComposer
