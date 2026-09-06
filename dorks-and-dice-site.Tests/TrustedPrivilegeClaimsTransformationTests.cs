@@ -9,7 +9,7 @@ namespace dorks_and_dice_site.Tests;
 public sealed class TrustedPrivilegeClaimsTransformationTests
 {
     [Fact]
-    public async Task PublicRequestSuppressesAdminAndDevRoleClaims()
+    public async Task PublicRequestSuppressesTrustedRolesButPreservesSafeInheritedAuthority()
     {
         var context = CreateContext("dorks-and-dice.com", IPAddress.Parse("10.0.0.25"), localPort: 8080);
         TrustedAccessEvaluator.CaptureOriginalConnection(context);
@@ -20,6 +20,7 @@ public sealed class TrustedPrivilegeClaimsTransformationTests
         Assert.True(transformed.Identity?.IsAuthenticated);
         Assert.False(transformed.IsInRole(AccountRoles.Admin));
         Assert.False(transformed.IsInRole(AccountRoles.Dev));
+        Assert.True(transformed.IsInRole(AccountRoles.GlobalEditor));
         Assert.True(transformed.IsInRole("Member"));
     }
 
