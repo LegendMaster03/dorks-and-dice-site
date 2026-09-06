@@ -1,8 +1,6 @@
 using dorks_and_dice_site.Framework.Plugins;
 using dorks_and_dice_site.Models.Content;
-using dorks_and_dice_site.Models.GameServers.Minecraft;
 using dorks_and_dice_site.Services.Content;
-using dorks_and_dice_site.Services.GameServers.Minecraft;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 
