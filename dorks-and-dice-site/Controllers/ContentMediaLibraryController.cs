@@ -9,7 +9,6 @@ namespace dorks_and_dice_site.Controllers;
 
 [Authorize(Policy = AuthorizationPolicies.ModeEditor)]
 [Route("editor/media")]
-[Route("development/media")]
 [RequestSizeLimit(ContentInputPolicy.MaxAssetUploadBytes + 65_536)]
 public sealed class ContentMediaLibraryController : Controller
 {
@@ -30,7 +29,9 @@ public sealed class ContentMediaLibraryController : Controller
         {
             SourceKey = source,
             Sources = [],
-            Assets = (await _assets.GetForSourceAsync(source, cancellationToken)).ToList()
+            Assets = (await _assets.GetForSourceAsync(source, cancellationToken)).ToList(),
+            RouteBase = "/editor/media",
+            IsCentralAuthoring = false
         });
     }
 
