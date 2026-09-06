@@ -142,10 +142,38 @@ body {
   margin-bottom: 0;
 }
 
+.dorks-home-cta-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.dorks-home-cta-copy > h2 {
+  font-size: 1.75rem;
+  margin: 0 0 0.5rem;
+}
+
+.dorks-home-cta-copy > p,
+.dorks-home-cta-action > p {
+  margin-bottom: 0;
+}
+
+.dorks-home-cta-action {
+  flex-shrink: 0;
+}
+
 @media (min-width: 768px) {
   .dorks-home-section-header {
     flex-direction: row;
     align-items: flex-end;
+  }
+}
+
+@media (min-width: 992px) {
+  .dorks-home-cta-body {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
   }
 }
 
