@@ -60,18 +60,27 @@ Markdown-backed content is the supported article representation going forward. N
 
 ## ConsoleVariations presentation holdover
 
-The Professional mode stylesheet currently contains an article-specific rule for the ConsoleVariations "Free the Bees" icon:
+The Professional mode stylesheet still contains an article-specific compatibility rule for the ConsoleVariations "Free the Bees" icon. That selector is a remaining presentation artifact from the old article implementation, not a reason to preserve support for the retired HTML article format.
 
-```css
-/* Article-specific treatment for the ConsoleVariations Free the Bees icon. */
-.consolevariations-bee .content-detail-logo-link img[src$="consolevariations-bee.png"] {
-  ...
+The supported replacement is now the constrained metadata-driven content-header presentation mechanism. Shared CSS provides these reusable classes:
+
+```text
+content-logo-roundel
+content-logo-gold
+content-logo-dark
+```
+
+A content revision can opt into the treatment through `header.cssClass`, for example:
+
+```json
+{
+  "header": {
+    "cssClass": "content-logo-roundel content-logo-gold content-logo-dark"
+  }
 }
 ```
 
-This selector is a remaining presentation artifact from the old article implementation, not a reason to preserve support for the retired HTML article format. The current Markdown article itself is already the authoritative content representation.
-
-The selector may remain temporarily while the presentation/theme boundary is being refactored, but it must not become part of the reusable framework or remain an unexplained article-specific exception indefinitely. When the constrained content-presentation/theme mechanism is revisited, migrate this treatment to that supported mechanism and remove the named selector. Do not add arbitrary per-article CSS execution to preserve it.
+This keeps presentation declarative and constrained without coupling generic CSS to an article slug or media filename. The old ConsoleVariations-specific selector remains only until the authoritative database revision is updated to use the generic classes and verified. After that revision is live, remove the named selector. Do not add arbitrary per-article CSS execution.
 
 ## One-rebuild principle
 
