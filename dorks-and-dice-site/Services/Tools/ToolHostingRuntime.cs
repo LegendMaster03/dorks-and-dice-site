@@ -30,15 +30,19 @@ public static class ToolVisibility
             return false;
         }
 
-        // Registrations created before mode selection existed were Dorks & Dice-only.
-        // Keep that compatibility policy explicit and isolated until those registrations
-        // are migrated to an explicit mode list.
-        if (tool.Modes is null || tool.Modes.Count == 0)
-        {
-            return string.Equals(modeId, SiteModeValues.DorksAndDiceModeValue, StringComparison.Ordinal);
-        }
+        return GetEffectiveModeIds(tool).Contains(modeId, StringComparer.Ordinal);
+    }
 
-        return tool.Modes.Contains(modeId, StringComparer.Ordinal);
+    public static IReadOnlyList<string> GetEffectiveModeIds(ToolRegistration tool)
+    {
+        ArgumentNullException.ThrowIfNull(tool);
+
+        // Registrations created before mode selection existed were Dorks & Dice-only.
+        // Keep that compatibility policy in one boundary until those persisted registrations
+        // have been migrated to an explicit mode list.
+        return tool.Modes is { Count: > 0 }
+            ? tool.Modes
+            : [SiteModeValues.DorksAndDiceModeValue];
     }
 }
 
