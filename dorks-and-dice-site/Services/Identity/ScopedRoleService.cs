@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using dorks_and_dice_site.Models.Identity;
+using dorks_and_dice_site.Services.Site;
 using Microsoft.AspNetCore.Identity;
 
 namespace dorks_and_dice_site.Services.Identity;
@@ -14,10 +15,14 @@ public interface IScopedRoleService
 public sealed class ScopedRoleService : IScopedRoleService
 {
     private readonly UserManager<ApplicationUser> _userManager;
+    private readonly ISiteModeRegistry _siteModeRegistry;
 
-    public ScopedRoleService(UserManager<ApplicationUser> userManager)
+    public ScopedRoleService(
+        UserManager<ApplicationUser> userManager,
+        ISiteModeRegistry siteModeRegistry)
     {
         _userManager = userManager;
+        _siteModeRegistry = siteModeRegistry;
     }
 
     public async Task<IReadOnlySet<string>> GetRolesAsync(ApplicationUser user, string scope)
@@ -72,9 +77,9 @@ public sealed class ScopedRoleService : IScopedRoleService
 
     private static string BuildClaimValue(string scope, string role) => $"{scope}:{role}";
 
-    private static void ValidateScope(string scope)
+    private void ValidateScope(string scope)
     {
-        if (!AccountRoleScopes.All.Contains(scope, StringComparer.Ordinal))
+        if (!_siteModeRegistry.TryGetById(scope, out var mode) || mode!.SupportsScopedEditor == false)
         {
             throw new ArgumentOutOfRangeException(nameof(scope), scope, "Unknown account role scope.");
         }
