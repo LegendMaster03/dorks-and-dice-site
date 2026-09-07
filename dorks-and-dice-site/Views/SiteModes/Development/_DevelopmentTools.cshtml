@@ -23,7 +23,7 @@
 
 <div class="development-preview-toolbar border-bottom">
     <div class="container-fluid py-2">
-        <div class="d-flex align-items-center gap-3 flex-nowrap">
+        <div class="d-flex align-items-center gap-2 gap-md-3 flex-wrap">
             <span class="small fw-semibold text-uppercase flex-shrink-0">Trusted Preview</span>
             <form class="d-flex align-items-center gap-2 flex-nowrap mb-0" method="post" action="/development-preview" data-auto-submit="change">
                 <input type="hidden" name="returnUrl" value="@Model.ReturnUrl" />
@@ -38,7 +38,7 @@
 
             @if (showPreviewSettings)
             {
-                <div class="dropdown ms-auto flex-shrink-0">
+                <div class="dropdown ms-md-auto flex-shrink-0">
                     <button class="btn btn-sm btn-outline-secondary dropdown-toggle"
                             type="button"
                             data-bs-toggle="dropdown"
