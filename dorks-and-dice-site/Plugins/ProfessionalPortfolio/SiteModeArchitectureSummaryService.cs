@@ -70,7 +70,7 @@ public sealed class SiteModeArchitectureSummaryService : ISiteModeArchitectureSu
             ("/", "mode-adaptive home"),
             ("/resume", "professional resume surface"),
             ("/articles", "mode-aware article index"),
-            ("/site-modes/professional/css/site.css", "professional-owned stylesheet"),
+            ("/site-modes/professional/css/site.css", "professional-owned asset"),
             ("/site-modes/dorks-and-dice/css/site.css", "community-mode asset"),
             ("/site-modes/unassigned/images/sample.png", "fallback-mode asset")
         };
