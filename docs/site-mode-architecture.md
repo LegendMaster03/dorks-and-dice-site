@@ -1,236 +1,127 @@
-# Site Mode Architecture
+# Site mode architecture
 
-This project uses a site mode architecture so one ASP.NET Core MVC codebase can serve multiple site identities from
-different domains without duplicating the whole application.
+The application serves multiple site identities from one ASP.NET Core MVC deployment while keeping framework behavior, authored content, presentation, plugins, and substantial Tools behind explicit boundaries.
 
-The current modes are:
+## Runtime concepts
 
-- `Professional`: Kyle Barnett professional resume, portfolio, articles, and professional-owned assets.
-- `DorksAndDice`: group-facing Dorks & Dice site experience.
-- `Development`: local-only preview mode used for testing shared routes, mode switching, content sources, and unlisted content.
-- `Unassigned`: bare-bones fallback for domains that are connected to the app but not mapped to a mode.
+The current **normal site modes** are:
 
-## Goals
+- `professional`
+- `dorks-and-dice`
 
-- Keep one deployable codebase while the site identities are still closely related.
-- Make ownership explicit so professional pages, Dorks & Dice pages, and shared pages do not blend accidentally.
-- Allow shared infrastructure for layout, routing, content handling, static files, and deployment.
-- Preserve a future path to split one mode into a separate app if it grows enough to justify that.
-- Keep content storage replaceable and composable so the site can add databases or move a database off-host without changing the content model.
+Two framework-owned runtime states are intentionally not normal modes:
 
-## Request Flow
+- **Trusted Preview** — synthetic development/control-plane context used to inspect normal modes and explicitly selected content sources.
+- **Fallback** — minimal framework-owned behavior used when no normal site identity/presentation applies.
 
-`SiteModeMiddleware` resolves the active mode for each request.
+Normal mode definitions are consumed through stable IDs and `ISiteModeRegistry`. The final persistence mechanism for mode definitions remains an independent deployment/productization decision; generic framework code must not depend on normal modes being permanently defined in C# or in a database.
+
+## Request flow
+
+`SiteModeMiddleware` and the site-mode services establish the active request context.
+
+At a high level:
 
 1. Normalize the request host.
-2. Check the host against configured professional, Dorks & Dice, and development host lists.
-3. On development hosts, read the selected preview mode from `DevelopmentPreviewSiteMode`.
-4. On development hosts, read the unlisted-content flag and any explicit content-source selection.
-5. Store the resulting `SiteModeContext` in `HttpContext.Items`.
-6. Check the requested path through `SiteRouteOwnership`.
-7. For real domains, re-execute blocked routes as a normal 404.
-8. For development hosts, keep the route inspectable and show a warning in the development ribbon.
+2. Resolve a normal mode from deployment configuration/registry data when the host belongs to one.
+3. On a trusted development host, resolve the Trusted Preview state and any explicitly selected normal-mode preview.
+4. Resolve content-source composition for the active normal mode, or explicit developer-selected sources in Trusted Preview.
+5. Store `SiteModeContext` for downstream routing, authorization, content, presentation, plugins, and Tools.
+6. Apply route ownership before exposing a mode-owned route.
+7. Return normal 404 behavior when a real host requests a route owned by another mode.
 
-Development cookies are ignored on real domains. Query strings are not trusted as a public mode-switching mechanism.
+Development preview cookies are diagnostic controls and are ignored as public mode-selection authority on real domains.
 
-## Route Ownership
+## Route ownership
 
-Route ownership lives in `dorks-and-dice-site/Services/Site/SiteRouteOwnership.cs`.
+Route ownership is centralized in `Services/Site/SiteRouteOwnership.cs`.
 
-Current rules:
+Important public/shared routes include:
 
-- `/` is mode-adaptive.
-- `/articles` and `/articles/...` are mode-adaptive.
-- `/resume` and `/resume/...` are Professional-owned.
-- `/development/content` is authoring infrastructure restricted to authorized development access.
-- `/content/media/...` is shared infrastructure whose asset service enforces page and revision visibility.
-- `/health`, static framework assets, and shared error routes are shared exceptions.
-- `/site-modes/professional/...` is Professional-owned.
-- `/site-modes/dorks-and-dice/...` is Dorks & Dice-owned.
-- `/site-modes/unassigned/...` is shared fallback asset space.
+- `/` — mode-adaptive database-backed homepage;
+- `/articles` and `/articles/{slug}` — mode-aware public content;
+- `/resume` and `/resume/{slug}` — Professional-owned aliases/routes;
+- `/content/media/...` — shared managed-media transport with visibility enforcement;
+- `/site.txt` and `/llms.txt` — public mode-specific text representations;
+- `/sitemap.xml` — database-aware public sitemap;
+- `/health` — shared deployment health route.
 
-`Development` mode can inspect all routes locally, but shared routes still need explicit Development handling when more
-than one mode could reasonably own the route.
+Development/authoring routes are protected separately and are not public mode content.
 
-## Views
+A real Dorks & Dice request for `/resume`, for example, receives normal 404 behavior. Trusted Preview may inspect cross-mode routes when authorized because its purpose is diagnostics, not public tenancy.
 
-Mode-owned views live under `dorks-and-dice-site/Views/SiteModes/`.
+## Presentation ownership
 
-Examples:
+Normal modes own visual identity and presentation defaults rather than framework routing/content behavior.
 
-- `Views/SiteModes/Professional/Home.cshtml`
-- `Views/SiteModes/Professional/Resume/`
-- `Views/SiteModes/DorksAndDice/Home.cshtml`
-- `Views/SiteModes/Development/_DevelopmentTools.cshtml`
-- `Views/SiteModes/Unassigned/Home.cshtml`
+Mode presentation can define values such as:
 
-Unified content detail rendering lives under `Views/Content/`. The article index remains under `Views/Articles/`, but
-individual Project, Experience, and Article detail pages no longer require one Razor file per page.
+- title suffix;
+- default meta description;
+- favicon;
+- default meta/social image;
+- structured data;
+- article-index presentation.
 
-## Branding And Mode-Specific Components
+`ISiteModePresentationService` resolves the active normal-mode presentation and falls back to framework presentation when a presentation part is unavailable.
 
-Each independently rendered mode-specific component has its own Razor partial. Branding currently uses:
+Branding partials remain mode-owned, for example:
 
 ```text
 Views/SiteModes/{Mode}/Branding/_Header.cshtml
 Views/SiteModes/{Mode}/Branding/_Footer.cshtml
 ```
 
-The shared layout asks `ISiteModePartialResolver` for the active mode's header and footer paths and renders those partials
-directly. The resolver checks whether the requested component exists for the active mode. When it does not, the resolver
-returns the matching component under `Views/SiteModes/Unassigned/` before Razor rendering begins.
+The shared layout resolves those components before rendering. Mode-specific Razor files should not become central dispatchers that branch across independent site identities.
 
-Unassigned components and Unassigned-owned static assets are the known fallback pieces. Any mode may load those fallback
-assets when a resolved fallback component needs them. This is separate from the Unassigned fallback page itself, which is
-the home page for unmapped hosts.
+## Stylesheets and static presentation assets
 
-Mode-specific Razor files must not act as dispatchers by branching over a component identifier. In particular, avoid a
-single partial with an `if`, `else if`, or `switch` that chooses between independently rendered components such as a
-header and footer. Component selection belongs in a resolver or service; the selected partial should contain only the
-markup for that component.
-
-Use C# presentation or branding objects for structured metadata and behavior such as site names, theme identifiers,
-logo paths, and default descriptions. Keep substantial HTML in Razor partials rather than constructing markup in C#.
-
-This standard provides:
-
-- one renderable responsibility per partial
-- mode selection before rendering
-- component-specific Unassigned fallback
-- independent testing and maintenance of each component
-- a direct extension path when another mode-specific component is added
-
-## Presentation Modules
-
-Non-view presentation defaults live under:
-
-```text
-dorks-and-dice-site/Services/Site/ModePresentation/
-```
-
-Each mode can define:
-
-- title suffixes
-- default meta descriptions
-- favicon paths
-- article index copy
-- article filter visibility policy
-
-`SiteModePresentationService` calls the active mode module and falls back to the same function on the Unassigned module
-when a mode module is missing or explicitly reports that a presentation part is unavailable.
-
-## Static Assets
-
-Shared framework assets remain at root paths:
-
-- `wwwroot/css`
-- `wwwroot/js`
-- `wwwroot/lib`
-- `wwwroot/robots.txt`
-
-`wwwroot/favicon.ico` remains the Unassigned fallback favicon. Mode-specific favicons live with other mode-owned assets
-and are emitted by the shared layout through `ISiteModePresentationService`.
-
-Mode-owned assets live under:
+Shared framework assets live under the normal shared `wwwroot` paths. Mode-specific presentation assets live under:
 
 ```text
 wwwroot/site-modes/{mode}/
 ```
 
-Professional examples:
+Current legitimate Professional static assets include its stylesheet and favicon. Current legitimate Dorks & Dice static assets include its stylesheet/branding assets.
 
-- `wwwroot/site-modes/professional/images/profile/kyle-headshot.jpg`
-- `wwwroot/site-modes/professional/images/articles/`
-- `wwwroot/site-modes/professional/images/logos/`
-- `wwwroot/site-modes/professional/files/kyle-resume.pdf`
-- `wwwroot/site-modes/professional/files/kyle-resume.txt`
+Authored media is different: résumé PDFs, credentials, article images, homepage headshots, and similar page-owned media belong in the managed content-media system rather than source-tree static copies.
 
-This means Dorks & Dice and Unassigned domains cannot directly load Professional-owned media or files.
+The legacy Professional file-backed homepage/resume implementation and its duplicate static résumé/contact/credential/headshot assets have been retired. Professional metadata/structured data now references the managed homepage headshot. The Professional favicon remains static because it is presentation identity rather than authored content.
 
-## Stylesheets
+Shared CSS must contain only intentionally shared behavior. Mode-specific selectors belong in the corresponding mode stylesheet.
 
-The layout always loads the shared foundation first:
+## Unified content model
 
-```text
-wwwroot/css/site.css
-```
+Navigable authored content uses one revision-oriented model. Context is represented by tags rather than separate page stores.
 
-Shared CSS contains only intentionally shared behavior and components, including accessibility focus states, base
-document behavior, shared article controls, and shared image-modal behavior. It must not define a site identity or contain
-Professional-only, Dorks & Dice-only, or Development-tool component rules.
-
-Mode-owned stylesheets are:
+Current important contexts include:
 
 ```text
-wwwroot/site-modes/professional/css/site.css
-wwwroot/site-modes/dorks-and-dice/css/site.css
-wwwroot/site-modes/development/css/site.css
-```
-
-`ISiteModeStylesheetResolver` selects the stylesheet paths before Razor renders them:
-
-- `Professional` loads the Professional stylesheet after shared CSS.
-- `DorksAndDice` loads the Dorks & Dice stylesheet after shared CSS.
-- `Development` loads only the Development stylesheet after shared CSS.
-- `Unassigned` loads no mode stylesheet and depends only on shared CSS.
-
-The absence of an Unassigned stylesheet is intentional. Unassigned is the visual and structural fallback and must remain
-independent only on shared infrastructure.
-
-On a development host, the selected preview mode stylesheet loads first and the Development stylesheet loads afterward
-for the preview toolbar and diagnostics. For example, Dorks & Dice preview loads:
-
-```text
-shared CSS
-Dorks & Dice CSS
-Development CSS
-```
-
-CSS ownership rules:
-
-- Professional resume, portfolio, contact, credential, project, dark-mode, responsive, and print rules belong to Professional.
-- Discord presentation, campaigns, game servers, and Dorks & Dice visual identity belong to Dorks & Dice.
-- Development ribbon and diagnostic-tool rules belong to Development.
-- Rules used intentionally across site identities belong to shared CSS.
-- Do not place mode-owned selectors in shared CSS merely because the shared layout loads it everywhere.
-
-## Unified Content System
-
-Projects, Experience entries with detail pages, and Articles use one content model. Their distinction is the context in
-which a page is listed, not a separate storage or controller type.
-
-`ContentItem` provides the shared fields needed by those contexts, including:
-
-- stable `Id`
-- public `Slug`
-- title, subtitle, summary, dates, images, links, and detail-header metadata
-- optional context-specific presentations
-- `VisibleInModes`
-- tags
-- revision ID, body format, and body
-
-Context is many-to-many and is represented by the existing tag system:
-
-```text
+homepage
+article
 project
 experience
-article
 ```
 
-A single page can therefore be both a Project and Experience entry without duplicating its detail page or stable
-identity. Skyblivion, Skywind, and Safe Future are examples of content that can be presented in more than one context.
+A page may participate in multiple contexts. A Project may also be an Experience record without duplicating its stable identity/detail page.
 
-Context tags and internal tags are not exposed as normal user-facing tags. `_internal:unlisted` is the current internal
-listing-state tag. Listed is the default state, so there is no positive `listed` flag that every normal page must carry.
+`ContentItem` carries shared content fields including:
 
-`VisibleInModes` remains typed data rather than a free-form tag because it is an access/identity rule. Development detail
-preview may inspect content that is not eligible for the selected real mode, but real domains still enforce mode
-eligibility before rendering.
+- stable content ID;
+- public slug;
+- title/subtitle/summary/date/link fields;
+- structured detail-header metadata;
+- optional context-specific presentations;
+- tags;
+- visible normal-mode IDs;
+- body format/body;
+- revision identity.
 
-### Revision Storage
+Mode visibility remains structured data because it is an eligibility boundary rather than a user-facing categorization tag.
 
-The content database uses a revision-oriented schema inspired by MediaWiki's separation of page identity from page
-revision history:
+## Revision storage
+
+Content uses stable page identity plus immutable revisions. The schema includes:
 
 ```text
 content_page
@@ -244,237 +135,171 @@ content_revision_asset
 content_redirect
 ```
 
-`content_page` owns the stable content key, current slug, and pointer to the current revision. `content_revision` stores
-immutable revision content and an optional parent revision. Tags and visible modes are attached to each revision so an
-old revision remains a complete historical snapshot.
+`content_page` owns stable identity, current slug, and current-revision pointer. Saving creates a new immutable revision rather than overwriting the previous one.
 
-The current page is therefore selected through `page_current_revision_id`; saving does not overwrite the previous
-revision.
+Revision tags and visible modes preserve historical context. Redirects target stable page identity, avoiding redirect chains when slugs change again.
 
-The body format is currently `markdown`. `ContentBodyRenderer` uses Markdig and supports registered `{{directive}}`
-blocks for application-owned dynamic sections. This keeps ordinary authoring content out of Razor while preserving a
-controlled extension point for pages that need live application data.
+The supported authored body format is Markdown. `ContentBodyRenderer` uses the shared rendering/sanitization boundary and supports constrained application-owned directives/components. Authored content can select an installed capability but can not inject arbitrary executable code.
 
-Raw HTML in Markdown is disabled. Rendered Markdown and application-owned directive output pass through the configured
-sanitization boundary. Ordinary content cannot weaken that boundary or inject arbitrary HTML.
+## Database-backed homepages
 
-Media records have stable identities independent of pages. `content_page_asset` records same-database ownership or
-attachment, `content_page_asset_dependency` records source-qualified Global dependencies that cannot use a relational
-foreign key across databases, and `content_revision_asset` records the exact media keys referenced by each revision.
-The public media endpoint serves an asset only when the current revision of a page in the composed catalog references
-that asset and the page is visible for the active site mode. Uploading, attaching, or retaining an asset only in an older
-revision does not publish it.
+A normal mode homepage is ordinary content with:
 
-`content_redirect` stores route-namespace aliases that point directly to stable page identities. Renaming a page records
-its previous slug in each applicable namespace. Because redirects target pages instead of other redirects, later slug
-changes update the canonical destination without creating redirect chains. Redirect records move with their pages when
-content is synchronized between sources.
+```text
+tag: homepage
+visible mode: <normal mode ID>
+```
 
-The Professional resume still uses `Content/Resume/resume.json` for resume-only structures that are not navigable detail
-content, such as contact links, education, awards, skills, and leadership. Project and Experience detail records are no
-longer stored there.
+Homepage resolution is:
 
-### Database Sources
+```text
+request
+  -> active normal mode
+  -> composed configured content sources
+  -> exactly one eligible current page tagged homepage
+       -> shared database-backed homepage renderer
+  -> framework fallback if no normal homepage/module applies
+```
 
-Content storage is configured as named database sources under `ContentStorage:Sources`. A source owns:
+Both current normal sites use this database-backed path:
 
-- a stable source key
-- a display name
-- a provider name
-- a named connection string
+- `professional-home` is authoritative in External;
+- `dorks-and-dice-home` is authoritative in External.
 
-The repository can read more than one source during the same request. Source order matters: sources are composed from
-base to override, and a later source replaces an earlier page with the same stable content ID. If two different stable
-IDs claim the same slug, the later source owns that slug in the composed catalog.
+Their old compiled normal-mode homepage fallbacks are retired. The framework fallback remains registered because it is a framework concern, not authored normal-mode content.
 
-`ContentStorage:GlobalSources` is the ordered global source list.
+`/resume` is a Professional-owned alias through the same `ISiteModeHomeService`; it does not have a second résumé source of truth.
 
-Only real site identities receive per-mode source-list differences:
+## Page composition and plugins
 
-- `Professional` starts from the global list unless `InheritGlobal` is disabled, then applies its configured `Remove` and `Add` entries.
-- `DorksAndDice` follows the same rule.
-- `Unassigned` does not have a mode-specific source layer. It uses the global list exactly.
-- `Development` does not inherit the global list and does not have a configured mode-specific list. Its source set is selected manually in the development UI.
+Dynamic blocks that are small, in-process, and reusable are exposed through constrained page-component/plugin boundaries.
 
-This separation is intentional. Unassigned is a fall-through identity and should represent the global default directly.
-Development is a diagnostic environment and should not accidentally imply a production content-source policy.
+Current examples include:
 
-`Local` is the SQLite authoring workspace. `External` is the published PostgreSQL database and is configured as the
-Global source. A mode may add its own database while inheriting Global. An article may depend on media in its own source
-or in Global, but not in an unrelated mode database.
+- `content-collection` / Professional portfolio presentations;
+- `discord-widget`;
+- `minecraft-server-status`.
 
-Source keys are persistent data identifiers, not only configuration labels. Cross-source media dependencies store the
-source key alongside the asset key, so renaming a configured source requires an explicit data migration.
+The Professional homepage uses database-backed Experience and Project records through the portfolio collection component rather than embedding duplicate records in homepage Markdown.
 
-The local authoring database is selected separately through `ContentStorage:AuthoringSource`. The development editor
-writes revisions only to that source instead of writing through the composed read catalog.
+The Dorks & Dice homepage uses installed Discord and Minecraft components. Minecraft host/port/protocol/cache configuration remains deployment-owned; authored Markdown can select the component but can not redirect the service to arbitrary network targets.
 
-### Authoring Workflow
+Substantial applications with independent lifecycle/data/runtime boundaries belong under Tools rather than being forced into page components or mode definitions.
 
-Development hosts expose a lightweight wiki-style authoring surface at `/development/content`.
+## Managed media
 
-It can:
+Managed media has stable identity independent of page revisions and is exposed through:
 
-- list locally authored content
-- create a new stable page
-- edit structured revision metadata
-- edit Markdown body content
-- preview rendered body content
-- save a new revision without destroying the previous revision
-- show revision history
-- reject a stale save when the current revision changed after the editor was opened
-- upload media into a selected database library
-- search and attach permitted media dependencies to an article
-- promote one article, or push the complete Local workspace, to Global
+```text
+/content/media/{assetKey}/{fileName}
+```
 
-Local is intentionally transient and is the default authoring workspace, but all configured sources remain directly
-authorable for review corrections or source-specific content. Promotion copies the complete revision graph, metadata, visibility, tags, media
-ownership, and source-qualified dependencies to Global before removing the Local page. Unlisted pages can be promoted
-for human review; listed pages can be promoted for publication. After the initial content promotion, the committed
-Local database is a valid empty authoring workspace.
+The media system supports validated image/PDF uploads, stable media URLs, current-page/revision references, same-source ownership/attachments, and source-qualified cross-source dependencies.
 
-The editor is not a public CMS. Localhost access requires the original socket peer to be loopback; forwarded headers can
-not turn a private-network client into a local client. Remote development ingress requires the configured Tailscale app
-capability on its dedicated port.
+The media library can replace the bytes behind an existing asset while retaining its stable key, canonical filename, URL, page attachments/dependencies, and revision references. Identical bytes are a no-op, and replacement must remain within the validated media type boundary.
 
-#### Visual editor limitation
+Authoring surfaces expose page dependency information before replacement. PDF assets support inline preview plus an explicit Open PDF action.
 
-Markdown remains the canonical body format. The current Visual editor renders Markdown to sanitized HTML in a browser
-`contenteditable` surface and converts the edited DOM back to Markdown when it is saved. It protects application-owned
-directives and supports the standard structures exposed by its toolbar, but this conversion is not a lossless Markdown
-syntax-tree round trip. In particular, entering Visual mode and then saving can normalize or discard syntax details such
-as fenced-code language identifiers, table alignment, ordered-list starting numbers, link titles, and unsupported nested
-structures.
+Public media is served only when current eligible content in the active mode/source composition references the asset. Merely retaining an orphaned asset or an old historical revision does not make the media public.
 
-Until the Visual editor uses a Markdown-native document model, Source mode is required for content containing those
-features. Follow-up work should avoid rewriting an unchanged visual surface, detect unsupported constructs, and add
-client-side round-trip tests for every supported Markdown structure. The metadata editor renders Source mode as its
-no-JavaScript default and only activates the field-driven Standard mode after its script initializes successfully.
+## Content sources
 
-The current editor deliberately exposes structured metadata as JSON rather than building a large administrative UI too
-early. A richer editor can later sit on the same revision model without changing stored content.
+Content stores are configured as named sources with stable source keys. Each source specifies its provider and named connection string.
 
-The design takes MediaWiki as reference and inspiration rather than attempting to duplicate MediaWiki wholesale. The
-important ideas retained here are stable page identity, separate revisions, a current-revision pointer, linkable page
-content, and an authoring path that does not require application source changes for every new page.
+Sources are composed in order. Later sources can override earlier records with the same stable content identity; slug collisions across different identities are resolved according to the content-source rules rather than incidental query order.
 
-The Dorks & Dice mode may eventually use the same content foundation for campaign knowledge management. That direction
-can combine wiki-style pages with selected campaign-planning and linked-note ideas such as characters, locations,
-factions, session notes, timelines, cross-links, and private/public visibility boundaries.
+`External` is the live published content source in this deployment. `Local` is an authoring workspace used when needed; it may validly be empty. After the homepage/content promotion work, the current Local workspace is empty while published content is authoritative in External.
 
-### Listing And Eligibility
+Normal modes receive deployment-defined source composition. Trusted Preview does not imply production source policy: an authorized developer may explicitly select which configured source or sources to inspect.
+
+Cross-source media dependencies persist the source key alongside the asset key, so source keys are data identifiers and can not be casually renamed without migration.
+
+## Authoring workflow
+
+The Development authoring surface supports revision-oriented editing without requiring source-code changes for ordinary authored content.
+
+Permanent authoring capabilities include:
+
+- list/search configured source content;
+- create pages;
+- edit structured metadata and Markdown;
+- save immutable revisions;
+- view revision history;
+- detect stale concurrent saves;
+- upload and attach managed media;
+- inspect media dependencies;
+- replace managed media in place;
+- deliberately move a single page between configured sources when safe.
+
+The single-page Move operation copies the complete page/revision graph and applicable media/dependency/redirect information before removing the source copy. It refuses unsafe target conflicts rather than overwriting published history.
+
+Bulk transfer was used as a one-time migration mechanism and is not part of the permanent normal authoring UX.
+
+Direct authoring of a configured source is allowed only through the normal authorized source-aware editor path. Normal Editors remain mode-scoped; Trusted Preview/Dev authority is separate and must not be inferred from ordinary Editor access.
+
+## Visibility and listing
+
+Listing and access are separate concepts.
 
 Unlisted content:
 
-- is identified by `_internal:unlisted`
-- is hidden from normal indexes
-- remains accessible by direct URL when eligible for the current mode
-- renders `noindex, nofollow`
-- can be exposed in development preview through the unlisted-content toggle
+- is hidden from normal indexes;
+- may remain directly addressable when otherwise eligible;
+- uses noindex/nofollow presentation;
+- may be inspected in Trusted Preview when the authorized preview setting allows it.
 
-`Development` mode ignores `VisibleInModes` for local inspection, but Development has no automatic content database
-selection. The developer must select the database source or sources to inspect.
+Normal public requests first pass source composition and mode eligibility. User-facing search/tag/filter controls operate only on the resulting eligible set and are never a substitute for access control.
 
-Mode eligibility is an internal content gate, not a user-facing filter. After the current mode and source composition have
-determined which content is eligible, indexes can expose normal user filters such as search, category, and tags.
+## Public text and sitemap views
 
-## User-Facing Filters
+Public crawler/AI-facing text is generated at request time from the same current public catalog as the site rather than from a separate résumé JSON/static export.
 
-User-facing filters operate only on content that has already passed source composition, the active mode's ownership, and
-visibility rules. They are a convenience layer for small curated indexes, not a replacement for mode access control or
-content storage.
+- `/site.txt` — fuller current public text representation;
+- `/llms.txt` — compact discovery/index representation.
 
-Current user-facing filters include:
+Synthetic Trusted Preview/Development context and unlisted/private content are excluded from these public exporters.
 
-- project tags on the Professional resume project list
-- article search
-- article categories
-- article tags
+The sitemap is likewise assembled from current database-backed public routes/content rather than only compiled/static routes.
 
-Projects and Articles now use the same generic `data-content-*` JavaScript binding. Context-specific Razor markup decides
-which controls and fields are present, while one filter implementation handles search, tags, categories, status counts,
-and supported ordering behavior.
+## Identity and authorization boundary
 
-These filters are intentionally separate from mode eligibility. A visitor can narrow visible content, but cannot use a
-filter control to reveal content that is not available to the current mode.
+Authentication and authorization are framework infrastructure. Mode-specific roles/claims are evaluated against the current normal mode rather than granting global authority implicitly.
 
-Search inputs can suggest known tags through the browser's datalist behavior. Search terms follow a small advanced
-tag-query subset adapted to this site's content model:
+Trusted administrative/development access is a separate condition and remains constrained by the configured trusted-access boundary. Real public host behavior does not accept preview cookies as authority.
 
-- `architecture web-development` requires both terms.
-- `architecture -game-dev` requires `architecture` and excludes `game-dev`.
-- `~architecture ~data-science` matches either term.
-- `web-*` matches tags or text that begin with `web-`.
-- `tag:architecture`, `category:"Technical Investigation"`, `title:website`, and `text:client` search specific fields.
-- `order:title`, `order:date`, `order:tagcount`, and `order:featured` sort supported lists.
+Authoring, media mutation, source selection, account administration, and Tool administration remain protected operations.
 
-The search syntax operates only after source selection, route ownership, and mode visibility have already limited the
-available content.
+## Tools
 
-Taxonomy should remain intentional. New tags should be added when they improve an existing listing, query, or future
-content relationship rather than merely because the tag system can represent them.
+Tools are larger applications/workflows that may have their own data, lifecycle, or containerized/separate runtime.
 
-## Local Development Preview
+The framework owns Tool registration, exposure, health/proxy/hosting boundaries, and mode-aware access. A normal mode can expose a Tool without absorbing the Tool's implementation into the mode definition.
 
-Development hosts are configured in `SiteModeOptions`.
+This keeps future D&D campaign applications, initiative tracking, and other substantial systems independently evolvable.
 
-The development ribbon:
+## Extension rules
 
-- shows the selected preview mode
-- allows switching between Dorks & Dice, Professional, and Development
-- has an Articles submenu
-- moves the unlisted-content toggle into the Articles submenu
-- links to the development content editor from the Articles submenu
-- lists every configured content database source and allows each one to be enabled or disabled independently
-- applies changes immediately without an apply button
-- stores preview mode, unlisted state, and explicit source selection in cookies
-- shows route mismatch warnings when the selected mode could not access the current route on a real domain
+When adding another normal mode:
 
-When a development host previews Professional or Dorks & Dice and no explicit source selection has been made, the
-selected real mode's configured source list is used. Once the developer changes a source toggle, that explicit source set
-becomes the development selection. Selecting Development itself starts with no inherited database sources; its sources
-must be chosen manually.
+1. Give it a stable registered ID and deployment-owned host/source configuration.
+2. Supply only the presentation/branding/plugins/Tools that identity needs.
+3. Author normal pages/homepage through the content system rather than duplicating framework controllers or compiled content stores.
+4. Use generic route/content/media/authorization contracts wherever possible.
+5. Add an explicit framework extension only when the requirement is genuinely reusable or application-owned.
 
-The selected preview mode is the source of truth for branding, layout, navigation, mode-owned CSS, and mode visibility
-while on a development host. Development-tool CSS is added as an overlay after the selected mode stylesheet. Content
-source selection is deliberately a separate development control so storage composition can be tested independently from
-visual/site-mode selection.
+When a mode later needs to split into a separate deployment, stable mode IDs, source ownership, plugin/Tool boundaries, and independently owned presentation assets provide the extraction seams.
 
-## Future Extraction Path
+## Current convergence state
 
-This architecture intentionally avoids premature separation, but it does not block future separation.
+For this refactor cycle:
 
-Because each mode already owns its pages, branding, asset paths, stylesheets, access rules, and content-source policy, a
-mode can later be extracted into a separate application with clearer boundaries than a fully blended site would provide.
+- both current normal-mode homepages are External database content;
+- Local is a valid empty authoring workspace;
+- both old compiled normal-mode homepage fallbacks are retired;
+- the old file-backed Professional résumé/homepage subsystem is retired;
+- authored Professional media uses managed content assets;
+- Dorks & Dice live Discord/Minecraft behavior uses plugins;
+- runtime `/site.txt`, `/llms.txt`, and sitemap follow current database content;
+- framework Fallback and Trusted Preview remain separate framework concerns.
 
-The current shape is therefore a middle ground:
-
-- One deployment and one codebase while the domains share infrastructure.
-- Explicit module boundaries if one site identity becomes large enough to split.
-- Database/source boundaries that can move independently from the web application.
-
-## Adding A New Mode
-
-To add a real site mode:
-
-1. Add the mode value to `SiteMode`.
-2. Add host/domain mapping in `SiteModeOptions`.
-3. Update `SiteModeMiddleware.ResolveSiteMode`.
-4. Add route and static asset ownership rules in `SiteRouteOwnership`.
-5. Add mode-owned views under `Views/SiteModes/{Mode}`.
-6. Add separate branding component partials under `Views/SiteModes/{Mode}/Branding/`, or rely on the matching Unassigned component fallback.
-7. Add a presentation module under `Services/Site/ModePresentation`.
-8. Add mode-owned static assets under `wwwroot/site-modes/{mode}`.
-9. Add the mode stylesheet to `SiteModeStylesheetResolver` when the mode owns a visual identity or tooling overlay.
-10. Add `VisibleInModes` eligibility to content that belongs in the new mode.
-11. Add a `ContentStorage:Modes:{Mode}` source override only when the new real site identity needs to differ from the global source list.
-
-Do not add source override layers for Development or Unassigned. Development is manually selected; Unassigned is the
-global fall-through.
-
-## Practical Rule
-
-If content is only for one site identity, make its mode eligibility explicit. If one content page belongs in multiple
-listing contexts, give the same stable page multiple context tags rather than duplicating it. If a database source should
-apply everywhere, put it in the ordered global list; use per-mode source differences only for real site identities that
-actually need them.
+Remaining work is validation/audit and final refactor integration, not another homepage storage architecture change.
