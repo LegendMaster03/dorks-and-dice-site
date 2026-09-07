@@ -26,7 +26,6 @@ public static class ContentStorageServiceCollectionExtensions
         services.AddScoped<IContentAssetService, ContentAssetService>();
         services.AddSingleton<IContentPageComponentDefinition, ContentCollectionPageComponentDefinition>();
         services.AddSingleton<IContentPageComposer, ContentPageComposer>();
-        services.AddSingleton<IContentDirectiveRenderer, SiteModeArchitectureDirectiveRenderer>();
         services.AddSingleton<IContentDirectiveRenderer>(new StaticContentDirectiveRenderer(
             "spoiler-warning-start",
             "<div class=\"alert alert-warning mt-4\" role=\"alert\">"));
