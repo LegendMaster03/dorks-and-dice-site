@@ -4,7 +4,7 @@
 
 A normal site mode is considered portable when its site identity can be added to another compatible framework installation, or run as the only normal mode in a separate deployment, without editing generic framework code.
 
-This document defines the portability boundary that the current refactor must preserve. It deliberately does not choose whether the final authoritative mode definition is compiled C# or persistent runtime data. Both models must be able to feed the same runtime contracts.
+This document defines the portability boundary that the current refactor preserves. It deliberately does not choose whether the final authoritative mode definition is compiled C# or persistent runtime data. Both models can feed the same runtime contracts.
 
 ## Portable mode inventory
 
@@ -67,24 +67,25 @@ A package may declare that a capability requires deployment configuration, but i
 The current framework boundary supports a new mode without adding a value to the legacy `SiteMode` enum. The enum is migration compatibility only.
 
 1. Choose a stable lowercase mode ID. Treat it as persistent identity, not display text.
-2. Supply a `SiteModeDefinition` through the deployment's mode-registration source.
+2. Supply a `SiteModeDefinition` through the deployment's `ISiteModeRegistrationSource` implementation.
 3. Supply presentation/theme pieces required by the mode. Do not add named-mode branches to generic framework services.
 4. Install any required plugins and Tools independently, then enable/compose them for the mode.
 5. Configure the content source composition and authoring source for the destination deployment.
 6. Import or create the mode's content, revisions, redirects, and managed media through the content-layer transfer/import contract.
 7. Configure host/domain bindings and protected infrastructure values in deployment configuration.
-8. Add mode-scoped roles only through the existing stable-ID scoped-role system.
+8. Assign mode-scoped Editor capability through the stable mode ID. Scoped-role validation and account management derive available normal-mode scopes from `ISiteModeRegistry`.
 9. Verify:
    - host resolves to the registered stable ID;
    - normal routes and mode-owned routes are isolated correctly;
    - another mode can not load this mode's private static asset area;
    - content source precedence and `VisibleInModes` work for the new stable ID;
    - Editor authority remains mode scoped;
+   - Global Editor authority applies to the new normal mode without adding a hard-coded scope;
    - Trusted Preview can inspect the mode without becoming its authorization authority;
    - required plugin components resolve;
    - public text/sitemap output contains only public content for the mode.
 
-A new mode that has no `SiteMode` enum value is expected to work. Tests in `SiteModeRegistryTests` exercise registry lookup, route ownership, stylesheet selection, content/scoped-editor capability, and Trusted Preview selection for such a mode.
+A new mode that has no `SiteMode` enum value is expected to work. Integration tests replace only `ISiteModeRegistrationSource` with a source that appends a synthetic third normal mode and verify that the runtime `ISiteModeRegistry` consumes it. Additional tests exercise stable-ID content visibility and scoped Editor authorization without requiring a legacy enum value.
 
 ## Procedure: spin an existing mode into a separate deployment
 
@@ -100,24 +101,28 @@ A new mode that has no `SiteMode` enum value is expected to work. Tests in `Site
 10. **Validate public behavior**: homepage, content routes, media, redirects, plugins, Tools, `/site.txt`, `/llms.txt`, sitemap, authentication, and mode-scoped authorization.
 11. Only after destination verification should the source installation remove the mode registration or its owned data.
 
-## Portability proof required by this refactor
+## Portability proof implemented by this refactor
 
-The refactor does not need to create a production export archive or physically split this repository. It must prove the boundary by tests and structure:
+The refactor does not create a production export archive or physically split this repository. It proves the boundary by tests and structure:
 
-- a third normal mode with no legacy enum value can be registered;
-- generic routing/presentation/content authorization works from its stable definition;
-- Trusted Preview can select it without granting normal-mode authorization;
-- its assets remain isolated from other normal modes;
-- content visibility can use its stable mode ID;
-- no deployment secret is required by `SiteModeDefinition`;
+- runtime mode composition is supplied through `ISiteModeRegistrationSource` and consumed by `ISiteModeRegistry`;
+- a third normal mode with no legacy enum value can be registered by replacing only the deployment registration source;
+- content visibility and authoring accept the synthetic mode's stable ID;
+- scoped Editor authorization accepts a synthetic normal-mode stable ID;
+- Global Editor semantics apply to registered/future mode scopes without enumerating those scopes in authorization logic;
+- Trusted Preview selection uses the registry rather than requiring a normal-mode enum value;
 - framework fallback and synthetic Trusted Preview remain outside the normal-mode registry;
-- plugin requirements are represented independently of authored content;
-- the documented extraction inventory is sufficient to identify what must move and what must be recreated as deployment configuration.
+- `SiteModeDefinition` contains no host binding, connection string, secret, or machine-local endpoint;
+- plugin and Tool registration remain independent of authored content;
+- `/site.txt`, `/llms.txt`, and sitemap generation resolve the active normal mode and current public content at runtime;
+- the documented extraction inventory identifies what moves with a mode and what must be recreated as deployment configuration.
 
 A future formal package/export format should version this inventory and automate the transfer, but that is intentionally outside the current refactor cycle.
 
 ## Known transitional compatibility
 
-The current application still contains a `BuiltInSiteModes` facade and a legacy `SiteMode` enum for callers that have not yet moved completely to stable IDs. Those are compatibility boundaries, not the desired long-term registration source. New framework work must not add additional dependencies on them.
+The application still contains a `BuiltInSiteModes` facade, the legacy `SiteMode` enum, and a small number of overloads/facades for callers and tests that have not moved completely to stable IDs. They are compatibility boundaries, not the runtime registration source. New framework work must not add additional dependencies on them.
 
-The remaining registration cleanup is complete when the deployment supplies normal mode definitions through one explicit registration source and generic runtime code consumes only `ISiteModeRegistry`/stable IDs. At that point the compatibility facade can be limited to migration/tests or removed when the final enum callers are gone.
+Deployment composition is now the single named-mode registration source: `DeploymentSiteModeRegistrationSource` supplies the current normal mode definitions and runtime code consumes them through `ISiteModeRegistry`. Presentation/home module registrations may still name concrete deployment modules because those registrations are deployment composition, not generic framework dispatch.
+
+The remaining compatibility cleanup is incremental: remove legacy enum/facade consumers when their callers are retired, especially after the compiled Professional and Dorks & Dice homepage fallbacks are removed. This compatibility cleanup does not block adding or authorizing a normal mode that has no enum value.
