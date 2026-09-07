@@ -89,7 +89,7 @@ public sealed class ContentAuthoringService : IContentAuthoringService
             Summary = "Describe this content.",
             LinkText = "Open details"
         };
-        var defaultModeId = BuiltInSiteModes.Professional.Id;
+        var defaultModeId = _siteModeRegistry.All[0].Id;
 
         return new ContentAuthoringEditViewModel
         {
@@ -179,71 +179,55 @@ public sealed class ContentAuthoringService : IContentAuthoringService
         await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
 
         var page = await context.Pages
-            .Include(candidate => candidate.CurrentRevision)!
-                .ThenInclude(revision => revision!.Tags)
-            .Include(candidate => candidate.Redirects)
-            .SingleOrDefaultAsync(candidate => candidate.ContentKey == item.Id, cancellationToken)
-            ?? throw new InvalidOperationException($"Content page '{item.Id}' no longer exists.");
-
+            .Include(existing => existing.CurrentRevision)
+            .SingleOrDefaultAsync(existing => existing.ContentKey == item.Id, cancellationToken)
+            ?? throw new InvalidOperationException("The content page no longer exists.");
         if (page.CurrentRevisionId != document.ExpectedRevisionId)
         {
             throw new ContentAuthoringConflictException(
-                "This page changed after the editor was opened. Reload it before saving another revision.");
+                "This page changed after the editor was opened. Reload it before saving again.");
         }
-
-        if (!string.Equals(page.Slug, item.Slug, StringComparison.OrdinalIgnoreCase)
-            && await context.Pages.AnyAsync(candidate => candidate.Slug == item.Slug && candidate.Id != page.Id, cancellationToken))
+        if (await context.Pages.AnyAsync(
+                existing => existing.Id != page.Id && existing.Slug == item.Slug,
+                cancellationToken))
         {
-            throw new InvalidOperationException($"Another content page already uses slug '{item.Slug}'.");
+            throw new InvalidOperationException("Another content page already uses that slug.");
         }
-
-        var hasConflictingRedirect = await context.Redirects.AnyAsync(
-            redirect => redirect.Slug == item.Slug && redirect.PageId != page.Id,
-            cancellationToken);
-        if (hasConflictingRedirect)
+        if (await context.Redirects.AnyAsync(
+                redirect => redirect.ContentKey != item.Id && redirect.Slug == item.Slug,
+                cancellationToken))
         {
-            throw new InvalidOperationException($"A content redirect already uses slug '{item.Slug}'.");
+            throw new InvalidOperationException("Another content redirect already uses that slug.");
         }
 
         await ValidateAssetDependenciesAsync(context, page.Id, item, cancellationToken);
 
-        var previousSlug = page.Slug;
-        var slugChanged = !string.Equals(previousSlug, item.Slug, StringComparison.OrdinalIgnoreCase);
-        if (slugChanged)
+        if (!string.Equals(page.Slug, item.Slug, StringComparison.Ordinal))
         {
-            var previousTags = page.CurrentRevision?.Tags.Select(tag => tag.Tag)
-                ?? Enumerable.Empty<string>();
-            var redirectNamespaces = ContentRouteNamespaces.FromTags(previousTags.Concat(item.Tags));
-            foreach (var routeNamespace in redirectNamespaces)
+            var oldSlug = page.Slug;
+            page.Slug = item.Slug;
+            var existingRedirect = await context.Redirects.SingleOrDefaultAsync(
+                redirect => redirect.RouteNamespace == ContentRouteNamespaces.Articles
+                    && redirect.Slug == oldSlug,
+                cancellationToken);
+            if (existingRedirect is null)
             {
-                var existingRedirect = page.Redirects.SingleOrDefault(redirect =>
-                    string.Equals(redirect.Namespace, routeNamespace, StringComparison.OrdinalIgnoreCase)
-                    && string.Equals(redirect.Slug, previousSlug, StringComparison.OrdinalIgnoreCase));
-                if (existingRedirect is null)
+                context.Redirects.Add(new ContentRedirectRecord
                 {
-                    page.Redirects.Add(new ContentRedirectRecord
-                    {
-                        Namespace = routeNamespace,
-                        Slug = previousSlug,
-                        CreatedUtc = DateTime.UtcNow
-                    });
-                }
+                    RouteNamespace = ContentRouteNamespaces.Articles,
+                    Slug = oldSlug,
+                    ContentKey = item.Id
+                });
+            }
+            else if (!string.Equals(existingRedirect.ContentKey, item.Id, StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException("The previous slug is already owned by another redirect.");
             }
         }
 
-        var redirectsUsingCanonicalSlug = page.Redirects
-            .Where(redirect => string.Equals(redirect.Slug, item.Slug, StringComparison.OrdinalIgnoreCase))
-            .ToList();
-        if (redirectsUsingCanonicalSlug.Count > 0)
-        {
-            context.Redirects.RemoveRange(redirectsUsingCanonicalSlug);
-        }
-
-        page.Slug = item.Slug;
         var revision = CreateRevision(page.Id, page.CurrentRevisionId, item);
         context.Revisions.Add(revision);
         await context.SaveChangesAsync(cancellationToken);
-
         page.CurrentRevisionId = revision.Id;
         await context.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
@@ -252,52 +236,283 @@ public sealed class ContentAuthoringService : IContentAuthoringService
         return item;
     }
 
+    public async Task DeleteAsync(
+        string sourceKey,
+        string slug,
+        CancellationToken cancellationToken = default)
+    {
+        sourceKey = ResolveSourceKey(sourceKey);
+        ContentInputValidator.ValidateKey("Slug", slug);
+        await using var context = CreateContext(sourceKey);
+        await ContentStorageSchema.EnsureCurrentAsync(context, cancellationToken);
+        var page = await context.Pages.SingleOrDefaultAsync(existing => existing.Slug == slug, cancellationToken);
+        if (page is null)
+        {
+            return;
+        }
+
+        context.Pages.Remove(page);
+        await context.SaveChangesAsync(cancellationToken);
+    }
+
     public async Task MoveAsync(
         string sourceKey,
         string targetSourceKey,
         string slug,
         CancellationToken cancellationToken = default)
     {
-        ContentInputValidator.ValidateKey("Slug", slug);
-        sourceKey = ResolveSourceKey(sourceKey);
-        targetSourceKey = ResolveSourceKey(targetSourceKey);
         ValidatePromotionSources(sourceKey, targetSourceKey);
-
-        var transfer = new ContentSourceTransferService(_sourceRegistry);
-        await transfer.CopyAsync(sourceKey, targetSourceKey, slug, cancellationToken);
-
+        ContentInputValidator.ValidateKey("Slug", slug);
         await using var sourceContext = CreateContext(sourceKey);
+        await using var targetContext = CreateContext(targetSourceKey);
+        await ContentStorageSchema.EnsureCurrentAsync(sourceContext, cancellationToken);
+        await ContentStorageSchema.EnsureCurrentAsync(targetContext, cancellationToken);
+
+        await using var sourceTransaction = await sourceContext.Database.BeginTransactionAsync(cancellationToken);
+        await using var targetTransaction = await targetContext.Database.BeginTransactionAsync(cancellationToken);
+
         var sourcePage = await sourceContext.Pages
+            .Include(page => page.Revisions)
+                .ThenInclude(revision => revision.Tags)
+            .Include(page => page.Revisions)
+                .ThenInclude(revision => revision.Modes)
+            .Include(page => page.Revisions)
+                .ThenInclude(revision => revision.AssetReferences)
             .Include(page => page.AssetLinks)
-            .SingleAsync(page => page.Slug == slug, cancellationToken);
-        await DeleteSourcePageAsync(sourceContext, sourcePage, cancellationToken);
+                .ThenInclude(link => link.Asset)
+            .Include(page => page.CurrentRevision)
+            .SingleOrDefaultAsync(page => page.Slug == slug, cancellationToken)
+            ?? throw new InvalidOperationException("The source page does not exist.");
+
+        var targetPage = await targetContext.Pages
+            .Include(page => page.Revisions)
+            .Include(page => page.AssetLinks)
+            .SingleOrDefaultAsync(page => page.ContentKey == sourcePage.ContentKey, cancellationToken);
+        if (targetPage is not null)
+        {
+            targetContext.Revisions.RemoveRange(targetPage.Revisions);
+            targetContext.PageAssets.RemoveRange(targetPage.AssetLinks);
+            targetContext.Pages.Remove(targetPage);
+            await targetContext.SaveChangesAsync(cancellationToken);
+        }
+
+        var sourceAssets = sourcePage.AssetLinks
+            .Select(link => link.Asset)
+            .Where(asset => asset is not null)
+            .DistinctBy(asset => asset!.AssetKey)
+            .Cast<ContentAssetRecord>()
+            .ToList();
+        var targetAssetsBySourceKey = new Dictionary<string, ContentAssetRecord>(StringComparer.Ordinal);
+        foreach (var sourceAsset in sourceAssets)
+        {
+            var targetAsset = await targetContext.Assets.SingleOrDefaultAsync(
+                asset => asset.AssetKey == sourceAsset.AssetKey,
+                cancellationToken);
+            if (targetAsset is null)
+            {
+                targetAsset = new ContentAssetRecord
+                {
+                    AssetKey = sourceAsset.AssetKey,
+                    FileName = sourceAsset.FileName,
+                    MediaType = sourceAsset.MediaType,
+                    Sha256 = sourceAsset.Sha256,
+                    Data = sourceAsset.Data.ToArray(),
+                    CreatedUtc = sourceAsset.CreatedUtc
+                };
+                targetContext.Assets.Add(targetAsset);
+                await targetContext.SaveChangesAsync(cancellationToken);
+            }
+
+            targetAssetsBySourceKey[sourceAsset.AssetKey] = targetAsset;
+        }
+
+        var copiedPage = new ContentPageRecord
+        {
+            ContentKey = sourcePage.ContentKey,
+            Slug = sourcePage.Slug
+        };
+        targetContext.Pages.Add(copiedPage);
+        await targetContext.SaveChangesAsync(cancellationToken);
+
+        var revisionMap = new Dictionary<long, ContentRevisionRecord>();
+        foreach (var sourceRevision in sourcePage.Revisions.OrderBy(revision => revision.Id))
+        {
+            var copiedRevision = new ContentRevisionRecord
+            {
+                PageId = copiedPage.Id,
+                ParentRevisionId = sourceRevision.ParentRevisionId.HasValue
+                    ? revisionMap[sourceRevision.ParentRevisionId.Value].Id
+                    : null,
+                CreatedUtc = sourceRevision.CreatedUtc,
+                BodyFormat = sourceRevision.BodyFormat,
+                MetadataJson = sourceRevision.MetadataJson,
+                Body = sourceRevision.Body
+            };
+            copiedRevision.Tags.AddRange(sourceRevision.Tags.Select(tag => new ContentRevisionTagRecord { Tag = tag.Tag }));
+            copiedRevision.Modes.AddRange(sourceRevision.Modes.Select(mode => new ContentRevisionModeRecord { SiteMode = mode.SiteMode }));
+            copiedRevision.AssetReferences.AddRange(sourceRevision.AssetReferences.Select(asset => new ContentRevisionAssetRecord
+            {
+                AssetKey = asset.AssetKey,
+                Relationship = asset.Relationship
+            }));
+            targetContext.Revisions.Add(copiedRevision);
+            await targetContext.SaveChangesAsync(cancellationToken);
+            revisionMap[sourceRevision.Id] = copiedRevision;
+        }
+
+        copiedPage.CurrentRevisionId = sourcePage.CurrentRevisionId.HasValue
+            ? revisionMap[sourcePage.CurrentRevisionId.Value].Id
+            : null;
+
+        foreach (var sourceLink in sourcePage.AssetLinks)
+        {
+            if (!targetAssetsBySourceKey.TryGetValue(sourceLink.Asset!.AssetKey, out var targetAsset))
+            {
+                continue;
+            }
+
+            targetContext.PageAssets.Add(new ContentPageAssetRecord
+            {
+                PageId = copiedPage.Id,
+                AssetId = targetAsset.Id,
+                Relationship = sourceLink.Relationship,
+                SortOrder = sourceLink.SortOrder
+            });
+        }
+
+        var sourceDependencies = await sourceContext.PageAssetDependencies
+            .Where(dependency => dependency.PageId == sourcePage.Id)
+            .ToListAsync(cancellationToken);
+        foreach (var dependency in sourceDependencies)
+        {
+            targetContext.PageAssetDependencies.Add(new ContentPageAssetDependencyRecord
+            {
+                PageId = copiedPage.Id,
+                AssetKey = dependency.AssetKey
+            });
+        }
+
+        await targetContext.SaveChangesAsync(cancellationToken);
+        await targetTransaction.CommitAsync(cancellationToken);
+
+        sourceContext.Pages.Remove(sourcePage);
+        await sourceContext.SaveChangesAsync(cancellationToken);
+        await sourceTransaction.CommitAsync(cancellationToken);
     }
 
-    private static async Task DeleteSourcePageAsync(
-        ContentDbContext sourceContext,
-        ContentPageRecord sourcePage,
-        CancellationToken cancellationToken)
+    public async Task MoveAllAsync(
+        string sourceKey,
+        string targetSourceKey,
+        CancellationToken cancellationToken = default)
     {
-        var assetIds = sourcePage.AssetLinks.Select(link => link.AssetId).ToList();
-        sourcePage.CurrentRevisionId = null;
-        await sourceContext.SaveChangesAsync(cancellationToken);
-        var revisionIds = await sourceContext.Revisions
-            .Where(revision => revision.PageId == sourcePage.Id)
-            .OrderByDescending(revision => revision.Id)
-            .Select(revision => revision.Id)
+        ValidatePromotionSources(sourceKey, targetSourceKey);
+        await using var sourceContext = CreateContext(sourceKey);
+        await ContentStorageSchema.EnsureCurrentAsync(sourceContext, cancellationToken);
+        var slugs = await sourceContext.Pages
+            .AsNoTracking()
+            .Select(page => page.Slug)
+            .OrderBy(slug => slug)
             .ToListAsync(cancellationToken);
-        foreach (var revisionId in revisionIds)
+
+        foreach (var slug in slugs)
         {
-            await sourceContext.Revisions
-                .Where(revision => revision.Id == revisionId)
-                .ExecuteDeleteAsync(cancellationToken);
+            await MoveAsync(sourceKey, targetSourceKey, slug, cancellationToken);
         }
-        await sourceContext.Pages
-            .Where(page => page.Id == sourcePage.Id)
-            .ExecuteDeleteAsync(cancellationToken);
-        await sourceContext.Assets
-            .Where(asset => assetIds.Contains(asset.Id) && !asset.PageLinks.Any())
-            .ExecuteDeleteAsync(cancellationToken);
+    }
+
+    public async Task RestoreRevisionAsync(
+        string sourceKey,
+        string slug,
+        long revisionId,
+        long expectedRevisionId,
+        CancellationToken cancellationToken = default)
+    {
+        sourceKey = ResolveSourceKey(sourceKey);
+        ContentInputValidator.ValidateKey("Slug", slug);
+        await using var context = CreateContext(sourceKey);
+        await ContentStorageSchema.EnsureCurrentAsync(context, cancellationToken);
+
+        var page = await context.Pages
+            .Include(existing => existing.CurrentRevision)
+            .SingleOrDefaultAsync(existing => existing.Slug == slug, cancellationToken)
+            ?? throw new InvalidOperationException("The content page no longer exists.");
+        if (page.CurrentRevisionId != expectedRevisionId)
+        {
+            throw new ContentAuthoringConflictException(
+                "This page changed after the editor was opened. Reload it before restoring a revision.");
+        }
+
+        var revision = await context.Revisions
+            .Include(existing => existing.Tags)
+            .Include(existing => existing.Modes)
+            .Include(existing => existing.AssetReferences)
+            .SingleOrDefaultAsync(
+                existing => existing.PageId == page.Id && existing.Id == revisionId,
+                cancellationToken)
+            ?? throw new InvalidOperationException("That revision does not exist for this page.");
+
+        var restoredRevision = new ContentRevisionRecord
+        {
+            PageId = page.Id,
+            ParentRevisionId = page.CurrentRevisionId,
+            CreatedUtc = DateTime.UtcNow,
+            BodyFormat = revision.BodyFormat,
+            MetadataJson = revision.MetadataJson,
+            Body = revision.Body
+        };
+        restoredRevision.Tags.AddRange(revision.Tags.Select(tag => new ContentRevisionTagRecord { Tag = tag.Tag }));
+        restoredRevision.Modes.AddRange(revision.Modes.Select(mode => new ContentRevisionModeRecord { SiteMode = mode.SiteMode }));
+        restoredRevision.AssetReferences.AddRange(revision.AssetReferences.Select(asset => new ContentRevisionAssetRecord
+        {
+            AssetKey = asset.AssetKey,
+            Relationship = asset.Relationship
+        }));
+        context.Revisions.Add(restoredRevision);
+        await context.SaveChangesAsync(cancellationToken);
+
+        page.CurrentRevisionId = restoredRevision.Id;
+        await context.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task DeleteRevisionAsync(
+        string sourceKey,
+        string slug,
+        long revisionId,
+        long expectedRevisionId,
+        CancellationToken cancellationToken = default)
+    {
+        sourceKey = ResolveSourceKey(sourceKey);
+        ContentInputValidator.ValidateKey("Slug", slug);
+        await using var context = CreateContext(sourceKey);
+        await ContentStorageSchema.EnsureCurrentAsync(context, cancellationToken);
+
+        var page = await context.Pages
+            .SingleOrDefaultAsync(existing => existing.Slug == slug, cancellationToken)
+            ?? throw new InvalidOperationException("The content page no longer exists.");
+        if (page.CurrentRevisionId != expectedRevisionId)
+        {
+            throw new ContentAuthoringConflictException(
+                "This page changed after the editor was opened. Reload it before deleting a revision.");
+        }
+        if (page.CurrentRevisionId == revisionId)
+        {
+            throw new InvalidOperationException("The current revision can not be deleted.");
+        }
+
+        var revision = await context.Revisions.SingleOrDefaultAsync(
+            existing => existing.PageId == page.Id && existing.Id == revisionId,
+            cancellationToken)
+            ?? throw new InvalidOperationException("That revision does not exist for this page.");
+        var hasChild = await context.Revisions.AnyAsync(
+            existing => existing.ParentRevisionId == revisionId,
+            cancellationToken);
+        if (hasChild)
+        {
+            throw new InvalidOperationException("A revision with descendants can not be deleted.");
+        }
+
+        context.Revisions.Remove(revision);
+        await context.SaveChangesAsync(cancellationToken);
     }
 
     private void ValidatePromotionSources(string sourceKey, string targetSourceKey)
@@ -563,30 +778,22 @@ public sealed class ContentAuthoringService : IContentAuthoringService
             .ToList();
     }
 
-    private static string PrettyMetadata(string metadataJson)
+    private static string PrettyMetadata(string json)
     {
-        using var document = JsonDocument.Parse(metadataJson);
-        return JsonSerializer.Serialize(document.RootElement, new JsonSerializerOptions { WriteIndented = true });
+        using var document = JsonDocument.Parse(json);
+        return JsonSerializer.Serialize(document.RootElement, new JsonSerializerOptions
+        {
+            WriteIndented = true
+        });
     }
 
     private static JsonSerializerOptions CreateMetadataJsonOptions()
     {
-        var options = new JsonSerializerOptions(JsonSerializerDefaults.Web)
+        var options = new JsonSerializerOptions
         {
-            PropertyNameCaseInsensitive = true,
-            AllowTrailingCommas = false,
-            ReadCommentHandling = JsonCommentHandling.Disallow,
-            MaxDepth = 32,
-            UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow
+            PropertyNameCaseInsensitive = true
         };
         options.Converters.Add(new JsonStringEnumConverter());
         return options;
     }
-
-    private static DateTime NormalizeUtc(DateTime value) => value.Kind switch
-    {
-        DateTimeKind.Utc => value,
-        DateTimeKind.Local => value.ToUniversalTime(),
-        _ => DateTime.SpecifyKind(value, DateTimeKind.Utc)
-    };
 }
