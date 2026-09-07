@@ -15,10 +15,12 @@ namespace dorks_and_dice_site.Controllers;
 public sealed partial class SiteTextController : Controller
 {
     private readonly IContentCatalogService _catalog;
+    private readonly SiteModeOptions _siteModeOptions;
 
-    public SiteTextController(IContentCatalogService catalog)
+    public SiteTextController(IContentCatalogService catalog, SiteModeOptions siteModeOptions)
     {
         _catalog = catalog;
+        _siteModeOptions = siteModeOptions;
     }
 
     [HttpGet("/site.txt")]
@@ -33,7 +35,7 @@ public sealed partial class SiteTextController : Controller
         var items = await GetPublicItemsAsync(modeContext, cancellationToken);
         var output = new StringBuilder();
         output.AppendLine($"# {modeContext.ActiveMode.DisplayName}");
-        output.AppendLine($"Canonical site: {BuildAbsoluteUrl("/")}");
+        output.AppendLine($"Canonical site: {BuildAbsoluteUrl(modeContext, "/")}");
         output.AppendLine();
         output.AppendLine("This document is the current public text representation of this site mode.");
 
@@ -42,7 +44,7 @@ public sealed partial class SiteTextController : Controller
             var path = ContentPublicRoute.GetPath(item.Slug, item.Tags);
             output.AppendLine();
             output.AppendLine($"## {item.Title}");
-            output.AppendLine($"URL: {BuildAbsoluteUrl(path)}");
+            output.AppendLine($"URL: {BuildAbsoluteUrl(modeContext, path)}");
             if (!string.IsNullOrWhiteSpace(item.Subtitle))
             {
                 output.AppendLine($"Subtitle: {item.Subtitle}");
@@ -81,14 +83,14 @@ public sealed partial class SiteTextController : Controller
         var output = new StringBuilder();
         output.AppendLine($"# {modeContext.ActiveMode.DisplayName}");
         output.AppendLine();
-        output.AppendLine($"Full public text: {BuildAbsoluteUrl("/site.txt")}");
+        output.AppendLine($"Full public text: {BuildAbsoluteUrl(modeContext, "/site.txt")}");
         output.AppendLine();
         output.AppendLine("## Public pages");
 
         foreach (var item in items)
         {
             var path = ContentPublicRoute.GetPath(item.Slug, item.Tags);
-            output.Append("- ").Append(item.Title).Append(": ").Append(BuildAbsoluteUrl(path));
+            output.Append("- ").Append(item.Title).Append(": ").Append(BuildAbsoluteUrl(modeContext, path));
             if (!string.IsNullOrWhiteSpace(item.Summary))
             {
                 output.Append(" — ").Append(CollapseWhitespace(item.Summary));
@@ -133,10 +135,14 @@ public sealed partial class SiteTextController : Controller
             .ToList();
     }
 
-    private string BuildAbsoluteUrl(string path)
+    private string BuildAbsoluteUrl(SiteModeContext modeContext, string path)
     {
+        var host = modeContext.ActiveModeId is { Length: > 0 } modeId
+            && _siteModeOptions.TryGetCanonicalHost(modeId, out var canonicalHost)
+                ? canonicalHost!
+                : Request.Host.Value;
         var pathBase = Request.PathBase.HasValue ? Request.PathBase.Value : string.Empty;
-        return $"{Request.Scheme}://{Request.Host}{pathBase}{path}";
+        return $"{Request.Scheme}://{host}{pathBase}{path}";
     }
 
     private static string NormalizeBodyForText(string body)
