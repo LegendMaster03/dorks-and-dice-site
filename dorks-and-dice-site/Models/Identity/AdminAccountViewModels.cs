@@ -1,3 +1,5 @@
+using dorks_and_dice_site.Services.Identity;
+
 namespace dorks_and_dice_site.Models.Identity;
 
 public sealed class AdminAccountListViewModel
@@ -29,4 +31,5 @@ public sealed class AdminAccountDetailViewModel
     public bool IsCurrentUser { get; init; }
     public List<string> GlobalRoles { get; init; } = [];
     public Dictionary<string, List<string>> ScopedRoles { get; init; } = new(StringComparer.Ordinal);
+    public IReadOnlyList<ScopedEditorRoleDefinition> AvailableScopedEditorRoles { get; init; } = [];
 }
