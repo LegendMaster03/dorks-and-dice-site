@@ -21,6 +21,7 @@ public static class ContentTags
     public static bool IsPublic(string tag) => !IsContext(tag) && !IsInternal(tag);
 }
 
+[JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed class ContentItem
 {
     public string Id { get; set; } = string.Empty;
@@ -95,6 +96,7 @@ public sealed class ContentItem
     public IReadOnlyList<string> GetHighlights(string contextTag) => GetPresentation(contextTag)?.Highlights ?? Highlights;
 }
 
+[JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed class ContentPresentation
 {
     public string? Title { get; set; }
@@ -107,6 +109,7 @@ public sealed class ContentPresentation
     public List<string>? Highlights { get; set; }
 }
 
+[JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed class ContentImage
 {
     public string Url { get; set; } = string.Empty;
@@ -115,6 +118,7 @@ public sealed class ContentImage
     public int Height { get; set; }
 }
 
+[JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed class ContentDetailHeader
 {
     public string? MetaLine { get; set; }
