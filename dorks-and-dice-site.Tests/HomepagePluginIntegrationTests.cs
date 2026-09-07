@@ -2,7 +2,6 @@ using System.Net;
 using dorks_and_dice_site.Models.Content;
 using dorks_and_dice_site.Plugins.MinecraftServerStatus;
 using dorks_and_dice_site.Services.Content;
-using dorks_and_dice_site.Services.Site;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
@@ -20,21 +19,13 @@ public sealed class HomepagePluginIntegrationTests
             AllowAutoRedirect = false
         });
 
-        using (var scope = factory.Services.CreateScope())
-        {
-            var authoring = scope.ServiceProvider.GetRequiredService<IContentAuthoringService>();
-            var model = authoring.GetNew("External");
-            model.Document.Id = "dorks-and-dice-home";
-            model.Document.Slug = "dorks-and-dice-home";
-            model.Document.TagsText = ContentTags.Homepage;
-            model.Document.VisibleModesSelection = [BuiltInSiteModes.DorksAndDice.Id];
-            model.Document.Body = """
-                # Dorks & Dice Fixture
+        await SetDorksHomepageBodyAsync(
+            factory,
+            """
+            # Dorks & Dice Fixture
 
-                {{discord-widget server-id="123456789" theme="dark" title="Dorks & Dice Discord Server"}}
-                """;
-            await authoring.CreateAsync(model.Document);
-        }
+            {{discord-widget server-id="123456789" theme="dark" title="Dorks & Dice Discord Server"}}
+            """);
 
         using var request = new HttpRequestMessage(HttpMethod.Get, "https://dorks-and-dice.com/");
         request.Headers.Host = "dorks-and-dice.com";
@@ -58,25 +49,17 @@ public sealed class HomepagePluginIntegrationTests
             AllowAutoRedirect = false
         });
 
-        using (var scope = factory.Services.CreateScope())
-        {
-            var authoring = scope.ServiceProvider.GetRequiredService<IContentAuthoringService>();
-            var model = authoring.GetNew("External");
-            model.Document.Id = "dorks-and-dice-home-minecraft";
-            model.Document.Slug = "dorks-and-dice-home-minecraft";
-            model.Document.TagsText = ContentTags.Homepage;
-            model.Document.VisibleModesSelection = [BuiltInSiteModes.DorksAndDice.Id];
-            model.Document.Body = """
-                # Dorks & Dice Fixture
+        await SetDorksHomepageBodyAsync(
+            factory,
+            """
+            # Dorks & Dice Fixture
 
-                ### Minecraft
+            ### Minecraft
 
-                Server launched October 17, 2025.
+            Server launched October 17, 2025.
 
-                {{minecraft-server-status}}
-                """;
-            await authoring.CreateAsync(model.Document);
-        }
+            {{minecraft-server-status}}
+            """);
 
         using var request = new HttpRequestMessage(HttpMethod.Get, "https://dorks-and-dice.com/");
         request.Headers.Host = "dorks-and-dice.com";
@@ -106,39 +89,31 @@ public sealed class HomepagePluginIntegrationTests
             AllowAutoRedirect = false
         });
 
-        using (var scope = factory.Services.CreateScope())
-        {
-            var authoring = scope.ServiceProvider.GetRequiredService<IContentAuthoringService>();
-            var model = authoring.GetNew("External");
-            model.Document.Id = "dorks-and-dice-home-minecraft-fields";
-            model.Document.Slug = "dorks-and-dice-home-minecraft-fields";
-            model.Document.TagsText = ContentTags.Homepage;
-            model.Document.VisibleModesSelection = [BuiltInSiteModes.DorksAndDice.Id];
-            model.Document.Body = """
-                # Dorks & Dice Fixture
+        await SetDorksHomepageBodyAsync(
+            factory,
+            """
+            # Dorks & Dice Fixture
 
-                ::: {.d-flex .justify-content-between}
+            ::: {.d-flex .justify-content-between}
 
-                ### Minecraft
+            ### Minecraft
 
-                {{minecraft-server-status-badge}}
+            {{minecraft-server-status-badge}}
 
-                :::
+            :::
 
-                Server launched October 17, 2025.
+            Server launched October 17, 2025.
 
-                {{minecraft-server-motd}}
+            {{minecraft-server-motd}}
 
-                {{minecraft-server-online-players}}
+            {{minecraft-server-online-players}}
 
-                {{minecraft-server-maximum-players}}
+            {{minecraft-server-maximum-players}}
 
-                {{minecraft-server-players}}
+            {{minecraft-server-players}}
 
-                {{minecraft-server-version}}
-                """;
-            await authoring.CreateAsync(model.Document);
-        }
+            {{minecraft-server-version}}
+            """);
 
         using var request = new HttpRequestMessage(HttpMethod.Get, "https://dorks-and-dice.com/");
         request.Headers.Host = "dorks-and-dice.com";
@@ -179,6 +154,18 @@ public sealed class HomepagePluginIntegrationTests
 
         Assert.Equal(HttpStatusCode.OK, scriptResponse.StatusCode);
         Assert.Contains("data-minecraft-status-field", script, StringComparison.Ordinal);
+    }
+
+    private static async Task SetDorksHomepageBodyAsync(
+        WebApplicationFactory<Program> factory,
+        string body)
+    {
+        using var scope = factory.Services.CreateScope();
+        var authoring = scope.ServiceProvider.GetRequiredService<IContentAuthoringService>();
+        var model = await authoring.GetEditAsync("External", "dorks-and-dice-home")
+            ?? throw new InvalidOperationException("The seeded Dorks & Dice homepage could not be loaded.");
+        model.Document.Body = body;
+        await authoring.SaveRevisionAsync(model.Document);
     }
 
     private static WebApplicationFactory<Program> WithMinecraftSnapshot(
