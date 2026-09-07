@@ -68,6 +68,20 @@ public sealed class ModeScopedRoleAuthorizationTests
         }));
     }
 
+    [Theory]
+    [InlineData(AccountRoles.GlobalEditor)]
+    [InlineData(AccountRoles.Admin)]
+    [InlineData(AccountRoles.Owner)]
+    public void GlobalEditorInheritanceSourceAppliesToUnenumeratedModeScope(string sourceRole)
+    {
+        var sources = AccountRoleHierarchy.GetScopedInheritanceSources(
+            [sourceRole],
+            "portable-test",
+            ScopedAccountRoles.Editor);
+
+        Assert.Contains(sourceRole, sources);
+    }
+
     [Fact]
     public async Task AdminInheritsGlobalEditorAuthorizationForSyntheticDevelopment()
     {
