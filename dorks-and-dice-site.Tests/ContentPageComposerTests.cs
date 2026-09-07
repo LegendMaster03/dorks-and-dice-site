@@ -24,12 +24,12 @@ public sealed class ContentPageComposerTests
         Assert.Equal(3, fragments.Count);
         var firstHtml = Assert.IsType<string>(fragments[0].RenderedHtml);
         Assert.Contains("Experience", firstHtml, StringComparison.Ordinal);
-        Assert.NotNull(fragments[1].Component);
-        Assert.Equal("content-collection", fragments[1].Component!.Name);
-        Assert.Equal("ContentCollection", fragments[1].Component.ViewComponentName);
-        Assert.Equal("experience", fragments[1].Component.Parameters["context"]);
-        Assert.Equal("professional-experience", fragments[1].Component.Parameters["presentation"]);
-        Assert.Equal("first,second", fragments[1].Component.Parameters["order"]);
+        var component = Assert.IsType<ContentPageComponentInvocation>(fragments[1].Component);
+        Assert.Equal("content-collection", component.Name);
+        Assert.Equal("ContentCollection", component.ViewComponentName);
+        Assert.Equal("experience", component.Parameters["context"]);
+        Assert.Equal("professional-experience", component.Parameters["presentation"]);
+        Assert.Equal("first,second", component.Parameters["order"]);
         var finalHtml = Assert.IsType<string>(fragments[2].RenderedHtml);
         Assert.Contains("Education", finalHtml, StringComparison.Ordinal);
     }
