@@ -116,12 +116,19 @@ public static class AccountRoleHierarchy
         string scopedRole) =>
         directlyAssignedRoles
             .Where(GlobalNodes.ContainsKey)
-            .Where(sourceRole => InheritsScopedRole(sourceRole, scope, scopedRole))
+            .Where(sourceRole =>
+                InheritsScopedRole(sourceRole, scope, scopedRole)
+                || string.Equals(scopedRole, ScopedAccountRoles.Editor, StringComparison.Ordinal)
+                    && (string.Equals(sourceRole, AccountRoles.GlobalEditor, StringComparison.Ordinal)
+                        || InheritsGlobalRole(sourceRole, AccountRoles.GlobalEditor)))
             .Distinct(StringComparer.Ordinal)
             .ToArray();
 
     private static IReadOnlyDictionary<string, AccountRoleInheritanceNode> BuildGlobalNodes()
     {
+        // Keep the current built-in scoped children as a compatibility representation for legacy
+        // hierarchy consumers. Runtime authorization and account management use registered mode
+        // IDs and therefore do not depend on this list being exhaustive.
         var editorChildren = SiteModeEditorRoles.All
             .Select(editorRole => new AccountRoleInheritanceNode(
                 $"scoped:{editorRole.Scope}:{ScopedAccountRoles.Editor}",
