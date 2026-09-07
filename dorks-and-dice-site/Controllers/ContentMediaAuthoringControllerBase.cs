@@ -70,6 +70,8 @@ public abstract class ContentMediaAuthoringControllerBase : Controller
                 }
             }
 
+            await ContentAssetUsage.PopulateAsync(_sourceRegistry, assets, cancellationToken);
+
             return View("~/Views/ContentMediaAuthoring/Index.cshtml", new ContentAssetAuthoringViewModel
             {
                 SourceKey = source,
@@ -137,6 +139,54 @@ public abstract class ContentMediaAuthoringControllerBase : Controller
 
             await _assets.DetachAsync(source, slug, assetKey, cancellationToken);
             TempData["ContentMediaSuccess"] = "Media dependency removed.";
+        }
+        catch (InvalidOperationException ex)
+        {
+            TempData["ContentMediaError"] = ex.Message;
+        }
+
+        return Redirect($"{RouteBase}/{slug}/media?source={Uri.EscapeDataString(source)}");
+    }
+
+    [HttpPost("{assetKey}/replace")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Replace(
+        string slug,
+        string assetKey,
+        string source,
+        string assetSource,
+        IFormFile? file,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            source = ResolvePageSource(source);
+            assetSource = ResolvePoolSource(assetSource);
+            if (!await CanEditPageAsync(source, slug, cancellationToken))
+            {
+                return NotFound();
+            }
+
+            if (file is null)
+            {
+                TempData["ContentMediaError"] = "Choose a replacement file.";
+            }
+            else
+            {
+                await using var stream = file.OpenReadStream();
+                var asset = await ContentAssetReplacement.ReplaceAsync(
+                    _assets,
+                    _sourceRegistry,
+                    assetSource,
+                    assetKey,
+                    file.FileName,
+                    file.ContentType,
+                    stream,
+                    file.Length,
+                    cancellationToken);
+                TempData["ContentMediaSuccess"] =
+                    $"Replaced '{asset.FileName}' without changing its stable media URL.";
+            }
         }
         catch (InvalidOperationException ex)
         {
