@@ -9,11 +9,6 @@ public interface IContentSourceTransferService
         string targetSourceKey,
         string slug,
         CancellationToken cancellationToken = default);
-
-    Task<int> CopyAllAsync(
-        string sourceKey,
-        string targetSourceKey,
-        CancellationToken cancellationToken = default);
 }
 
 public sealed class ContentSourceTransferService : IContentSourceTransferService
@@ -53,47 +48,6 @@ public sealed class ContentSourceTransferService : IContentSourceTransferService
         await using var transaction = await targetContext.Database.BeginTransactionAsync(cancellationToken);
         await CopyPageAsync(targetContext, sourcePage, cancellationToken);
         await transaction.CommitAsync(cancellationToken);
-    }
-
-    public async Task<int> CopyAllAsync(
-        string sourceKey,
-        string targetSourceKey,
-        CancellationToken cancellationToken = default)
-    {
-        var (source, target) = ResolveDistinctSources(sourceKey, targetSourceKey);
-        await using var sourceContext = CreateContext(source.Key);
-        await using var targetContext = CreateContext(target.Key);
-        await ContentStorageSchema.EnsureCurrentAsync(sourceContext, cancellationToken);
-        await ContentStorageSchema.EnsureCurrentAsync(targetContext, cancellationToken);
-
-        var sourcePages = await LoadAllPagesAsync(sourceContext, cancellationToken);
-        if (sourcePages.Count == 0)
-        {
-            return 0;
-        }
-
-        var targetPages = new Dictionary<string, ContentPageRecord?>(StringComparer.OrdinalIgnoreCase);
-        foreach (var sourcePage in sourcePages)
-        {
-            targetPages[sourcePage.ContentKey] = await GetReplaceableTargetPageAsync(
-                targetContext,
-                sourcePage,
-                cancellationToken);
-            await EnsureDependenciesAvailableAsync(targetContext, target.Key, sourcePage, cancellationToken);
-        }
-
-        await using var transaction = await targetContext.Database.BeginTransactionAsync(cancellationToken);
-        foreach (var sourcePage in sourcePages.OrderBy(page => page.Id))
-        {
-            if (targetPages[sourcePage.ContentKey] is { } targetPage)
-            {
-                await DeleteTargetPageAsync(targetContext, targetPage, cancellationToken);
-            }
-            await CopyPageAsync(targetContext, sourcePage, cancellationToken);
-        }
-        await transaction.CommitAsync(cancellationToken);
-
-        return sourcePages.Count;
     }
 
     private async Task CopyPageAsync(
@@ -155,7 +109,9 @@ public sealed class ContentSourceTransferService : IContentSourceTransferService
                 AssetKey = link.AssetKey
             }));
         if (targetPage.AssetDependencies.Count > 0)
+        {
             await targetContext.SaveChangesAsync(cancellationToken);
+        }
 
         var revisionIdMap = new Dictionary<long, long>();
         var pending = sourcePage.Revisions
@@ -291,39 +247,6 @@ public sealed class ContentSourceTransferService : IContentSourceTransferService
         return targetPage;
     }
 
-    private static async Task DeleteTargetPageAsync(
-        ContentDbContext targetContext,
-        ContentPageRecord targetPage,
-        CancellationToken cancellationToken)
-    {
-        targetPage.CurrentRevisionId = null;
-        await targetContext.SaveChangesAsync(cancellationToken);
-
-        var revisionIds = await targetContext.Revisions
-            .Where(revision => revision.PageId == targetPage.Id)
-            .OrderByDescending(revision => revision.Id)
-            .Select(revision => revision.Id)
-            .ToListAsync(cancellationToken);
-        foreach (var revisionId in revisionIds)
-        {
-            await targetContext.Revisions
-                .Where(revision => revision.Id == revisionId)
-                .ExecuteDeleteAsync(cancellationToken);
-        }
-
-        var linkedAssetIds = await targetContext.PageAssets
-            .Where(link => link.PageId == targetPage.Id)
-            .Select(link => link.AssetId)
-            .ToListAsync(cancellationToken);
-        await targetContext.Pages
-            .Where(page => page.Id == targetPage.Id)
-            .ExecuteDeleteAsync(cancellationToken);
-        targetContext.Entry(targetPage).State = EntityState.Detached;
-        await targetContext.Assets
-            .Where(asset => linkedAssetIds.Contains(asset.Id) && !asset.PageLinks.Any())
-            .ExecuteDeleteAsync(cancellationToken);
-    }
-
     private static async Task<ContentPageRecord?> LoadPageAsync(
         ContentDbContext context,
         string slug,
@@ -341,22 +264,6 @@ public sealed class ContentSourceTransferService : IContentSourceTransferService
             .ThenInclude(revision => revision.AssetReferences)
         .SingleOrDefaultAsync(page => page.Slug == slug, cancellationToken);
 
-    private static async Task<List<ContentPageRecord>> LoadAllPagesAsync(
-        ContentDbContext context,
-        CancellationToken cancellationToken) => await context.Pages
-        .AsNoTracking()
-        .Include(page => page.AssetLinks)
-            .ThenInclude(link => link.Asset)
-        .Include(page => page.AssetDependencies)
-        .Include(page => page.Redirects)
-        .Include(page => page.Revisions)
-            .ThenInclude(revision => revision.Tags)
-        .Include(page => page.Revisions)
-            .ThenInclude(revision => revision.Modes)
-        .Include(page => page.Revisions)
-            .ThenInclude(revision => revision.AssetReferences)
-        .ToListAsync(cancellationToken);
-
     private async Task EnsureDependenciesAvailableAsync(
         ContentDbContext targetContext,
         string targetSourceKey,
@@ -372,7 +279,10 @@ public sealed class ContentSourceTransferService : IContentSourceTransferService
             .Where(assetKey => !bundledKeys.Contains(assetKey))
             .Distinct(StringComparer.Ordinal)
             .ToList();
-        if (requiredKeys.Count == 0) return;
+        if (requiredKeys.Count == 0)
+        {
+            return;
+        }
 
         var available = (await targetContext.Assets
                 .Where(asset => requiredKeys.Contains(asset.AssetKey))
