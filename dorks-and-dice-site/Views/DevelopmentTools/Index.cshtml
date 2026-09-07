@@ -1,6 +1,7 @@
 @model IReadOnlyList<dorks_and_dice_site.Models.Tools.DevelopmentToolListItemViewModel>
 @using dorks_and_dice_site.Models.Tools
 @using dorks_and_dice_site.Services.Site
+@using dorks_and_dice_site.Services.Tools
 @inject ISiteModeRegistry SiteModeRegistry
 @{
     ViewData["Title"] = "Tool Hosting";
@@ -33,10 +34,7 @@ else
         @foreach (var item in Model)
         {
             var tool = item.Tool;
-            var modeIds = tool.Modes is { Count: > 0 }
-                ? tool.Modes
-                : [SiteModeValues.DorksAndDiceModeValue];
-            var modes = modeIds
+            var modes = ToolVisibility.GetEffectiveModeIds(tool)
                 .Select(modeId => SiteModeRegistry.TryGetById(modeId, out var definition)
                     ? definition!.DisplayName
                     : modeId)
