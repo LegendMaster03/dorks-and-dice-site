@@ -12,7 +12,7 @@
         .Concat(AccountRoles.UiAssignable)
         .Where(role => Model.GlobalRoles.Contains(role, StringComparer.Ordinal))
         .ToArray();
-    var directlyAssignedScopedRoles = SiteModeEditorRoles.All
+    var directlyAssignedScopedRoles = Model.AvailableScopedEditorRoles
         .Where(editorRole => Model.ScopedRoles.TryGetValue(editorRole.Scope, out var roles)
             && roles.Contains(ScopedAccountRoles.Editor, StringComparer.Ordinal))
         .ToArray();
@@ -226,7 +226,7 @@
                         }
                     </div>
 
-                    @foreach (var editorRole in SiteModeEditorRoles.All)
+                    @foreach (var editorRole in Model.AvailableScopedEditorRoles)
                     {
                         var assigned = Model.ScopedRoles.TryGetValue(editorRole.Scope, out var roles)
                             && roles.Contains(ScopedAccountRoles.Editor, StringComparer.Ordinal);
