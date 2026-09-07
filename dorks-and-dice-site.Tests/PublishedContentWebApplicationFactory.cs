@@ -102,6 +102,45 @@ public sealed class PublishedContentWebApplicationFactory : WebApplicationFactor
 
         await CreateAsync(authoring, new ContentItem
         {
+            Id = "professional-home",
+            Slug = "professional-home",
+            Title = "Kyle W. Barnett",
+            Summary = "Fixture database-backed Professional homepage.",
+            Tags = [ContentTags.Homepage],
+            VisibleInModes = [BuiltInSiteModes.Professional.Id],
+            Body = """
+                # Kyle W. Barnett
+
+                Fixture database-backed Professional homepage.
+
+                ## Experience {#experience-section}
+
+                {{content-collection context="experience" presentation="professional-experience"}}
+
+                ## Projects {#projects-section}
+
+                {{content-collection context="project" presentation="professional-projects" featured-first="true"}}
+
+                ## Skills {#skills-section}
+
+                Fixture skills.
+
+                ## Education {#education-section}
+
+                Fixture education.
+
+                ## Honors & Awards {#honors-section}
+
+                Fixture honors.
+
+                ## Leadership Experience {#leadership-section}
+
+                Fixture leadership.
+                """
+        });
+
+        await CreateAsync(authoring, new ContentItem
+        {
             Id = "article-bees",
             Slug = "legacy-bees-article",
             Title = "Freeing the Bees: Solving ConsoleVariations",
