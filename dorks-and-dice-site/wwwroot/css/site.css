@@ -244,6 +244,28 @@ body.dark-mode .image-modal-content img {
   height: auto;
 }
 
+/* Constrained content-header presentation classes. Authored metadata may opt into these
+   classes through header.cssClass without coupling presentation to an article slug or file name. */
+.content-detail-header.content-logo-roundel .content-detail-logo-link img {
+  width: 100cqmin;
+  height: 100cqmin;
+  aspect-ratio: 1 / 1;
+  object-fit: contain;
+  object-position: center;
+  border-radius: 50%;
+  padding: 7px;
+  box-sizing: border-box;
+}
+
+.content-detail-header.content-logo-gold .content-detail-logo-link img {
+  border: 3px solid #e6b800;
+  box-shadow: 0 0 26px rgba(230, 184, 0, 0.35);
+}
+
+.content-detail-header.content-logo-dark .content-detail-logo-link img {
+  background: #0e0f12;
+}
+
 .content-visual-surface {
   min-height: 34rem;
   overflow: auto;
