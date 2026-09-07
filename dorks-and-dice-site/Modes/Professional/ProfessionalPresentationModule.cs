@@ -6,6 +6,9 @@ namespace dorks_and_dice_site.Modes.Professional;
 
 public sealed class ProfessionalPresentationModule : ISiteModePresentationModule
 {
+    private const string HeadshotPath =
+        "/content/media/21a9d1fde7ce4c8db49140ec3666641b/kyle-headshot.jpg";
+
     public string PresentationKey => BuiltInSiteModes.Professional.Id;
 
     public string GetTitleSuffix()
@@ -25,7 +28,7 @@ public sealed class ProfessionalPresentationModule : ISiteModePresentationModule
 
     public string? GetDefaultMetaImagePath()
     {
-        return "/site-modes/professional/images/profile/kyle-headshot.jpg";
+        return HeadshotPath;
     }
 
     public string? GetStructuredDataJson(string canonicalOrigin)
@@ -39,7 +42,7 @@ public sealed class ProfessionalPresentationModule : ISiteModePresentationModule
                 @type = "Person",
                 name = "Kyle W. Barnett",
                 url = $"{canonicalOrigin}/",
-                image = $"{canonicalOrigin}/site-modes/professional/images/profile/kyle-headshot.jpg",
+                image = $"{canonicalOrigin}{HeadshotPath}",
                 jobTitle = "Information Science Graduate",
                 sameAs = new[]
                 {
