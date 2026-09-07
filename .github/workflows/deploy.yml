@@ -78,6 +78,7 @@ jobs:
 
           docker run -d --name dorks-and-dice-site-smoketest \
             --network dorks-and-dice-smoketest \
+            --tmpfs /app/Content \
             -e ASPNETCORE_ENVIRONMENT=Development \
             dorks-and-dice-site:latest
 
