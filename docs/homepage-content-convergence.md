@@ -8,22 +8,22 @@ This requirement is independent of the mode-definition persistence decision docu
 
 A content document tagged `homepage` and visible to the active normal mode takes precedence over any registered home module. Exactly one visible `homepage` document may resolve for a normal mode; multiple candidates are rejected as an invalid composition rather than resolved by incidental source/query order.
 
-Both normal-mode homepages have now been promoted to the live External content source:
+Both normal-mode homepages have been promoted to the live External content source:
 
-- `professional-home` — External revision 42 at the September 7, 2026 validation checkpoint;
-- `dorks-and-dice-home` — External revision 34 at the same checkpoint.
+- `professional-home`;
+- `dorks-and-dice-home`.
 
-The Local authoring database is empty after those moves. The ordinary single-page Move operation preserved the homepages and their managed media in External.
+The Local authoring database is empty after those moves. The ordinary single-page Move operation preserved the homepages, their histories, and their managed media in External.
 
-The Dorks & Dice database-backed homepage passed authenticated live parity validation, including desktop/mobile presentation, light/dark themes, Discord, live Minecraft status, Hytale copy, link destinations, public text exporters, sitemap behavior, and mode isolation. Its compiled normal-mode homepage fallback has therefore been retired. The Dorks & Dice presentation module and theme assets remain application-owned presentation concerns.
+The Dorks & Dice database-backed homepage passed authenticated live parity validation, including desktop/mobile presentation, light/dark themes, Discord, live Minecraft status, Hytale copy, link destinations, public text exporters, sitemap behavior, and mode isolation. Its compiled normal-mode homepage fallback has been retired.
 
-The Professional database-backed homepage is live but still requires an authored-content revision before its compiled fallback can be retired. The remaining defects are limited to stable anchors, curated collection ordering, résumé download behavior, and external-link attributes. They can all be expressed through the existing Markdown/component contracts; no Professional-specific rendering subsystem is required.
+The Professional database-backed homepage was repaired through authored Markdown/component metadata to restore stable section anchors, curated Experience/Project ordering, résumé download behavior, and external-link behavior. The repaired live page was visually approved. Its compiled/file-backed homepage and résumé fallback has therefore been retired on the cleanup branch.
 
 The framework fallback remains. It is a framework runtime state, not a normal site mode, and is intentionally independent of the two database-backed normal-mode homepages.
 
 ## Completed shared implementation
 
-The permanent homepage architecture now includes:
+The permanent homepage architecture includes:
 
 - database-backed homepage resolution through the normal content catalog and source composition;
 - managed homepage media with stable URLs;
@@ -39,13 +39,11 @@ The permanent homepage architecture now includes:
 
 Authored content therefore no longer requires an application rebuild merely to change a homepage, its prose, its current managed media, or its collection composition.
 
-## Professional live repair
+## Professional convergence
 
-Authenticated live validation found these functional differences in External `professional-home` revision 42.
+The live Professional homepage preserves the behavior that was previously encoded in the file-backed résumé/homepage implementation through generic authored contracts.
 
-### Stable section anchors
-
-The following IDs are referenced by homepage navigation/detail-page back links but are absent from the rendered page:
+Stable section IDs are authored directly in Markdown:
 
 ```text
 experience-section
@@ -56,83 +54,37 @@ honors-section
 leadership-section
 ```
 
-Use normal Markdown generic attributes on the corresponding headings, for example:
+For example:
 
 ```markdown
 ## Experience {#experience-section}
 ```
 
-The shared Markdown pipeline already preserves authored `id` attributes.
-
-### Experience order
-
-Use this curated order in the Experience collection invocation:
+The Experience collection uses the curated order:
 
 ```text
 seniorproject,experiencecaspenterprises,experiencetechnologyservices,experiencecybersecurityteam,experiencesimlab,experiencewiredworks,skyblivion,skywind
 ```
 
-### Project order
-
-Use this order:
+The Project collection uses:
 
 ```text
 xngine,pythonfinanceanalytics,personalmultimodewebsite,seniorproject,directedindependentstudy,skyblivion,skywind,simlabexpo,dndtools
 ```
 
-Retain:
+with:
 
 ```text
 featured-first="true"
 ```
 
-That groups featured records first while preserving the curated order within the featured and non-featured groups.
+The managed résumé remains at its stable media URL and uses the generic Markdown `download` attribute. LinkedIn/GitHub and credential/official-record links use authored generic link attributes rather than Professional-specific rendering logic.
 
-### Résumé download
+The former `ProfessionalHomeModule`, `Content/Resume/resume.json`, resume-specific view-model/service path, compiled Professional homepage view/partials, and their duplicate static résumé/contact/credential media are no longer required by the runtime architecture and are removed by the Professional retirement cleanup.
 
-The current managed résumé URL is:
+`/resume` remains a Professional-owned alias through `ISiteModeHomeService`; it does not require or imply a separate résumé content store.
 
-```text
-/content/media/eded0c44dade448a93515f73349a410a/kyle-resume.pdf
-```
-
-The authored link should retain that managed URL and add the generic `download` attribute, for example:
-
-```markdown
-[Download Résumé](/content/media/eded0c44dade448a93515f73349a410a/kyle-resume.pdf){download}
-```
-
-### External contact and credential links
-
-LinkedIn and GitHub should use:
-
-```text
-target="_blank" rel="me noopener noreferrer"
-```
-
-Credential PDFs and official-record links should use:
-
-```text
-target="_blank" rel="noopener noreferrer"
-```
-
-Email and telephone links should retain their normal direct behavior.
-
-Once a new External Professional revision corrects these items and passes live validation, the compiled Professional homepage/resume subsystem can be deleted.
-
-## Professional fallback retirement constraint
-
-The remaining legacy Professional fallback uses `ResumeViewModel` and repository data from:
-
-```text
-Content/Resume/resume.json
-```
-
-It also keeps static copies of résumé/contact/credential media alive. This subsystem is transitional and must not become the permanent source of authored homepage data.
-
-Before deleting it, every still-needed field must be represented by the live database-backed homepage/content system, managed media, or legitimate presentation/theme configuration. Experience and Projects remain independent database content records and must not be copied into homepage Markdown merely to eliminate the fallback.
-
-The Professional presentation stylesheet/favicon remain presentation-owned assets. The static headshot also has an application-level metadata/structured-data reference that must be migrated to an appropriate managed/presentation source before that physical static copy is deleted.
+The Professional presentation stylesheet and favicon remain presentation-owned assets. The default social/meta image and structured-data `Person.image` now use the managed Professional headshot instead of a duplicate static headshot.
 
 ## Dorks & Dice convergence
 
@@ -152,7 +104,7 @@ Host, port, protocol version, query timeout, and cache policy remain deployment-
 
 Minecraft is the only currently supported game-server status implementation. Hytale live status remains outside this refactor cycle; static Hytale copy may remain where it accurately describes the community.
 
-The former `DorksAndDiceHomeModule` and its compiled homepage Razor view are no longer part of the permanent normal-mode architecture. The Dorks & Dice presentation module, branding partials, stylesheet, and other legitimate presentation-owned resources remain.
+The former `DorksAndDiceHomeModule` and its compiled homepage Razor view are no longer part of the normal-mode architecture. The Dorks & Dice presentation module, branding partials, stylesheet, and other legitimate presentation-owned resources remain.
 
 ## Shared homepage contract
 
@@ -176,10 +128,10 @@ request
   -> configured content sources for that mode
   -> exactly one visible document tagged `homepage`
        -> render shared database-backed homepage
-  -> framework fallback only when no normal-mode homepage/module applies
+  -> framework fallback when no normal-mode homepage/module applies
 ```
 
-A deployment may still register an `ISiteModeHomeModule` for a mode that intentionally requires application-owned homepage behavior, but the two current normal sites no longer need that mechanism as authored-content storage. The framework fallback module remains registered separately.
+A future deployment may still register an `ISiteModeHomeModule` for a mode that intentionally requires application-owned homepage behavior, but the two current normal sites no longer need that mechanism as authored-content storage. The framework fallback module remains registered separately.
 
 ## Page composition
 
@@ -204,18 +156,20 @@ For Dorks & Dice, Minecraft status remains a plugin because it is a compact in-p
 
 Authenticated validation after promotion confirmed that all nine Professional homepage managed assets are present in External and report `External/professional-home` as a page dependency. The résumé and credential PDFs render through the inline authoring preview and open normally in a separate tab. Replace controls are available both in the central External media library and on the Professional homepage's Media Dependencies surface.
 
+The duplicate source-tree résumé PDF, credential PDFs, contact icons, and headshot were retained only by the legacy Professional fallback. After the presentation metadata/structured-data headshot reference was switched to the managed asset, those static duplicates became removable. The Professional stylesheet and favicon remain because they are presentation-owned rather than authored media.
+
 The Dorks & Dice homepage has no attached managed media; its dynamic blocks are plugin-backed components.
 
-The authoring usage query must ensure each configured content store is on the current storage schema before querying `content_page_asset_dependency`. This keeps dependency inspection valid for newly created/disposable SQLite stores as well as initialized live stores.
+The authoring usage query ensures each configured content store is on the current storage schema before querying `content_page_asset_dependency`. This keeps dependency inspection valid for newly created/disposable SQLite stores as well as initialized live stores.
 
 ## Remaining convergence sequence
 
-1. Save a new External `professional-home` revision with the anchor, ordering, download, and link-attribute fixes above.
-2. Revalidate the live Professional homepage, `/resume`, managed media, `/site.txt`, `/llms.txt`, sitemap, and mode isolation.
-3. Retire `ProfessionalHomeModule`, the file-backed `resume.json`/resume view-model service path, and the compiled Professional homepage Razor/partials.
-4. Migrate the remaining application-level static-headshot metadata/structured-data dependency, then remove static Professional media that becomes genuinely orphaned. Keep real theme/favicon assets.
-5. Re-audit generic/shared code for remaining legacy normal-mode homepage coupling and stale documentation/tests.
-6. Run the complete automated suite, CI, final live smoke tests, and the final security/penetration-test pass.
+1. Run the complete automated suite and CI against the Professional fallback-retirement cleanup.
+2. Confirm Professional `/`, `/resume`, `/articles`, managed media, `/site.txt`, `/llms.txt`, sitemap, and mode isolation remain correct without the legacy fallback/static duplicates.
+3. Confirm Dorks & Dice `/`, Discord, Minecraft, and route isolation remain correct after the shared cleanup.
+4. Re-audit source for stale legacy normal-mode homepage/resume dependencies and obsolete `/site-modes/professional/...` media references.
+5. Merge the validated cleanup into `refactor/site-mode-modules`.
+6. Run the final refactor-wide smoke/security/source-isolation pass before requesting explicit approval to merge the refactor into `main`.
 
 ## Definition of completion for this refactor cycle
 
