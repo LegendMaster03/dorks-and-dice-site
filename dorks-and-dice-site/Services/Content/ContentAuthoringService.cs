@@ -89,7 +89,7 @@ public sealed class ContentAuthoringService : IContentAuthoringService
             Summary = "Describe this content.",
             LinkText = "Open details"
         };
-        var defaultModeId = _siteModeRegistry.All[0].Id;
+        var defaultModeId = BuiltInSiteModes.Professional.Id;
 
         return new ContentAuthoringEditViewModel
         {
@@ -356,7 +356,7 @@ public sealed class ContentAuthoringService : IContentAuthoringService
             Body = item.Body
         };
 
-        revision.Tags.AddRange(item.Tags.Select(tag => new ContentRevisionTagRecord { Tag = tag.Tag }));
+        revision.Tags.AddRange(item.Tags.Select(tag => new ContentRevisionTagRecord { Tag = tag }));
         revision.Modes.AddRange(item.VisibleInModes.Select(modeId => new ContentRevisionModeRecord { SiteMode = modeId }));
         revision.AssetReferences.AddRange(ContentAssetReferenceParser
             .FindAssetKeys(revision.Body, revision.MetadataJson)
