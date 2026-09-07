@@ -121,6 +121,46 @@ else
                         <div class="form-text">Use meaningful link text or image alt text before inserting the reference into the body.</div>
                         <label class="form-label mt-3" for="url-@asset.AssetKey">Stable media URL</label>
                         <input id="url-@asset.AssetKey" class="form-control font-monospace" value="@asset.Url" readonly />
+
+                        <div class="border-top mt-3 pt-3">
+                            <h3 class="h6 mb-2">Page dependencies</h3>
+                            @if (asset.PageDependencies.Count == 0)
+                            {
+                                <p class="small text-body-secondary mb-0">No page currently owns or depends on this asset.</p>
+                            }
+                            else
+                            {
+                                <ul class="small mb-0 ps-3">
+                                    @foreach (var usage in asset.PageDependencies)
+                                    {
+                                        <li>
+                                            <code>@usage.PageSourceKey/@usage.Slug</code>
+                                            <span class="text-body-secondary">(@usage.Relationship)</span>
+                                        </li>
+                                    }
+                                </ul>
+                            }
+                        </div>
+
+                        <form method="post"
+                              action="@($"{Model.RouteBase}/{Model.Slug}/media/{asset.AssetKey}/replace")"
+                              enctype="multipart/form-data"
+                              class="border-top mt-3 pt-3"
+                              onsubmit="return confirm('Replace the bytes behind this stable media URL? Every listed page dependency and other reference to this asset will use the new file.');">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="source" value="@Model.SourceKey" />
+                            <input type="hidden" name="assetSource" value="@asset.SourceKey" />
+                            <label class="form-label small" for="replace-page-@asset.AssetKey">Replace in place</label>
+                            <input class="form-control form-control-sm"
+                                   id="replace-page-@asset.AssetKey"
+                                   name="file"
+                                   type="file"
+                                   accept="image/jpeg,image/png,image/webp,image/gif,image/svg+xml,application/pdf"
+                                   required />
+                            <div class="form-text">The media type must stay <code>@asset.MediaType</code>. The stable key, file name, URL, and page references remain unchanged.</div>
+                            <button class="btn btn-sm btn-outline-warning mt-2" type="submit">Replace media</button>
+                        </form>
+
                         <form method="post" action="@($"{Model.RouteBase}/{Model.Slug}/media/detach")" class="mt-3">
                             @Html.AntiForgeryToken()
                             <input type="hidden" name="source" value="@Model.SourceKey" />
