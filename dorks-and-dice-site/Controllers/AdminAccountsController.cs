@@ -1,5 +1,6 @@
 using dorks_and_dice_site.Models.Identity;
 using dorks_and_dice_site.Services.Identity;
+using dorks_and_dice_site.Services.Site;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -15,17 +16,20 @@ public sealed class AdminAccountsController : Controller
     private readonly SignInManager<ApplicationUser> _signInManager;
     private readonly RoleManager<IdentityRole<Guid>> _roleManager;
     private readonly IScopedRoleService _scopedRoleService;
+    private readonly ISiteModeRegistry _siteModeRegistry;
 
     public AdminAccountsController(
         UserManager<ApplicationUser> userManager,
         SignInManager<ApplicationUser> signInManager,
         RoleManager<IdentityRole<Guid>> roleManager,
-        IScopedRoleService scopedRoleService)
+        IScopedRoleService scopedRoleService,
+        ISiteModeRegistry siteModeRegistry)
     {
         _userManager = userManager;
         _signInManager = signInManager;
         _roleManager = roleManager;
         _scopedRoleService = scopedRoleService;
+        _siteModeRegistry = siteModeRegistry;
     }
 
     [HttpGet("")]
@@ -148,7 +152,8 @@ public sealed class AdminAccountsController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SetScopedRole(Guid userId, string scope, string role, bool enabled)
     {
-        if (!AccountRoleScopes.All.Contains(scope, StringComparer.Ordinal)
+        if (!_siteModeRegistry.TryGetById(scope, out var mode)
+            || mode!.SupportsScopedEditor == false
             || !ScopedAccountRoles.All.Contains(role, StringComparer.Ordinal))
         {
             return BadRequest();
@@ -337,10 +342,11 @@ public sealed class AdminAccountsController : Controller
 
     private async Task<AdminAccountDetailViewModel> BuildDetailsAsync(ApplicationUser user)
     {
+        var availableScopedEditorRoles = SiteModeEditorRoleFactory.Create(_siteModeRegistry.All);
         var scopedRoles = new Dictionary<string, List<string>>(StringComparer.Ordinal);
-        foreach (var scope in AccountRoleScopes.All)
+        foreach (var editorRole in availableScopedEditorRoles)
         {
-            scopedRoles[scope] = (await _scopedRoleService.GetRolesAsync(user, scope))
+            scopedRoles[editorRole.Scope] = (await _scopedRoleService.GetRolesAsync(user, editorRole.Scope))
                 .OrderBy(role => role)
                 .ToList();
         }
@@ -356,7 +362,8 @@ public sealed class AdminAccountsController : Controller
             LockoutEnd = user.LockoutEnd,
             IsCurrentUser = IsCurrentUser(user),
             GlobalRoles = (await _userManager.GetRolesAsync(user)).OrderBy(role => role).ToList(),
-            ScopedRoles = scopedRoles
+            ScopedRoles = scopedRoles,
+            AvailableScopedEditorRoles = availableScopedEditorRoles
         };
     }
 
