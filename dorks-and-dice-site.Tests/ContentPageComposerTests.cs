@@ -22,14 +22,36 @@ public sealed class ContentPageComposerTests
         var fragments = composer.Compose("markdown", body);
 
         Assert.Equal(3, fragments.Count);
-        Assert.Contains("Experience", fragments[0].RenderedHtml, StringComparison.Ordinal);
+        var firstHtml = Assert.IsType<string>(fragments[0].RenderedHtml);
+        Assert.Contains("Experience", firstHtml, StringComparison.Ordinal);
         Assert.NotNull(fragments[1].Component);
         Assert.Equal("content-collection", fragments[1].Component!.Name);
         Assert.Equal("ContentCollection", fragments[1].Component.ViewComponentName);
         Assert.Equal("experience", fragments[1].Component.Parameters["context"]);
         Assert.Equal("professional-experience", fragments[1].Component.Parameters["presentation"]);
         Assert.Equal("first,second", fragments[1].Component.Parameters["order"]);
-        Assert.Contains("Education", fragments[2].RenderedHtml, StringComparison.Ordinal);
+        var finalHtml = Assert.IsType<string>(fragments[2].RenderedHtml);
+        Assert.Contains("Education", finalHtml, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void GenericAttributesPreserveStableAnchorsAndLinkBehavior()
+    {
+        var renderer = new ContentBodyRenderer(Array.Empty<IContentDirectiveRenderer>());
+        var html = renderer.Render(
+            "markdown",
+            """
+            ## Experience {#experience-section}
+
+            [Download resume](/content/media/example/resume.pdf){download}
+
+            [LinkedIn](https://www.linkedin.com/example){target="_blank" rel="noopener"}
+            """);
+
+        Assert.Contains("id=\"experience-section\"", html, StringComparison.Ordinal);
+        Assert.Contains("href=\"/content/media/example/resume.pdf\" download", html, StringComparison.Ordinal);
+        Assert.Contains("target=\"_blank\"", html, StringComparison.Ordinal);
+        Assert.Contains("rel=\"noopener\"", html, StringComparison.Ordinal);
     }
 
     [Fact]
