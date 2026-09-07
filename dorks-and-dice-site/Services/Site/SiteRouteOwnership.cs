@@ -133,6 +133,8 @@ public static class SiteRouteOwnership
         return path == "/health"
             || path == "/robots.txt"
             || path == "/sitemap.xml"
+            || path == "/site.txt"
+            || path == "/llms.txt"
             || path == "/development-preview"
             || path == "/account"
             || path.StartsWith("/account/", StringComparison.Ordinal)

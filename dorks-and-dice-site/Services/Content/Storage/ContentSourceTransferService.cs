@@ -43,12 +43,14 @@ public sealed class ContentSourceTransferService : IContentSourceTransferService
                 $"Content page '{slug}' was not found in source '{source.Key}'.");
 
         var targetPage = await GetReplaceableTargetPageAsync(targetContext, sourcePage, cancellationToken);
-        await EnsureDependenciesAvailableAsync(targetContext, target.Key, sourcePage, cancellationToken);
-        await using var transaction = await targetContext.Database.BeginTransactionAsync(cancellationToken);
         if (targetPage is not null)
         {
-            await DeleteTargetPageAsync(targetContext, targetPage, cancellationToken);
+            throw new InvalidOperationException(
+                $"The target source already contains content page '{sourcePage.ContentKey}'. Single-page moves do not replace existing target history.");
         }
+
+        await EnsureDependenciesAvailableAsync(targetContext, target.Key, sourcePage, cancellationToken);
+        await using var transaction = await targetContext.Database.BeginTransactionAsync(cancellationToken);
         await CopyPageAsync(targetContext, sourcePage, cancellationToken);
         await transaction.CommitAsync(cancellationToken);
     }

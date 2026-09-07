@@ -39,9 +39,19 @@ public sealed class ContentMediaController : Controller
         {
             Response.Headers.ContentSecurityPolicy = "default-src 'none'; style-src 'unsafe-inline'; sandbox";
         }
+
         Response.Headers.XContentTypeOptions = "nosniff";
-        Response.Headers.CacheControl = "public, max-age=31536000, immutable";
-        Response.Headers.ETag = $"\"sha256-{asset.Sha256}\"";
+        Response.Headers.CacheControl = "public, max-age=0, must-revalidate";
+
+        var etag = $"\"sha256-{asset.Sha256}\"";
+        Response.Headers.ETag = etag;
+        if (Request.Headers.IfNoneMatch.Any(header => header
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Any(candidate => candidate == "*" || string.Equals(candidate, etag, StringComparison.Ordinal))))
+        {
+            return StatusCode(StatusCodes.Status304NotModified);
+        }
+
         return File(asset.Data, asset.MediaType);
     }
 }

@@ -12,7 +12,7 @@
     <a class="btn btn-outline-secondary" href="/development">Back to Development</a>
 </div>
 
-<p class="text-body-secondary">Database/source selection and movement are development operations. Content editing is handled separately by Editor.</p>
+<p class="text-body-secondary">Database/source selection and page movement are development operations. Content editing is handled separately by Editor.</p>
 
 @if (TempData["ContentDatabaseSuccess"] is string successMessage)
 {
@@ -63,7 +63,7 @@
                             @foreach (var target in Model.MoveTargets)
                             {
                                 <form method="post" action="/development/databases/@item.Slug/move"
-                                      onsubmit="return confirm('Move this page to @target.DisplayName and remove the source copy?');">
+                                      onsubmit="return confirm('Move this page and its owned media to @target.DisplayName? The move will refuse to overwrite an existing target page.');">
                                     @Html.AntiForgeryToken()
                                     <input type="hidden" name="source" value="@Model.SelectedSourceKey" />
                                     <input type="hidden" name="targetSource" value="@target.Key" />
