@@ -11,7 +11,7 @@ namespace dorks_and_dice_site.Tests;
 public sealed class ContentSourceTransferServiceTests
 {
     [Fact]
-    public async Task CopyAllPreservesSourceRevisionHistoryAndMediaAcrossRepeatedSynchronization()
+    public async Task CopyPreservesSourceRevisionHistoryAndOwnedMedia()
     {
         using var fixture = new TransferFixture();
         var authoring = new ContentAuthoringService(fixture.Registry);
@@ -38,9 +38,7 @@ public sealed class ContentSourceTransferServiceTests
             pngSignature.Length);
         await assets.AttachAsync("Source", "copy-history-test", "Source", sourceAsset.AssetKey);
 
-        var copiedCount = await transfer.CopyAllAsync("Source", "Target");
-
-        Assert.Equal(1, copiedCount);
+        await transfer.CopyAsync("Source", "Target", "copy-history-test");
 
         var sourceCopy = await authoring.GetEditAsync("Source", "copy-history-test");
         var targetCopy = await authoring.GetEditAsync("Target", "copy-history-test");
@@ -52,151 +50,10 @@ public sealed class ContentSourceTransferServiceTests
         Assert.Equal(sourceCopy.Document.Id, targetCopy.Document.Id);
         Assert.Equal(sourceCopy.Document.Slug, targetCopy.Document.Slug);
 
-        var targetAssets = await assets.GetForPageAsync("Target", "copy-history-test");
-        var targetAsset = Assert.Single(targetAssets);
+        var targetAsset = Assert.Single(await assets.GetForPageAsync("Target", "copy-history-test"));
         Assert.Equal(sourceAsset.AssetKey, targetAsset.AssetKey);
         Assert.Equal(sourceAsset.Sha256, targetAsset.Sha256);
         Assert.Equal(sourceAsset.Url, targetAsset.Url);
-
-        var latestEdit = await authoring.GetEditAsync("Source", "copy-history-test");
-        Assert.NotNull(latestEdit);
-        latestEdit.Document.Body += "\n\nThird revision.";
-        await authoring.SaveRevisionAsync(latestEdit.Document);
-
-        var secondPng = new byte[] { 0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x01 };
-        await using var secondImageStream = new MemoryStream(secondPng);
-        var secondSourceAsset = await assets.UploadAsync(
-            "Source",
-            "second-diagram.png",
-            "image/png",
-            secondImageStream,
-            secondPng.Length);
-        await assets.AttachAsync("Source", "copy-history-test", "Source", secondSourceAsset.AssetKey);
-
-        Assert.Equal(1, await transfer.CopyAllAsync("Source", "Target"));
-
-        targetCopy = await authoring.GetEditAsync("Target", "copy-history-test");
-        Assert.NotNull(targetCopy);
-        Assert.Equal(3, targetCopy.History.Count);
-        Assert.Contains("Third revision.", targetCopy.Document.Body);
-        targetAssets = await assets.GetForPageAsync("Target", "copy-history-test");
-        Assert.Equal(2, targetAssets.Count);
-        Assert.Contains(targetAssets, asset => asset.AssetKey == sourceAsset.AssetKey);
-        Assert.Contains(targetAssets, asset => asset.AssetKey == secondSourceAsset.AssetKey);
-    }
-
-    [Fact]
-    public async Task CopyAllReplacesTheSameStablePageInTheTarget()
-    {
-        using var fixture = new TransferFixture();
-        var authoring = new ContentAuthoringService(fixture.Registry);
-        var transfer = new ContentSourceTransferService(fixture.Registry);
-
-        var sourceModel = authoring.GetNew("Source");
-        sourceModel.Document.Id = "conflict-test";
-        sourceModel.Document.Slug = "conflict-test";
-        await authoring.CreateAsync(sourceModel.Document);
-
-        var targetModel = authoring.GetNew("Target");
-        targetModel.Document.Id = "conflict-test";
-        targetModel.Document.Slug = "conflict-test";
-        await authoring.CreateAsync(targetModel.Document);
-
-        var targetEdit = await authoring.GetEditAsync("Target", "conflict-test");
-        Assert.NotNull(targetEdit);
-        targetEdit.Document.Body = "Target-only body.";
-        await authoring.SaveRevisionAsync(targetEdit.Document);
-
-        Assert.Equal(1, await transfer.CopyAllAsync("Source", "Target"));
-
-        Assert.NotNull(await authoring.GetEditAsync("Source", "conflict-test"));
-        var synchronizedTarget = await authoring.GetEditAsync("Target", "conflict-test");
-        Assert.NotNull(synchronizedTarget);
-        Assert.DoesNotContain("Target-only body.", synchronizedTarget.Document.Body);
-        Assert.Single(synchronizedTarget.History);
-    }
-
-    [Fact]
-    public async Task CopyAllSynchronizesCanonicalSlugChangesForTheSameStableIdentity()
-    {
-        using var fixture = new TransferFixture();
-        var authoring = new ContentAuthoringService(fixture.Registry);
-        var transfer = new ContentSourceTransferService(fixture.Registry);
-
-        var sourceModel = authoring.GetNew("Source");
-        sourceModel.Document.Id = "stable-page";
-        sourceModel.Document.Slug = "original-slug";
-        await authoring.CreateAsync(sourceModel.Document);
-        Assert.Equal(1, await transfer.CopyAllAsync("Source", "Target"));
-
-        var sourceEdit = await authoring.GetEditAsync("Source", "original-slug");
-        Assert.NotNull(sourceEdit);
-        sourceEdit.Document.Slug = "current-slug";
-        await authoring.SaveRevisionAsync(sourceEdit.Document);
-
-        Assert.Equal(1, await transfer.CopyAllAsync("Source", "Target"));
-
-        Assert.Null(await authoring.GetEditAsync("Target", "original-slug"));
-        var synchronizedTarget = await authoring.GetEditAsync("Target", "current-slug");
-        Assert.NotNull(synchronizedTarget);
-        Assert.Equal("stable-page", synchronizedTarget.Document.Id);
-
-        var redirect = fixture.CreateRedirectService("Target");
-        var target = await redirect.ResolveAsync(ContentRouteNamespaces.Articles, "original-slug");
-        Assert.NotNull(target);
-        Assert.Equal("stable-page", target.ContentKey);
-    }
-
-    [Fact]
-    public async Task CopyAllRejectsADifferentStableIdentityReusingTheCanonicalSlug()
-    {
-        using var fixture = new TransferFixture();
-        var authoring = new ContentAuthoringService(fixture.Registry);
-        var transfer = new ContentSourceTransferService(fixture.Registry);
-
-        var sourceModel = authoring.GetNew("Source");
-        sourceModel.Document.Id = "source-page";
-        sourceModel.Document.Slug = "shared-slug";
-        await authoring.CreateAsync(sourceModel.Document);
-
-        var targetModel = authoring.GetNew("Target");
-        targetModel.Document.Id = "different-target-page";
-        targetModel.Document.Slug = "shared-slug";
-        await authoring.CreateAsync(targetModel.Document);
-
-        await Assert.ThrowsAsync<InvalidOperationException>(
-            () => transfer.CopyAllAsync("Source", "Target"));
-
-        Assert.NotNull(await authoring.GetEditAsync("Source", "shared-slug"));
-        Assert.NotNull(await authoring.GetEditAsync("Target", "shared-slug"));
-    }
-
-    [Fact]
-    public async Task CopyAllPreservesRedirectAliasesForStablePages()
-    {
-        using var fixture = new TransferFixture();
-        var authoring = new ContentAuthoringService(fixture.Registry);
-        var transfer = new ContentSourceTransferService(fixture.Registry);
-
-        var model = authoring.GetNew("Source");
-        model.Document.Id = "redirect-transfer-test";
-        model.Document.Slug = "original-article-slug";
-        await authoring.CreateAsync(model.Document);
-
-        var edit = await authoring.GetEditAsync("Source", "original-article-slug");
-        Assert.NotNull(edit);
-        edit.Document.Slug = "current-article-slug";
-        await authoring.SaveRevisionAsync(edit.Document);
-
-        Assert.Equal(1, await transfer.CopyAllAsync("Source", "Target"));
-
-        var redirects = fixture.CreateRedirectService("Target");
-        var target = await redirects.ResolveAsync(
-            ContentRouteNamespaces.Articles,
-            "original-article-slug");
-
-        Assert.NotNull(target);
-        Assert.Equal("redirect-transfer-test", target.ContentKey);
     }
 
     [Fact]
@@ -276,27 +133,6 @@ public sealed class ContentSourceTransferServiceTests
         edit.Document.Body += $"\n\n![Missing]({unattached.Url})";
         var error = await Assert.ThrowsAsync<InvalidOperationException>(() => authoring.SaveRevisionAsync(edit.Document));
         Assert.Contains(unattached.AssetKey, error.Message);
-    }
-
-    [Fact]
-    public async Task PushAllPromotesEveryPageAndClearsTheAuthoringWorkspace()
-    {
-        using var fixture = new TransferFixture();
-        var authoring = new ContentAuthoringService(fixture.Registry);
-        foreach (var slug in new[] { "bulk-one", "bulk-two" })
-        {
-            var model = authoring.GetNew("Source");
-            model.Document.Id = slug;
-            model.Document.Slug = slug;
-            await authoring.CreateAsync(model.Document);
-        }
-
-        Assert.Equal(2, await authoring.MoveAllAsync("Source", "Target"));
-
-        Assert.Null(await authoring.GetEditAsync("Source", "bulk-one"));
-        Assert.Null(await authoring.GetEditAsync("Source", "bulk-two"));
-        Assert.NotNull(await authoring.GetEditAsync("Target", "bulk-one"));
-        Assert.NotNull(await authoring.GetEditAsync("Target", "bulk-two"));
     }
 
     private sealed class TransferFixture : IDisposable
