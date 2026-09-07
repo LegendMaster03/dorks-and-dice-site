@@ -64,6 +64,7 @@ public static class ContentAssetUsage
         foreach (var pageSource in sourceRegistry.GetAllSources())
         {
             await using var context = CreateContext(sourceRegistry, pageSource.Key);
+            await ContentStorageSchema.EnsureCurrentAsync(context, cancellationToken);
 
             if (string.Equals(pageSource.Key, assetSource.Key, StringComparison.OrdinalIgnoreCase))
             {
