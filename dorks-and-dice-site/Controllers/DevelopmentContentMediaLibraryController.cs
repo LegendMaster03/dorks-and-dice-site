@@ -27,6 +27,8 @@ public sealed class DevelopmentContentMediaLibraryController : Controller
         try
         {
             source = ContentAuthoringSourceAccess.ResolveCentralSourceKey(_sources, source);
+            var assets = (await _assets.GetForSourceAsync(source, cancellationToken)).ToList();
+            await ContentAssetUsage.PopulateAsync(_sources, assets, cancellationToken);
             return View("~/Views/ContentMediaLibrary/Index.cshtml", new ContentAssetLibraryViewModel
             {
                 SourceKey = source,
@@ -37,7 +39,7 @@ public sealed class DevelopmentContentMediaLibraryController : Controller
                         DisplayName = item.DisplayName
                     })
                     .ToList(),
-                Assets = (await _assets.GetForSourceAsync(source, cancellationToken)).ToList(),
+                Assets = assets,
                 RouteBase = "/development/media",
                 IsCentralAuthoring = true
             });
