@@ -58,11 +58,11 @@ The legacy HTML article format therefore has no compatibility requirement. Any r
 
 Markdown-backed content is the supported article representation going forward. Normal Markdown rendering and sanitization are part of the current content system and are not legacy HTML compatibility merely because the resulting rendered output is HTML.
 
-## ConsoleVariations presentation holdover
+## Retired ConsoleVariations presentation holdover
 
-The Professional mode stylesheet still contains an article-specific compatibility rule for the ConsoleVariations "Free the Bees" icon. That selector is a remaining presentation artifact from the old article implementation, not a reason to preserve support for the retired HTML article format.
+The former Professional stylesheet contained an article-specific selector for the ConsoleVariations "Free the Bees" icon. That compatibility selector has been retired.
 
-The supported replacement is now the constrained metadata-driven content-header presentation mechanism. Shared CSS provides these reusable classes:
+The live article now uses the constrained metadata-driven content-header presentation mechanism. Shared CSS provides these reusable classes:
 
 ```text
 content-logo-roundel
@@ -70,17 +70,9 @@ content-logo-gold
 content-logo-dark
 ```
 
-A content revision can opt into the treatment through `header.cssClass`, for example:
+The article opts into the treatment through `header.cssClass` rather than an article slug or media filename. This keeps presentation declarative and constrained without adding arbitrary per-article CSS execution.
 
-```json
-{
-  "header": {
-    "cssClass": "content-logo-roundel content-logo-gold content-logo-dark"
-  }
-}
-```
-
-This keeps presentation declarative and constrained without coupling generic CSS to an article slug or media filename. The old ConsoleVariations-specific selector remains only until the authoritative database revision is updated to use the generic classes and verified. After that revision is live, remove the named selector. Do not add arbitrary per-article CSS execution.
+No ConsoleVariations-specific compatibility selector is required by the current source tree.
 
 ## One-rebuild principle
 
