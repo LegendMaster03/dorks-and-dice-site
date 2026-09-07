@@ -6,7 +6,6 @@ using dorks_and_dice_site.Models.Site;
 using dorks_and_dice_site.Plugins.DiscordWidget;
 using dorks_and_dice_site.Plugins.MinecraftServerStatus;
 using dorks_and_dice_site.Plugins.ProfessionalPortfolio;
-using dorks_and_dice_site.Services.Resume;
 using dorks_and_dice_site.Services.Content.Storage;
 using dorks_and_dice_site.Services.Identity;
 using dorks_and_dice_site.Services.Site;
@@ -30,7 +29,6 @@ builder.Services.AddSitePlugins(
     new DiscordWidgetPlugin(),
     new MinecraftServerStatusPlugin()
 ]);
-builder.Services.AddScoped<IResumeContentService, ResumeContentService>();
 builder.Services.AddSingleton<IToolRegistry, JsonToolRegistry>();
 builder.Services.AddSingleton<ICampaignAccessStore, JsonCampaignAccessStore>();
 builder.Services.AddSingleton<IToolUpstreamPolicy, ToolUpstreamPolicy>();
@@ -69,7 +67,6 @@ builder.Services.AddSingleton<ISiteModePresentationModule, dorks_and_dice_site.M
 builder.Services.AddSingleton<ISiteModePresentationModule, dorks_and_dice_site.Framework.TrustedPreview.TrustedPreviewPresentationModule>();
 builder.Services.AddSingleton<ISiteModePresentationModule, dorks_and_dice_site.Framework.Fallback.FallbackPresentationModule>();
 builder.Services.AddScoped<ISiteModeHomeService, SiteModeHomeService>();
-builder.Services.AddScoped<ISiteModeHomeModule, dorks_and_dice_site.Modes.Professional.ProfessionalHomeModule>();
 builder.Services.AddScoped<ISiteModeHomeModule, dorks_and_dice_site.Framework.Fallback.FallbackHomeModule>();
 
 builder.Services.Configure<AccountEmailOptions>(
