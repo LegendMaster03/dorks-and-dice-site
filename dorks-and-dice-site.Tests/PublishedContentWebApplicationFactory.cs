@@ -91,6 +91,17 @@ public sealed class PublishedContentWebApplicationFactory : WebApplicationFactor
     {
         await CreateAsync(authoring, new ContentItem
         {
+            Id = "dorks-and-dice-home",
+            Slug = "dorks-and-dice-home",
+            Title = "Dorks & Dice",
+            Summary = "Fixture database-backed Dorks & Dice homepage.",
+            Tags = [ContentTags.Homepage],
+            VisibleInModes = [BuiltInSiteModes.DorksAndDice.Id],
+            Body = "# Dorks & Dice\n\nFixture database-backed Dorks & Dice homepage.\n\n## Community {#community}"
+        });
+
+        await CreateAsync(authoring, new ContentItem
+        {
             Id = "article-bees",
             Slug = "legacy-bees-article",
             Title = "Freeing the Bees: Solving ConsoleVariations",
