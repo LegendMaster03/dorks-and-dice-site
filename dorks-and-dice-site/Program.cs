@@ -69,7 +69,6 @@ builder.Services.AddSingleton<ISiteModePresentationModule, dorks_and_dice_site.M
 builder.Services.AddSingleton<ISiteModePresentationModule, dorks_and_dice_site.Framework.TrustedPreview.TrustedPreviewPresentationModule>();
 builder.Services.AddSingleton<ISiteModePresentationModule, dorks_and_dice_site.Framework.Fallback.FallbackPresentationModule>();
 builder.Services.AddScoped<ISiteModeHomeService, SiteModeHomeService>();
-builder.Services.AddScoped<ISiteModeHomeModule, dorks_and_dice_site.Modes.DorksAndDice.DorksAndDiceHomeModule>();
 builder.Services.AddScoped<ISiteModeHomeModule, dorks_and_dice_site.Modes.Professional.ProfessionalHomeModule>();
 builder.Services.AddScoped<ISiteModeHomeModule, dorks_and_dice_site.Framework.Fallback.FallbackHomeModule>();
 
