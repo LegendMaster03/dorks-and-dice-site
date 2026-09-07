@@ -26,6 +26,44 @@ The major implementation work is complete:
 
 The remaining homepage work is operational convergence: verify presentation/functional parity against the current Local documents, verify managed-media replacement and crawler output with the real source composition, publish each homepage to External, and then delete the corresponding compiled/file-backed fallback implementation.
 
+## September 7, 2026 parity validation
+
+A read-only local validation pass tested `refactor/site-mode-modules` at `258cd06820a73873773c0b5bcb2ff40e4ee54134` before the follow-up cleanup commits.
+
+Automated result at that checkpoint:
+
+- 346 tests passed;
+- 0 failed;
+- 0 skipped;
+- the four existing nullable warnings were confined to `ContentPageComposerTests.cs` and were removed by the later presentation-attribute regression-test cleanup.
+
+The Professional database-backed homepage rendered successfully with all nine managed homepage assets, but it is **not yet ready to promote**. The concrete parity issues were:
+
+1. The six section-navigation/back-link targets did not exist: `experience-section`, `projects-section`, `skills-section`, `education-section`, `honors-section`, and `leadership-section`.
+2. Experience order differed from the curated legacy order.
+3. Project order differed from the curated legacy order.
+4. The managed résumé link lost the legacy `download` behavior.
+5. LinkedIn/GitHub, credential PDF, and official-record links lost the legacy new-tab behavior.
+6. Smaller heading/markup differences remain, but they are not blockers unless they cause a functional or presentation regression.
+
+The shared Markdown pipeline already uses Markdig advanced extensions, including generic attributes, and the sanitizer permits `id`, `download`, `target`, and `rel`. Regression coverage now explicitly protects those attributes. These parity fixes therefore belong in the authored `professional-home` revision rather than in a new Professional-specific renderer.
+
+Use these stable curated collection orders in the homepage component invocations:
+
+```text
+Experience:
+seniorproject,experiencecaspenterprises,experiencetechnologyservices,experiencecybersecurityteam,experiencesimlab,experiencewiredworks,skyblivion,skywind
+
+Projects:
+xngine,pythonfinanceanalytics,personalmultimodewebsite,seniorproject,directedindependentstudy,skyblivion,skywind,simlabexpo,dndtools
+```
+
+The Project collection should retain `featured-first="true"`; that groups featured records first while preserving the curated order inside each featured/non-featured group, matching the old fallback behavior.
+
+The Dorks & Dice database homepage passed the available desktop/mobile/theme, Discord, and live Minecraft checks. Direct source-composition fallback comparison and real source inventory were unavailable to the unauthenticated validation browser, so Dorks & Dice promotion remains pending evidence rather than because of a known homepage failure. A separate discovered footer `/#contact` dead link was corrected to the existing `#community` destination in the mode branding.
+
+The same validation confirmed `/site.txt`, `/llms.txt`, sitemap behavior, public route isolation, Professional managed-media serving, and the Bees generic logo presentation. The media-library Replace/dependency UI and exact Local/External source inventory still require an authenticated developer validation pass.
+
 ## Current systems being converged
 
 ### Professional
@@ -132,13 +170,13 @@ Experience and Projects remain independent content records and must not be colla
 
 ## Remaining validation and retirement sequence
 
-1. Verify Local `professional-home` presentation and functional parity.
+1. Fix the known Local `professional-home` parity issues above and revalidate it.
 2. Replace the managed Local résumé PDF in place and verify stable asset URL/key plus new bytes.
 3. Verify Professional `/site.txt`, `/llms.txt`, sitemap, and managed-media links under the real Local/External source composition.
 4. Promote `professional-home` to External with the normal safe single-page Move operation.
 5. Verify the live Professional homepage, managed media, text endpoints, sitemap, and redirects.
 6. Remove the compiled/file-backed Professional homepage/resume fallback and now-orphaned static media.
-7. Verify Local `dorks-and-dice-home`, including Minecraft/Discord behavior and layout parity.
+7. Complete authenticated Local/External composition validation for `dorks-and-dice-home`, including Minecraft/Discord behavior and layout parity.
 8. Verify Dorks & Dice text/sitemap output under the real source composition.
 9. Promote `dorks-and-dice-home` when ready and verify it live.
 10. Remove the compiled Dorks & Dice homepage fallback.
