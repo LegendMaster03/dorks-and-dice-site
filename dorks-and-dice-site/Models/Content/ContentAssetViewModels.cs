@@ -19,7 +19,7 @@ public sealed class ContentAssetInfo
     public string MarkdownReference { get; init; } = string.Empty;
     public string? Relationship { get; init; }
     public string SourceKey { get; init; } = string.Empty;
-    public List<ContentAssetUsageInfo> PageDependencies { get; init; } = [];
+    public List<ContentAssetUsageInfo> PageDependencies { get; set; } = [];
     public bool IsAttached => Relationship is not null;
 }
 
