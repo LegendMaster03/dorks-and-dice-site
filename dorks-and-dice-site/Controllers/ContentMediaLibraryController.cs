@@ -25,11 +25,13 @@ public sealed class ContentMediaLibraryController : Controller
     public async Task<IActionResult> Index(CancellationToken cancellationToken)
     {
         var source = _sources.AuthoringSourceKey;
+        var assets = (await _assets.GetForSourceAsync(source, cancellationToken)).ToList();
+        await ContentAssetUsage.PopulateAsync(_sources, assets, cancellationToken);
         return View(new ContentAssetLibraryViewModel
         {
             SourceKey = source,
             Sources = [],
-            Assets = (await _assets.GetForSourceAsync(source, cancellationToken)).ToList(),
+            Assets = assets,
             RouteBase = "/editor/media",
             IsCentralAuthoring = false
         });
