@@ -2,62 +2,73 @@
 
 ## Status
 
-Homepage content is a shared framework concern and should use the same database-backed content/revision architecture as other editable site content.
+Homepage content is a shared framework concern and now uses the same database-backed content/revision architecture as other editable site content.
 
-This requirement is independent of the open decision documented in `mode-definition-decision.md` about whether a normal mode's structural definition ultimately lives in compiled C# or runtime data.
+This requirement is independent of the mode-definition persistence decision documented elsewhere. Normal-mode registration is consumed through the stable-ID registry boundary; homepage documents are selected through the content system.
 
-The first migration boundary is implemented: a content document tagged `homepage` and visible to the active normal mode takes precedence over the mode's compiled home module. Existing compiled home modules remain as temporary fallbacks until the database-backed versions have verified presentation and functional parity.
+A content document tagged `homepage` and visible to the active normal mode takes precedence over that mode's compiled home module. Exactly one visible `homepage` document may resolve for a normal mode; multiple candidates are rejected as an invalid composition rather than resolved by incidental source/query order.
 
-Exactly one visible `homepage` document may resolve for a normal mode. Multiple candidates are treated as an invalid composition instead of choosing one by incidental source/query order.
+Both current replacement homepages now exist in the Local authoring database:
 
-The two current database-backed homepages are substantially migrated. The remaining convergence work is presentation parity, especially Markdown-generated vertical spacing, plus replacing the legacy Dorks & Dice inline Minecraft status block with the installed `minecraft-server-status` plugin component.
+- `professional-home`
+- `dorks-and-dice-home`
+
+The Local database was cleaned after the Professional article/media migration so these are the only Local pages intentionally retained. They remain Local while final parity and runtime validation is performed; the live External database therefore still relies on the compiled normal-mode homepage fallbacks.
+
+The major implementation work is complete:
+
+- database-backed homepage resolution is active;
+- managed homepage media is available;
+- the Dorks & Dice Minecraft block is implemented as the `minecraft-server-status` plugin rather than inline page code;
+- Discord remains an installed page component;
+- `/site.txt`, `/llms.txt`, and sitemap generation consume current public database-backed content at runtime;
+- media can be replaced in place without changing its managed URL.
+
+The remaining homepage work is operational convergence: verify presentation/functional parity against the current Local documents, verify managed-media replacement and crawler output with the real source composition, publish each homepage to External, and then delete the corresponding compiled/file-backed fallback implementation.
 
 ## Current systems being converged
 
 ### Professional
 
-The legacy Professional homepage uses `ResumeViewModel`.
-
-Most resume header/contact/education/awards/skills/leadership data historically came from the repository file:
+The legacy Professional fallback still uses `ResumeViewModel` and repository data from:
 
 ```text
 Content/Resume/resume.json
 ```
 
-`ResumePageContentBuilder` reads this file from disk at runtime. Editing it therefore remains a deployment/file change rather than ordinary on-site content authoring.
+That subsystem is retained only because `professional-home` has not yet been promoted to the live External source. It is not the intended permanent authored-content architecture.
 
-Experience and project entries are already loaded from the shared database-backed content catalog using the `experience` and `project` contexts. The article-backed homepage composes those existing records through the `professional-portfolio` plugin rather than duplicating them into Markdown.
+The replacement `professional-home` document owns the directly authored homepage content and its managed media. Experience and Project entries remain in the shared database-backed content catalog and are composed through the `professional-portfolio` plugin instead of being duplicated into homepage Markdown.
 
-Do not copy Experience or Project records into homepage Markdown merely to make the compiled view disappear. That would create duplicate editable sources of truth.
+Do not copy Experience or Project records into homepage Markdown merely to remove the compiled fallback. That would create duplicate editable sources of truth.
 
-The remaining Professional migration requirement is user-visible parity with the legacy resume homepage. Generic article heading margins must not create additional spacing when headings already live inside resume/card layout wrappers.
+Before promotion, verify the Local homepage against the legacy page, including structured profile/contact/education/awards/skills/leadership information, managed résumé/credential media, links, and layout. The managed résumé PDF is the primary acceptance case for replace-media-in-place: updating its bytes must retain the same asset key/URL and immediately affect the homepage.
+
+After `professional-home` is promoted and verified live, remove the compiled Professional home/resume subsystem and any static media that exists only to support it. Presentation-owned theme assets such as the Professional stylesheet/favicon remain separate from authored content when still required.
 
 ### Dorks & Dice
 
-The legacy Dorks & Dice homepage Razor view contains authored text plus two executable integrations:
+The legacy Dorks & Dice fallback contains authored copy and integrations that have now been given reusable boundaries:
 
-- community and campaign copy;
-- static cards and calls to action;
-- Minecraft live status;
-- Discord widget integration.
+- community/campaign copy belongs in the database-backed homepage;
+- Discord is provided by the `discord-widget` plugin;
+- Minecraft live status is provided by the `minecraft-server-status` plugin.
 
-The authored copy belongs in database-backed content. Discord is already provided by the `discord-widget` plugin.
-
-Minecraft live status is now provided by the `minecraft-server-status` plugin. The existing Minecraft protocol/status-query implementation remains the working backend; the plugin supplies registration and a parameterless page component:
+The homepage can invoke Minecraft status with:
 
 ```markdown
 {{minecraft-server-status}}
 ```
 
-Host, port, protocol version, query timeout, and cache policy remain deployment-owned configuration. Authored content can select the installed status component but can not redirect its network query.
+Host, port, protocol version, query timeout, and cache policy remain deployment-owned configuration. Authored content selects the installed component but can not redirect its network query.
 
-Minecraft is the only currently supported game-server status implementation. Hytale support was explored previously, and similar endpoints may plausibly exist, but no sufficiently documented or reliable endpoint was found. The known path would have required modifying the Hytale server, so Hytale status integration was deferred as low priority. It is not a requirement for this migration.
+Minecraft is the only currently supported game-server status implementation. Hytale live status remains outside this refactor cycle; a static Hytale mention may remain where it accurately describes the community.
 
-A static Hytale mention in authored community/server history is independent of live status support and may remain where it accurately describes the community.
+After `dorks-and-dice-home` reaches presentation/functional parity, promote it to External, verify it live, and remove the compiled Dorks & Dice homepage fallback.
 
 ## Shared homepage contract
 
-A normal mode can expose a homepage through the existing content architecture by creating a content document with:
+A normal mode exposes a database-backed homepage by creating a content document with:
 
 ```text
 tag: homepage
@@ -65,49 +76,48 @@ visible mode: <stable mode id>
 body format: markdown
 ```
 
-The content source is selected through the same `ContentSourceRegistry` / `GetSourcesForContext` behavior used by the rest of the content system, so existing per-mode database/source composition is preserved.
+The content source is selected through the same content-source registry/context behavior as the rest of the content system, so Local/External composition and mode visibility remain consistent with normal content requests.
 
-This intentionally does **not** add a homepage identifier to `SiteModeDefinition`. The content system resolves the current mode's homepage by visibility/context regardless of whether normal mode registration ultimately remains compiled or becomes data-driven.
+This intentionally does **not** add a homepage identifier to `SiteModeDefinition`. The content system resolves the current normal mode's homepage by visibility and context.
 
-## Current migration behavior
+## Current runtime behavior
 
 Homepage resolution is:
 
 ```text
 request
   -> active normal mode
-  -> shared content sources for that mode
-  -> visible document tagged `homepage`
+  -> configured content sources for that mode
+  -> exactly one visible document tagged `homepage`
        -> render shared database-backed homepage
-       -> if absent, use existing compiled home module
+       -> if absent, use existing compiled normal-mode home module
   -> framework fallback home when no normal mode implementation applies
 ```
 
-The compiled normal-mode fallback path is temporary migration support for the two existing sites, not a second permanent homepage storage architecture. The framework fallback remains separate and is not a normal site mode.
+The compiled normal-mode path is temporary migration support for the two existing sites. Framework fallback remains separate and is not a normal site mode.
 
 ## Page composition
 
-The shared page composer allows authored Markdown to compose installed executable capabilities without permitting authored code.
+The shared page composer lets authored Markdown invoke installed executable capabilities without permitting authored code.
 
 Current examples include:
 
 ```text
 content-collection
-professional-experience / professional-projects presentations
-
+professional-portfolio
 discord-widget
 minecraft-server-status
 ```
 
 This is the preferred boundary for compact dynamic homepage behavior. A homepage should not require a mode-specific Razor implementation merely to invoke an installed capability.
 
-For Professional, this composition path retains the existing database-backed Experience and Projects collections without duplicating their records.
+For Professional, this preserves the database-backed Experience and Project collections without duplicating their records.
 
-For Dorks & Dice, Minecraft status is deliberately a plugin rather than a Tool: it is a compact in-process query/presentation with no meaningful standalone workflow. Substantial interactive applications with independent lifecycle/data boundaries remain Tools.
+For Dorks & Dice, Minecraft status remains a plugin because it is a compact in-process query/presentation. Substantial interactive applications with independent lifecycle/data boundaries remain Tools.
 
-## Resume migration constraint
+## Professional fallback retirement constraint
 
-The existing resume JSON contains structured records such as:
+The legacy resume JSON contains structured records such as:
 
 - profile/header data;
 - contact links;
@@ -116,29 +126,37 @@ The existing resume JSON contains structured records such as:
 - skill categories;
 - leadership entries.
 
-Projects and experience have already demonstrated that structured Professional homepage sections can consume the general content catalog.
+`resume.json` and the related service/view-model/Razor fallback may be deleted only after every still-needed field has been represented by the database-backed homepage/content system, managed media, or legitimate presentation/theme configuration and the External homepage has been verified live.
 
-The migration approach is:
+Experience and Projects remain independent content records and must not be collapsed into the homepage merely to eliminate the fallback.
 
-1. move directly authored identity/summary/contact/education/awards/skills/leadership copy into database-backed homepage content or other appropriate structured content;
-2. preserve Experience and Projects in their current database records;
-3. consume those collections through general page composition;
-4. remove `resume.json` only when every remaining field has either moved into database-backed content, become media metadata, or become presentation/theme configuration.
+## Remaining validation and retirement sequence
 
-Do not preserve a special file-driven resume subsystem solely for compatibility, but also do not discard useful structured data merely to make the homepage one Markdown blob.
+1. Verify Local `professional-home` presentation and functional parity.
+2. Replace the managed Local résumé PDF in place and verify stable asset URL/key plus new bytes.
+3. Verify Professional `/site.txt`, `/llms.txt`, sitemap, and managed-media links under the real Local/External source composition.
+4. Promote `professional-home` to External with the normal safe single-page Move operation.
+5. Verify the live Professional homepage, managed media, text endpoints, sitemap, and redirects.
+6. Remove the compiled/file-backed Professional homepage/resume fallback and now-orphaned static media.
+7. Verify Local `dorks-and-dice-home`, including Minecraft/Discord behavior and layout parity.
+8. Verify Dorks & Dice text/sitemap output under the real source composition.
+9. Promote `dorks-and-dice-home` when ready and verify it live.
+10. Remove the compiled Dorks & Dice homepage fallback.
+11. Rerun the complete automated suite and final live smoke/security checks.
 
 ## Definition of completion for this refactor cycle
 
-The homepage convergence work is complete when:
+Homepage convergence is complete when:
 
-- both normal modes obtain authored homepage content from database-backed content sources;
-- ordinary homepage edits are possible through the site editor and require no application restart;
-- no normal mode needs a separate file-backed authored homepage store;
-- shared homepage selection is stable-ID/mode-context based and works with per-mode content databases;
-- dynamic homepage behavior is supplied through reusable installed plugins/capabilities rather than hard-coded authored text in mode-specific Razor;
+- both normal modes obtain authored homepage content from the live database-backed content source;
+- ordinary homepage edits through the site editor require no application rebuild/restart;
+- no normal mode retains a separate file-backed authored homepage store;
+- homepage selection is stable-ID/mode-context based and respects source composition;
+- dynamic behavior is supplied through reusable installed plugins/capabilities;
 - the Dorks & Dice homepage uses `minecraft-server-status` for live Minecraft data;
-- Markdown-generated layout does not add duplicate vertical spacing relative to the intended legacy presentation;
-- existing Professional and Dorks & Dice presentation remains functionally equivalent after migration;
-- compiled normal-mode homepage fallbacks are removed only after that parity is verified;
+- managed homepage media can be maintained through the content-media system rather than source-tree copies;
+- runtime text/sitemap output follows current database content;
+- Professional and Dorks & Dice presentation remains functionally equivalent after migration;
+- both compiled normal-mode homepage fallbacks are removed after live verification;
 - Hytale live-status support is not required for completion;
-- the design does not require deciding whether the normal mode definition itself is compiled or persisted runtime data.
+- framework fallback and Trusted Preview remain framework concerns rather than normal-mode content.
