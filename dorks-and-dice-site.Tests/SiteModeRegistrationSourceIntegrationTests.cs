@@ -29,6 +29,22 @@ public sealed class SiteModeRegistrationSourceIntegrationTests
     }
 
     [Fact]
+    public void LegacyBuiltInFacadeDelegatesToDeploymentRegistrationSource()
+    {
+        var definitions = new DeploymentSiteModeRegistrationSource().GetDefinitions();
+
+        Assert.Equal(
+            definitions.Select(definition => definition.Id),
+            BuiltInSiteModes.All.Select(definition => definition.Id));
+        Assert.Same(
+            definitions.Single(definition => definition.LegacyMode == SiteMode.DorksAndDice),
+            BuiltInSiteModes.DorksAndDice);
+        Assert.Same(
+            definitions.Single(definition => definition.LegacyMode == SiteMode.Professional),
+            BuiltInSiteModes.Professional);
+    }
+
+    [Fact]
     public void DeploymentCanAddAThirdNormalModeByReplacingOnlyTheRegistrationSource()
     {
         var extraMode = new SiteModeDefinition(
