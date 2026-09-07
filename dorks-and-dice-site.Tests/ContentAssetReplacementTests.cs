@@ -50,7 +50,56 @@ public sealed class ContentAssetReplacementTests
         var file = await assets.GetFromSourceAsync("Source", original.AssetKey);
         Assert.NotNull(file);
         Assert.Equal(replacementBytes, file.Data);
-        Assert.Single(await assets.GetForSourceAsync("Source"));
+        var sourceAssets = (await assets.GetForSourceAsync("Source")).ToList();
+        var sourceAsset = Assert.Single(sourceAssets);
+        await ContentAssetUsage.PopulateAsync(fixture.Registry, sourceAssets);
+        var usage = Assert.Single(sourceAsset.PageDependencies);
+        Assert.Equal("Source", usage.PageSourceKey);
+        Assert.Equal("replacement-page", usage.Slug);
+        Assert.Equal("attached", usage.Relationship);
+    }
+
+    [Fact]
+    public async Task PageDependencyVisibilityIncludesCrossSourceDependencies()
+    {
+        using var fixture = new ReplacementFixture();
+        var authoring = new ContentAuthoringService(fixture.Registry);
+        var assets = new ContentAssetService(fixture.Registry, new HttpContextAccessor(), null!);
+
+        var sourcePage = authoring.GetNew("Source");
+        sourcePage.Document.Id = "source-page";
+        sourcePage.Document.Slug = "source-page";
+        await authoring.CreateAsync(sourcePage.Document);
+
+        var consumerPage = authoring.GetNew("Consumer");
+        consumerPage.Document.Id = "consumer-page";
+        consumerPage.Document.Slug = "consumer-page";
+        await authoring.CreateAsync(consumerPage.Document);
+
+        var bytes = PngBytes(8, 9);
+        await using var stream = new MemoryStream(bytes);
+        var asset = await assets.UploadAsync("Source", "shared.png", "image/png", stream, bytes.Length);
+        await assets.AttachAsync("Source", "source-page", "Source", asset.AssetKey);
+        await assets.AttachAsync("Consumer", "consumer-page", "Source", asset.AssetKey);
+
+        var listedAssets = (await assets.GetForSourceAsync("Source")).ToList();
+        var listed = Assert.Single(listedAssets);
+        await ContentAssetUsage.PopulateAsync(fixture.Registry, listedAssets);
+
+        Assert.Collection(
+            listed.PageDependencies,
+            usage =>
+            {
+                Assert.Equal("Consumer", usage.PageSourceKey);
+                Assert.Equal("consumer-page", usage.Slug);
+                Assert.Equal("dependency", usage.Relationship);
+            },
+            usage =>
+            {
+                Assert.Equal("Source", usage.PageSourceKey);
+                Assert.Equal("source-page", usage.Slug);
+                Assert.Equal("attached", usage.Relationship);
+            });
     }
 
     [Fact]
@@ -154,9 +203,13 @@ public sealed class ContentAssetReplacementTests
             var settings = new Dictionary<string, string?>
             {
                 ["ConnectionStrings:SourceDb"] = "Data Source=source.db",
+                ["ConnectionStrings:ConsumerDb"] = "Data Source=consumer.db",
                 ["ContentStorage:AuthoringSource"] = "Source",
+                ["ContentStorage:GlobalSources:0"] = "Source",
                 ["ContentStorage:Sources:Source:Provider"] = "Sqlite",
-                ["ContentStorage:Sources:Source:ConnectionString"] = "SourceDb"
+                ["ContentStorage:Sources:Source:ConnectionString"] = "SourceDb",
+                ["ContentStorage:Sources:Consumer:Provider"] = "Sqlite",
+                ["ContentStorage:Sources:Consumer:ConnectionString"] = "ConsumerDb"
             };
 
             var configuration = new ConfigurationBuilder()
