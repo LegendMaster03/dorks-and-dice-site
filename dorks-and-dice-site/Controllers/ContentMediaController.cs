@@ -45,9 +45,10 @@ public sealed class ContentMediaController : Controller
 
         var etag = $"\"sha256-{asset.Sha256}\"";
         Response.Headers.ETag = etag;
-        if (Request.Headers.IfNoneMatch.Any(header => header
-                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                .Any(candidate => candidate == "*" || string.Equals(candidate, etag, StringComparison.Ordinal))))
+        if (Request.Headers.IfNoneMatch.Any(header =>
+                !string.IsNullOrEmpty(header)
+                && header.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                    .Any(candidate => candidate == "*" || string.Equals(candidate, etag, StringComparison.Ordinal))))
         {
             return StatusCode(StatusCodes.Status304NotModified);
         }
