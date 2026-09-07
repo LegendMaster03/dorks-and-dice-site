@@ -18,7 +18,9 @@ public sealed class ContentAuthoringService : IContentAuthoringService
     // Temporary constructor bridge for unit fixtures and non-DI callers that predate the
     // composed site-mode registry. Runtime DI uses the two-argument constructor below.
     public ContentAuthoringService(IContentSourceRegistry sourceRegistry)
-        : this(sourceRegistry, new SiteModeRegistry(BuiltInSiteModes.All))
+        : this(
+            sourceRegistry,
+            new SiteModeRegistry(new DeploymentSiteModeRegistrationSource().GetDefinitions()))
     {
     }
 
@@ -271,33 +273,6 @@ public sealed class ContentAuthoringService : IContentAuthoringService
         await DeleteSourcePageAsync(sourceContext, sourcePage, cancellationToken);
     }
 
-    public async Task<int> MoveAllAsync(
-        string sourceKey,
-        string targetSourceKey,
-        CancellationToken cancellationToken = default)
-    {
-        sourceKey = ResolveSourceKey(sourceKey);
-        targetSourceKey = ResolveSourceKey(targetSourceKey);
-        ValidatePromotionSources(sourceKey, targetSourceKey);
-
-        var transfer = new ContentSourceTransferService(_sourceRegistry);
-        var copiedCount = await transfer.CopyAllAsync(sourceKey, targetSourceKey, cancellationToken);
-        if (copiedCount == 0) return 0;
-
-        await using var sourceContext = CreateContext(sourceKey);
-        var sourcePages = await sourceContext.Pages
-            .Include(page => page.AssetLinks)
-            .OrderBy(page => page.Id)
-            .ToListAsync(cancellationToken);
-        await using var transaction = await sourceContext.Database.BeginTransactionAsync(cancellationToken);
-        foreach (var sourcePage in sourcePages)
-        {
-            await DeleteSourcePageAsync(sourceContext, sourcePage, cancellationToken);
-        }
-        await transaction.CommitAsync(cancellationToken);
-        return copiedCount;
-    }
-
     private static async Task DeleteSourcePageAsync(
         ContentDbContext sourceContext,
         ContentPageRecord sourcePage,
@@ -328,11 +303,17 @@ public sealed class ContentAuthoringService : IContentAuthoringService
     private void ValidatePromotionSources(string sourceKey, string targetSourceKey)
     {
         if (!string.Equals(sourceKey, _sourceRegistry.AuthoringSourceKey, StringComparison.OrdinalIgnoreCase))
+        {
             throw new InvalidOperationException("Content promotion must begin in the configured authoring workspace.");
+        }
         if (!_sourceRegistry.IsGlobalSource(targetSourceKey))
+        {
             throw new InvalidOperationException("Content may only be promoted to a configured Global source.");
+        }
         if (string.Equals(sourceKey, targetSourceKey, StringComparison.OrdinalIgnoreCase))
+        {
             throw new InvalidOperationException("Choose a different target source.");
+        }
     }
 
     private async Task<List<ContentRevisionSummary>> GetHistoryAsync(
@@ -395,7 +376,10 @@ public sealed class ContentAuthoringService : IContentAuthoringService
     {
         var referencedKeys = ContentAssetReferenceParser
             .FindAssetKeys(item.Body, ContentRecordMapper.SerializeMetadata(item));
-        if (referencedKeys.Count == 0) return;
+        if (referencedKeys.Count == 0)
+        {
+            return;
+        }
 
         var linkedKeys = (await context.PageAssets
                 .Where(link => link.PageId == pageId && referencedKeys.Contains(link.Asset!.AssetKey))
