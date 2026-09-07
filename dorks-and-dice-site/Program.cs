@@ -1,5 +1,4 @@
 using System.Net;
-using System.Security;
 using System.Threading.RateLimiting;
 using dorks_and_dice_site.Framework.Plugins;
 using dorks_and_dice_site.Models.Identity;
@@ -58,7 +57,9 @@ builder.Services
         UseCookies = false
     });
 builder.Services.AddSingleton<SiteModeOptions>();
-builder.Services.AddSingleton<ISiteModeRegistry>(_ => new SiteModeRegistry(BuiltInSiteModes.All));
+builder.Services.AddSingleton<ISiteModeRegistrationSource, DeploymentSiteModeRegistrationSource>();
+builder.Services.AddSingleton<ISiteModeRegistry>(serviceProvider =>
+    new SiteModeRegistry(serviceProvider.GetRequiredService<ISiteModeRegistrationSource>().GetDefinitions()));
 builder.Services.AddSingleton<ISiteModePartialResolver, SiteModePartialResolver>();
 builder.Services.AddSingleton<ISiteModeStylesheetResolver, SiteModeStylesheetResolver>();
 builder.Services.AddSingleton<ISiteModePresentationService, SiteModePresentationService>();
@@ -328,17 +329,6 @@ app.MapGet("/robots.txt", (HttpContext context) =>
 {
     var sitemapUrl = BuildAbsoluteUrl(context, "/sitemap.xml");
     return Results.Text($"User-agent: *\nAllow: /\nSitemap: {sitemapUrl}\n", "text/plain");
-});
-
-app.MapGet("/sitemap.xml", (HttpContext context) =>
-{
-    var modeContext = context.GetSiteModeContext();
-    IReadOnlyList<string> paths = modeContext.ActiveMode?.SitemapPaths ?? ["/"];
-
-    var urls = string.Join(string.Empty, paths.Select(path =>
-        $"<url><loc>{SecurityElement.Escape(BuildAbsoluteUrl(context, path))}</loc></url>"));
-    var xml = $"<?xml version=\"1.0\" encoding=\"UTF-8\"?><urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">{urls}</urlset>";
-    return Results.Text(xml, "application/xml");
 });
 
 app.MapPost("/development-preview", async (
