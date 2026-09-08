@@ -102,20 +102,8 @@ they are not production multi-instance databases.
 ToolHosting:RegistryPath and CampaignStorage:Path support configurable absolute or
 content-root-relative paths. Default Content/tool-registry.json and
 Content/campaign-access.json are runtime data: ignored by Git and excluded from build
-and publish output. Their temporary replacement files are ignored too.
-
-Production deployment must not leave those defaults in the replaceable application
-container layer. The deployment script mounts the deployment-owned
-`.runtime/tool-hosting` directory at `/app/RuntimeData` and explicitly configures:
-
-- `ToolHosting__RegistryPath=/app/RuntimeData/tool-registry.json`
-- `CampaignStorage__Path=/app/RuntimeData/campaign-access.json`
-
-The deployment verifies that the bind mount and both configuration values are active
-before declaring success. On the first persistent deployment it also attempts to copy
-legacy files from `/app/Content` in the existing container when the persistent copies do
-not already exist. This migration never overwrites an existing persistent runtime file.
-The `.runtime` directory is ignored by Git and survives image/container replacement.
+and publish output. Their temporary replacement files are ignored too. Provision
+persistent storage separately from application releases.
 
 Both integration-test factories override these paths into unique temporary directories.
 Campaign store unit tests also use unique temporary storage. Preserve that isolation
