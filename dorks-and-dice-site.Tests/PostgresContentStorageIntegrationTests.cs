@@ -47,9 +47,10 @@ public sealed class PostgresContentStorageIntegrationTests
                   'content_page_asset',
                   'content_revision_asset',
                   'content_page_asset_dependency',
-                  'content_redirect')
+                  'content_redirect',
+                  'tool_registration')
             """;
 
-        Assert.Equal(9L, (long)(await command.ExecuteScalarAsync())!);
+        Assert.Equal(10L, (long)(await command.ExecuteScalarAsync())!);
     }
 }
