@@ -29,7 +29,7 @@ builder.Services.AddSitePlugins(
     new DiscordWidgetPlugin(),
     new MinecraftServerStatusPlugin()
 ]);
-builder.Services.AddSingleton<IToolRegistry, JsonToolRegistry>();
+builder.Services.AddSingleton<IToolRegistry, DatabaseToolRegistry>();
 builder.Services.AddSingleton<ICampaignAccessStore, JsonCampaignAccessStore>();
 builder.Services.AddSingleton<IToolUpstreamPolicy, ToolUpstreamPolicy>();
 builder.Services.AddSingleton<IToolHealthService, ToolHealthService>();

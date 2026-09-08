@@ -36,6 +36,9 @@ internal static class ContentStorageSchema
         await context.Database.ExecuteSqlRawAsync(
             context.Database.IsSqlite() ? SqliteCreateRedirectSchema : PostgresCreateRedirectSchema,
             cancellationToken);
+        await context.Database.ExecuteSqlRawAsync(
+            context.Database.IsSqlite() ? SqliteCreateToolRegistrySchema : PostgresCreateToolRegistrySchema,
+            cancellationToken);
     }
 
     private static async Task<bool> HasTableAsync(
@@ -148,5 +151,56 @@ internal static class ContentStorageSchema
             ON content_redirect(redirect_namespace, redirect_slug);
         CREATE INDEX IF NOT EXISTS "IX_content_redirect_redirect_page_id"
             ON content_redirect(redirect_page_id);
+        """;
+
+    private const string SqliteCreateToolRegistrySchema = """
+        CREATE TABLE IF NOT EXISTS tool_registration (
+            tool_id TEXT NOT NULL PRIMARY KEY,
+            tool_slug TEXT NOT NULL,
+            tool_display_name TEXT NOT NULL,
+            tool_description TEXT NULL,
+            tool_integration_type INTEGER NOT NULL DEFAULT 0,
+            tool_upstream_base_url TEXT NULL,
+            tool_frontend_entry_point TEXT NULL,
+            tool_health_path TEXT NULL,
+            tool_modes TEXT NOT NULL DEFAULT '[]',
+            tool_allow_anonymous INTEGER NOT NULL DEFAULT 1,
+            tool_enabled INTEGER NOT NULL DEFAULT 0,
+            tool_created_at TEXT NOT NULL,
+            tool_updated_at TEXT NOT NULL,
+            CONSTRAINT ck_tool_registration_integration_type
+                CHECK (tool_integration_type IN (0, 1)),
+            CONSTRAINT ck_tool_registration_slug_not_empty
+                CHECK (length(trim(tool_slug)) > 0),
+            CONSTRAINT ck_tool_registration_display_name_not_empty
+                CHECK (length(trim(tool_display_name)) > 0));
+        CREATE UNIQUE INDEX IF NOT EXISTS ux_tool_registration_slug_ci
+            ON tool_registration(lower(tool_slug));
+        """;
+
+    private const string PostgresCreateToolRegistrySchema = """
+        CREATE TABLE IF NOT EXISTS tool_registration (
+            tool_id uuid NOT NULL,
+            tool_slug text NOT NULL,
+            tool_display_name text NOT NULL,
+            tool_description text NULL,
+            tool_integration_type smallint NOT NULL DEFAULT 0,
+            tool_upstream_base_url text NULL,
+            tool_frontend_entry_point text NULL,
+            tool_health_path text NULL,
+            tool_modes text[] NOT NULL DEFAULT ARRAY[]::text[],
+            tool_allow_anonymous boolean NOT NULL DEFAULT true,
+            tool_enabled boolean NOT NULL DEFAULT false,
+            tool_created_at timestamp with time zone NOT NULL,
+            tool_updated_at timestamp with time zone NOT NULL,
+            CONSTRAINT pk_tool_registration PRIMARY KEY (tool_id),
+            CONSTRAINT ck_tool_registration_integration_type
+                CHECK (tool_integration_type IN (0, 1)),
+            CONSTRAINT ck_tool_registration_slug_not_empty
+                CHECK (length(btrim(tool_slug)) > 0),
+            CONSTRAINT ck_tool_registration_display_name_not_empty
+                CHECK (length(btrim(tool_display_name)) > 0));
+        CREATE UNIQUE INDEX IF NOT EXISTS ux_tool_registration_slug_ci
+            ON tool_registration(lower(tool_slug));
         """;
 }
