@@ -1,5 +1,6 @@
 using dorks_and_dice_site.Models.Campaigns;
 using dorks_and_dice_site.Models.Tools;
+using dorks_and_dice_site.Services.Identity;
 using dorks_and_dice_site.Services.Tools;
 
 namespace dorks_and_dice_site.Tests;
