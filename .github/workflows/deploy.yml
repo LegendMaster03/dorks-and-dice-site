@@ -16,6 +16,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Validate deployment script
+        run: bash -n scripts/deploy-site.sh
+
       - name: Start disposable PostgreSQL
         run: |
           docker rm -f dorks-and-dice-content-test-postgres 2>/dev/null || true
@@ -105,6 +108,4 @@ jobs:
           docker network rm dorks-and-dice-smoketest 2>/dev/null || true
 
       - name: Deploy
-        run: |
-          cd /mnt/HDDs/www/dorks-and-dice-site
-          docker compose up -d --force-recreate
+        run: bash scripts/deploy-site.sh

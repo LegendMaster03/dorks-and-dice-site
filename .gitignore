@@ -19,4 +19,8 @@ dorks-and-dice-site/Content/tool-registry.json
 dorks-and-dice-site/Content/campaign-access.json
 dorks-and-dice-site/Content/tool-registry.json.*.tmp
 dorks-and-dice-site/Content/campaign-access.json.*.tmp
+
+# Deployment-owned persistent runtime state
+.runtime/
+
 TestResults/
