@@ -9,10 +9,13 @@ public static class AccountRoles
     public const string Admin = "Admin";
     public const string GlobalEditor = "Global Editor";
     public const string Dev = "Dev";
+    public const string RulesLawyer = "Rules Lawyer";
 
-    public static IReadOnlyList<string> OwnerManaged { get; } = [Admin, Dev];
+    // Every top-level global role is Owner-managed. This is derived from the hierarchy so adding
+    // a new independent role tree does not require a second manual Owner-inheritance update.
+    public static IReadOnlyList<string> OwnerManaged => AccountRoleHierarchy.TopLevelGlobalRoles;
     public static IReadOnlyList<string> AdminManaged { get; } = [GlobalEditor];
-    public static IReadOnlyList<string> UiAssignable { get; } = [Admin, GlobalEditor, Dev];
+    public static IReadOnlyList<string> UiAssignable { get; } = [Admin, GlobalEditor, Dev, RulesLawyer];
     public static IReadOnlyList<string> Privileged { get; } = [Admin, Dev];
     public static IReadOnlyList<string> TrustedPrivileged { get; } = [Owner, Admin, Dev];
 
@@ -47,6 +50,15 @@ public static class AccountRoleHierarchy
     private static readonly IReadOnlyDictionary<string, AccountRoleInheritanceNode> GlobalNodes = BuildGlobalNodes();
 
     public static IEnumerable<string> GlobalRoleNames => GlobalNodes.Keys;
+
+    // Owner is a synthetic super-root over every independent global-role tree. Its direct global
+    // children are therefore exactly the top-level roles and are calculated when the hierarchy is
+    // built rather than maintained as a second hard-coded list.
+    public static IReadOnlyList<string> TopLevelGlobalRoles =>
+        GetGlobalRole(AccountRoles.Owner).Children
+            .Where(node => node.Kind == AccountRoleInheritanceNodeKind.GlobalRole && node.GlobalRole is not null)
+            .Select(node => node.GlobalRole!)
+            .ToArray();
 
     public static AccountRoleInheritanceNode GetGlobalRole(string role) =>
         GlobalNodes.TryGetValue(role, out var node)
@@ -167,6 +179,25 @@ public static class AccountRoleHierarchy
             null,
             []);
 
+        var rulesLawyer = new AccountRoleInheritanceNode(
+            $"global:{AccountRoles.RulesLawyer}",
+            AccountRoles.RulesLawyer,
+            AccountRoleInheritanceNodeKind.GlobalRole,
+            AccountRoles.RulesLawyer,
+            null,
+            null,
+            []);
+
+        var nonOwnerNodes = new[] { admin, globalEditor, dev, rulesLawyer };
+        var inheritedGlobalRoles = nonOwnerNodes
+            .SelectMany(node => Flatten(node.Children))
+            .Where(node => node.Kind == AccountRoleInheritanceNodeKind.GlobalRole && node.GlobalRole is not null)
+            .Select(node => node.GlobalRole!)
+            .ToHashSet(StringComparer.Ordinal);
+        var topLevelNodes = nonOwnerNodes
+            .Where(node => node.GlobalRole is not null && !inheritedGlobalRoles.Contains(node.GlobalRole))
+            .ToArray();
+
         var owner = new AccountRoleInheritanceNode(
             $"global:{AccountRoles.Owner}",
             AccountRoles.Owner,
@@ -174,14 +205,15 @@ public static class AccountRoleHierarchy
             AccountRoles.Owner,
             null,
             null,
-            [admin, dev]);
+            topLevelNodes);
 
         return new Dictionary<string, AccountRoleInheritanceNode>(StringComparer.Ordinal)
         {
             [AccountRoles.Owner] = owner,
             [AccountRoles.Admin] = admin,
             [AccountRoles.GlobalEditor] = globalEditor,
-            [AccountRoles.Dev] = dev
+            [AccountRoles.Dev] = dev,
+            [AccountRoles.RulesLawyer] = rulesLawyer
         };
     }
 

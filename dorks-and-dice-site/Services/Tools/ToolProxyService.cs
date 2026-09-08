@@ -7,6 +7,14 @@ public interface IToolProxyService
         Models.Tools.ToolRegistration tool,
         string path,
         CancellationToken cancellationToken = default);
+
+    Task ProxyAuthenticatedAsync(
+        HttpContext context,
+        Models.Tools.ToolRegistration tool,
+        string path,
+        string authenticationTicket,
+        string introspectionPath,
+        CancellationToken cancellationToken = default);
 }
 
 public sealed class ToolProxyService : IToolProxyService
@@ -50,11 +58,39 @@ public sealed class ToolProxyService : IToolProxyService
         _upstreamPolicy = upstreamPolicy;
     }
 
-    public async Task ProxyAsync(
+    public Task ProxyAsync(
         HttpContext context,
         Models.Tools.ToolRegistration tool,
         string path,
+        CancellationToken cancellationToken = default) =>
+        ProxyCoreAsync(context, tool, path, trustedRequestHeaders: null, cancellationToken);
+
+    public Task ProxyAuthenticatedAsync(
+        HttpContext context,
+        Models.Tools.ToolRegistration tool,
+        string path,
+        string authenticationTicket,
+        string introspectionPath,
         CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(authenticationTicket);
+        ArgumentException.ThrowIfNullOrWhiteSpace(introspectionPath);
+
+        IReadOnlyDictionary<string, string> trustedHeaders = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            [ToolAuthenticationHeaders.Ticket] = authenticationTicket,
+            [ToolAuthenticationHeaders.IntrospectionPath] = introspectionPath
+        };
+
+        return ProxyCoreAsync(context, tool, path, trustedHeaders, cancellationToken);
+    }
+
+    private async Task ProxyCoreAsync(
+        HttpContext context,
+        Models.Tools.ToolRegistration tool,
+        string path,
+        IReadOnlyDictionary<string, string>? trustedRequestHeaders,
+        CancellationToken cancellationToken)
     {
         if (!_upstreamPolicy.TryBuild(tool, path, context.Request.QueryString, out var upstreamUri, out _)
             || upstreamUri is null)
@@ -72,6 +108,14 @@ public sealed class ToolProxyService : IToolProxyService
             }
 
             CopyRequestHeaders(context, upstreamRequest, tool.Slug);
+            if (trustedRequestHeaders is not null)
+            {
+                foreach (var header in trustedRequestHeaders)
+                {
+                    upstreamRequest.Headers.Remove(header.Key);
+                    upstreamRequest.Headers.TryAddWithoutValidation(header.Key, header.Value);
+                }
+            }
 
             using var upstreamResponse = await _httpClientFactory
                 .CreateClient(ToolHttpClientNames.Proxy)
@@ -86,6 +130,10 @@ public sealed class ToolProxyService : IToolProxyService
 
             context.Response.StatusCode = (int)upstreamResponse.StatusCode;
             CopyResponseHeaders(context.Response, upstreamResponse);
+            if (trustedRequestHeaders is not null)
+            {
+                context.Response.Headers.CacheControl = "no-store";
+            }
 
             if (!HttpMethods.IsHead(context.Request.Method)
                 && upstreamResponse.StatusCode != System.Net.HttpStatusCode.NotModified)
@@ -118,7 +166,8 @@ public sealed class ToolProxyService : IToolProxyService
         var connectionHeaders = ConnectionHeaderNames(context.Request.Headers.Connection.Select(value => value ?? string.Empty));
         foreach (var header in context.Request.Headers)
         {
-            if (HopByHopHeaders.Contains(header.Key) || BlockedRequestHeaders.Contains(header.Key)
+            if (HopByHopHeaders.Contains(header.Key)
+                || IsBlockedRequestHeader(header.Key)
                 || connectionHeaders.Contains(header.Key))
             {
                 continue;
@@ -135,6 +184,10 @@ public sealed class ToolProxyService : IToolProxyService
         upstreamRequest.Headers.TryAddWithoutValidation("X-Forwarded-Prefix", $"/tools/{toolSlug}");
         upstreamRequest.Headers.TryAddWithoutValidation("X-Dorks-Tool-Context-Url", $"/tool-host/{toolSlug}/context");
     }
+
+    private static bool IsBlockedRequestHeader(string headerName) =>
+        BlockedRequestHeaders.Contains(headerName)
+        || headerName.StartsWith(ToolAuthenticationHeaders.ReservedPrefix, StringComparison.OrdinalIgnoreCase);
 
     private static void CopyResponseHeaders(HttpResponse response, HttpResponseMessage upstreamResponse)
     {
