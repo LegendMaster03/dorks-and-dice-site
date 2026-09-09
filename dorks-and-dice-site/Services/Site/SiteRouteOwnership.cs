@@ -136,6 +136,7 @@ public static class SiteRouteOwnership
             || path == "/site.txt"
             || path == "/llms.txt"
             || path == "/development-preview"
+            || IsToolHostIntrospectionPath(path)
             || path == "/account"
             || path.StartsWith("/account/", StringComparison.Ordinal)
             || path == "/editor"
@@ -147,6 +148,27 @@ public static class SiteRouteOwnership
             || path == "/home/notfoundpage"
             || path == "/home/error"
             || path == "/home/routeresolutionissue";
+    }
+
+    private static bool IsToolHostIntrospectionPath(string path)
+    {
+        const string prefix = "/tool-host/";
+        const string suffix = "/api/introspect";
+
+        if (!path.StartsWith(prefix, StringComparison.Ordinal)
+            || !path.EndsWith(suffix, StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        var slugLength = path.Length - prefix.Length - suffix.Length;
+        if (slugLength <= 0)
+        {
+            return false;
+        }
+
+        var slug = path.AsSpan(prefix.Length, slugLength);
+        return !slug.Contains('/');
     }
 
     private static bool IsContentMediaPath(string path)
