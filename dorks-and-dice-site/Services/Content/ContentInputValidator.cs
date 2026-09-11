@@ -11,7 +11,7 @@ internal static class ContentInputValidator
         TimeSpan.FromMilliseconds(100));
 
     private static readonly Regex TagPattern = new(
-        "^[a-z0-9][a-z0-9:_-]*$",
+        "^[a-z0-9][a-z0-9 :_&-]*$",
         RegexOptions.Compiled | RegexOptions.CultureInvariant,
         TimeSpan.FromMilliseconds(100));
 
@@ -49,7 +49,7 @@ internal static class ContentInputValidator
             if (tag.Length > ContentInputPolicy.MaxTagLength || !TagPattern.IsMatch(tag))
             {
                 throw new InvalidOperationException(
-                    $"Tag '{tag}' is invalid. Tags may contain lowercase letters, numbers, colons, underscores, and hyphens.");
+                    $"Tag '{tag}' is invalid. Tags may contain lowercase letters, numbers, spaces, ampersands, colons, underscores, and hyphens.");
             }
 
             if (ContentTags.IsInternal(tag))
@@ -166,7 +166,7 @@ internal static class ContentInputValidator
 
         if (item.Header.InfoItems is null || item.Header.InfoItemLinks is null)
         {
-            throw new InvalidOperationException("Header info collections can not be null.");
+            throw new InvalidOperationException("Content header info collections can not be null.");
         }
         if (item.Header.InfoItems.Count > ContentInputPolicy.MaxInfoItems
             || item.Header.InfoItemLinks.Count > ContentInputPolicy.MaxInfoItems)
