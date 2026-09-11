@@ -90,10 +90,11 @@ public sealed class ToolHostApiController : ControllerBase
     }
 
     /// <summary>
-    /// Authenticated gateway for an Embedded Module to call its private Tool backend. The browser's
-    /// Cookie/Authorization and reserved Tool-auth headers are never forwarded. Instead the host
-    /// injects a short-lived one-time ticket that the backend must redeem through Introspect.
+    /// Gateway for an Embedded Module to call its Tool backend. Anonymous requests are proxied only
+    /// when the Tool is explicitly registered with AllowAnonymous=true, and receive no trusted
+    /// identity headers. Authenticated requests retain the ticket/introspection contract.
     /// </summary>
+    [AllowAnonymous]
     [AcceptVerbs("GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")]
     [Route("upstream")]
     [Route("upstream/{**proxyPath}")]
@@ -102,36 +103,49 @@ public sealed class ToolHostApiController : ControllerBase
         string? proxyPath,
         CancellationToken cancellationToken)
     {
-        var access = await ResolveToolAndUserAsync(slug, cancellationToken);
-        if (access.Result is not null)
-        {
-            return access.Result;
-        }
-
-        if (access.Tool!.IntegrationType != ToolIntegrationType.EmbeddedModule
-            || string.IsNullOrWhiteSpace(access.Tool.UpstreamBaseUrl))
+        var tool = await ResolveAvailableToolAsync(slug, cancellationToken);
+        if (tool is null
+            || tool.IntegrationType != ToolIntegrationType.EmbeddedModule
+            || string.IsNullOrWhiteSpace(tool.UpstreamBaseUrl))
         {
             return NotFound();
         }
 
+        var upstreamPath = string.IsNullOrWhiteSpace(proxyPath) ? "/" : $"/{proxyPath}";
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        if (string.IsNullOrWhiteSpace(userId))
+        {
+            if (User.Identity?.IsAuthenticated == true || !tool.AllowAnonymous)
+            {
+                return Challenge();
+            }
+
+            await _toolProxyService.ProxyAsync(
+                HttpContext,
+                tool,
+                upstreamPath,
+                cancellationToken);
+            return new EmptyResult();
+        }
+
         var campaigns = await _campaignAccessStore.GetCampaignsForUserAsync(
-            access.UserId!,
+            userId,
             cancellationToken);
         var authenticationContext = new ToolHostAuthenticationContext
         {
-            ToolSlug = access.Tool.Slug,
+            ToolSlug = tool.Slug,
             SiteMode = HttpContext.GetSiteModeContext().ActiveModeId!,
-            User = BuildUserContext(access.UserId!),
+            User = BuildUserContext(userId),
             GlobalRoles = BuildEffectiveGlobalRoles(),
             Campaigns = campaigns
         };
         var ticket = ToolAuthenticationTickets.Issue(authenticationContext);
-        var introspectionPath = $"/tool-host/{access.Tool.Slug}/api/introspect";
-        var upstreamPath = string.IsNullOrWhiteSpace(proxyPath) ? "/" : $"/{proxyPath}";
+        var introspectionPath = $"/tool-host/{tool.Slug}/api/introspect";
 
         await _toolProxyService.ProxyAuthenticatedAsync(
             HttpContext,
-            access.Tool,
+            tool,
             upstreamPath,
             ticket,
             introspectionPath,
@@ -167,16 +181,12 @@ public sealed class ToolHostApiController : ControllerBase
         return Ok(context);
     }
 
-    private async Task<(Models.Tools.ToolRegistration? Tool, string? UserId, IActionResult? Result)>
+    private async Task<(ToolRegistration? Tool, string? UserId, IActionResult? Result)>
         ResolveToolAndUserAsync(string slug, CancellationToken cancellationToken)
     {
-        // Membership-dependent failures must not be cached either.
         Response.Headers.CacheControl = "no-store";
-        var tool = await _toolRegistry.GetBySlugAsync(slug, cancellationToken);
-        var modeId = HttpContext.GetSiteModeContext().ActiveModeId;
-        if (tool is null
-            || !tool.Enabled
-            || !ToolVisibility.IsVisibleInMode(tool, modeId))
+        var tool = await ResolveAvailableToolAsync(slug, cancellationToken);
+        if (tool is null)
         {
             return (null, null, NotFound());
         }
@@ -188,6 +198,19 @@ public sealed class ToolHostApiController : ControllerBase
         }
 
         return (tool, userId, null);
+    }
+
+    private async Task<ToolRegistration?> ResolveAvailableToolAsync(
+        string slug,
+        CancellationToken cancellationToken)
+    {
+        var tool = await _toolRegistry.GetBySlugAsync(slug, cancellationToken);
+        var modeId = HttpContext.GetSiteModeContext().ActiveModeId;
+        return tool is not null
+            && tool.Enabled
+            && ToolVisibility.IsVisibleInMode(tool, modeId)
+            ? tool
+            : null;
     }
 
     private IReadOnlyList<string> BuildEffectiveGlobalRoles() =>
