@@ -34,11 +34,13 @@ public sealed class ToolRegistration
     public List<string> Modes { get; set; } = [];
 
     // Rules Core's published global rules are a public site feature. A persisted legacy value of
-    // false must not make the Rules Browser depend on authentication. Restricted Rules Core
-    // operations remain protected by the backend's role/user-aware endpoints.
+    // false must not make the embedded Rules Browser depend on authentication. This exception is
+    // deliberately limited to the Embedded Module integration; other tools and integration types
+    // continue to honor their configured anonymous-access value.
     public bool AllowAnonymous
     {
-        get => string.Equals(Slug, "rules-core", StringComparison.OrdinalIgnoreCase)
+        get => (IntegrationType == ToolIntegrationType.EmbeddedModule
+                && string.Equals(Slug, "rules-core", StringComparison.OrdinalIgnoreCase))
             || _allowAnonymous;
         set => _allowAnonymous = value;
     }
