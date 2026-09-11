@@ -5,7 +5,7 @@ namespace dorks_and_dice_site.Tests;
 public sealed class ToolRegistrationPolicyTests
 {
     [Fact]
-    public void RulesCoreRegistrationIsAlwaysAnonymousReadable()
+    public void EmbeddedRulesCoreRegistrationIsAlwaysAnonymousReadable()
     {
         var registration = new ToolRegistration
         {
@@ -19,6 +19,19 @@ public sealed class ToolRegistrationPolicyTests
         registration.Slug = "RULES-CORE";
         registration.AllowAnonymous = false;
         Assert.True(registration.AllowAnonymous);
+    }
+
+    [Fact]
+    public void ProxiedRulesCoreRegistrationStillHonorsConfiguredVisibility()
+    {
+        var registration = new ToolRegistration
+        {
+            Slug = "rules-core",
+            IntegrationType = ToolIntegrationType.ProxiedApplication,
+            AllowAnonymous = false
+        };
+
+        Assert.False(registration.AllowAnonymous);
     }
 
     [Fact]
