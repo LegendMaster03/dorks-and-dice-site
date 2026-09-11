@@ -21,6 +21,8 @@ public sealed record ToolHealthResult(
 
 public sealed class ToolRegistration
 {
+    private bool _allowAnonymous = true;
+
     public Guid Id { get; set; }
     public string Slug { get; set; } = string.Empty;
     public string DisplayName { get; set; } = string.Empty;
@@ -30,7 +32,17 @@ public sealed class ToolRegistration
     public string? FrontendEntryPoint { get; set; }
     public string? HealthPath { get; set; }
     public List<string> Modes { get; set; } = [];
-    public bool AllowAnonymous { get; set; } = true;
+
+    // Rules Core's published global rules are a public site feature. A persisted legacy value of
+    // false must not make the Rules Browser depend on authentication. Restricted Rules Core
+    // operations remain protected by the backend's role/user-aware endpoints.
+    public bool AllowAnonymous
+    {
+        get => string.Equals(Slug, "rules-core", StringComparison.OrdinalIgnoreCase)
+            || _allowAnonymous;
+        set => _allowAnonymous = value;
+    }
+
     public bool Enabled { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
