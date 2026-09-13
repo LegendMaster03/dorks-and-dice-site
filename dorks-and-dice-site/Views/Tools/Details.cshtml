@@ -3,7 +3,9 @@
 @using dorks_and_dice_site.Models.Tools
 @{
     ViewData["Title"] = Model.DisplayName;
-    var contextUrl = $"/tool-host/{Model.Slug}/context";
+    var toolBasePath = ViewData["ToolBasePath"] as string ?? $"/tools/{Model.Slug}";
+    var toolRoute = ViewData["ToolRoute"] as string ?? "/";
+    var contextUrl = ViewData["ToolContextUrl"] as string ?? $"/tool-host/{Model.Slug}/context";
 }
 
 <div class="mb-4">
@@ -17,7 +19,11 @@
 
 @if (Model.IntegrationType == ToolIntegrationType.EmbeddedModule)
 {
-    <div id="tool-root" data-tool-slug="@Model.Slug" data-tool-context-url="@contextUrl">
+    <div id="tool-root"
+         data-tool-slug="@Model.Slug"
+         data-tool-base-path="@toolBasePath"
+         data-tool-route="@toolRoute"
+         data-tool-context-url="@contextUrl">
         @if (string.IsNullOrWhiteSpace(Model.UpstreamBaseUrl) || string.IsNullOrWhiteSpace(Model.FrontendEntryPoint))
         {
             <div class="card card-body">
