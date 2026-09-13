@@ -31,7 +31,7 @@ public sealed class ToolRegistration
     public string DisplayName { get; set; } = string.Empty;
     public string? Description { get; set; }
     public ToolIntegrationType IntegrationType { get; set; } = ToolIntegrationType.EmbeddedModule;
-    public int? IntegrationContractVersion { get; set; }
+    public int? IntegrationContractVersion { get; set; } = ToolIntegrationContractVersions.EmbeddedModuleCurrent;
     public string? UpstreamBaseUrl { get; set; }
     public string? FrontendEntryPoint { get; set; }
     public string? HealthPath { get; set; }
