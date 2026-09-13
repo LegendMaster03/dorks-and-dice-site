@@ -39,6 +39,30 @@ internal static class ContentStorageSchema
         await context.Database.ExecuteSqlRawAsync(
             context.Database.IsSqlite() ? SqliteCreateToolRegistrySchema : PostgresCreateToolRegistrySchema,
             cancellationToken);
+
+        if (context.Database.IsSqlite())
+        {
+            if (!await HasSqliteColumnAsync(
+                    context,
+                    "tool_registration",
+                    "tool_integration_contract_version",
+                    cancellationToken))
+            {
+                await context.Database.ExecuteSqlRawAsync(
+                    SqliteAddToolIntegrationContractVersion,
+                    cancellationToken);
+            }
+        }
+        else if (context.Database.IsNpgsql())
+        {
+            await context.Database.ExecuteSqlRawAsync(
+                PostgresEnsureToolIntegrationContractVersion,
+                cancellationToken);
+        }
+
+        await context.Database.ExecuteSqlRawAsync(
+            MigrateKnownEmbeddedModuleContracts,
+            cancellationToken);
     }
 
     private static async Task<bool> HasTableAsync(
@@ -56,6 +80,31 @@ internal static class ContentStorageSchema
             var parameter = command.CreateParameter();
             parameter.ParameterName = "$name";
             parameter.Value = tableName;
+            command.Parameters.Add(parameter);
+            return Convert.ToInt32(await command.ExecuteScalarAsync(cancellationToken)) == 1;
+        }
+        finally
+        {
+            if (close) await context.Database.CloseConnectionAsync();
+        }
+    }
+
+    private static async Task<bool> HasSqliteColumnAsync(
+        ContentDbContext context,
+        string tableName,
+        string columnName,
+        CancellationToken cancellationToken)
+    {
+        var connection = context.Database.GetDbConnection();
+        var close = connection.State != System.Data.ConnectionState.Open;
+        if (close) await context.Database.OpenConnectionAsync(cancellationToken);
+        try
+        {
+            await using var command = connection.CreateCommand();
+            command.CommandText = $"SELECT COUNT(*) FROM pragma_table_info('{tableName.Replace("'", "''", StringComparison.Ordinal)}') WHERE name=$name";
+            var parameter = command.CreateParameter();
+            parameter.ParameterName = "$name";
+            parameter.Value = columnName;
             command.Parameters.Add(parameter);
             return Convert.ToInt32(await command.ExecuteScalarAsync(cancellationToken)) == 1;
         }
@@ -160,6 +209,7 @@ internal static class ContentStorageSchema
             tool_display_name TEXT NOT NULL,
             tool_description TEXT NULL,
             tool_integration_type INTEGER NOT NULL DEFAULT 0,
+            tool_integration_contract_version INTEGER NULL,
             tool_upstream_base_url TEXT NULL,
             tool_frontend_entry_point TEXT NULL,
             tool_health_path TEXT NULL,
@@ -185,6 +235,7 @@ internal static class ContentStorageSchema
             tool_display_name text NOT NULL,
             tool_description text NULL,
             tool_integration_type smallint NOT NULL DEFAULT 0,
+            tool_integration_contract_version integer NULL,
             tool_upstream_base_url text NULL,
             tool_frontend_entry_point text NULL,
             tool_health_path text NULL,
@@ -202,5 +253,23 @@ internal static class ContentStorageSchema
                 CHECK (length(btrim(tool_display_name)) > 0));
         CREATE UNIQUE INDEX IF NOT EXISTS ux_tool_registration_slug_ci
             ON tool_registration(lower(tool_slug));
+        """;
+
+    private const string SqliteAddToolIntegrationContractVersion = """
+        ALTER TABLE tool_registration
+        ADD COLUMN tool_integration_contract_version INTEGER NULL;
+        """;
+
+    private const string PostgresEnsureToolIntegrationContractVersion = """
+        ALTER TABLE tool_registration
+        ADD COLUMN IF NOT EXISTS tool_integration_contract_version integer NULL;
+        """;
+
+    private const string MigrateKnownEmbeddedModuleContracts = """
+        UPDATE tool_registration
+        SET tool_integration_contract_version = 2
+        WHERE tool_integration_type = 0
+          AND tool_integration_contract_version IS NULL
+          AND lower(tool_slug) IN ('block-initiative', 'rules-core');
         """;
 }
