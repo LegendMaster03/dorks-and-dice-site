@@ -61,6 +61,7 @@ public sealed partial class DevelopmentToolsController : Controller
             DisplayName = tool.DisplayName,
             Description = tool.Description,
             IntegrationType = tool.IntegrationType,
+            IntegrationContractVersion = tool.IntegrationContractVersion,
             UpstreamBaseUrl = tool.UpstreamBaseUrl,
             FrontendEntryPoint = tool.FrontendEntryPoint,
             HealthPath = tool.HealthPath,
@@ -111,6 +112,9 @@ public sealed partial class DevelopmentToolsController : Controller
             DisplayName = model.DisplayName,
             Description = model.Description,
             IntegrationType = model.IntegrationType,
+            IntegrationContractVersion = model.IntegrationType == ToolIntegrationType.EmbeddedModule
+                ? model.IntegrationContractVersion
+                : null,
             UpstreamBaseUrl = model.UpstreamBaseUrl,
             FrontendEntryPoint = model.FrontendEntryPoint,
             HealthPath = model.HealthPath,
@@ -157,6 +161,14 @@ public sealed partial class DevelopmentToolsController : Controller
         if (string.IsNullOrWhiteSpace(model.Slug) || !ToolSlugRegex().IsMatch(model.Slug))
         {
             ModelState.AddModelError(nameof(model.Slug), "Slug must contain only lowercase letters, numbers, and hyphens.");
+        }
+
+        var contractError = ToolIntegrationContractPolicy.GetUnsupportedReason(
+            model.IntegrationType,
+            model.IntegrationContractVersion);
+        if (contractError is not null)
+        {
+            ModelState.AddModelError(nameof(model.IntegrationContractVersion), contractError);
         }
 
         if (model.Modes.Count == 0)
@@ -207,6 +219,11 @@ public sealed partial class DevelopmentToolsController : Controller
             .Select(mode => mode.Trim())
             .Distinct(StringComparer.Ordinal)
             .ToList();
+
+        if (model.IntegrationType != ToolIntegrationType.EmbeddedModule)
+        {
+            model.IntegrationContractVersion = null;
+        }
     }
 
     private static string? NullIfWhiteSpace(string? value) =>

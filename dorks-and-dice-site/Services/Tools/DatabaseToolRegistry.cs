@@ -18,6 +18,7 @@ public sealed class DatabaseToolRegistry : IToolRegistry
             tool_display_name,
             tool_description,
             tool_integration_type,
+            tool_integration_contract_version,
             tool_upstream_base_url,
             tool_frontend_entry_point,
             tool_health_path,
@@ -100,6 +101,7 @@ public sealed class DatabaseToolRegistry : IToolRegistry
                     tool_display_name,
                     tool_description,
                     tool_integration_type,
+                    tool_integration_contract_version,
                     tool_upstream_base_url,
                     tool_frontend_entry_point,
                     tool_health_path,
@@ -116,6 +118,7 @@ public sealed class DatabaseToolRegistry : IToolRegistry
                     @tool_display_name,
                     @tool_description,
                     @tool_integration_type,
+                    @tool_integration_contract_version,
                     @tool_upstream_base_url,
                     @tool_frontend_entry_point,
                     @tool_health_path,
@@ -130,6 +133,7 @@ public sealed class DatabaseToolRegistry : IToolRegistry
                     tool_display_name = excluded.tool_display_name,
                     tool_description = excluded.tool_description,
                     tool_integration_type = excluded.tool_integration_type,
+                    tool_integration_contract_version = excluded.tool_integration_contract_version,
                     tool_upstream_base_url = excluded.tool_upstream_base_url,
                     tool_frontend_entry_point = excluded.tool_frontend_entry_point,
                     tool_health_path = excluded.tool_health_path,
@@ -145,6 +149,7 @@ public sealed class DatabaseToolRegistry : IToolRegistry
             AddParameter(command, "@tool_display_name", registration.DisplayName);
             AddParameter(command, "@tool_description", registration.Description);
             AddParameter(command, "@tool_integration_type", (short)registration.IntegrationType);
+            AddParameter(command, "@tool_integration_contract_version", registration.IntegrationContractVersion);
             AddParameter(command, "@tool_upstream_base_url", registration.UpstreamBaseUrl);
             AddParameter(command, "@tool_frontend_entry_point", registration.FrontendEntryPoint);
             AddParameter(command, "@tool_health_path", registration.HealthPath);
@@ -228,14 +233,17 @@ public sealed class DatabaseToolRegistry : IToolRegistry
         DisplayName = reader.GetString(2),
         Description = ReadNullableString(reader, 3),
         IntegrationType = (ToolIntegrationType)Convert.ToInt32(reader.GetValue(4), CultureInfo.InvariantCulture),
-        UpstreamBaseUrl = ReadNullableString(reader, 5),
-        FrontendEntryPoint = ReadNullableString(reader, 6),
-        HealthPath = ReadNullableString(reader, 7),
-        Modes = ReadModes(reader.GetValue(8), provider),
-        AllowAnonymous = Convert.ToBoolean(reader.GetValue(9), CultureInfo.InvariantCulture),
-        Enabled = Convert.ToBoolean(reader.GetValue(10), CultureInfo.InvariantCulture),
-        CreatedAt = ReadTimestamp(reader.GetValue(11)),
-        UpdatedAt = ReadTimestamp(reader.GetValue(12))
+        IntegrationContractVersion = reader.IsDBNull(5)
+            ? null
+            : Convert.ToInt32(reader.GetValue(5), CultureInfo.InvariantCulture),
+        UpstreamBaseUrl = ReadNullableString(reader, 6),
+        FrontendEntryPoint = ReadNullableString(reader, 7),
+        HealthPath = ReadNullableString(reader, 8),
+        Modes = ReadModes(reader.GetValue(9), provider),
+        AllowAnonymous = Convert.ToBoolean(reader.GetValue(10), CultureInfo.InvariantCulture),
+        Enabled = Convert.ToBoolean(reader.GetValue(11), CultureInfo.InvariantCulture),
+        CreatedAt = ReadTimestamp(reader.GetValue(12)),
+        UpdatedAt = ReadTimestamp(reader.GetValue(13))
     };
 
     private static Guid ReadGuid(object value) => value switch

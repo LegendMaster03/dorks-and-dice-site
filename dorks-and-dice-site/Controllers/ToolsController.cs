@@ -68,6 +68,14 @@ public sealed class ToolsController : Controller
             return NotFound();
         }
 
+        if (ToolIntegrationContractPolicy.GetUnsupportedReason(tool) is { } contractError)
+        {
+            return Problem(
+                title: "Unsupported tool integration contract",
+                detail: contractError,
+                statusCode: StatusCodes.Status503ServiceUnavailable);
+        }
+
         if (!tool.AllowAnonymous && User.Identity?.IsAuthenticated != true)
         {
             return Challenge();

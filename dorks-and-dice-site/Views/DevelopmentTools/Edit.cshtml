@@ -45,6 +45,12 @@
             <div class="form-text"><strong>Embedded Module</strong> mounts the tool UI inside the site's normal page shell. <strong>Proxied Application</strong> gives the tool control of <code>/tools/{slug}</code> and its subroutes.</div>
         </div>
         <div class="col-md-6">
+            <label asp-for="IntegrationContractVersion" class="form-label">Integration contract version</label>
+            <input asp-for="IntegrationContractVersion" class="form-control" type="number" min="1" />
+            <div class="form-text">Embedded Modules must use the currently supported contract version <strong>@ToolIntegrationContractVersions.EmbeddedModuleCurrent</strong>. New registrations default to that version. Proxied applications do not use this field.</div>
+            <span asp-validation-for="IntegrationContractVersion" class="text-danger"></span>
+        </div>
+        <div class="col-md-6">
             <label asp-for="UpstreamBaseUrl" class="form-label">Upstream base URL</label>
             <input asp-for="UpstreamBaseUrl" class="form-control" placeholder="http://initiative:8080" />
             <div class="form-text">Internal HTTP address where the running tool can be reached. <code>localhost</code> and single-label service names such as <code>initiative</code> are allowed by default; FQDNs and literal non-loopback IPs must be explicitly allowlisted in <code>ToolHosting:AllowedUpstreamHosts</code>.</div>
@@ -61,6 +67,11 @@
             <input asp-for="HealthPath" class="form-control" placeholder="/health" />
             <div class="form-text">Optional lightweight endpoint the host can call to verify that the tool service is running and responsive. It is combined with the upstream base URL.</div>
             <span asp-validation-for="HealthPath" class="text-danger"></span>
+        </div>
+        <div class="col-12">
+            <div class="alert alert-secondary mb-0" role="note">
+                Embedded Module contract v@ToolIntegrationContractVersions.EmbeddedModuleCurrent requires an explicit application render lifecycle. Application-owned DOM must not use <code>MutationObserver</code> as the normal rendering mechanism; post-render enhancement must be idempotent, and observers are reserved for guarded external boundaries. Existing Tool Host context, routing, authorization, upstream API, and <code>#tool-root</code> contracts still apply.
+            </div>
         </div>
         <div class="col-12">
             <div class="alert alert-secondary mb-0" role="note">

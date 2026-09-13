@@ -104,9 +104,20 @@ public sealed class ToolHostApiController : ControllerBase
         CancellationToken cancellationToken)
     {
         var tool = await ResolveAvailableToolAsync(slug, cancellationToken);
-        if (tool is null
-            || tool.IntegrationType != ToolIntegrationType.EmbeddedModule
-            || string.IsNullOrWhiteSpace(tool.UpstreamBaseUrl))
+        if (tool is null || tool.IntegrationType != ToolIntegrationType.EmbeddedModule)
+        {
+            return NotFound();
+        }
+
+        if (ToolIntegrationContractPolicy.GetUnsupportedReason(tool) is { } contractError)
+        {
+            return Problem(
+                title: "Unsupported tool integration contract",
+                detail: contractError,
+                statusCode: StatusCodes.Status503ServiceUnavailable);
+        }
+
+        if (string.IsNullOrWhiteSpace(tool.UpstreamBaseUrl))
         {
             return NotFound();
         }
@@ -189,6 +200,17 @@ public sealed class ToolHostApiController : ControllerBase
         if (tool is null)
         {
             return (null, null, NotFound());
+        }
+
+        if (ToolIntegrationContractPolicy.GetUnsupportedReason(tool) is { } contractError)
+        {
+            return (
+                tool,
+                null,
+                Problem(
+                    title: "Unsupported tool integration contract",
+                    detail: contractError,
+                    statusCode: StatusCodes.Status503ServiceUnavailable));
         }
 
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
