@@ -35,18 +35,50 @@ Traversal validation rejects dot segments, backslashes, and nested escaped trave
 
 ## Integration behavior
 
-Embedded Module: the host owns the page shell and imports the configured module through
-/tool-modules/{slug}/... . Relative ES imports resolve in that subtree. The module mounts
-itself into #tool-root and discovers context using data-tool-context-url. Import failures
-show a visible Tool unavailable message. GET/HEAD assets forward Accept and selected
-representation headers, including Content-Encoding and Vary; they are not a general
-conditional-request proxy. Upstream redirects are rejected. Module/health requests have
-a three-second timeout until response headers arrive.
+The Tool Host owns the `/tools/{slug}` mount namespace. After resolving an enabled,
+mode-visible registration and applying its anonymous/authenticated access rule, the host
+interprets everything following the slug according to the Tool's integration type.
+This is a generic Tool Host rule; no Tool receives special route ownership by slug.
+
+Embedded Module: the host owns and renders the normal site page shell for both the root
+mount and every nested GET/HEAD route beneath it. The Tool owns the route state after its
+mount point. For example, `/tools/rules-core/monsters/ancient-red-dragon` resolves the
+`rules-core` registration and supplies `/monsters/ancient-red-dragon` to that module as
+its current Tool route. The stable Tool base path is `/tools/{slug}` and the root Tool
+route is `/`.
+
+The shell imports the configured module through `/tool-modules/{slug}/...`; that asset
+namespace remains host-owned and is not interpreted as Tool route state. Relative ES
+imports resolve in the module subtree. The module mounts itself into `#tool-root` and
+receives `data-tool-base-path`, `data-tool-route`, and `data-tool-context-url`. The context
+contract exposes the same `ToolBasePath` and `ToolRoute` values together with the existing
+API base URL and identity summary.
+
+On the initial server render, `ToolRoute` is derived only from the path beneath the Tool
+mount. Query strings remain on `window.location.search`, and fragments remain on
+`window.location.hash`; fragments are never sent to the server. Embedded applications may
+use `history.pushState`/`history.replaceState` beneath `ToolBasePath` for client navigation
+without replacing the Dorks & Dice shell, and must handle `popstate` for Back/Forward
+navigation. A browser refresh or direct request of any nested Tool path returns the same
+shell and restores that path as `ToolRoute`. Tool code must not navigate outside its base
+path when representing internal application state.
+
+`/tool-host/{slug}/...` remains the host API/context namespace, `/tool-modules/{slug}/...`
+remains the module asset namespace, and ordinary site routes outside `/tools/{slug}` remain
+site-owned. Internal Tool routes therefore do not consume or shadow Tool Host APIs or
+module assets.
+
+Import failures show a visible Tool unavailable message. GET/HEAD assets forward Accept
+and selected representation headers, including Content-Encoding and Vary; they are not a
+general conditional-request proxy. Upstream redirects are rejected. Module/health
+requests have a three-second timeout until response headers arrive.
 
 Proxied Application: the tool owns the response/page subtree under /tools/{slug}/.
 GET/HEAD on the root without its slash receive a method-preserving 307 with the query
 intact. The canonical root does not redirect. Relative links resolve beneath the slash.
-POST/PUT/PATCH/DELETE/OPTIONS roots forward directly, without canonicalization.
+POST/PUT/PATCH/DELETE/OPTIONS roots forward directly, without canonicalization. Nested
+paths continue to be forwarded as proxy paths and are never rendered with the embedded
+site shell.
 
 The proxy forwards GET, HEAD, POST, PUT, PATCH, DELETE, OPTIONS, query strings, and request
 bodies detected by length, Transfer-Encoding, or POST/PUT/PATCH. Exotic body-bearing
@@ -77,7 +109,12 @@ responses use no-store; membership-dependent API failures also use no-store.
 
 ## Shared contracts and provisional campaign proof
 
-GET /tool-host/{slug}/context can return anonymous context for an anonymous tool.
+GET /tool-host/{slug}/context can return anonymous context for an anonymous tool. Its
+`ToolBasePath` is always `/tools/{slug}`. Its optional `toolRoute` query parameter is used
+by the embedded shell to carry the server-resolved initial Tool route into the context
+response; omitted or root route state resolves to `/`. It is route metadata, not an
+authorization input and not an alternate Tool Host routing namespace.
+
 GET /tool-host/{slug}/api/session, /api/campaigns, and /api/campaigns/{campaignId}
 require host authentication and derive identity from the authenticated principal.
 Browser user IDs and identity headers do not influence lookup. Disabled/wrong-mode

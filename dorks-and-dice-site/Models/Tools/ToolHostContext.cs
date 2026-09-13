@@ -6,6 +6,8 @@ public sealed class ToolHostContext
     public required string ToolSlug { get; init; }
     public required string SiteMode { get; init; }
     public required string ApiBaseUrl { get; init; }
+    public required string ToolBasePath { get; init; }
+    public required string ToolRoute { get; init; }
     public ToolHostUserContext? User { get; init; }
 }
 

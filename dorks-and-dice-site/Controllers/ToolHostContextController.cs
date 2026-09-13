@@ -20,7 +20,10 @@ public sealed class ToolHostContextController : ControllerBase
 
     [AllowAnonymous]
     [HttpGet("{slug}/context")]
-    public async Task<IActionResult> GetContext(string slug, CancellationToken cancellationToken)
+    public async Task<IActionResult> GetContext(
+        string slug,
+        [FromQuery] string? toolRoute,
+        CancellationToken cancellationToken)
     {
         var tool = await _toolRegistry.GetBySlugAsync(slug, cancellationToken);
         var modeId = HttpContext.GetSiteModeContext().ActiveModeId;
@@ -59,7 +62,21 @@ public sealed class ToolHostContextController : ControllerBase
             ToolSlug = tool.Slug,
             SiteMode = modeId!,
             ApiBaseUrl = $"/tool-host/{tool.Slug}/api",
+            ToolBasePath = $"/tools/{tool.Slug}",
+            ToolRoute = NormalizeToolRoute(toolRoute),
             User = userContext
         });
+    }
+
+    private static string NormalizeToolRoute(string? toolRoute)
+    {
+        if (string.IsNullOrWhiteSpace(toolRoute) || string.Equals(toolRoute, "/", StringComparison.Ordinal))
+        {
+            return "/";
+        }
+
+        return toolRoute.StartsWith("/", StringComparison.Ordinal)
+            ? toolRoute
+            : $"/{toolRoute}";
     }
 }

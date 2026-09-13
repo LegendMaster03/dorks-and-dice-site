@@ -34,7 +34,33 @@ public sealed class ToolsController : Controller
     [AllowAnonymous]
     [AcceptVerbs("GET", "HEAD")]
     [Route("{slug}")]
-    public async Task<IActionResult> Details(string slug, CancellationToken cancellationToken)
+    public Task<IActionResult> Details(string slug, CancellationToken cancellationToken) =>
+        DispatchAsync(slug, "/", canonicalizeProxiedRoot: true, cancellationToken);
+
+    [AllowAnonymous]
+    [AcceptVerbs("POST", "PUT", "PATCH", "DELETE", "OPTIONS")]
+    [Route("{slug}")]
+    public Task<IActionResult> RootRequest(string slug, CancellationToken cancellationToken) =>
+        DispatchAsync(slug, "/", canonicalizeProxiedRoot: false, cancellationToken);
+
+    [AllowAnonymous]
+    [AcceptVerbs("GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")]
+    [Route("{slug}/{**toolRoute}")]
+    public Task<IActionResult> RoutedRequest(
+        string slug,
+        string? toolRoute,
+        CancellationToken cancellationToken) =>
+        DispatchAsync(
+            slug,
+            string.IsNullOrWhiteSpace(toolRoute) ? "/" : $"/{toolRoute}",
+            canonicalizeProxiedRoot: false,
+            cancellationToken);
+
+    private async Task<IActionResult> DispatchAsync(
+        string slug,
+        string path,
+        bool canonicalizeProxiedRoot,
+        CancellationToken cancellationToken)
     {
         var tool = await ResolveAvailableToolAsync(slug, cancellationToken);
         if (tool is null)
@@ -47,57 +73,47 @@ public sealed class ToolsController : Controller
             return Challenge();
         }
 
-        if (tool.IntegrationType == ToolIntegrationType.ProxiedApplication)
+        if (tool.IntegrationType == ToolIntegrationType.EmbeddedModule)
+        {
+            if (!HttpMethods.IsGet(Request.Method) && !HttpMethods.IsHead(Request.Method))
+            {
+                return NotFound();
+            }
+
+            return RenderEmbeddedTool(tool, path);
+        }
+
+        if (tool.IntegrationType != ToolIntegrationType.ProxiedApplication)
+        {
+            return NotFound();
+        }
+
+        if (canonicalizeProxiedRoot)
         {
             var requestPath = Request.Path.Value ?? string.Empty;
             if (!requestPath.EndsWith("/", StringComparison.Ordinal))
             {
                 return RedirectPreserveMethod($"/tools/{tool.Slug}/{Request.QueryString}");
             }
-
-            await _toolProxyService.ProxyAsync(HttpContext, tool, "/", cancellationToken);
-            return new EmptyResult();
-        }
-
-        return View(tool);
-    }
-
-    [AllowAnonymous]
-    [AcceptVerbs("POST", "PUT", "PATCH", "DELETE", "OPTIONS")]
-    [Route("{slug}")]
-    public Task<IActionResult> ProxyRoot(string slug, CancellationToken cancellationToken) =>
-        ProxyResolvedAsync(slug, "/", cancellationToken);
-
-    [AllowAnonymous]
-    [AcceptVerbs("GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")]
-    [Route("{slug}/{**proxyPath}")]
-    public Task<IActionResult> Proxy(
-        string slug,
-        string? proxyPath,
-        CancellationToken cancellationToken) =>
-        ProxyResolvedAsync(
-            slug,
-            string.IsNullOrWhiteSpace(proxyPath) ? "/" : $"/{proxyPath}",
-            cancellationToken);
-
-    private async Task<IActionResult> ProxyResolvedAsync(
-        string slug,
-        string path,
-        CancellationToken cancellationToken)
-    {
-        var tool = await ResolveAvailableToolAsync(slug, cancellationToken);
-        if (tool is null || tool.IntegrationType != ToolIntegrationType.ProxiedApplication)
-        {
-            return NotFound();
-        }
-
-        if (!tool.AllowAnonymous && User.Identity?.IsAuthenticated != true)
-        {
-            return Challenge();
         }
 
         await _toolProxyService.ProxyAsync(HttpContext, tool, path, cancellationToken);
         return new EmptyResult();
+    }
+
+    private IActionResult RenderEmbeddedTool(ToolRegistration tool, string toolRoute)
+    {
+        var toolBasePath = $"/tools/{tool.Slug}";
+        var contextUrl = $"/tool-host/{tool.Slug}/context";
+        if (!string.Equals(toolRoute, "/", StringComparison.Ordinal))
+        {
+            contextUrl += $"?toolRoute={Uri.EscapeDataString(toolRoute)}";
+        }
+
+        ViewData["ToolBasePath"] = toolBasePath;
+        ViewData["ToolRoute"] = toolRoute;
+        ViewData["ToolContextUrl"] = contextUrl;
+        return View("Details", tool);
     }
 
     private async Task<ToolRegistration?> ResolveAvailableToolAsync(
