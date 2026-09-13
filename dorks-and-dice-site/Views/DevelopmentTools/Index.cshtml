@@ -39,6 +39,7 @@ else
                     ? definition!.DisplayName
                     : modeId)
                 .ToList();
+            var contractError = ToolIntegrationContractPolicy.GetUnsupportedReason(tool);
 
             var healthClass = item.Health.Status switch
             {
@@ -68,9 +69,15 @@ else
                         {
                             <p class="mt-3 mb-2">@tool.Description</p>
                         }
+                        @if (contractError is not null)
+                        {
+                            <div class="alert alert-danger py-2 mt-3 mb-0" role="alert">@contractError</div>
+                        }
                         <dl class="row small mt-2 mb-3">
                             <dt class="col-sm-4">Integration</dt>
                             <dd class="col-sm-8">@tool.IntegrationType</dd>
+                            <dt class="col-sm-4">Contract</dt>
+                            <dd class="col-sm-8">@(tool.IntegrationType == ToolIntegrationType.EmbeddedModule ? (tool.IntegrationContractVersion?.ToString() ?? "Not declared") : "Not applicable")</dd>
                             <dt class="col-sm-4">Modes</dt>
                             <dd class="col-sm-8">@string.Join(", ", modes)</dd>
                             <dt class="col-sm-4">Anonymous</dt>
@@ -89,7 +96,7 @@ else
                         </dl>
                         <div class="mt-auto d-flex flex-wrap gap-2">
                             <a class="btn btn-outline-primary btn-sm" href="/development/tools/@tool.Id">Edit</a>
-                            @if (tool.Enabled)
+                            @if (tool.Enabled && contractError is null)
                             {
                                 <a class="btn btn-outline-secondary btn-sm" href="/tools/@tool.Slug">Open public route</a>
                             }
