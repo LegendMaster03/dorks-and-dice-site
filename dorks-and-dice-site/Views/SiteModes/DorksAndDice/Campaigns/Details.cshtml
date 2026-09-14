@@ -48,45 +48,73 @@
                     <div class="list-group list-group-flush">
                         @foreach (var member in Model.Members)
                         {
-                            <div class="list-group-item px-0 d-flex flex-column flex-md-row justify-content-between gap-2">
-                                <div>
-                                    <div class="fw-semibold">
-                                        @if (!string.IsNullOrWhiteSpace(member.ParticipantName))
-                                        {
-                                            <span>@member.ParticipantName</span>
-                                            @if (member.IsCurrentUser)
+                            var memberIsPlayer = member.Roles.Contains(dorks_and_dice_site.Modes.DorksAndDice.Campaigns.CampaignRoles.Player, StringComparer.Ordinal);
+                            var memberIsDm = member.Roles.Contains(dorks_and_dice_site.Modes.DorksAndDice.Campaigns.CampaignRoles.Dm, StringComparer.Ordinal);
+                            <div class="list-group-item px-0">
+                                <div class="d-flex flex-column flex-lg-row justify-content-between gap-3">
+                                    <div>
+                                        <div class="fw-semibold">
+                                            @if (!string.IsNullOrWhiteSpace(member.ParticipantName))
                                             {
-                                                <span class="text-muted">(You)</span>
+                                                <span>@member.ParticipantName</span>
+                                                @if (member.IsCurrentUser)
+                                                {
+                                                    <span class="text-muted">(You)</span>
+                                                }
                                             }
-                                        }
-                                        else if (member.IsCurrentUser)
-                                        {
-                                            <span>You</span>
-                                        }
-                                        else
-                                        {
-                                            <span>Campaign Member</span>
-                                        }
+                                            else if (member.IsCurrentUser)
+                                            {
+                                                <span>You</span>
+                                            }
+                                            else
+                                            {
+                                                <span>Campaign Member</span>
+                                            }
+                                        </div>
+                                        <div class="mt-1">
+                                            @foreach (var role in member.Roles)
+                                            {
+                                                <span class="badge text-bg-light border me-1">@role.ToUpperInvariant()</span>
+                                            }
+                                        </div>
+                                        <div class="text-muted small text-break mt-1">Account @member.UserId</div>
                                     </div>
-                                    <div class="mt-1">
-                                        @foreach (var role in member.Roles)
-                                        {
-                                            <span class="badge text-bg-light border me-1">@role.ToUpperInvariant()</span>
-                                        }
-                                    </div>
-                                    <div class="text-muted small text-break mt-1">Account @member.UserId</div>
+
+                                    @if (Model.CanManage)
+                                    {
+                                        <div class="d-flex flex-column align-items-lg-end gap-2">
+                                            <form asp-controller="Campaigns"
+                                                  asp-action="SetMemberRoles"
+                                                  asp-route-campaignId="@Model.Id"
+                                                  asp-route-memberUserId="@member.UserId"
+                                                  method="post"
+                                                  class="d-flex flex-wrap gap-2 align-items-center">
+                                                @Html.AntiForgeryToken()
+                                                <div class="form-check form-check-inline mb-0">
+                                                    <input class="form-check-input" id="player-@member.UserId" type="checkbox" name="player" value="true" checked="@memberIsPlayer" />
+                                                    <label class="form-check-label" for="player-@member.UserId">Player</label>
+                                                </div>
+                                                <div class="form-check form-check-inline mb-0">
+                                                    <input class="form-check-input" id="dm-@member.UserId" type="checkbox" name="dm" value="true" checked="@memberIsDm" />
+                                                    <label class="form-check-label" for="dm-@member.UserId">DM</label>
+                                                </div>
+                                                <button class="btn btn-sm btn-outline-primary" type="submit">Update Roles</button>
+                                            </form>
+
+                                            @if (!member.IsCurrentUser)
+                                            {
+                                                <form asp-controller="Campaigns"
+                                                      asp-action="RemoveMember"
+                                                      asp-route-campaignId="@Model.Id"
+                                                      asp-route-memberUserId="@member.UserId"
+                                                      method="post">
+                                                    @Html.AntiForgeryToken()
+                                                    <button class="btn btn-sm btn-outline-danger" type="submit">Remove Member</button>
+                                                </form>
+                                            }
+                                        </div>
+                                    }
                                 </div>
-                                @if (Model.CanManage && !member.IsCurrentUser)
-                                {
-                                    <form asp-controller="Campaigns"
-                                          asp-action="RemoveMember"
-                                          asp-route-campaignId="@Model.Id"
-                                          asp-route-memberUserId="@member.UserId"
-                                          method="post">
-                                        @Html.AntiForgeryToken()
-                                        <button class="btn btn-sm btn-outline-danger" type="submit">Remove</button>
-                                    </form>
-                                }
                             </div>
                         }
                     </div>

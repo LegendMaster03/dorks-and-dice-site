@@ -81,6 +81,47 @@ public sealed class CampaignsController(
         }
     }
 
+    [HttpPost("{campaignId:guid}/members/{memberUserId:guid}/roles")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SetMemberRoles(
+        Guid campaignId,
+        Guid memberUserId,
+        bool player,
+        bool dm,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetUserId(out var userId))
+        {
+            return Unauthorized();
+        }
+
+        var roles = new List<string>();
+        if (player)
+        {
+            roles.Add(CampaignRoles.Player);
+        }
+        if (dm)
+        {
+            roles.Add(CampaignRoles.Dm);
+        }
+
+        try
+        {
+            await _campaignService.SetMemberRolesAsync(
+                userId,
+                campaignId,
+                memberUserId,
+                roles,
+                cancellationToken);
+        }
+        catch (CampaignDomainException exception)
+        {
+            TempData["CampaignError"] = exception.Message;
+        }
+
+        return RedirectToAction(nameof(Details), new { campaignId });
+    }
+
     [HttpPost("{campaignId:guid}/members/{memberUserId:guid}/remove")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RemoveMember(
@@ -297,7 +338,7 @@ public sealed class CampaignsController(
         var activeParticipants = campaign.Participants
             .Where(participant => participant.Status == CampaignParticipantStatus.Active)
             .ToArray();
-        var invitations = canManage
+        IReadOnlyList<CampaignInvitation> invitations = canManage
             ? await _invitationService.GetPendingAsync(userId, campaignId, cancellationToken)
             : [];
 
