@@ -122,4 +122,9 @@ public sealed class CampaignDomainException : InvalidOperationException
         : base(message)
     {
     }
+
+    public CampaignDomainException(string message, Exception innerException)
+        : base(message, innerException)
+    {
+    }
 }

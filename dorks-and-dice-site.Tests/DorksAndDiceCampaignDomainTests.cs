@@ -180,6 +180,54 @@ public sealed class DorksAndDiceCampaignDomainTests
         Assert.Equal(player, linked.UserId);
     }
 
+    [Fact]
+    public async Task OneTimeInviteCanCreateMembershipAndLinkExistingParticipant()
+    {
+        await using var harness = await CampaignHarness.CreateAsync();
+        var dm = Guid.NewGuid();
+        var player = Guid.NewGuid();
+        var campaign = await harness.Campaigns.CreateAsync(dm, "Campaign");
+        var participant = await harness.Participants.AddGuestAsync(dm, campaign.Id, "Future Account");
+
+        var grant = await harness.Invitations.CreateAsync(
+            dm,
+            campaign.Id,
+            [CampaignRoles.Player],
+            participant.Id);
+        var storedBeforeAccept = await harness.Db.CampaignInvitations.AsNoTracking().SingleAsync();
+        Assert.NotEqual(grant.Token, storedBeforeAccept.TokenHash);
+        Assert.Equal(64, storedBeforeAccept.TokenHash.Length);
+
+        var preview = await harness.Invitations.GetPreviewAsync(grant.Token);
+        Assert.NotNull(preview);
+        Assert.Equal("Campaign", preview.CampaignName);
+        Assert.Equal("Future Account", preview.ParticipantName);
+
+        await harness.Invitations.AcceptAsync(player, grant.Token);
+
+        Assert.True(await harness.Access.HasRoleAsync(player, campaign.Id, CampaignRoles.Player));
+        var linkedParticipant = Assert.Single(await harness.Participants.GetForCampaignAsync(dm, campaign.Id));
+        Assert.Equal(player, linkedParticipant.UserId);
+        Assert.Null(await harness.Invitations.GetPreviewAsync(grant.Token));
+        await Assert.ThrowsAsync<CampaignDomainException>(() =>
+            harness.Invitations.AcceptAsync(Guid.NewGuid(), grant.Token));
+    }
+
+    [Fact]
+    public async Task RevokedInviteCanNotBeClaimed()
+    {
+        await using var harness = await CampaignHarness.CreateAsync();
+        var dm = Guid.NewGuid();
+        var campaign = await harness.Campaigns.CreateAsync(dm, "Campaign");
+        var grant = await harness.Invitations.CreateAsync(dm, campaign.Id, [CampaignRoles.Player]);
+
+        await harness.Invitations.RevokeAsync(dm, campaign.Id, grant.Invitation.Id);
+
+        Assert.Null(await harness.Invitations.GetPreviewAsync(grant.Token));
+        await Assert.ThrowsAsync<CampaignDomainException>(() =>
+            harness.Invitations.AcceptAsync(Guid.NewGuid(), grant.Token));
+    }
+
     private sealed class CampaignHarness : IAsyncDisposable
     {
         private readonly SqliteConnection _connection;
@@ -191,6 +239,7 @@ public sealed class DorksAndDiceCampaignDomainTests
             Access = new CampaignAccessService(db);
             Campaigns = new CampaignService(db, Access, TimeProvider.System);
             Participants = new CampaignParticipantService(db, Access, TimeProvider.System);
+            Invitations = new CampaignInvitationService(db, Access, TimeProvider.System);
             Characters = new CharacterService(db, Access, TimeProvider.System);
         }
 
@@ -198,6 +247,7 @@ public sealed class DorksAndDiceCampaignDomainTests
         public CampaignAccessService Access { get; }
         public CampaignService Campaigns { get; }
         public CampaignParticipantService Participants { get; }
+        public CampaignInvitationService Invitations { get; }
         public CharacterService Characters { get; }
 
         public static async Task<CampaignHarness> CreateAsync()

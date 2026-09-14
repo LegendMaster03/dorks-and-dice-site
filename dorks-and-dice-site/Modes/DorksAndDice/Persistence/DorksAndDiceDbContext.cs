@@ -11,6 +11,7 @@ public sealed class DorksAndDiceDbContext(DbContextOptions<DorksAndDiceDbContext
     public DbSet<CampaignMembership> CampaignMemberships => Set<CampaignMembership>();
     public DbSet<CampaignMembershipRole> CampaignMembershipRoles => Set<CampaignMembershipRole>();
     public DbSet<CampaignParticipant> CampaignParticipants => Set<CampaignParticipant>();
+    public DbSet<CampaignInvitation> CampaignInvitations => Set<CampaignInvitation>();
     public DbSet<Character> Characters => Set<Character>();
     public DbSet<CampaignCharacterAssociation> CampaignCharacters => Set<CampaignCharacterAssociation>();
 
@@ -64,6 +65,25 @@ public sealed class DorksAndDiceDbContext(DbContextOptions<DorksAndDiceDbContext
                 .WithMany(item => item.Participants)
                 .HasForeignKey(item => item.CampaignId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<CampaignInvitation>(entity =>
+        {
+            entity.ToTable("dd_campaign_invitation");
+            entity.HasKey(item => item.Id);
+            entity.Property(item => item.TokenHash).HasMaxLength(64).IsRequired();
+            entity.Property(item => item.Roles).HasMaxLength(100).IsRequired();
+            entity.Property(item => item.Status).IsConcurrencyToken();
+            entity.HasIndex(item => item.TokenHash).IsUnique();
+            entity.HasIndex(item => new { item.CampaignId, item.Status });
+            entity.HasOne(item => item.Campaign)
+                .WithMany()
+                .HasForeignKey(item => item.CampaignId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(item => item.Participant)
+                .WithMany()
+                .HasForeignKey(item => item.ParticipantId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<Character>(entity =>

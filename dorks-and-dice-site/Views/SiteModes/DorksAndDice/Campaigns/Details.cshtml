@@ -28,6 +28,14 @@
     {
         <div class="alert alert-danger" role="alert">@error</div>
     }
+    @if (TempData["CampaignInviteLink"] is string inviteLink)
+    {
+        <div class="alert alert-success" role="status">
+            <strong>Invite created.</strong>
+            <p class="mb-2">Share this one-time link with the intended player or DM:</p>
+            <input class="form-control" type="text" value="@inviteLink" readonly />
+        </div>
+    }
 
     <div class="row g-4">
         <div class="col-lg-7">
@@ -43,13 +51,21 @@
                             <div class="list-group-item px-0 d-flex flex-column flex-md-row justify-content-between gap-2">
                                 <div>
                                     <div class="fw-semibold">
-                                        @if (member.IsCurrentUser)
+                                        @if (!string.IsNullOrWhiteSpace(member.ParticipantName))
+                                        {
+                                            <span>@member.ParticipantName</span>
+                                            @if (member.IsCurrentUser)
+                                            {
+                                                <span class="text-muted">(You)</span>
+                                            }
+                                        }
+                                        else if (member.IsCurrentUser)
                                         {
                                             <span>You</span>
                                         }
                                         else
                                         {
-                                            <span>Account @member.UserId</span>
+                                            <span>Campaign Member</span>
                                         }
                                     </div>
                                     <div class="mt-1">
@@ -58,6 +74,7 @@
                                             <span class="badge text-bg-light border me-1">@role.ToUpperInvariant()</span>
                                         }
                                     </div>
+                                    <div class="text-muted small text-break mt-1">Account @member.UserId</div>
                                 </div>
                                 @if (Model.CanManage && !member.IsCurrentUser)
                                 {
@@ -73,14 +90,79 @@
                             </div>
                         }
                     </div>
-                    @if (Model.CanManage)
-                    {
-                        <p class="text-muted small mb-0 mt-3">
-                            Account invitations and friendly account lookup are not exposed here yet; membership management currently uses the campaign API until the identity bridge is connected.
-                        </p>
-                    }
                 </div>
             </div>
+
+            @if (Model.CanManage)
+            {
+                <div class="card shadow-sm mb-4">
+                    <div class="card-body">
+                        <h2 class="h5">Invite someone</h2>
+                        <p class="text-muted small">Invites are one-time links and expire after seven days. Attach an invite to a guest participant to preserve that participant's campaign history when they create or use a site account.</p>
+                        <form asp-controller="Campaigns" asp-action="CreateInvitation" asp-route-campaignId="@Model.Id" method="post" class="row g-3">
+                            @Html.AntiForgeryToken()
+                            <div class="col-md-6">
+                                <label class="form-label" for="inviteParticipant">Participant</label>
+                                <select id="inviteParticipant" class="form-select" name="participantId">
+                                    <option value="">No participant link</option>
+                                    @foreach (var participant in Model.InviteableParticipants)
+                                    {
+                                        <option value="@participant.Id">@participant.DisplayName</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <span class="form-label d-block">Campaign roles</span>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" id="invitePlayer" type="checkbox" name="player" value="true" checked />
+                                    <label class="form-check-label" for="invitePlayer">Player</label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" id="inviteDm" type="checkbox" name="dm" value="true" />
+                                    <label class="form-check-label" for="inviteDm">DM</label>
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <button class="btn btn-primary" type="submit">Create Invite Link</button>
+                            </div>
+                        </form>
+
+                        @if (Model.Invitations.Count > 0)
+                        {
+                            <hr />
+                            <h3 class="h6">Pending invites</h3>
+                            <div class="list-group list-group-flush">
+                                @foreach (var invitation in Model.Invitations)
+                                {
+                                    <div class="list-group-item px-0 d-flex justify-content-between gap-3">
+                                        <div>
+                                            <div>
+                                                @foreach (var role in invitation.Roles)
+                                                {
+                                                    <span class="badge text-bg-light border me-1">@role.ToUpperInvariant()</span>
+                                                }
+                                                @if (!string.IsNullOrWhiteSpace(invitation.ParticipantName))
+                                                {
+                                                    <span class="ms-1">for @invitation.ParticipantName</span>
+                                                }
+                                            </div>
+                                            <div class="small text-muted mt-1">Expires @invitation.ExpiresAt.ToLocalTime().ToString("g")</div>
+                                        </div>
+                                        <form asp-controller="Campaigns"
+                                              asp-action="RevokeInvitation"
+                                              asp-route-campaignId="@Model.Id"
+                                              asp-route-invitationId="@invitation.Id"
+                                              method="post">
+                                            @Html.AntiForgeryToken()
+                                            <button class="btn btn-sm btn-outline-secondary" type="submit">Revoke</button>
+                                        </form>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
 
             <div class="card shadow-sm">
                 <div class="card-body">

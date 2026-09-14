@@ -1,0 +1,41 @@
+@model dorks_and_dice_site.Modes.DorksAndDice.Ui.CampaignInvitationPageViewModel
+@{
+    ViewData["Title"] = "Campaign Invitation";
+}
+
+<div class="container py-5" style="max-width: 760px;">
+    <div class="card shadow-sm">
+        <div class="card-body p-4 p-md-5">
+            <p class="text-uppercase text-muted small mb-1">Campaign Invitation</p>
+            <h1 class="h3 mb-3">Join @Model.CampaignName</h1>
+
+            @if (!string.IsNullOrWhiteSpace(Model.Error))
+            {
+                <div class="alert alert-danger" role="alert">@Model.Error</div>
+            }
+
+            <p>This invitation will add your signed-in account to the campaign with the following role(s):</p>
+            <div class="mb-3">
+                @foreach (var role in Model.Roles)
+                {
+                    <span class="badge text-bg-secondary me-1">@role.ToUpperInvariant()</span>
+                }
+            </div>
+
+            @if (!string.IsNullOrWhiteSpace(Model.ParticipantName))
+            {
+                <div class="alert alert-info">
+                    This invite is attached to the existing table participant <strong>@Model.ParticipantName</strong>. Accepting it will link that participant's campaign history to your account.
+                </div>
+            }
+
+            <p class="small text-muted">This one-time invitation expires @Model.ExpiresAt.ToLocalTime().ToString("g").</p>
+
+            <form asp-controller="Campaigns" asp-action="AcceptInvitation" asp-route-token="@Model.Token" method="post">
+                @Html.AntiForgeryToken()
+                <button class="btn btn-primary" type="submit">Accept Invitation</button>
+                <a class="btn btn-outline-secondary ms-2" asp-controller="Campaigns" asp-action="Index">Cancel</a>
+            </form>
+        </div>
+    </div>
+</div>

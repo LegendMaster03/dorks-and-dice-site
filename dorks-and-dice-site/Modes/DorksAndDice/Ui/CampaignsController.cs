@@ -9,10 +9,12 @@ namespace dorks_and_dice_site.Modes.DorksAndDice.Ui;
 [Route("campaigns")]
 public sealed class CampaignsController(
     ICampaignService campaignService,
-    ICampaignParticipantService participantService) : Controller
+    ICampaignParticipantService participantService,
+    ICampaignInvitationService invitationService) : Controller
 {
     private readonly ICampaignService _campaignService = campaignService;
     private readonly ICampaignParticipantService _participantService = participantService;
+    private readonly ICampaignInvitationService _invitationService = invitationService;
 
     [HttpGet("")]
     public async Task<IActionResult> Index(CancellationToken cancellationToken)
@@ -151,6 +153,109 @@ public sealed class CampaignsController(
         return RedirectToAction(nameof(Details), new { campaignId });
     }
 
+    [HttpPost("{campaignId:guid}/invitations")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CreateInvitation(
+        Guid campaignId,
+        bool player,
+        bool dm,
+        Guid? participantId,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetUserId(out var userId))
+        {
+            return Unauthorized();
+        }
+
+        var roles = new List<string>();
+        if (player)
+        {
+            roles.Add(CampaignRoles.Player);
+        }
+        if (dm)
+        {
+            roles.Add(CampaignRoles.Dm);
+        }
+
+        try
+        {
+            var grant = await _invitationService.CreateAsync(
+                userId,
+                campaignId,
+                roles,
+                participantId,
+                cancellationToken);
+            TempData["CampaignInviteLink"] =
+                Url.Action(nameof(Invitation), "Campaigns", new { token = grant.Token }, Request.Scheme)
+                ?? $"/campaigns/invitations/{grant.Token}";
+        }
+        catch (CampaignDomainException exception)
+        {
+            TempData["CampaignError"] = exception.Message;
+        }
+
+        return RedirectToAction(nameof(Details), new { campaignId });
+    }
+
+    [HttpPost("{campaignId:guid}/invitations/{invitationId:guid}/revoke")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RevokeInvitation(
+        Guid campaignId,
+        Guid invitationId,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetUserId(out var userId))
+        {
+            return Unauthorized();
+        }
+
+        try
+        {
+            await _invitationService.RevokeAsync(userId, campaignId, invitationId, cancellationToken);
+        }
+        catch (CampaignDomainException exception)
+        {
+            TempData["CampaignError"] = exception.Message;
+        }
+
+        return RedirectToAction(nameof(Details), new { campaignId });
+    }
+
+    [HttpGet("invitations/{token}")]
+    public async Task<IActionResult> Invitation(string token, CancellationToken cancellationToken)
+    {
+        var preview = await _invitationService.GetPreviewAsync(token, cancellationToken);
+        return preview is null
+            ? NotFound()
+            : View(ToInvitationPageModel(preview, token));
+    }
+
+    [HttpPost("invitations/{token}")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> AcceptInvitation(string token, CancellationToken cancellationToken)
+    {
+        if (!TryGetUserId(out var userId))
+        {
+            return Unauthorized();
+        }
+
+        var preview = await _invitationService.GetPreviewAsync(token, cancellationToken);
+        if (preview is null)
+        {
+            return NotFound();
+        }
+
+        try
+        {
+            var membership = await _invitationService.AcceptAsync(userId, token, cancellationToken);
+            return RedirectToAction(nameof(Details), new { campaignId = membership.CampaignId });
+        }
+        catch (CampaignDomainException exception)
+        {
+            return View(nameof(Invitation), ToInvitationPageModel(preview, token, exception.Message));
+        }
+    }
+
     private async Task<CampaignsIndexViewModel> BuildIndexAsync(
         Guid userId,
         CancellationToken cancellationToken)
@@ -188,18 +293,26 @@ public sealed class CampaignsController(
             .Select(role => role.Role)
             .OrderBy(role => role)
             .ToArray();
+        var canManage = currentRoles.Contains(CampaignRoles.Dm, StringComparer.Ordinal);
+        var activeParticipants = campaign.Participants
+            .Where(participant => participant.Status == CampaignParticipantStatus.Active)
+            .ToArray();
+        var invitations = canManage
+            ? await _invitationService.GetPendingAsync(userId, campaignId, cancellationToken)
+            : [];
 
         return new CampaignDetailsViewModel
         {
             Id = campaign.Id,
             Name = campaign.Name,
             CurrentUserId = userId,
-            CanManage = currentRoles.Contains(CampaignRoles.Dm, StringComparer.Ordinal),
+            CanManage = canManage,
             CurrentUserRoles = currentRoles,
             Members = activeMemberships
                 .OrderBy(membership => membership.UserId.ToString())
                 .Select(membership => new CampaignMemberViewModel(
                     membership.UserId,
+                    activeParticipants.FirstOrDefault(participant => participant.UserId == membership.UserId)?.DisplayName,
                     membership.Roles.Select(role => role.Role).OrderBy(role => role).ToArray(),
                     membership.UserId == userId))
                 .ToArray(),
@@ -211,7 +324,36 @@ public sealed class CampaignsController(
                     participant.DisplayName,
                     participant.UserId,
                     participant.Status == CampaignParticipantStatus.Active))
+                .ToArray(),
+            Invitations = invitations
+                .Select(invitation => new CampaignInvitationListItemViewModel(
+                    invitation.Id,
+                    invitation.Roles.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),
+                    invitation.Participant?.DisplayName,
+                    invitation.ExpiresAt))
+                .ToArray(),
+            InviteableParticipants = activeParticipants
+                .Where(participant => participant.UserId is null)
+                .OrderBy(participant => participant.DisplayName)
+                .Select(participant => new ParticipantOptionViewModel(participant.Id, participant.DisplayName))
                 .ToArray()
+        };
+    }
+
+    private static CampaignInvitationPageViewModel ToInvitationPageModel(
+        CampaignInvitationPreview preview,
+        string token,
+        string? error = null)
+    {
+        return new CampaignInvitationPageViewModel
+        {
+            Token = token,
+            CampaignId = preview.CampaignId,
+            CampaignName = preview.CampaignName,
+            Roles = preview.Roles,
+            ParticipantName = preview.ParticipantName,
+            ExpiresAt = preview.ExpiresAt,
+            Error = error
         };
     }
 
