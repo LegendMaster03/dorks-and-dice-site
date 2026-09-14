@@ -110,6 +110,8 @@ public sealed class CampaignParticipant
     public CampaignParticipantStatus Status { get; set; } = CampaignParticipantStatus.Active;
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset? EndedAt { get; set; }
+    public Guid? EndedByUserId { get; set; }
+    public string? EndReason { get; set; }
 
     public Campaign Campaign { get; set; } = null!;
 }

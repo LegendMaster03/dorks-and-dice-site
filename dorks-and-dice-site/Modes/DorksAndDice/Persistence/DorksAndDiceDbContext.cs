@@ -57,6 +57,7 @@ public sealed class DorksAndDiceDbContext(DbContextOptions<DorksAndDiceDbContext
             entity.ToTable("dd_campaign_participant");
             entity.HasKey(item => item.Id);
             entity.Property(item => item.DisplayName).HasMaxLength(120).IsRequired();
+            entity.Property(item => item.EndReason).HasMaxLength(300);
             entity.HasIndex(item => item.CampaignId);
             entity.HasIndex(item => item.UserId);
             entity.HasOne(item => item.Campaign)

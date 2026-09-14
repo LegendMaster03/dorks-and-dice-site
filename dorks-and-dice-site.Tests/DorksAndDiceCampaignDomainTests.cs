@@ -77,13 +77,15 @@ public sealed class DorksAndDiceCampaignDomainTests
     }
 
     [Fact]
-    public async Task PlayerLeavingEndsCampaignConnectionButKeepsCharacterOwnership()
+    public async Task PlayerLeavingPreservesCharacterAndEndsCampaignOwnedLinks()
     {
         await using var harness = await CampaignHarness.CreateAsync();
         var dm = Guid.NewGuid();
         var player = Guid.NewGuid();
         var campaign = await harness.Campaigns.CreateAsync(dm, "Campaign");
         await harness.Campaigns.AddMemberAsync(dm, campaign.Id, player, [CampaignRoles.Player]);
+        var participant = await harness.Participants.AddGuestAsync(dm, campaign.Id, "Table Player");
+        await harness.Participants.LinkToUserAsync(dm, campaign.Id, participant.Id, player);
         var character = await harness.Characters.CreateAsync(player, "Kell");
         await harness.Characters.ConnectToCampaignAsync(player, character.Id, campaign.Id);
 
@@ -94,17 +96,24 @@ public sealed class DorksAndDiceCampaignDomainTests
         Assert.Equal(player, savedCharacter.OwnerUserId);
         var association = Assert.Single(savedCharacter.CampaignAssociations);
         Assert.Equal(CampaignCharacterAssociationStatus.Ended, association.Status);
+        Assert.Equal(player, association.EndedByUserId);
+
+        var savedParticipant = Assert.Single(await harness.Participants.GetForCampaignAsync(dm, campaign.Id));
+        Assert.Equal(CampaignParticipantStatus.Former, savedParticipant.Status);
+        Assert.Equal(player, savedParticipant.EndedByUserId);
         Assert.False(await harness.Access.IsMemberAsync(player, campaign.Id));
     }
 
     [Fact]
-    public async Task DmRemovingPlayerEndsCampaignConnectionButKeepsCharacterOwnership()
+    public async Task DmRemovingPlayerPreservesCharacterAndEndsCampaignOwnedLinks()
     {
         await using var harness = await CampaignHarness.CreateAsync();
         var dm = Guid.NewGuid();
         var player = Guid.NewGuid();
         var campaign = await harness.Campaigns.CreateAsync(dm, "Campaign");
         await harness.Campaigns.AddMemberAsync(dm, campaign.Id, player, [CampaignRoles.Player]);
+        var participant = await harness.Participants.AddGuestAsync(dm, campaign.Id, "Table Player");
+        await harness.Participants.LinkToUserAsync(dm, campaign.Id, participant.Id, player);
         var character = await harness.Characters.CreateAsync(player, "Character");
         await harness.Characters.ConnectToCampaignAsync(player, character.Id, campaign.Id);
 
@@ -115,6 +124,11 @@ public sealed class DorksAndDiceCampaignDomainTests
         Assert.Equal(player, savedCharacter.OwnerUserId);
         var association = Assert.Single(savedCharacter.CampaignAssociations);
         Assert.Equal(CampaignCharacterAssociationStatus.Ended, association.Status);
+        Assert.Equal(dm, association.EndedByUserId);
+
+        var savedParticipant = Assert.Single(await harness.Participants.GetForCampaignAsync(dm, campaign.Id));
+        Assert.Equal(CampaignParticipantStatus.Former, savedParticipant.Status);
+        Assert.Equal(dm, savedParticipant.EndedByUserId);
         Assert.False(await harness.Access.IsMemberAsync(player, campaign.Id));
     }
 

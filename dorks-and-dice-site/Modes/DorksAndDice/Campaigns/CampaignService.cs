@@ -215,6 +215,7 @@ public sealed class CampaignService(
         var now = _timeProvider.GetUtcNow();
         EndMembership(membership, CampaignMembershipStatus.Left, userId, "Left campaign", now);
         await EndCharacterAssociationsAsync(campaignId, userId, userId, "Owner left campaign", now, cancellationToken);
+        await EndParticipantLinksAsync(campaignId, userId, userId, "Linked account left campaign", now, cancellationToken);
         await TouchCampaignAsync(campaignId, now, cancellationToken);
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
@@ -235,6 +236,7 @@ public sealed class CampaignService(
         var now = _timeProvider.GetUtcNow();
         EndMembership(membership, CampaignMembershipStatus.Removed, actorUserId, "Removed by campaign DM", now);
         await EndCharacterAssociationsAsync(campaignId, userId, actorUserId, "Owner removed from campaign", now, cancellationToken);
+        await EndParticipantLinksAsync(campaignId, userId, actorUserId, "Linked account removed from campaign", now, cancellationToken);
         await TouchCampaignAsync(campaignId, now, cancellationToken);
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
@@ -292,6 +294,29 @@ public sealed class CampaignService(
             association.EndedAt = now;
             association.EndedByUserId = endedByUserId;
             association.EndReason = reason;
+        }
+    }
+
+    private async Task EndParticipantLinksAsync(
+        Guid campaignId,
+        Guid userId,
+        Guid endedByUserId,
+        string reason,
+        DateTimeOffset now,
+        CancellationToken cancellationToken)
+    {
+        var participants = await _dbContext.CampaignParticipants
+            .Where(participant => participant.CampaignId == campaignId
+                && participant.UserId == userId
+                && participant.Status == CampaignParticipantStatus.Active)
+            .ToListAsync(cancellationToken);
+
+        foreach (var participant in participants)
+        {
+            participant.Status = CampaignParticipantStatus.Former;
+            participant.EndedAt = now;
+            participant.EndedByUserId = endedByUserId;
+            participant.EndReason = reason;
         }
     }
 

@@ -122,6 +122,8 @@ public sealed class CampaignParticipantService(
         var participant = await GetActiveParticipantForUpdateAsync(campaignId, participantId, cancellationToken);
         participant.Status = CampaignParticipantStatus.Former;
         participant.EndedAt = _timeProvider.GetUtcNow();
+        participant.EndedByUserId = actorUserId;
+        participant.EndReason = "Retired by campaign DM";
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
 
