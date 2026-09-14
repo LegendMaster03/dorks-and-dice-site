@@ -1,0 +1,169 @@
+@model dorks_and_dice_site.Modes.DorksAndDice.Ui.CampaignDetailsViewModel
+@{
+    ViewData["Title"] = Model.Name;
+}
+
+<div class="container py-4">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-start gap-3 mb-4">
+        <div>
+            <a class="small text-decoration-none" asp-controller="Campaigns" asp-action="Index">&larr; All campaigns</a>
+            <h1 class="h2 mt-2 mb-2">@Model.Name</h1>
+            <div>
+                @foreach (var role in Model.CurrentUserRoles)
+                {
+                    <span class="badge text-bg-secondary me-1">@role.ToUpperInvariant()</span>
+                }
+            </div>
+        </div>
+        <div class="d-flex gap-2">
+            <a class="btn btn-outline-primary" asp-controller="Characters" asp-action="Index">My Characters</a>
+            <form asp-controller="Campaigns" asp-action="Leave" asp-route-campaignId="@Model.Id" method="post">
+                @Html.AntiForgeryToken()
+                <button class="btn btn-outline-danger" type="submit">Leave Campaign</button>
+            </form>
+        </div>
+    </div>
+
+    @if (TempData["CampaignError"] is string error)
+    {
+        <div class="alert alert-danger" role="alert">@error</div>
+    }
+
+    <div class="row g-4">
+        <div class="col-lg-7">
+            <div class="card shadow-sm mb-4">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h2 class="h5 mb-0">Members</h2>
+                        <span class="text-muted small">@Model.Members.Count active</span>
+                    </div>
+                    <div class="list-group list-group-flush">
+                        @foreach (var member in Model.Members)
+                        {
+                            <div class="list-group-item px-0 d-flex flex-column flex-md-row justify-content-between gap-2">
+                                <div>
+                                    <div class="fw-semibold">
+                                        @if (member.IsCurrentUser)
+                                        {
+                                            <span>You</span>
+                                        }
+                                        else
+                                        {
+                                            <span>Account @member.UserId</span>
+                                        }
+                                    </div>
+                                    <div class="mt-1">
+                                        @foreach (var role in member.Roles)
+                                        {
+                                            <span class="badge text-bg-light border me-1">@role.ToUpperInvariant()</span>
+                                        }
+                                    </div>
+                                </div>
+                                @if (Model.CanManage && !member.IsCurrentUser)
+                                {
+                                    <form asp-controller="Campaigns"
+                                          asp-action="RemoveMember"
+                                          asp-route-campaignId="@Model.Id"
+                                          asp-route-memberUserId="@member.UserId"
+                                          method="post">
+                                        @Html.AntiForgeryToken()
+                                        <button class="btn btn-sm btn-outline-danger" type="submit">Remove</button>
+                                    </form>
+                                }
+                            </div>
+                        }
+                    </div>
+                    @if (Model.CanManage)
+                    {
+                        <p class="text-muted small mb-0 mt-3">
+                            Account invitations and friendly account lookup are not exposed here yet; membership management currently uses the campaign API until the identity bridge is connected.
+                        </p>
+                    }
+                </div>
+            </div>
+
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h2 class="h5 mb-0">Table Participants</h2>
+                        <span class="text-muted small">Account optional</span>
+                    </div>
+
+                    @if (Model.CanManage)
+                    {
+                        <form asp-controller="Campaigns" asp-action="AddParticipant" asp-route-campaignId="@Model.Id" method="post" class="row g-2 mb-3">
+                            @Html.AntiForgeryToken()
+                            <div class="col-md-8">
+                                <label class="visually-hidden" for="participantName">Participant name</label>
+                                <input id="participantName" class="form-control" type="text" name="displayName" maxlength="120" placeholder="Participant name" required />
+                            </div>
+                            <div class="col-md-4">
+                                <button class="btn btn-outline-primary w-100" type="submit">Add Participant</button>
+                            </div>
+                        </form>
+                    }
+
+                    @if (Model.Participants.Count == 0)
+                    {
+                        <p class="text-muted mb-0">No table participants have been added yet.</p>
+                    }
+                    else
+                    {
+                        <div class="list-group list-group-flush">
+                            @foreach (var participant in Model.Participants)
+                            {
+                                <div class="list-group-item px-0 d-flex justify-content-between gap-3">
+                                    <div>
+                                        <div class="fw-semibold">@participant.DisplayName</div>
+                                        <div class="small text-muted">
+                                            @if (participant.UserId is Guid linkedUserId)
+                                            {
+                                                <span>Linked account: @linkedUserId</span>
+                                            }
+                                            else
+                                            {
+                                                <span>No site account linked</span>
+                                            }
+                                            @if (!participant.IsActive)
+                                            {
+                                                <span class="ms-2 badge text-bg-secondary">Former</span>
+                                            }
+                                        </div>
+                                    </div>
+                                    @if (Model.CanManage && participant.IsActive)
+                                    {
+                                        <form asp-controller="Campaigns"
+                                              asp-action="RetireParticipant"
+                                              asp-route-campaignId="@Model.Id"
+                                              asp-route-participantId="@participant.Id"
+                                              method="post">
+                                            @Html.AntiForgeryToken()
+                                            <button class="btn btn-sm btn-outline-secondary" type="submit">Mark Former</button>
+                                        </form>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-5">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h2 class="h5">Campaign Connections</h2>
+                    <p class="text-muted">
+                        Campaign identity and authority live here. Rules, character sheets, encounters, and travel state remain owned by their respective Dorks &amp; Dice tools.
+                    </p>
+                    <dl class="row mb-0 small">
+                        <dt class="col-5">Campaign ID</dt>
+                        <dd class="col-7 text-break">@Model.Id</dd>
+                        <dt class="col-5">Your account ID</dt>
+                        <dd class="col-7 text-break">@Model.CurrentUserId</dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
