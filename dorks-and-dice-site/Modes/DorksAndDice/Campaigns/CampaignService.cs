@@ -184,46 +184,66 @@ public sealed class CampaignService(
             await EnsureAnotherDmExistsAsync(campaignId, membership.Id, cancellationToken);
         }
 
+        var rolesToRemove = existingRoles
+            .Where(role => !normalizedRoles.Contains(role.Role))
+            .ToArray();
+        var existingRoleNames = existingRoles
+            .Select(role => role.Role)
+            .ToHashSet(StringComparer.Ordinal);
+        var rolesToAdd = normalizedRoles
+            .Where(role => !existingRoleNames.Contains(role))
+            .ToArray();
         var now = _timeProvider.GetUtcNow();
-        foreach (var existingRole in existingRoles)
+
+        await using var transaction = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
+        try
         {
-            if (!normalizedRoles.Contains(existingRole.Role))
+            if (rolesToRemove.Length > 0)
             {
-                _dbContext.CampaignMembershipRoles.Remove(existingRole);
+                var roleIds = rolesToRemove.Select(role => role.Id).ToArray();
+                await _dbContext.CampaignMembershipRoles
+                    .Where(role => roleIds.Contains(role.Id))
+                    .ExecuteDeleteAsync(cancellationToken);
+
+                foreach (var role in rolesToRemove)
+                {
+                    membership.Roles.Remove(role);
+                    _dbContext.Entry(role).State = EntityState.Detached;
+                }
             }
-        }
 
-        var existingRoleNames = existingRoles.Select(role => role.Role).ToHashSet(StringComparer.Ordinal);
-        foreach (var role in normalizedRoles)
-        {
-            if (existingRoleNames.Contains(role))
+            foreach (var role in rolesToAdd)
             {
-                continue;
+                membership.Roles.Add(new CampaignMembershipRole
+                {
+                    Id = Guid.NewGuid(),
+                    CampaignMembershipId = membership.Id,
+                    Role = role,
+                    GrantedAt = now,
+                    GrantedByUserId = actorUserId
+                });
             }
 
-            membership.Roles.Add(new CampaignMembershipRole
+            if (hadPlayerRole && !normalizedRoles.Contains(CampaignRoles.Player))
             {
-                Id = Guid.NewGuid(),
-                CampaignMembershipId = membership.Id,
-                Role = role,
-                GrantedAt = now,
-                GrantedByUserId = actorUserId
-            });
-        }
+                await EndCharacterAssociationsAsync(
+                    campaignId,
+                    userId,
+                    actorUserId,
+                    "Player role removed",
+                    now,
+                    cancellationToken);
+            }
 
-        if (hadPlayerRole && !normalizedRoles.Contains(CampaignRoles.Player))
+            await TouchCampaignAsync(campaignId, now, cancellationToken);
+            await _dbContext.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+        }
+        catch
         {
-            await EndCharacterAssociationsAsync(
-                campaignId,
-                userId,
-                actorUserId,
-                "Player role removed",
-                now,
-                cancellationToken);
+            await transaction.RollbackAsync(cancellationToken);
+            throw;
         }
-
-        await TouchCampaignAsync(campaignId, now, cancellationToken);
-        await _dbContext.SaveChangesAsync(cancellationToken);
     }
 
     public async Task LeaveAsync(
