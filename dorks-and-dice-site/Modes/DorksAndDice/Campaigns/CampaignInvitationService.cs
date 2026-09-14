@@ -95,14 +95,17 @@ public sealed class CampaignInvitationService(
     {
         await _campaignAccess.RequireRoleAsync(actorUserId, campaignId, CampaignRoles.Dm, cancellationToken);
         var now = _timeProvider.GetUtcNow();
-        return await _dbContext.CampaignInvitations
+        var pending = await _dbContext.CampaignInvitations
             .AsNoTracking()
             .Include(invitation => invitation.Participant)
             .Where(invitation => invitation.CampaignId == campaignId
-                && invitation.Status == CampaignInvitationStatus.Pending
-                && invitation.ExpiresAt > now)
-            .OrderBy(invitation => invitation.ExpiresAt)
+                && invitation.Status == CampaignInvitationStatus.Pending)
             .ToListAsync(cancellationToken);
+
+        return pending
+            .Where(invitation => invitation.ExpiresAt > now)
+            .OrderBy(invitation => invitation.ExpiresAt)
+            .ToArray();
     }
 
     public async Task<CampaignInvitationPreview?> GetPreviewAsync(
@@ -117,20 +120,23 @@ public sealed class CampaignInvitationService(
             .Include(item => item.Participant)
             .SingleOrDefaultAsync(
                 item => item.TokenHash == tokenHash
-                    && item.Status == CampaignInvitationStatus.Pending
-                    && item.ExpiresAt > now
-                    && item.Campaign.Status == CampaignStatus.Active,
+                    && item.Status == CampaignInvitationStatus.Pending,
                 cancellationToken);
 
-        return invitation is null
-            ? null
-            : new CampaignInvitationPreview(
-                invitation.Id,
-                invitation.CampaignId,
-                invitation.Campaign.Name,
-                DeserializeRoles(invitation.Roles),
-                invitation.Participant?.DisplayName,
-                invitation.ExpiresAt);
+        if (invitation is null
+            || invitation.ExpiresAt <= now
+            || invitation.Campaign.Status != CampaignStatus.Active)
+        {
+            return null;
+        }
+
+        return new CampaignInvitationPreview(
+            invitation.Id,
+            invitation.CampaignId,
+            invitation.Campaign.Name,
+            DeserializeRoles(invitation.Roles),
+            invitation.Participant?.DisplayName,
+            invitation.ExpiresAt);
     }
 
     public async Task<CampaignMembership> AcceptAsync(
