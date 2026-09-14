@@ -65,6 +65,7 @@ public static class DorksAndDiceServiceCollectionExtensions
         services.AddScoped<ICampaignService, CampaignService>();
         services.AddScoped<ICampaignParticipantService, CampaignParticipantService>();
         services.AddScoped<ICampaignInvitationService, CampaignInvitationService>();
+        services.AddScoped<ICampaignContextService, CampaignContextService>();
         services.AddScoped<ICharacterService, CharacterService>();
         services.AddHostedService<DorksAndDiceStorageInitializer>();
         return services;
