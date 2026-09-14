@@ -8,7 +8,7 @@
         <div>
             <p class="text-uppercase text-muted small mb-1">Dorks &amp; Dice</p>
             <h1 class="h2 mb-2">My Characters</h1>
-            <p class="text-muted mb-0">Characters belong to your account. Campaign connections can end without transferring or deleting them.</p>
+            <p class="text-muted mb-0">Characters belong to your account. Each campaign connection is independent and can end without transferring or deleting the character.</p>
         </div>
         <a class="btn btn-outline-primary" asp-controller="Campaigns" asp-action="Index">Campaigns</a>
     </div>
@@ -22,7 +22,7 @@
     <div class="card shadow-sm mb-4">
         <div class="card-body">
             <h2 class="h5">Create character</h2>
-            <p class="text-muted small">This creates the account-owned character identity. Character-sheet data will remain owned by the Character Sheet tool.</p>
+            <p class="text-muted small">Create an account-owned character that can be associated with any campaign where you are a Player.</p>
             <form asp-controller="Characters" asp-action="Create" method="post" class="row g-2 align-items-end">
                 @Html.AntiForgeryToken()
                 <div class="col-md-8">
@@ -45,41 +45,44 @@
         <div class="row g-3">
             @foreach (var character in Model.Characters)
             {
+                var connectedIds = character.ActiveCampaigns.Select(connection => connection.CampaignId).ToHashSet();
+                var availableCampaigns = Model.PlayerCampaigns.Where(campaign => !connectedIds.Contains(campaign.Id)).ToArray();
                 <div class="col-lg-6">
                     <div class="card h-100 shadow-sm">
                         <div class="card-body">
                             <h2 class="h5">@character.Name</h2>
-                            @if (character.ActiveCampaignId is Guid activeCampaignId)
+
+                            @if (character.ActiveCampaigns.Count > 0)
                             {
-                                <p class="mb-3">
-                                    Connected to
-                                    <a asp-controller="Campaigns" asp-action="Details" asp-route-campaignId="@activeCampaignId">
-                                        @(character.ActiveCampaignName ?? "Campaign")
-                                    </a>
-                                </p>
-                                <form asp-controller="Characters"
-                                      asp-action="Disconnect"
-                                      asp-route-characterId="@character.Id"
-                                      method="post">
-                                    @Html.AntiForgeryToken()
-                                    <input type="hidden" name="campaignId" value="@activeCampaignId" />
-                                    <button class="btn btn-sm btn-outline-secondary" type="submit">Disconnect from Campaign</button>
-                                </form>
+                                <p class="small text-muted mb-2">Active campaign connections</p>
+                                <div class="list-group list-group-flush mb-3">
+                                    @foreach (var connection in character.ActiveCampaigns)
+                                    {
+                                        <div class="list-group-item px-0 d-flex justify-content-between align-items-center gap-2">
+                                            <a asp-controller="Campaigns" asp-action="Details" asp-route-campaignId="@connection.CampaignId">@connection.CampaignName</a>
+                                            <form asp-controller="Characters" asp-action="Disconnect" asp-route-characterId="@character.Id" method="post">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="campaignId" value="@connection.CampaignId" />
+                                                <button class="btn btn-sm btn-outline-secondary" type="submit">Disconnect</button>
+                                            </form>
+                                        </div>
+                                    }
+                                </div>
                             }
-                            else if (Model.PlayerCampaigns.Count > 0)
+                            else
                             {
                                 <p class="text-muted small">Not currently connected to a campaign.</p>
-                                <form asp-controller="Characters"
-                                      asp-action="Connect"
-                                      asp-route-characterId="@character.Id"
-                                      method="post"
-                                      class="row g-2">
+                            }
+
+                            @if (availableCampaigns.Length > 0)
+                            {
+                                <form asp-controller="Characters" asp-action="Connect" asp-route-characterId="@character.Id" method="post" class="row g-2">
                                     @Html.AntiForgeryToken()
                                     <div class="col-sm-8">
                                         <label class="visually-hidden" for="campaign-@character.Id">Campaign</label>
                                         <select id="campaign-@character.Id" class="form-select" name="campaignId" required>
-                                            <option value="">Choose campaign</option>
-                                            @foreach (var campaign in Model.PlayerCampaigns)
+                                            <option value="">Add campaign connection</option>
+                                            @foreach (var campaign in availableCampaigns)
                                             {
                                                 <option value="@campaign.Id">@campaign.Name</option>
                                             }
@@ -90,9 +93,9 @@
                                     </div>
                                 </form>
                             }
-                            else
+                            else if (Model.PlayerCampaigns.Count == 0)
                             {
-                                <p class="text-muted mb-0">Not connected. Join a campaign with the Player role to connect this character.</p>
+                                <p class="text-muted mb-0">Join a campaign with the Player role to connect this character.</p>
                             }
                         </div>
                     </div>

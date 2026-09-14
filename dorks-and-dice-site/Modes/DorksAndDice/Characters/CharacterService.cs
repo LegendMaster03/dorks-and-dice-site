@@ -104,17 +104,12 @@ public sealed class CharacterService(
         var activeAssociation = await _dbContext.CampaignCharacters
             .SingleOrDefaultAsync(
                 association => association.CharacterId == characterId
+                    && association.CampaignId == campaignId
                     && association.Status == CampaignCharacterAssociationStatus.Active,
                 cancellationToken);
         if (activeAssociation is not null)
         {
-            if (activeAssociation.CampaignId == campaignId)
-            {
-                return activeAssociation;
-            }
-
-            throw new CampaignDomainException(
-                "A character can only have one active campaign connection at a time.");
+            return activeAssociation;
         }
 
         var now = _timeProvider.GetUtcNow();

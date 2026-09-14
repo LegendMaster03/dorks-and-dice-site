@@ -1,33 +1,15 @@
 namespace dorks_and_dice_site.Modes.DorksAndDice.Ui;
 
-public sealed record CampaignListItemViewModel(
-    Guid Id,
-    string Name,
-    IReadOnlyList<string> Roles);
+public sealed record CampaignListItemViewModel(Guid Id, string Name, IReadOnlyList<string> Roles);
 
 public sealed class CampaignsIndexViewModel
 {
     public IReadOnlyList<CampaignListItemViewModel> Campaigns { get; init; } = [];
 }
 
-public sealed record CampaignMemberViewModel(
-    Guid UserId,
-    string? ParticipantName,
-    IReadOnlyList<string> Roles,
-    bool IsCurrentUser);
-
-public sealed record CampaignParticipantViewModel(
-    Guid Id,
-    string DisplayName,
-    Guid? UserId,
-    bool IsActive);
-
-public sealed record CampaignInvitationListItemViewModel(
-    Guid Id,
-    IReadOnlyList<string> Roles,
-    string? ParticipantName,
-    DateTimeOffset ExpiresAt);
-
+public sealed record CampaignMemberViewModel(Guid UserId, string? ParticipantName, IReadOnlyList<string> Roles, bool IsCurrentUser);
+public sealed record CampaignParticipantViewModel(Guid Id, string DisplayName, Guid? UserId, bool IsActive);
+public sealed record CampaignInvitationListItemViewModel(Guid Id, IReadOnlyList<string> Roles, string? ParticipantName, DateTimeOffset ExpiresAt);
 public sealed record ParticipantOptionViewModel(Guid Id, string DisplayName);
 
 public sealed class CampaignDetailsViewModel
@@ -54,12 +36,8 @@ public sealed class CampaignInvitationPageViewModel
     public string? Error { get; init; }
 }
 
-public sealed record CharacterListItemViewModel(
-    Guid Id,
-    string Name,
-    Guid? ActiveCampaignId,
-    string? ActiveCampaignName);
-
+public sealed record CharacterCampaignConnectionViewModel(Guid CampaignId, string CampaignName);
+public sealed record CharacterListItemViewModel(Guid Id, string Name, IReadOnlyList<CharacterCampaignConnectionViewModel> ActiveCampaigns);
 public sealed record CampaignOptionViewModel(Guid Id, string Name);
 
 public sealed class CharactersIndexViewModel

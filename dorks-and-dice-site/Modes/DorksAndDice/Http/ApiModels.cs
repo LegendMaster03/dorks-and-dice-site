@@ -20,11 +20,11 @@ public sealed record CampaignDetailsResponse(
     IReadOnlyCollection<string> CurrentUserRoles,
     IReadOnlyCollection<CampaignMemberResponse> Members,
     IReadOnlyCollection<CampaignParticipantResponse> Participants);
+public sealed record CharacterCampaignResponse(Guid CampaignId, string CampaignName);
 public sealed record CharacterSummaryResponse(
     Guid Id,
     string Name,
-    Guid? CampaignId,
-    string? CampaignName);
+    IReadOnlyCollection<CharacterCampaignResponse> Campaigns);
 
 public static class DorksAndDiceApiMapper
 {
@@ -69,12 +69,7 @@ public static class DorksAndDiceApiMapper
             .Select(ToParticipant)
             .ToArray();
 
-        return new CampaignDetailsResponse(
-            campaign.Id,
-            campaign.Name,
-            currentRoles,
-            members,
-            participants);
+        return new CampaignDetailsResponse(campaign.Id, campaign.Name, currentRoles, members, participants);
     }
 
     public static CampaignParticipantResponse ToParticipant(CampaignParticipant participant)
@@ -88,12 +83,14 @@ public static class DorksAndDiceApiMapper
 
     public static CharacterSummaryResponse ToSummary(Character character)
     {
-        var activeAssociation = character.CampaignAssociations
-            .SingleOrDefault(association => association.Status == CampaignCharacterAssociationStatus.Active);
-        return new CharacterSummaryResponse(
-            character.Id,
-            character.Name,
-            activeAssociation?.CampaignId,
-            activeAssociation?.Campaign?.Name);
+        var campaigns = character.CampaignAssociations
+            .Where(association => association.Status == CampaignCharacterAssociationStatus.Active)
+            .OrderBy(association => association.Campaign.Name)
+            .Select(association => new CharacterCampaignResponse(
+                association.CampaignId,
+                association.Campaign.Name))
+            .ToArray();
+
+        return new CharacterSummaryResponse(character.Id, character.Name, campaigns);
     }
 }
