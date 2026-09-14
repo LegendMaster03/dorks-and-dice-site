@@ -31,33 +31,39 @@
         </div>
     </div>
 
+    <h2 class="h4 mb-3">Active campaigns</h2>
     @if (Model.Campaigns.Count == 0)
     {
-        <div class="alert alert-secondary">
-            You are not currently part of any campaigns. Create one above to become its first DM.
-        </div>
+        <div class="alert alert-secondary">You are not currently part of any active campaigns. Create one above to become its first DM.</div>
     }
     else
     {
-        <div class="row g-3">
+        <div class="row g-3 mb-5">
             @foreach (var campaign in Model.Campaigns)
             {
                 <div class="col-md-6 col-xl-4">
-                    <div class="card h-100 shadow-sm">
-                        <div class="card-body d-flex flex-column">
-                            <h2 class="h5">@campaign.Name</h2>
-                            <div class="mb-3">
-                                @foreach (var role in campaign.Roles)
-                                {
-                                    <span class="badge text-bg-secondary me-1">@role.ToUpperInvariant()</span>
-                                }
-                            </div>
-                            <a class="btn btn-outline-primary mt-auto"
-                               asp-controller="Campaigns"
-                               asp-action="Details"
-                               asp-route-campaignId="@campaign.Id">Open Campaign</a>
-                        </div>
-                    </div>
+                    <div class="card h-100 shadow-sm"><div class="card-body d-flex flex-column">
+                        <h3 class="h5">@campaign.Name</h3>
+                        <div class="mb-3">@foreach (var role in campaign.Roles) { <span class="badge text-bg-secondary me-1">@role.ToUpperInvariant()</span> }</div>
+                        <a class="btn btn-outline-primary mt-auto" asp-controller="Campaigns" asp-action="Details" asp-route-campaignId="@campaign.Id">Open Campaign</a>
+                    </div></div>
+                </div>
+            }
+        </div>
+    }
+
+    @if (Model.ArchivedCampaigns.Count > 0)
+    {
+        <h2 class="h4 mb-3">Archived campaigns</h2>
+        <div class="row g-3">
+            @foreach (var campaign in Model.ArchivedCampaigns)
+            {
+                <div class="col-md-6 col-xl-4">
+                    <div class="card h-100 border-secondary"><div class="card-body d-flex flex-column">
+                        <div class="d-flex justify-content-between gap-2"><h3 class="h5">@campaign.Name</h3><span class="badge text-bg-secondary align-self-start">Archived</span></div>
+                        <div class="mb-3">@foreach (var role in campaign.Roles) { <span class="badge text-bg-light border me-1">@role.ToUpperInvariant()</span> }</div>
+                        <a class="btn btn-outline-secondary mt-auto" asp-controller="Campaigns" asp-action="Details" asp-route-campaignId="@campaign.Id">View Archive</a>
+                    </div></div>
                 </div>
             }
         </div>
