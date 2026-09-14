@@ -14,6 +14,5 @@ public static class DorksAndDiceMode
         DisplayName: "Dorks & Dice",
         LegacyMode: SiteMode.DorksAndDice,
         ViewFolder: "DorksAndDice",
-        AssetFolder: "dorks-and-dice",
-        OwnedRoutePrefixes: ["/campaigns", "/characters"]);
+        AssetFolder: "dorks-and-dice");
 }
