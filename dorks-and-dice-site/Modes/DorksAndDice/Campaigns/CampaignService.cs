@@ -214,14 +214,17 @@ public sealed class CampaignService(
 
             foreach (var role in rolesToAdd)
             {
-                membership.Roles.Add(new CampaignMembershipRole
+                var membershipRole = new CampaignMembershipRole
                 {
                     Id = Guid.NewGuid(),
                     CampaignMembershipId = membership.Id,
                     Role = role,
                     GrantedAt = now,
-                    GrantedByUserId = actorUserId
-                });
+                    GrantedByUserId = actorUserId,
+                    CampaignMembership = membership
+                };
+                membership.Roles.Add(membershipRole);
+                _dbContext.CampaignMembershipRoles.Add(membershipRole);
             }
 
             if (hadPlayerRole && !normalizedRoles.Contains(CampaignRoles.Player))
