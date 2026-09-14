@@ -157,7 +157,7 @@ public sealed class CampaignsController(ICampaignService campaignService, ICampa
 
     [HttpPost("{campaignId:guid}/invitations")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> CreateInvitation(Guid campaignId, bool player, bool dm, Guid? participantId, CancellationToken cancellationToken)
+    public async Task<IActionResult> CreateInvitation(Guid campaignId, bool player, bool dm, Guid? participantId, string? displayName, CancellationToken cancellationToken)
     {
         if (!TryGetUserId(out var userId)) return Unauthorized();
         var roles = new List<string>();
@@ -165,7 +165,24 @@ public sealed class CampaignsController(ICampaignService campaignService, ICampa
         if (dm) roles.Add(CampaignRoles.Dm);
         try
         {
-            var grant = await _invitationService.CreateAsync(userId, campaignId, roles, participantId, cancellationToken);
+            if (roles.Count == 0)
+            {
+                throw new CampaignDomainException("Select at least one campaign role for the invitation.");
+            }
+
+            var resolvedParticipantId = participantId;
+            if (resolvedParticipantId is null)
+            {
+                if (string.IsNullOrWhiteSpace(displayName))
+                {
+                    throw new CampaignDomainException("Enter the player's name or select an existing participant.");
+                }
+
+                var participant = await _participantService.AddGuestAsync(userId, campaignId, displayName, cancellationToken);
+                resolvedParticipantId = participant.Id;
+            }
+
+            var grant = await _invitationService.CreateAsync(userId, campaignId, roles, resolvedParticipantId, cancellationToken);
             TempData["CampaignInviteLink"] = Url.Action(nameof(Invitation), "Campaigns", new { token = grant.Token }, Request.Scheme) ?? $"/campaigns/invitations/{grant.Token}";
         }
         catch (CampaignDomainException exception) { TempData["CampaignError"] = exception.Message; }

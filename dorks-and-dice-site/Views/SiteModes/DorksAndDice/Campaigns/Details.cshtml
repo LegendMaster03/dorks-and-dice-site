@@ -91,12 +91,27 @@
             @if (Model.CanManage && !Model.IsArchived)
             {
                 <div class="card shadow-sm mb-4"><div class="card-body">
-                    <h2 class="h5">Invite someone</h2>
-                    <p class="text-muted small">Invites are one-time links and expire after seven days. A former participant can be selected to preserve that person's campaign identity when they rejoin.</p>
+                    <h2 class="h5">Invite Player</h2>
+                    <p class="text-muted small">For a new player, enter their name and create the invite. The campaign participant record is created automatically. If this person already exists in the roster, select that participant instead so their campaign identity and history are preserved.</p>
                     <form asp-controller="Campaigns" asp-action="CreateInvitation" asp-route-campaignId="@Model.Id" method="post" class="row g-3">
                         @Html.AntiForgeryToken()
-                        <div class="col-md-6"><label class="form-label" for="inviteParticipant">Participant</label><select id="inviteParticipant" class="form-select" name="participantId"><option value="">New account participant</option>@foreach (var participant in Model.InviteableParticipants) { <option value="@participant.Id">@(participant.IsFormer ? "Former: " : "")@participant.DisplayName</option> }</select></div>
-                        <div class="col-md-6"><span class="form-label d-block">Campaign roles</span><div class="form-check form-check-inline"><input class="form-check-input" id="invitePlayer" type="checkbox" name="player" value="true" checked /><label class="form-check-label" for="invitePlayer">Player</label></div><div class="form-check form-check-inline"><input class="form-check-input" id="inviteDm" type="checkbox" name="dm" value="true" /><label class="form-check-label" for="inviteDm">DM</label></div></div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="inviteDisplayName">Player name</label>
+                            <input id="inviteDisplayName" class="form-control" type="text" name="displayName" maxlength="120" placeholder="Player name" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="inviteParticipant">Existing participant</label>
+                            <select id="inviteParticipant" class="form-select" name="participantId">
+                                <option value="">Create from player name</option>
+                                @foreach (var participant in Model.InviteableParticipants) { <option value="@participant.Id">@(participant.IsFormer ? "Former: " : "")@participant.DisplayName</option> }
+                            </select>
+                            <div class="form-text">Use this when the person is already listed below, including a former participant who is rejoining.</div>
+                        </div>
+                        <div class="col-12">
+                            <span class="form-label d-block">Campaign roles</span>
+                            <div class="form-check form-check-inline"><input class="form-check-input" id="invitePlayer" type="checkbox" name="player" value="true" checked /><label class="form-check-label" for="invitePlayer">Player</label></div>
+                            <div class="form-check form-check-inline"><input class="form-check-input" id="inviteDm" type="checkbox" name="dm" value="true" /><label class="form-check-label" for="inviteDm">DM</label></div>
+                        </div>
                         <div class="col-12"><button class="btn btn-primary" type="submit">Create Invite Link</button></div>
                     </form>
                     @if (Model.Invitations.Count > 0)
@@ -111,7 +126,9 @@
                 <div class="d-flex justify-content-between align-items-center mb-3"><h2 class="h5 mb-0">Table Participants</h2><span class="text-muted small">Account optional</span></div>
                 @if (Model.CanManage && !Model.IsArchived)
                 {
-                    <form asp-controller="Campaigns" asp-action="AddParticipant" asp-route-campaignId="@Model.Id" method="post" class="row g-2 mb-3">@Html.AntiForgeryToken()<div class="col-md-8"><label class="visually-hidden" for="participantName">Participant name</label><input id="participantName" class="form-control" type="text" name="displayName" maxlength="120" placeholder="Participant name" required /></div><div class="col-md-4"><button class="btn btn-outline-primary w-100" type="submit">Add Participant</button></div></form>
+                    <h3 class="h6">Add Participant Without Account</h3>
+                    <p class="text-muted small">Use this only for someone who should appear in the campaign roster without joining through a Dorks &amp; Dice account.</p>
+                    <form asp-controller="Campaigns" asp-action="AddParticipant" asp-route-campaignId="@Model.Id" method="post" class="row g-2 mb-3">@Html.AntiForgeryToken()<div class="col-md-8"><label class="visually-hidden" for="participantName">Participant name</label><input id="participantName" class="form-control" type="text" name="displayName" maxlength="120" placeholder="Participant name" required /></div><div class="col-md-4"><button class="btn btn-outline-primary w-100" type="submit">Add Without Account</button></div></form>
                 }
                 @if (Model.Participants.Count == 0) { <p class="text-muted mb-0">No table participants have been added yet.</p> }
                 else
