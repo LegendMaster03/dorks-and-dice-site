@@ -3,6 +3,7 @@ using System.Threading.RateLimiting;
 using dorks_and_dice_site.Framework.Plugins;
 using dorks_and_dice_site.Models.Identity;
 using dorks_and_dice_site.Models.Site;
+using dorks_and_dice_site.Modes.DorksAndDice;
 using dorks_and_dice_site.Plugins.DiscordWidget;
 using dorks_and_dice_site.Plugins.MinecraftServerStatus;
 using dorks_and_dice_site.Plugins.ProfessionalPortfolio;
@@ -21,7 +22,12 @@ using Microsoft.EntityFrameworkCore;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-builder.Services.AddControllersWithViews();
+builder.Services
+    .AddControllersWithViews()
+    .AddRazorOptions(options =>
+    {
+        options.ViewLocationExpanders.Add(new SiteModeViewLocationExpander());
+    });
 builder.Services.AddContentStorage(builder.Configuration, builder.Environment.ContentRootPath);
 builder.Services.AddSitePlugins(
 [
@@ -62,7 +68,7 @@ builder.Services.AddSingleton<ISiteModePartialResolver, SiteModePartialResolver>
 builder.Services.AddSingleton<ISiteModeStylesheetResolver, SiteModeStylesheetResolver>();
 builder.Services.AddSingleton<ISiteModePresentationService, SiteModePresentationService>();
 builder.Services.AddSingleton<ISiteModeArchitectureSummaryService, SiteModeArchitectureSummaryService>();
-builder.Services.AddSingleton<ISiteModePresentationModule, dorks_and_dice_site.Modes.DorksAndDice.DorksAndDicePresentationModule>();
+builder.Services.AddDorksAndDiceMode();
 builder.Services.AddSingleton<ISiteModePresentationModule, dorks_and_dice_site.Modes.Professional.ProfessionalPresentationModule>();
 builder.Services.AddSingleton<ISiteModePresentationModule, dorks_and_dice_site.Framework.TrustedPreview.TrustedPreviewPresentationModule>();
 builder.Services.AddSingleton<ISiteModePresentationModule, dorks_and_dice_site.Framework.Fallback.FallbackPresentationModule>();

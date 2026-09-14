@@ -8,6 +8,8 @@ The refactor may continue on boundaries that are valid under either model, but i
 
 The current `Modes/Professional` and `Modes/DorksAndDice` directories are useful migration boundaries because they expose deployment-specific behavior. They are not, by themselves, a decision that normal modes must remain compiled modules.
 
+This decision concerns how a normal mode is defined and structurally composed. It does not require normal modes to be presentation-only. A mode may own substantial site-specific routes, services, persistence, authorization composition, and domain behavior without requiring those concepts to become generic framework abstractions.
+
 ## Shared assumptions under either option
 
 The comparison is specifically about where the **mode definition and structural composition** live. It is not a choice between static and dynamic site content.
@@ -20,12 +22,13 @@ Both options are expected to support:
 - runtime tool registration and per-mode tool enablement;
 - per-mode content-source composition, including a dedicated database where desired;
 - mode-scoped moderation/editor permissions;
+- mode-owned structural/domain behavior where the behavior is intrinsic to that site rather than reusable framework functionality;
 - homepage and ordinary page content that can change without rebuilding or restarting the service;
 - deployment-specific host/domain and secret configuration outside the intrinsic mode definition.
 
 The existing article infrastructure should continue evolving into a general content/page system. Articles are one use of that system, not its architectural identity.
 
-Campaigns should not force a generic framework abstraction. The existing Tool model provides a natural way for campaign functionality to become an installed application capability that Dorks & Dice enables, regardless of how modes themselves are defined.
+Campaigns should not force a generic framework abstraction. The Dorks & Dice campaign/account/character relationship and its campaign-scoped authority may be native mode-owned domain behavior. Separately deployable applications such as Rules Core, Block Initiative, or future Tools consume that authority/data through explicit contracts rather than forcing the campaign domain itself into a Tool.
 
 ## Option A: compiled C# mode definition
 
@@ -39,7 +42,7 @@ Modes/
         DorksAndDiceMode.cs
 ```
 
-The source definition owns structural behavior that is genuinely part of that mode. Content, themes, media, tool configuration, and other normal editorial state remain outside the compiled definition.
+The source definition owns structural behavior that is genuinely part of that mode. This may include mode-specific routes and application/domain services in addition to presentation and composition. Content, themes, media, Tool registration, and other normal editorial/deployment state remain outside the compiled definition when their existing boundaries are more appropriate.
 
 ### Strengths
 
@@ -47,6 +50,7 @@ The source definition owns structural behavior that is genuinely part of that mo
 - Compile-time validation for structural mode behavior.
 - Arbitrary strongly typed specialization remains straightforward.
 - Structural mode definitions are naturally version controlled.
+- A mode can own substantial domain behavior without teaching the generic framework about that domain.
 - A mode's implementation is visibly separable and can be copied/extracted with its data and theme when spinning it into another deployment or a more independent application.
 - Creating framework extension contracts is conventional and testable with ordinary .NET tooling.
 
@@ -56,10 +60,11 @@ The source definition owns structural behavior that is genuinely part of that mo
 - Structural mode changes require deployment even when they could theoretically be represented declaratively.
 - A large number of mostly declarative modes could produce source modules that contain little more than configuration.
 - Care is required to prevent every shared feature from growing mode-specific provider interfaces and switches.
+- Care is also required to keep genuinely reusable behavior from being duplicated inside multiple mode implementations.
 
 ## Option B: runtime/data-defined mode
 
-A normal mode is persisted runtime state interpreted by the framework. The source tree defines reusable capabilities, while the database/configuration defines each site instance.
+A normal mode is persisted runtime state interpreted by the framework. The source tree defines reusable capabilities and installed executable modules, while the database/configuration defines each site instance.
 
 Conceptually:
 
@@ -73,6 +78,7 @@ Mode
     ContentSources
     EnabledTools
     PresentationSettings
+    InstalledModeCapabilities
 ```
 
 ### Strengths
@@ -80,14 +86,15 @@ Mode
 - Authorized administrators can potentially create and structurally configure modes through the site without deployment or restart.
 - A large number of modes can be composed from installed capabilities without adding source files.
 - The model is closer to a wiki farm/CMS where the engine is code and site instances are runtime state.
-- Tools remove much of the need for a runtime mode record itself to express arbitrary executable behavior.
+- Installed capabilities and Tools can provide executable behavior without requiring arbitrary executable code in the runtime mode record itself.
 
 ### Costs
 
 - Compile-time validation is replaced in part by runtime validation and schema/version checks.
 - Exact instance composition is less visible from the repository alone and needs a strong administrative inspector/export representation.
 - Portability does not fall out automatically from a source directory. It must be a deliberate framework contract.
-- New executable behavior still requires an installed capability/tool even if creation of a new mode does not.
+- New executable domain behavior still requires an installed capability/module or Tool even if creation of a new mode does not.
+- A runtime-defined mode with substantial unique domain behavior needs a clear ownership/package model for that behavior so it does not leak into generic framework services.
 
 ## Portability requirement
 
@@ -107,6 +114,8 @@ mode package
     theme/configuration
     media ownership/references
     content-source mapping metadata
+    mode-owned domain schema/data where exportable
+    required mode capability IDs/versions
     required tool IDs/versions
     exportable mode-owned tool data where supported
 ```
@@ -117,29 +126,30 @@ A runtime mode therefore does not have to be less portable, but portability beco
 
 ## Homepage/content requirement independent of this decision
 
-The current Professional and Dorks & Dice homepages use disjoint storage/composition mechanisms. Unifying them belongs in this refactor regardless of how mode definitions are represented.
+The Professional and Dorks & Dice homepages have already converged on the shared database-backed content architecture. That decision remains independent of how mode definitions are represented.
 
-Target properties:
+Target properties remain:
 
 - homepage content is stored in the same database-backed content architecture used for editable site content;
 - changing homepage content does not require a service restart;
 - every normal mode uses the same general homepage/page contract;
-- dynamic behavior is supplied by installed components/tools rather than by embedding frequently edited content in C#;
-- Professional résumé data should be evaluated for migration into the general content architecture instead of remaining a separate file-driven homepage store solely because that is how the current implementation began;
-- Dorks & Dice dynamic integrations such as Minecraft status/Discord should be treated as behavior/components, not as justification for a separate homepage content system.
+- reusable dynamic page behavior is supplied by installed components/tools rather than by embedding frequently edited content in C#;
+- mode-owned operational/domain systems are not forced into authored content merely because the homepage/page system is shared;
+- Dorks & Dice dynamic integrations such as Minecraft status/Discord remain reusable behavior/components rather than justification for a separate homepage content system.
 
-The general page/content contract should therefore be designed so that it can resolve a homepage from either a compiled mode descriptor or a runtime mode record. Do not make the content engine depend on which persistence model is ultimately selected for modes.
+The general page/content contract should therefore resolve a homepage independently of whether the surrounding mode is compiled or runtime-defined. Do not make the content engine depend on which persistence model is ultimately selected for modes.
 
 ## Work that can continue before the decision
 
 Safe/refactor-neutral work includes:
 
 - removing named-mode branches from generic framework code;
-- separating framework, deployment, fallback, Trusted Preview, and tool concerns physically;
+- separating framework, deployment, fallback, Trusted Preview, mode-owned domain behavior, and Tool concerns physically;
 - making stable string mode IDs authoritative at runtime boundaries;
 - unifying page/homepage content storage behind a generic content contract;
 - isolating/removing legacy compatibility code;
-- improving tool portability and mode-aware tool contracts;
+- improving Tool portability and mode-aware Tool contracts;
+- adding mode-owned routes/services/data through generic ownership/extension seams rather than hard-coded framework dispatch;
 - keeping host/domain/database secrets in deployment infrastructure;
 - preserving characterization/security tests;
 - documenting ownership and migration boundaries.
@@ -147,7 +157,7 @@ Safe/refactor-neutral work includes:
 Work to defer until this decision is made includes:
 
 - making a database mode catalog the permanent source of truth;
-- making C# mode modules the permanent extension contract;
+- making C# mode modules the permanent extension contract for all deployments;
 - designing an on-site mode-creation UI around either representation;
 - deleting migration boundaries solely because one representation appears likely;
 - defining final mode export/import semantics that depend on the chosen representation.
@@ -158,4 +168,4 @@ The central product question is:
 
 > Is the framework primarily intended to let developers define different applications/sites from shared code, or to let administrators create and operate different site instances from installed capabilities?
 
-The final design may still use both code and data, but one of them should be the authoritative definition of a normal mode rather than leaving two competing sources of truth.
+The final design may still use both code and data, but one of them should be the authoritative definition of a normal mode rather than leaving two competing sources of truth. Either answer must preserve the ability for a specific mode to own domain behavior that is intrinsic to that site without turning that behavior into generic framework code or an artificial Tool boundary.
