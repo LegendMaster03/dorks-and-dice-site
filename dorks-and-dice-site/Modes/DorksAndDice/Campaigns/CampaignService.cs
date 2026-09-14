@@ -172,21 +172,35 @@ public sealed class CampaignService(
         CancellationToken cancellationToken = default)
     {
         await _campaignAccess.RequireRoleAsync(actorUserId, campaignId, CampaignRoles.Dm, cancellationToken);
-        var normalizedRoles = CampaignRoles.NormalizeMany(roles);
+        var normalizedRoles = CampaignRoles.NormalizeMany(roles).ToHashSet(StringComparer.Ordinal);
 
         var membership = await GetActiveMembershipAsync(campaignId, userId, cancellationToken);
-        if (membership.Roles.Any(role => role.Role == CampaignRoles.Dm)
-            && !normalizedRoles.Contains(CampaignRoles.Dm, StringComparer.Ordinal))
+        var existingRoles = membership.Roles.ToArray();
+        var hadDmRole = existingRoles.Any(role => role.Role == CampaignRoles.Dm);
+        var hadPlayerRole = existingRoles.Any(role => role.Role == CampaignRoles.Player);
+
+        if (hadDmRole && !normalizedRoles.Contains(CampaignRoles.Dm))
         {
             await EnsureAnotherDmExistsAsync(campaignId, membership.Id, cancellationToken);
         }
 
         var now = _timeProvider.GetUtcNow();
-        _dbContext.CampaignMembershipRoles.RemoveRange(membership.Roles);
-        membership.Roles.Clear();
+        foreach (var existingRole in existingRoles)
+        {
+            if (!normalizedRoles.Contains(existingRole.Role))
+            {
+                _dbContext.CampaignMembershipRoles.Remove(existingRole);
+            }
+        }
 
+        var existingRoleNames = existingRoles.Select(role => role.Role).ToHashSet(StringComparer.Ordinal);
         foreach (var role in normalizedRoles)
         {
+            if (existingRoleNames.Contains(role))
+            {
+                continue;
+            }
+
             membership.Roles.Add(new CampaignMembershipRole
             {
                 Id = Guid.NewGuid(),
@@ -195,6 +209,17 @@ public sealed class CampaignService(
                 GrantedAt = now,
                 GrantedByUserId = actorUserId
             });
+        }
+
+        if (hadPlayerRole && !normalizedRoles.Contains(CampaignRoles.Player))
+        {
+            await EndCharacterAssociationsAsync(
+                campaignId,
+                userId,
+                actorUserId,
+                "Player role removed",
+                now,
+                cancellationToken);
         }
 
         await TouchCampaignAsync(campaignId, now, cancellationToken);
