@@ -47,7 +47,13 @@ public static class CampaignRoles
     public static IReadOnlyCollection<string> NormalizeMany(IEnumerable<string> roles)
     {
         ArgumentNullException.ThrowIfNull(roles);
-        return roles.Select(Normalize).Distinct(StringComparer.Ordinal).ToArray();
+        var normalized = roles.Select(Normalize).Distinct(StringComparer.Ordinal).ToArray();
+        if (normalized.Length == 0)
+        {
+            throw new CampaignDomainException("An active campaign membership must have at least one role.");
+        }
+
+        return normalized;
     }
 }
 
