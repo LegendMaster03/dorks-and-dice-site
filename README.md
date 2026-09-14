@@ -1,6 +1,6 @@
 # dorks-and-dice-site
 
-One ASP.NET Core MVC application currently serves the **Dorks & Dice** site and the **Kyle Barnett professional** site. The codebase is being structured as a reusable multi-mode framework: normal site modes compose shared framework behavior, database-backed content, presentation, plugins, and Tools without duplicating the application.
+One ASP.NET Core MVC application currently serves the **Dorks & Dice** site and the **Kyle Barnett professional** site. The codebase is being structured as a reusable multi-mode framework: normal site modes compose shared framework behavior, database-backed content, presentation, plugins, Tools, and mode-owned specialization without duplicating the application.
 
 ## Stack
 
@@ -25,12 +25,12 @@ The detailed contracts are documented under `docs/`, especially:
 
 The important boundaries are:
 
-- **Framework**: routing, mode resolution, content/revisions, media, page composition, identity/authorization, and Tool hosting.
-- **Normal modes**: site identity and composition such as Professional and Dorks & Dice.
+- **Framework**: routing, mode resolution, content/revisions, media, page composition, identity/authorization infrastructure, and Tool hosting.
+- **Normal modes**: site identity and composition such as Professional and Dorks & Dice. A mode may also own routes, services, persistence, and other structural/domain behavior intrinsic to that site, while generic framework code remains mode agnostic.
 - **Trusted Preview**: synthetic development/control-plane context used to inspect normal modes. It is not a normal tenant mode.
 - **Fallback**: framework-owned behavior for an unmapped host or unavailable presentation part. It is not a normal tenant mode.
 - **Plugins**: small in-process executable capabilities exposed through stable component/presentation keys.
-- **Tools**: substantial workflows or applications with their own lifecycle and possible separate/containerized runtime.
+- **Tools**: substantial workflows or applications with an independent lifecycle, data/runtime boundary, or possible separate/containerized runtime.
 
 The final authoritative persistence model for normal mode definitions is intentionally still open. Generic framework code should depend on stable registered mode IDs and `ISiteModeRegistry`, not on a permanent assumption that modes must be defined in C# or a database.
 
@@ -117,7 +117,7 @@ Important public/shared routes include:
 - `/llms.txt` — compact public text index
 - `/health` — deployment health check
 
-Route ownership is enforced by `Services/Site/SiteRouteOwnership.cs`. Real domains receive normal 404 behavior for routes outside the active mode. Trusted development hosts may inspect cross-mode routes with diagnostic warnings.
+Route ownership is enforced by `Services/Site/SiteRouteOwnership.cs`. Real domains receive normal 404 behavior for routes outside the active mode. Normal modes may claim additional route subtrees through their registered ownership metadata. Trusted development hosts may inspect cross-mode routes with diagnostic warnings.
 
 ## Plugins
 
@@ -133,9 +133,9 @@ Minecraft connection details remain deployment configuration. Authored Markdown 
 
 ## Tools
 
-Tools are separate from plugins. The Tool hosting boundary supports substantial application/workflow capabilities with mode-aware exposure and a path toward containerized or separately hosted runtimes.
+Tools are separate from plugins and from native mode-owned domain features. The Tool hosting boundary supports substantial application/workflow capabilities with mode-aware exposure and a path toward containerized or separately hosted runtimes.
 
-Campaign systems and future D&D applications belong on the Tool side of this boundary rather than being forced into the mode definition itself.
+A capability is not forced into a Tool merely because it is large. Domain behavior intrinsic to one normal site may remain owned by that mode when keeping it inside the mode gives the correct ownership, routing, authorization, persistence, and extraction boundary. Use a Tool when the capability has an independent application workflow or lifecycle, benefits from a separate data/runtime boundary, or should remain separately deployable. For Dorks & Dice, campaign/account/character relationships may therefore be native mode behavior while Rules Core and Block Initiative remain independently deployable Tools.
 
 ## Local development
 
@@ -185,5 +185,7 @@ Deployment hostnames, credentials, database connection strings, trusted-network 
 - Do not treat the fallback framework state as a normal mode.
 - Put editable authored content and authored media in the content system rather than C# or static files.
 - Put visual identity/theme assets in presentation/theme ownership rather than the content database merely because they are images.
-- Use plugins for small in-process executable components and Tools for substantial applications/workflows.
+- Use plugins for small reusable in-process executable components.
+- Keep structural/domain behavior intrinsic to a normal site inside that mode rather than generalizing it into the framework solely for reuse that does not exist.
+- Use Tools for substantial workflows/applications when an independent lifecycle, data/runtime boundary, or separate deployment is part of the design.
 - Do not put deployment secrets, network endpoints, or credentials into authored content or portable mode definitions.

@@ -1,14 +1,14 @@
 # Plugin boundaries
 
-Plugins are the in-process executable extension mechanism for reusable site capabilities that are smaller than standalone Tools. They are distinct from normal authored content, themes, modes, and Tool applications.
+Plugins are the in-process executable extension mechanism for reusable site capabilities that are smaller than standalone Tools. They are distinct from normal authored content, themes, modes, mode-owned domain behavior, and Tool applications.
 
 ## Ownership split
 
-- **Core framework** owns content storage/revisions, Markdown rendering, page composition, component invocation, identity/authorization, mode resolution, and Tool hosting.
+- **Core framework** owns content storage/revisions, Markdown rendering, page composition, component invocation, identity/authorization infrastructure, mode resolution, and Tool hosting.
 - **Themes** own visual identity and broadly reusable presentation styling.
-- **Plugins** contribute installed executable page components, content presentations, adapters, and similar in-process capabilities.
-- **Tools** remain substantial applications/services with their own runtime lifecycle and may be containerized or hosted separately.
-- **Modes** compose these capabilities. Whether normal mode definitions ultimately live in C# or persistent runtime data remains a separate decision.
+- **Plugins** contribute installed executable page components, content presentations, adapters, and similar reusable in-process capabilities.
+- **Tools** remain substantial applications/services with an independent runtime/data lifecycle and may be containerized or hosted separately.
+- **Modes** compose these capabilities and may also own structural/domain behavior intrinsic to that site. Generic framework code should not absorb named-mode business concepts merely to avoid mode specialization. Whether normal mode definitions ultimately live in C# or persistent runtime data remains a separate decision.
 
 Authored page content may select installed capabilities by stable keys, but it can not introduce executable code. Installing or upgrading a plugin remains a deployment operation. Editing a page to use an already-installed plugin does not require a restart.
 
@@ -64,8 +64,12 @@ Host, port, protocol version, query timeout, and cache policy remain deployment 
 
 Minecraft is the only currently supported game-server status implementation. Hytale support was explored previously. Similar status endpoints may exist, but no sufficiently documented or reliable interface was found, and the known alternatives would have required server modification. Hytale status integration is therefore deferred and is not part of the current supported feature set.
 
-## Tools versus plugins
+## Plugins, Tools, and mode-owned features
 
-Use a plugin when the capability is a small in-process extension whose useful surface is composition inside an existing page. Use a Tool when the capability is substantial enough to have its own application/service lifecycle, independent workflow, data boundary, or potential container/separate-host runtime.
+Use a plugin when the capability is a small reusable in-process extension whose useful surface is composition inside an existing page or framework workflow.
 
-Minecraft server status fits the plugin boundary because its useful behavior is a compact status query and embedded presentation; it has no meaningful standalone workflow. Campaigns and other substantial interactive systems remain Tool candidates.
+Use a Tool when the capability has an independent application workflow, data/runtime lifecycle, or separate-deployment value. A Tool may be large, but size alone is not the defining criterion.
+
+Keep a capability mode-owned when it is intrinsic to one normal site's domain and its routes, persistence, authorization relationships, and extraction boundary naturally belong to that mode. Do not create a plugin solely to hide mode-specific business logic behind a generic extension name, and do not create a Tool solely because a native mode feature is substantial.
+
+Minecraft server status fits the plugin boundary because its useful behavior is a compact reusable status query and embedded presentation; it has no meaningful standalone workflow. Rules Core and Block Initiative fit the Tool boundary because they are separately deployable applications with independent domain/runtime lifecycles. The Dorks & Dice campaign/account/character relationship can fit the mode-owned boundary because it defines native Dorks & Dice site state and authority consumed by multiple Tools.

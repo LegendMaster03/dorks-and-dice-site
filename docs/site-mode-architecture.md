@@ -1,6 +1,6 @@
 # Site mode architecture
 
-The application serves multiple site identities from one ASP.NET Core MVC deployment while keeping framework behavior, authored content, presentation, plugins, and substantial Tools behind explicit boundaries.
+The application serves multiple site identities from one ASP.NET Core MVC deployment while keeping framework behavior, authored content, presentation, mode-owned specialization, plugins, and substantial Tools behind explicit boundaries.
 
 ## Runtime concepts
 
@@ -16,6 +16,8 @@ Two framework-owned runtime states are intentionally not normal modes:
 
 Normal mode definitions are consumed through stable IDs and `ISiteModeRegistry`. The final persistence mechanism for mode definitions remains an independent deployment/productization decision; generic framework code must not depend on normal modes being permanently defined in C# or in a database.
 
+A normal mode is not limited to presentation metadata. It may own structural behavior, route subtrees, services, persistence, authorization policy composition, and other domain behavior intrinsic to that site. The framework should expose generic extension/ownership mechanisms rather than learning named-mode business concepts.
+
 ## Request flow
 
 `SiteModeMiddleware` and the site-mode services establish the active request context.
@@ -26,7 +28,7 @@ At a high level:
 2. Resolve a normal mode from deployment configuration/registry data when the host belongs to one.
 3. On a trusted development host, resolve the Trusted Preview state and any explicitly selected normal-mode preview.
 4. Resolve content-source composition for the active normal mode, or explicit developer-selected sources in Trusted Preview.
-5. Store `SiteModeContext` for downstream routing, authorization, content, presentation, plugins, and Tools.
+5. Store `SiteModeContext` for downstream routing, authorization, content, presentation, plugins, Tools, and mode-owned behavior.
 6. Apply route ownership before exposing a mode-owned route.
 7. Return normal 404 behavior when a real host requests a route owned by another mode.
 
@@ -48,11 +50,27 @@ Important public/shared routes include:
 
 Development/authoring routes are protected separately and are not public mode content.
 
+Normal modes may also claim route subtrees through `SiteModeDefinition.OwnedRoutePrefixes`. These routes are part of the mode's structural surface, not automatically Tools. Professional already uses this mechanism for `/resume`; future mode-native features may use the same ownership contract without adding named-mode branches to generic routing code.
+
 A real Dorks & Dice request for `/resume`, for example, receives normal 404 behavior. Trusted Preview may inspect cross-mode routes when authorized because its purpose is diagnostics, not public tenancy.
+
+## Mode-owned structural and domain behavior
+
+Mode ownership is broader than theming. When a capability is intrinsic to one site's domain, a normal mode may own the implementation and data boundary for that capability rather than promoting it into the generic framework or forcing it into a Tool solely because the capability is substantial.
+
+Mode-owned behavior should follow these rules:
+
+- keep named-mode business concepts out of generic framework services;
+- keep mode-specific controllers, services, models, views, persistence, and routes physically attributable to that mode where practical;
+- use the framework's stable mode ID, route ownership, authentication, authorization infrastructure, and other generic contracts rather than hard-coded dispatch in shared code;
+- preserve an extraction boundary so the mode can later move to another compatible deployment with its required code/data/capabilities;
+- expose explicit contracts when separately deployable Tools need to consume mode-owned data or authority.
+
+For Dorks & Dice, campaign membership/authority and account-owned character relationships are examples of domain concepts that may be native to the mode. Rules Core and Block Initiative remain Tools because they have independent application workflows and lifecycle/runtime boundaries. Size alone does not determine the boundary.
 
 ## Presentation ownership
 
-Normal modes own visual identity and presentation defaults rather than framework routing/content behavior.
+Normal modes own visual identity and presentation defaults in addition to any mode-specific structural/domain behavior they legitimately own.
 
 Mode presentation can define values such as:
 
@@ -119,6 +137,8 @@ A page may participate in multiple contexts. A Project may also be an Experience
 
 Mode visibility remains structured data because it is an eligibility boundary rather than a user-facing categorization tag.
 
+Mode-owned operational/domain data is not required to fit the authored content model. Mutable campaign membership, character associations, tool authority, or similar application state should use an appropriate mode-owned relational/domain store rather than being represented as authored Markdown pages merely for architectural uniformity.
+
 ## Revision storage
 
 Content uses stable page identity plus immutable revisions. The schema includes:
@@ -184,7 +204,7 @@ The Professional homepage uses database-backed Experience and Project records th
 
 The Dorks & Dice homepage uses installed Discord and Minecraft components. Minecraft host/port/protocol/cache configuration remains deployment-owned; authored Markdown can select the component but can not redirect the service to arbitrary network targets.
 
-Substantial applications with independent lifecycle/data/runtime boundaries belong under Tools rather than being forced into page components or mode definitions.
+A substantial capability with an independent application workflow, data/runtime lifecycle, or separate-deployment value belongs under Tools. A substantial capability that is instead intrinsic mode-owned domain behavior may remain in the mode. Neither page components nor the generic framework should be used as a dumping ground for mode-specific application logic.
 
 ## Managed media
 
@@ -259,11 +279,13 @@ Public crawler/AI-facing text is generated at request time from the same current
 
 Synthetic Trusted Preview/Development context and unlisted/private content are excluded from these public exporters.
 
-The sitemap is likewise assembled from current database-backed public routes/content rather than only compiled/static routes.
+The sitemap is likewise assembled from current database-backed public routes/content rather than only compiled/static routes. Mode-owned structural routes that should be public/indexed belong in the mode's intrinsic sitemap metadata rather than being inferred from controller discovery.
 
 ## Identity and authorization boundary
 
-Authentication and authorization are framework infrastructure. Mode-specific roles/claims are evaluated against the current normal mode rather than granting global authority implicitly.
+Authentication and generic authorization infrastructure are framework concerns. Mode-specific application authority may be derived from mode-owned domain relationships without turning those relationships into global account roles.
+
+For example, a Dorks & Dice account may be a DM in one campaign, a player in another, both in a third, and neither in others. Campaign authority therefore belongs to the Dorks & Dice campaign domain rather than ASP.NET global roles. Global site roles remain reserved for genuinely account-wide/framework or mode-wide authority.
 
 Trusted administrative/development access is a separate condition and remains constrained by the configured trusted-access boundary. Real public host behavior does not accept preview cookies as authority.
 
@@ -273,21 +295,22 @@ Authoring, media mutation, source selection, account administration, and Tool ad
 
 Tools are larger applications/workflows that may have their own data, lifecycle, or containerized/separate runtime.
 
-The framework owns Tool registration, exposure, health/proxy/hosting boundaries, and mode-aware access. A normal mode can expose a Tool without absorbing the Tool's implementation into the mode definition.
+The framework owns Tool registration, exposure, health/proxy/hosting boundaries, and mode-aware access. A normal mode can expose a Tool without absorbing the Tool's implementation into the mode definition. Conversely, a normal mode does not have to turn its own intrinsic domain model into a Tool merely because that model is substantial.
 
-This keeps future D&D campaign applications, initiative tracking, and other substantial systems independently evolvable.
+Dorks & Dice uses this distinction deliberately: Rules Core owns rules/source normalization and campaign rule overlays as a separately deployable Tool; Block Initiative owns encounter initiative workflow as a separately deployable Tool; the Dorks & Dice mode may own the campaign/account/character relationship and authorization domain that those Tools consume through explicit contracts.
 
 ## Extension rules
 
 When adding another normal mode:
 
 1. Give it a stable registered ID and deployment-owned host/source configuration.
-2. Supply only the presentation/branding/plugins/Tools that identity needs.
-3. Author normal pages/homepage through the content system rather than duplicating framework controllers or compiled content stores.
-4. Use generic route/content/media/authorization contracts wherever possible.
-5. Add an explicit framework extension only when the requirement is genuinely reusable or application-owned.
+2. Supply the presentation/branding/plugins/Tools and mode-owned structural/domain modules that identity actually requires.
+3. Author ordinary editorial pages/homepage through the content system rather than duplicating framework controllers or compiled content stores.
+4. Keep mutable operational/domain state in an appropriate mode-owned store instead of forcing it into authored content.
+5. Use generic route/content/media/identity/authorization infrastructure wherever possible, but do not generalize mode-specific business concepts into the framework without a genuine reusable requirement.
+6. Use a Tool when independent application lifecycle, runtime/data ownership, or separate deployment is part of the desired boundary.
 
-When a mode later needs to split into a separate deployment, stable mode IDs, source ownership, plugin/Tool boundaries, and independently owned presentation assets provide the extraction seams.
+When a mode later needs to split into a separate deployment, stable mode IDs, source ownership, mode-owned code/data boundaries, plugin/Tool boundaries, and independently owned presentation assets provide the extraction seams.
 
 ## Current convergence state
 
@@ -302,4 +325,4 @@ For this refactor cycle:
 - runtime `/site.txt`, `/llms.txt`, and sitemap follow current database content;
 - framework Fallback and Trusted Preview remain separate framework concerns.
 
-Remaining work is validation/audit and final refactor integration, not another homepage storage architecture change.
+Remaining work from that convergence cycle is validation/audit and final refactor integration, not another homepage storage architecture change. Future mode specialization may add native structural/domain functionality without reopening the completed homepage/content convergence decision.
