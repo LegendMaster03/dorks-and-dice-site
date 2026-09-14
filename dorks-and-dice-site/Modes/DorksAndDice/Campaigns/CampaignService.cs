@@ -31,9 +31,11 @@ public interface ICampaignService
 
 public sealed class CampaignService(
     DorksAndDiceDbContext dbContext,
+    ICampaignAccessService campaignAccess,
     TimeProvider timeProvider) : ICampaignService
 {
     private readonly DorksAndDiceDbContext _dbContext = dbContext;
+    private readonly ICampaignAccessService _campaignAccess = campaignAccess;
     private readonly TimeProvider _timeProvider = timeProvider;
 
     public async Task<Campaign> CreateAsync(
@@ -121,7 +123,7 @@ public sealed class CampaignService(
         IEnumerable<string> roles,
         CancellationToken cancellationToken = default)
     {
-        await RequireDmAsync(actorUserId, campaignId, cancellationToken);
+        await _campaignAccess.RequireRoleAsync(actorUserId, campaignId, CampaignRoles.Dm, cancellationToken);
         var normalizedRoles = CampaignRoles.NormalizeMany(roles);
 
         var activeMembershipExists = await _dbContext.CampaignMemberships.AnyAsync(
@@ -169,7 +171,7 @@ public sealed class CampaignService(
         IEnumerable<string> roles,
         CancellationToken cancellationToken = default)
     {
-        await RequireDmAsync(actorUserId, campaignId, cancellationToken);
+        await _campaignAccess.RequireRoleAsync(actorUserId, campaignId, CampaignRoles.Dm, cancellationToken);
         var normalizedRoles = CampaignRoles.NormalizeMany(roles);
 
         var membership = await GetActiveMembershipAsync(campaignId, userId, cancellationToken);
@@ -223,7 +225,7 @@ public sealed class CampaignService(
         Guid userId,
         CancellationToken cancellationToken = default)
     {
-        await RequireDmAsync(actorUserId, campaignId, cancellationToken);
+        await _campaignAccess.RequireRoleAsync(actorUserId, campaignId, CampaignRoles.Dm, cancellationToken);
         var membership = await GetActiveMembershipAsync(campaignId, userId, cancellationToken);
         if (membership.Roles.Any(role => role.Role == CampaignRoles.Dm))
         {
@@ -235,23 +237,6 @@ public sealed class CampaignService(
         await EndCharacterAssociationsAsync(campaignId, userId, actorUserId, "Owner removed from campaign", now, cancellationToken);
         await TouchCampaignAsync(campaignId, now, cancellationToken);
         await _dbContext.SaveChangesAsync(cancellationToken);
-    }
-
-    private async Task RequireDmAsync(
-        Guid userId,
-        Guid campaignId,
-        CancellationToken cancellationToken)
-    {
-        var isDm = await _dbContext.CampaignMemberships.AnyAsync(
-            membership => membership.CampaignId == campaignId
-                && membership.UserId == userId
-                && membership.Status == CampaignMembershipStatus.Active
-                && membership.Roles.Any(role => role.Role == CampaignRoles.Dm),
-            cancellationToken);
-        if (!isDm)
-        {
-            throw new CampaignDomainException("DM authority is required for this campaign operation.");
-        }
     }
 
     private async Task<CampaignMembership> GetActiveMembershipAsync(

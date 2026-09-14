@@ -23,9 +23,11 @@ public interface ICharacterService
 
 public sealed class CharacterService(
     DorksAndDiceDbContext dbContext,
+    ICampaignAccessService campaignAccess,
     TimeProvider timeProvider) : ICharacterService
 {
     private readonly DorksAndDiceDbContext _dbContext = dbContext;
+    private readonly ICampaignAccessService _campaignAccess = campaignAccess;
     private readonly TimeProvider _timeProvider = timeProvider;
 
     public async Task<Character> CreateAsync(
@@ -90,14 +92,11 @@ public sealed class CharacterService(
             throw new CampaignDomainException("Archived characters can not be connected to a campaign.");
         }
 
-        var hasPlayerMembership = await _dbContext.CampaignMemberships.AnyAsync(
-            membership => membership.CampaignId == campaignId
-                && membership.UserId == ownerUserId
-                && membership.Status == CampaignMembershipStatus.Active
-                && membership.Campaign.Status == CampaignStatus.Active
-                && membership.Roles.Any(role => role.Role == CampaignRoles.Player),
-            cancellationToken);
-        if (!hasPlayerMembership)
+        if (!await _campaignAccess.HasRoleAsync(
+                ownerUserId,
+                campaignId,
+                CampaignRoles.Player,
+                cancellationToken))
         {
             throw new CampaignDomainException("The character owner must be an active player in the campaign.");
         }

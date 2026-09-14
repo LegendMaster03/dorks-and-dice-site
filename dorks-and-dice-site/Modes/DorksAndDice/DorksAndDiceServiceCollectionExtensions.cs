@@ -61,7 +61,9 @@ public static class DorksAndDiceServiceCollectionExtensions
             throw new NotSupportedException($"Dorks & Dice storage provider '{provider}' is not supported.");
         });
 
+        services.AddScoped<ICampaignAccessService, CampaignAccessService>();
         services.AddScoped<ICampaignService, CampaignService>();
+        services.AddScoped<ICampaignParticipantService, CampaignParticipantService>();
         services.AddScoped<ICharacterService, CharacterService>();
         services.AddHostedService<DorksAndDiceStorageInitializer>();
         return services;

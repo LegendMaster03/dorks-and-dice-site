@@ -1,0 +1,152 @@
+using dorks_and_dice_site.Modes.DorksAndDice.Persistence;
+using Microsoft.EntityFrameworkCore;
+
+namespace dorks_and_dice_site.Modes.DorksAndDice.Campaigns;
+
+public interface ICampaignParticipantService
+{
+    Task<IReadOnlyList<CampaignParticipant>> GetForCampaignAsync(
+        Guid userId,
+        Guid campaignId,
+        CancellationToken cancellationToken = default);
+    Task<CampaignParticipant> AddGuestAsync(
+        Guid actorUserId,
+        Guid campaignId,
+        string displayName,
+        CancellationToken cancellationToken = default);
+    Task LinkToUserAsync(
+        Guid actorUserId,
+        Guid campaignId,
+        Guid participantId,
+        Guid userId,
+        CancellationToken cancellationToken = default);
+    Task RetireAsync(
+        Guid actorUserId,
+        Guid campaignId,
+        Guid participantId,
+        CancellationToken cancellationToken = default);
+}
+
+public sealed class CampaignParticipantService(
+    DorksAndDiceDbContext dbContext,
+    ICampaignAccessService campaignAccess,
+    TimeProvider timeProvider) : ICampaignParticipantService
+{
+    private readonly DorksAndDiceDbContext _dbContext = dbContext;
+    private readonly ICampaignAccessService _campaignAccess = campaignAccess;
+    private readonly TimeProvider _timeProvider = timeProvider;
+
+    public async Task<IReadOnlyList<CampaignParticipant>> GetForCampaignAsync(
+        Guid userId,
+        Guid campaignId,
+        CancellationToken cancellationToken = default)
+    {
+        await _campaignAccess.RequireMemberAsync(userId, campaignId, cancellationToken);
+        return await _dbContext.CampaignParticipants
+            .AsNoTracking()
+            .Where(participant => participant.CampaignId == campaignId)
+            .OrderBy(participant => participant.Status)
+            .ThenBy(participant => participant.DisplayName)
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<CampaignParticipant> AddGuestAsync(
+        Guid actorUserId,
+        Guid campaignId,
+        string displayName,
+        CancellationToken cancellationToken = default)
+    {
+        await _campaignAccess.RequireRoleAsync(
+            actorUserId,
+            campaignId,
+            CampaignRoles.Dm,
+            cancellationToken);
+
+        var participant = new CampaignParticipant
+        {
+            Id = Guid.NewGuid(),
+            CampaignId = campaignId,
+            DisplayName = NormalizeDisplayName(displayName),
+            Status = CampaignParticipantStatus.Active,
+            CreatedAt = _timeProvider.GetUtcNow()
+        };
+
+        _dbContext.CampaignParticipants.Add(participant);
+        await _dbContext.SaveChangesAsync(cancellationToken);
+        return participant;
+    }
+
+    public async Task LinkToUserAsync(
+        Guid actorUserId,
+        Guid campaignId,
+        Guid participantId,
+        Guid userId,
+        CancellationToken cancellationToken = default)
+    {
+        await _campaignAccess.RequireRoleAsync(
+            actorUserId,
+            campaignId,
+            CampaignRoles.Dm,
+            cancellationToken);
+        await _campaignAccess.RequireMemberAsync(userId, campaignId, cancellationToken);
+
+        var participant = await GetActiveParticipantForUpdateAsync(campaignId, participantId, cancellationToken);
+        var anotherLinkExists = await _dbContext.CampaignParticipants.AnyAsync(
+            item => item.CampaignId == campaignId
+                && item.Id != participantId
+                && item.UserId == userId
+                && item.Status == CampaignParticipantStatus.Active,
+            cancellationToken);
+        if (anotherLinkExists)
+        {
+            throw new CampaignDomainException(
+                "This account is already linked to another active participant in the campaign.");
+        }
+
+        participant.UserId = userId;
+        await _dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task RetireAsync(
+        Guid actorUserId,
+        Guid campaignId,
+        Guid participantId,
+        CancellationToken cancellationToken = default)
+    {
+        await _campaignAccess.RequireRoleAsync(
+            actorUserId,
+            campaignId,
+            CampaignRoles.Dm,
+            cancellationToken);
+
+        var participant = await GetActiveParticipantForUpdateAsync(campaignId, participantId, cancellationToken);
+        participant.Status = CampaignParticipantStatus.Former;
+        participant.EndedAt = _timeProvider.GetUtcNow();
+        await _dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    private async Task<CampaignParticipant> GetActiveParticipantForUpdateAsync(
+        Guid campaignId,
+        Guid participantId,
+        CancellationToken cancellationToken)
+    {
+        return await _dbContext.CampaignParticipants.SingleOrDefaultAsync(
+            participant => participant.Id == participantId
+                && participant.CampaignId == campaignId
+                && participant.Status == CampaignParticipantStatus.Active,
+            cancellationToken)
+            ?? throw new CampaignDomainException("Active campaign participant does not exist.");
+    }
+
+    private static string NormalizeDisplayName(string displayName)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(displayName);
+        var normalized = displayName.Trim();
+        if (normalized.Length > 120)
+        {
+            throw new CampaignDomainException("Participant display names can not exceed 120 characters.");
+        }
+
+        return normalized;
+    }
+}
