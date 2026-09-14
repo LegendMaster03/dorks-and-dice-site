@@ -1,4 +1,5 @@
 using dorks_and_dice_site.Modes.DorksAndDice.Campaigns;
+using dorks_and_dice_site.Modes.DorksAndDice.Characters;
 using dorks_and_dice_site.Modes.DorksAndDice.Persistence;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -67,6 +68,28 @@ public sealed class DorksAndDiceCampaignRoleTests
         Assert.True(await harness.Access.HasRoleAsync(dm, campaign.Id, CampaignRoles.Dm));
     }
 
+    [Fact]
+    public async Task RemovingPlayerRoleEndsActiveCharacterConnectionWithoutDeletingCharacter()
+    {
+        await using var harness = await RoleHarness.CreateAsync();
+        var dm = Guid.NewGuid();
+        var player = Guid.NewGuid();
+        var campaign = await harness.Campaigns.CreateAsync(dm, "Campaign");
+        await harness.Campaigns.AddMemberAsync(dm, campaign.Id, player, [CampaignRoles.Player]);
+        var character = await harness.Characters.CreateAsync(player, "Kell");
+        await harness.Characters.ConnectToCampaignAsync(player, character.Id, campaign.Id);
+
+        await harness.Campaigns.SetMemberRolesAsync(dm, campaign.Id, player, [CampaignRoles.Dm]);
+
+        var savedCharacter = await harness.Characters.GetAsync(player, character.Id);
+        Assert.NotNull(savedCharacter);
+        Assert.Equal(player, savedCharacter.OwnerUserId);
+        var association = Assert.Single(savedCharacter.CampaignAssociations);
+        Assert.Equal(CampaignCharacterAssociationStatus.Ended, association.Status);
+        Assert.Equal(dm, association.EndedByUserId);
+        Assert.Equal("Player role removed", association.EndReason);
+    }
+
     private sealed class RoleHarness : IAsyncDisposable
     {
         private readonly SqliteConnection _connection;
@@ -77,11 +100,13 @@ public sealed class DorksAndDiceCampaignRoleTests
             Db = db;
             Access = new CampaignAccessService(db);
             Campaigns = new CampaignService(db, Access, TimeProvider.System);
+            Characters = new CharacterService(db, Access, TimeProvider.System);
         }
 
         public DorksAndDiceDbContext Db { get; }
         public CampaignAccessService Access { get; }
         public CampaignService Campaigns { get; }
+        public CharacterService Characters { get; }
 
         public static async Task<RoleHarness> CreateAsync()
         {
