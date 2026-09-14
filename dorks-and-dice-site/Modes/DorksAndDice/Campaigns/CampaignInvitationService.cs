@@ -8,218 +8,120 @@ namespace dorks_and_dice_site.Modes.DorksAndDice.Campaigns;
 
 public interface ICampaignInvitationService
 {
-    Task<CampaignInvitationGrant> CreateAsync(
-        Guid actorUserId,
-        Guid campaignId,
-        IEnumerable<string> roles,
-        Guid? participantId = null,
-        CancellationToken cancellationToken = default);
-    Task<IReadOnlyList<CampaignInvitation>> GetPendingAsync(
-        Guid actorUserId,
-        Guid campaignId,
-        CancellationToken cancellationToken = default);
-    Task<CampaignInvitationPreview?> GetPreviewAsync(
-        string token,
-        CancellationToken cancellationToken = default);
-    Task<CampaignMembership> AcceptAsync(
-        Guid userId,
-        string token,
-        CancellationToken cancellationToken = default);
-    Task RevokeAsync(
-        Guid actorUserId,
-        Guid campaignId,
-        Guid invitationId,
-        CancellationToken cancellationToken = default);
+    Task<CampaignInvitationGrant> CreateAsync(Guid actorUserId, Guid campaignId, IEnumerable<string> roles, Guid? participantId = null, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<CampaignInvitation>> GetPendingAsync(Guid actorUserId, Guid campaignId, CancellationToken cancellationToken = default);
+    Task<CampaignInvitationPreview?> GetPreviewAsync(string token, CancellationToken cancellationToken = default);
+    Task<CampaignMembership> AcceptAsync(Guid userId, string token, CancellationToken cancellationToken = default);
+    Task RevokeAsync(Guid actorUserId, Guid campaignId, Guid invitationId, CancellationToken cancellationToken = default);
 }
 
-public sealed class CampaignInvitationService(
-    DorksAndDiceDbContext dbContext,
-    ICampaignAccessService campaignAccess,
-    TimeProvider timeProvider) : ICampaignInvitationService
+public sealed class CampaignInvitationService(DorksAndDiceDbContext dbContext, ICampaignAccessService campaignAccess, TimeProvider timeProvider) : ICampaignInvitationService
 {
     private static readonly TimeSpan DefaultLifetime = TimeSpan.FromDays(7);
     private readonly DorksAndDiceDbContext _dbContext = dbContext;
     private readonly ICampaignAccessService _campaignAccess = campaignAccess;
     private readonly TimeProvider _timeProvider = timeProvider;
 
-    public async Task<CampaignInvitationGrant> CreateAsync(
-        Guid actorUserId,
-        Guid campaignId,
-        IEnumerable<string> roles,
-        Guid? participantId = null,
-        CancellationToken cancellationToken = default)
+    public async Task<CampaignInvitationGrant> CreateAsync(Guid actorUserId, Guid campaignId, IEnumerable<string> roles, Guid? participantId = null, CancellationToken cancellationToken = default)
     {
         await _campaignAccess.RequireRoleAsync(actorUserId, campaignId, CampaignRoles.Dm, cancellationToken);
         var normalizedRoles = CampaignRoles.NormalizeMany(roles).OrderBy(role => role).ToArray();
-
         CampaignParticipant? participant = null;
         if (participantId is Guid requestedParticipantId)
         {
             participant = await _dbContext.CampaignParticipants.SingleOrDefaultAsync(
-                item => item.Id == requestedParticipantId
-                    && item.CampaignId == campaignId
-                    && item.Status == CampaignParticipantStatus.Active,
-                cancellationToken)
-                ?? throw new CampaignDomainException("Active campaign participant does not exist.");
-
-            if (participant.UserId is not null)
-            {
-                throw new CampaignDomainException("The selected participant is already linked to an account.");
-            }
+                item => item.Id == requestedParticipantId && item.CampaignId == campaignId, cancellationToken)
+                ?? throw new CampaignDomainException("Campaign participant does not exist.");
+            if (participant.Status == CampaignParticipantStatus.Active && participant.UserId is not null)
+                throw new CampaignDomainException("The selected participant is already linked to an active account participant.");
+            if (await _dbContext.CampaignInvitations.AnyAsync(item => item.ParticipantId == participant.Id && item.Status == CampaignInvitationStatus.Pending, cancellationToken))
+                throw new CampaignDomainException("The selected participant already has a pending invitation.");
         }
 
         var token = WebEncoders.Base64UrlEncode(RandomNumberGenerator.GetBytes(32));
         var now = _timeProvider.GetUtcNow();
         var invitation = new CampaignInvitation
         {
-            Id = Guid.NewGuid(),
-            CampaignId = campaignId,
-            ParticipantId = participant?.Id,
-            TokenHash = HashToken(token),
-            Roles = SerializeRoles(normalizedRoles),
-            Status = CampaignInvitationStatus.Pending,
-            CreatedByUserId = actorUserId,
-            CreatedAt = now,
-            ExpiresAt = now.Add(DefaultLifetime)
+            Id = Guid.NewGuid(), CampaignId = campaignId, ParticipantId = participant?.Id,
+            TokenHash = HashToken(token), Roles = SerializeRoles(normalizedRoles), Status = CampaignInvitationStatus.Pending,
+            CreatedByUserId = actorUserId, CreatedAt = now, ExpiresAt = now.Add(DefaultLifetime)
         };
-
         _dbContext.CampaignInvitations.Add(invitation);
         await _dbContext.SaveChangesAsync(cancellationToken);
         return new CampaignInvitationGrant(invitation, token);
     }
 
-    public async Task<IReadOnlyList<CampaignInvitation>> GetPendingAsync(
-        Guid actorUserId,
-        Guid campaignId,
-        CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<CampaignInvitation>> GetPendingAsync(Guid actorUserId, Guid campaignId, CancellationToken cancellationToken = default)
     {
         await _campaignAccess.RequireRoleAsync(actorUserId, campaignId, CampaignRoles.Dm, cancellationToken);
         var now = _timeProvider.GetUtcNow();
-        var pending = await _dbContext.CampaignInvitations
-            .AsNoTracking()
-            .Include(invitation => invitation.Participant)
-            .Where(invitation => invitation.CampaignId == campaignId
-                && invitation.Status == CampaignInvitationStatus.Pending)
+        var pending = await _dbContext.CampaignInvitations.AsNoTracking().Include(invitation => invitation.Participant)
+            .Where(invitation => invitation.CampaignId == campaignId && invitation.Status == CampaignInvitationStatus.Pending)
             .ToListAsync(cancellationToken);
-
-        return pending
-            .Where(invitation => invitation.ExpiresAt > now)
-            .OrderBy(invitation => invitation.ExpiresAt)
-            .ToArray();
+        return pending.Where(invitation => invitation.ExpiresAt > now).OrderBy(invitation => invitation.ExpiresAt).ToArray();
     }
 
-    public async Task<CampaignInvitationPreview?> GetPreviewAsync(
-        string token,
-        CancellationToken cancellationToken = default)
+    public async Task<CampaignInvitationPreview?> GetPreviewAsync(string token, CancellationToken cancellationToken = default)
     {
-        var tokenHash = HashToken(token);
+        var invitation = await _dbContext.CampaignInvitations.AsNoTracking().Include(item => item.Campaign).Include(item => item.Participant)
+            .SingleOrDefaultAsync(item => item.TokenHash == HashToken(token) && item.Status == CampaignInvitationStatus.Pending, cancellationToken);
         var now = _timeProvider.GetUtcNow();
-        var invitation = await _dbContext.CampaignInvitations
-            .AsNoTracking()
-            .Include(item => item.Campaign)
-            .Include(item => item.Participant)
-            .SingleOrDefaultAsync(
-                item => item.TokenHash == tokenHash
-                    && item.Status == CampaignInvitationStatus.Pending,
-                cancellationToken);
-
-        if (invitation is null
-            || invitation.ExpiresAt <= now
-            || invitation.Campaign.Status != CampaignStatus.Active)
-        {
-            return null;
-        }
-
-        return new CampaignInvitationPreview(
-            invitation.Id,
-            invitation.CampaignId,
-            invitation.Campaign.Name,
-            DeserializeRoles(invitation.Roles),
-            invitation.Participant?.DisplayName,
-            invitation.ExpiresAt);
+        if (invitation is null || invitation.ExpiresAt <= now || invitation.Campaign.Status != CampaignStatus.Active) return null;
+        return new CampaignInvitationPreview(invitation.Id, invitation.CampaignId, invitation.Campaign.Name,
+            DeserializeRoles(invitation.Roles), invitation.Participant?.DisplayName, invitation.ExpiresAt);
     }
 
-    public async Task<CampaignMembership> AcceptAsync(
-        Guid userId,
-        string token,
-        CancellationToken cancellationToken = default)
+    public async Task<CampaignMembership> AcceptAsync(Guid userId, string token, CancellationToken cancellationToken = default)
     {
-        var tokenHash = HashToken(token);
         var now = _timeProvider.GetUtcNow();
-        var invitation = await _dbContext.CampaignInvitations
-            .Include(item => item.Campaign)
-            .Include(item => item.Participant)
-            .SingleOrDefaultAsync(item => item.TokenHash == tokenHash, cancellationToken)
+        var invitation = await _dbContext.CampaignInvitations.Include(item => item.Campaign).Include(item => item.Participant)
+            .SingleOrDefaultAsync(item => item.TokenHash == HashToken(token), cancellationToken)
             ?? throw new CampaignDomainException("Campaign invitation is invalid.");
-
-        if (invitation.Status != CampaignInvitationStatus.Pending
-            || invitation.ExpiresAt <= now
-            || invitation.Campaign.Status != CampaignStatus.Active)
-        {
+        if (invitation.Status != CampaignInvitationStatus.Pending || invitation.ExpiresAt <= now || invitation.Campaign.Status != CampaignStatus.Active)
             throw new CampaignDomainException("Campaign invitation is no longer available.");
-        }
-
-        var activeMembershipExists = await _dbContext.CampaignMemberships.AnyAsync(
-            membership => membership.CampaignId == invitation.CampaignId
-                && membership.UserId == userId
-                && membership.Status == CampaignMembershipStatus.Active,
-            cancellationToken);
-        if (activeMembershipExists)
-        {
+        if (await _dbContext.CampaignMemberships.AnyAsync(membership => membership.CampaignId == invitation.CampaignId && membership.UserId == userId && membership.Status == CampaignMembershipStatus.Active, cancellationToken))
             throw new CampaignDomainException("This account is already an active member of the campaign.");
-        }
 
         if (invitation.Participant is not null)
         {
-            if (invitation.Participant.Status != CampaignParticipantStatus.Active
-                || invitation.Participant.UserId is not null)
-            {
+            var participant = invitation.Participant;
+            if (participant.Status == CampaignParticipantStatus.Active && participant.UserId is not null)
                 throw new CampaignDomainException("The participant attached to this invitation is no longer available.");
-            }
-
-            var anotherLinkExists = await _dbContext.CampaignParticipants.AnyAsync(
-                participant => participant.CampaignId == invitation.CampaignId
-                    && participant.UserId == userId
-                    && participant.Status == CampaignParticipantStatus.Active,
+            if (participant.Status == CampaignParticipantStatus.Former && participant.UserId is Guid previousUserId && previousUserId != userId)
+                throw new CampaignDomainException("This invitation is associated with a different account.");
+            var anotherLinkExists = await _dbContext.CampaignParticipants.AnyAsync(item =>
+                item.CampaignId == invitation.CampaignId && item.Id != participant.Id && item.UserId == userId && item.Status == CampaignParticipantStatus.Active,
                 cancellationToken);
-            if (anotherLinkExists)
-            {
-                throw new CampaignDomainException("This account is already linked to another active participant in the campaign.");
-            }
+            if (anotherLinkExists) throw new CampaignDomainException("This account is already linked to another active participant in the campaign.");
         }
 
         var membership = new CampaignMembership
         {
-            Id = Guid.NewGuid(),
-            CampaignId = invitation.CampaignId,
-            UserId = userId,
-            Status = CampaignMembershipStatus.Active,
-            JoinedAt = now
+            Id = Guid.NewGuid(), CampaignId = invitation.CampaignId, UserId = userId,
+            Status = CampaignMembershipStatus.Active, JoinedAt = now
         };
-
         foreach (var role in DeserializeRoles(invitation.Roles))
         {
             membership.Roles.Add(new CampaignMembershipRole
             {
-                Id = Guid.NewGuid(),
-                CampaignMembershipId = membership.Id,
-                Role = role,
-                GrantedAt = now,
-                GrantedByUserId = invitation.CreatedByUserId
+                Id = Guid.NewGuid(), CampaignMembershipId = membership.Id, Role = role,
+                GrantedAt = now, GrantedByUserId = invitation.CreatedByUserId
             });
         }
 
         if (invitation.Participant is not null)
         {
-            invitation.Participant.UserId = userId;
+            invitation.Participant.UserId ??= userId;
+            invitation.Participant.Status = CampaignParticipantStatus.Active;
+            invitation.Participant.EndedAt = null;
+            invitation.Participant.EndedByUserId = null;
+            invitation.Participant.EndReason = null;
         }
-
         invitation.Status = CampaignInvitationStatus.Accepted;
         invitation.AcceptedAt = now;
         invitation.AcceptedByUserId = userId;
         invitation.Campaign.UpdatedAt = now;
         _dbContext.CampaignMemberships.Add(membership);
-
         try
         {
             await _dbContext.SaveChangesAsync(cancellationToken);
@@ -228,47 +130,24 @@ public sealed class CampaignInvitationService(
         {
             throw new CampaignDomainException("Campaign invitation is no longer available.", exception);
         }
-
         return membership;
     }
 
-    public async Task RevokeAsync(
-        Guid actorUserId,
-        Guid campaignId,
-        Guid invitationId,
-        CancellationToken cancellationToken = default)
+    public async Task RevokeAsync(Guid actorUserId, Guid campaignId, Guid invitationId, CancellationToken cancellationToken = default)
     {
         await _campaignAccess.RequireRoleAsync(actorUserId, campaignId, CampaignRoles.Dm, cancellationToken);
-        var invitation = await _dbContext.CampaignInvitations.SingleOrDefaultAsync(
-            item => item.Id == invitationId && item.CampaignId == campaignId,
-            cancellationToken)
+        var invitation = await _dbContext.CampaignInvitations.SingleOrDefaultAsync(item => item.Id == invitationId && item.CampaignId == campaignId, cancellationToken)
             ?? throw new CampaignDomainException("Campaign invitation does not exist.");
-
-        if (invitation.Status != CampaignInvitationStatus.Pending)
-        {
-            return;
-        }
-
+        if (invitation.Status != CampaignInvitationStatus.Pending) return;
         invitation.Status = CampaignInvitationStatus.Revoked;
         invitation.RevokedAt = _timeProvider.GetUtcNow();
         invitation.RevokedByUserId = actorUserId;
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
 
-    private static string SerializeRoles(IEnumerable<string> roles)
-    {
-        return string.Join(',', roles);
-    }
-
-    private static IReadOnlyList<string> DeserializeRoles(string roles)
-    {
-        return roles.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Select(CampaignRoles.Normalize)
-            .Distinct(StringComparer.Ordinal)
-            .OrderBy(role => role)
-            .ToArray();
-    }
-
+    private static string SerializeRoles(IEnumerable<string> roles) => string.Join(',', roles);
+    private static IReadOnlyList<string> DeserializeRoles(string roles) => roles.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+        .Select(CampaignRoles.Normalize).Distinct(StringComparer.Ordinal).OrderBy(role => role).ToArray();
     private static string HashToken(string token)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(token);
