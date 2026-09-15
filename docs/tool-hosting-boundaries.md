@@ -107,7 +107,7 @@ shared caching of account-restricted tool responses. Previously downloaded/cache
 assets cannot be recalled by disabling a registration. Host context and successful API
 responses use no-store; membership-dependent API failures also use no-store.
 
-## Shared contracts and provisional campaign proof
+## Shared contracts and native campaign context
 
 GET /tool-host/{slug}/context can return anonymous context for an anonymous tool. Its
 `ToolBasePath` is always `/tools/{slug}`. Its optional `toolRoute` query parameter is used
@@ -121,27 +121,27 @@ Browser user IDs and identity headers do not influence lookup. Disabled/wrong-mo
 tools are unavailable. Session/context expose only stable user ID and display name,
 not Identity entities, credentials, email, global role records, or security stamps.
 
-Campaign access is provisional and read-only through the Tool Host API. It exposes only
-enabled campaigns with an explicit membership for the current user. Missing and
+Campaign access comes exclusively from the native Dorks & Dice campaign domain through
+`ICampaignContextService`. Active campaign membership is required. Missing, archived, and
 nonmember campaigns return the same 404 behavior. DM and Player are campaign-scoped
-values, not ASP.NET global roles. No campaign administration is provided.
+roles, not ASP.NET global roles. No Tool Host endpoint administers campaigns.
 
-ICampaignAccessStore is injected into the API; JsonCampaignAccessStore is the default
-implementation registered at host composition. The interface currently also has trusted
-host-side write methods for seeding/tests. Replace storage behind this boundary during
-reorganization without leaking CampaignAccessDocument or JSON layout into tool contracts.
-The JSON stores use atomic replacement and process-local locking, not cross-process
-transactions. They assume well-formed, host-controlled data and a single writer process;
-they are not production multi-instance databases.
+GET /tool-host/{slug}/api/campaigns/{campaignId}/context exposes the stable read-only
+campaign projection intended for first-party Tools: campaign identity, every role held by
+the requesting account, active table participants, and active campaign-linked characters.
+The Tool Host does not expose Dorks & Dice EF entities or database access to Tools.
+
+The authenticated upstream ticket is populated from the same native campaign authority.
+Authentication contract version 1 represents one campaign role per entry; a native
+membership holding both DM and Player is emitted as two entries for the same campaign so
+existing `(campaignId, role)` authorization checks preserve both grants.
 
 ## Runtime files
 
-ToolHosting:RegistryPath and CampaignStorage:Path support configurable absolute or
-content-root-relative paths. Default Content/tool-registry.json and
-Content/campaign-access.json are runtime data: ignored by Git and excluded from build
-and publish output. Their temporary replacement files are ignored too. Provision
+`ToolHosting:RegistryPath` supports a configurable absolute or content-root-relative path.
+The default `Content/tool-registry.json` is runtime data: ignored by Git and excluded from
+build and publish output. Its temporary replacement files are ignored too. Provision
 persistent storage separately from application releases.
 
-Both integration-test factories override these paths into unique temporary directories.
-Campaign store unit tests also use unique temporary storage. Preserve that isolation
-when moving projects or replacing storage.
+Campaigns are not Tool Host runtime files. They use the native Dorks & Dice persistence
+configuration and schema owned by the Dorks & Dice mode.
