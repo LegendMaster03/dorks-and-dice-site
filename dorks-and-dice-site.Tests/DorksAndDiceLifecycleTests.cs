@@ -39,6 +39,28 @@ public sealed class DorksAndDiceLifecycleTests
     }
 
     [Fact]
+    public async Task ArchivedCampaignIsReadOnlyUntilRestored()
+    {
+        await using var h = await Harness.CreateAsync();
+        var dm = Guid.NewGuid();
+        var campaign = await h.Campaigns.CreateAsync(dm, "Original");
+
+        await h.Campaigns.ArchiveAsync(dm, campaign.Id);
+
+        await Assert.ThrowsAsync<CampaignDomainException>(() =>
+            h.Campaigns.RenameAsync(dm, campaign.Id, "Archived Rename"));
+        var archived = Assert.Single(await h.Campaigns.GetArchivedForUserAsync(dm));
+        Assert.Equal("Original", archived.Name);
+
+        await h.Campaigns.RestoreAsync(dm, campaign.Id);
+        await h.Campaigns.RenameAsync(dm, campaign.Id, "Restored Rename");
+
+        var restored = await h.Campaigns.GetAsync(dm, campaign.Id);
+        Assert.NotNull(restored);
+        Assert.Equal("Restored Rename", restored.Name);
+    }
+
+    [Fact]
     public async Task CharacterArchiveEndsAllCampaignLinksAndRestoreDoesNotReconnect()
     {
         await using var h = await Harness.CreateAsync();
