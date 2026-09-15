@@ -1,12 +1,16 @@
 using System.Security.Claims;
+using dorks_and_dice_site.Models.Campaigns;
 using dorks_and_dice_site.Models.Identity;
 using dorks_and_dice_site.Models.Tools;
+using dorks_and_dice_site.Modes.DorksAndDice.Campaigns;
 using dorks_and_dice_site.Services.Campaigns;
 using dorks_and_dice_site.Services.Identity;
 using dorks_and_dice_site.Services.Site;
 using dorks_and_dice_site.Services.Tools;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using LegacyCampaignRoles = dorks_and_dice_site.Models.Campaigns.CampaignRoles;
+using NativeCampaignRoles = dorks_and_dice_site.Modes.DorksAndDice.Campaigns.CampaignRoles;
 
 namespace dorks_and_dice_site.Controllers;
 
@@ -15,16 +19,19 @@ namespace dorks_and_dice_site.Controllers;
 public sealed class ToolHostApiController : ControllerBase
 {
     private readonly IToolRegistry _toolRegistry;
-    private readonly ICampaignAccessStore _campaignAccessStore;
+    private readonly ICampaignAccessStore _legacyCampaignAccessStore;
+    private readonly ICampaignContextService _campaignContextService;
     private readonly IToolProxyService _toolProxyService;
 
     public ToolHostApiController(
         IToolRegistry toolRegistry,
-        ICampaignAccessStore campaignAccessStore,
+        ICampaignAccessStore legacyCampaignAccessStore,
+        ICampaignContextService campaignContextService,
         IToolProxyService toolProxyService)
     {
         _toolRegistry = toolRegistry;
-        _campaignAccessStore = campaignAccessStore;
+        _legacyCampaignAccessStore = legacyCampaignAccessStore;
+        _campaignContextService = campaignContextService;
         _toolProxyService = toolProxyService;
     }
 
@@ -57,9 +64,7 @@ public sealed class ToolHostApiController : ControllerBase
             return access.Result;
         }
 
-        var campaigns = await _campaignAccessStore.GetCampaignsForUserAsync(
-            access.UserId!,
-            cancellationToken);
+        var campaigns = await GetCampaignSummariesAsync(access.UserId!, cancellationToken);
         Response.Headers.CacheControl = "no-store";
         return Ok(campaigns);
     }
@@ -76,9 +81,45 @@ public sealed class ToolHostApiController : ControllerBase
             return access.Result;
         }
 
-        var campaign = await _campaignAccessStore.GetCampaignForUserAsync(
-            campaignId,
+        var campaign = await GetCampaignSummaryAsync(
             access.UserId!,
+            campaignId,
+            cancellationToken);
+        if (campaign is null)
+        {
+            return NotFound();
+        }
+
+        Response.Headers.CacheControl = "no-store";
+        return Ok(campaign);
+    }
+
+    /// <summary>
+    /// Returns the stable native campaign projection used by first-party Tools that need roster
+    /// data. Membership is derived exclusively from the authenticated site identity; callers can
+    /// not supply another user ID. The projection intentionally contains participants and linked
+    /// characters without exposing Dorks & Dice persistence entities.
+    /// </summary>
+    [HttpGet("campaigns/{campaignId:guid}/context")]
+    public async Task<IActionResult> CampaignContext(
+        string slug,
+        Guid campaignId,
+        CancellationToken cancellationToken)
+    {
+        var access = await ResolveToolAndUserAsync(slug, cancellationToken);
+        if (access.Result is not null)
+        {
+            return access.Result;
+        }
+
+        if (!Guid.TryParse(access.UserId, out var userId))
+        {
+            return NotFound();
+        }
+
+        var campaign = await _campaignContextService.GetCampaignContextAsync(
+            userId,
+            campaignId,
             cancellationToken);
         if (campaign is null)
         {
@@ -140,9 +181,7 @@ public sealed class ToolHostApiController : ControllerBase
             return new EmptyResult();
         }
 
-        var campaigns = await _campaignAccessStore.GetCampaignsForUserAsync(
-            userId,
-            cancellationToken);
+        var campaigns = await GetAuthenticationCampaignsAsync(userId, cancellationToken);
         var authenticationContext = new ToolHostAuthenticationContext
         {
             ToolSlug = tool.Slug,
@@ -191,6 +230,93 @@ public sealed class ToolHostApiController : ControllerBase
 
         return Ok(context);
     }
+
+    private async Task<IReadOnlyList<CampaignAccessSummary>> GetCampaignSummariesAsync(
+        string userId,
+        CancellationToken cancellationToken)
+    {
+        if (!Guid.TryParse(userId, out var nativeUserId))
+        {
+            // The legacy JSON store remains available for non-production fixtures whose test
+            // identities predate GUID-backed site accounts. Real ApplicationUser IDs are GUIDs.
+            return await _legacyCampaignAccessStore.GetCampaignsForUserAsync(userId, cancellationToken);
+        }
+
+        var campaigns = await _campaignContextService.GetAccessibleCampaignsAsync(
+            nativeUserId,
+            cancellationToken);
+        return campaigns.Select(ToLegacySummary).ToArray();
+    }
+
+    private async Task<CampaignAccessSummary?> GetCampaignSummaryAsync(
+        string userId,
+        Guid campaignId,
+        CancellationToken cancellationToken)
+    {
+        if (!Guid.TryParse(userId, out var nativeUserId))
+        {
+            return await _legacyCampaignAccessStore.GetCampaignForUserAsync(
+                campaignId,
+                userId,
+                cancellationToken);
+        }
+
+        var campaign = await _campaignContextService.GetCampaignContextAsync(
+            nativeUserId,
+            campaignId,
+            cancellationToken);
+        return campaign is null
+            ? null
+            : new CampaignAccessSummary
+            {
+                Id = campaign.CampaignId,
+                Name = campaign.Name,
+                Role = PreferredLegacyRole(campaign.RequestingUserRoles)
+            };
+    }
+
+    private async Task<IReadOnlyList<CampaignAccessSummary>> GetAuthenticationCampaignsAsync(
+        string userId,
+        CancellationToken cancellationToken)
+    {
+        if (!Guid.TryParse(userId, out var nativeUserId))
+        {
+            return await _legacyCampaignAccessStore.GetCampaignsForUserAsync(userId, cancellationToken);
+        }
+
+        var campaigns = await _campaignContextService.GetAccessibleCampaignsAsync(
+            nativeUserId,
+            cancellationToken);
+
+        // Authentication contract v1 represents one role per entry. Native memberships may carry
+        // both DM and Player, so emit one entry per role. Existing Tool backends already authorize
+        // with Any(campaignId, role), making this backward-compatible while preserving both grants.
+        return campaigns
+            .SelectMany(campaign => campaign.Roles.Select(role => new CampaignAccessSummary
+            {
+                Id = campaign.CampaignId,
+                Name = campaign.Name,
+                Role = ToLegacyRole(role)
+            }))
+            .ToArray();
+    }
+
+    private static CampaignAccessSummary ToLegacySummary(CampaignAccessContext campaign) => new()
+    {
+        Id = campaign.CampaignId,
+        Name = campaign.Name,
+        Role = PreferredLegacyRole(campaign.Roles)
+    };
+
+    private static string PreferredLegacyRole(IReadOnlyList<string> roles) =>
+        roles.Any(role => string.Equals(role, NativeCampaignRoles.Dm, StringComparison.OrdinalIgnoreCase))
+            ? LegacyCampaignRoles.Dm
+            : LegacyCampaignRoles.Player;
+
+    private static string ToLegacyRole(string role) =>
+        string.Equals(role, NativeCampaignRoles.Dm, StringComparison.OrdinalIgnoreCase)
+            ? LegacyCampaignRoles.Dm
+            : LegacyCampaignRoles.Player;
 
     private async Task<(ToolRegistration? Tool, string? UserId, IActionResult? Result)>
         ResolveToolAndUserAsync(string slug, CancellationToken cancellationToken)
