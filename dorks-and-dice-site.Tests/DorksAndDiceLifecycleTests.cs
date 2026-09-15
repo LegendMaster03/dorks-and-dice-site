@@ -118,6 +118,31 @@ public sealed class DorksAndDiceLifecycleTests
     }
 
     [Fact]
+    public async Task DmRemovedParticipantCanRejoinThroughInviteWithoutLosingIdentity()
+    {
+        await using var h = await Harness.CreateAsync();
+        var dm = Guid.NewGuid();
+        var player = Guid.NewGuid();
+        var campaign = await h.Campaigns.CreateAsync(dm, "Campaign");
+        await h.Campaigns.AddMemberAsync(dm, campaign.Id, player, [CampaignRoles.Player]);
+        var participant = await h.Participants.AddGuestAsync(dm, campaign.Id, "Original");
+        await h.Participants.LinkToUserAsync(dm, campaign.Id, participant.Id, player);
+
+        await h.Campaigns.RemoveMemberAsync(dm, campaign.Id, player);
+
+        var grant = await h.Invitations.CreateAsync(dm, campaign.Id, [CampaignRoles.Player], participant.Id);
+        await h.Invitations.AcceptAsync(player, grant.Token);
+
+        var participants = await h.Participants.GetForCampaignAsync(dm, campaign.Id);
+        var restored = Assert.Single(participants);
+        Assert.Equal(participant.Id, restored.Id);
+        Assert.Equal(CampaignParticipantStatus.Active, restored.Status);
+        Assert.Equal(player, restored.UserId);
+        Assert.Null(restored.EndedAt);
+        Assert.True(await h.Access.HasRoleAsync(player, campaign.Id, CampaignRoles.Player));
+    }
+
+    [Fact]
     public async Task FormerLinkedParticipantRequiresAccountMembershipForManualRestore()
     {
         await using var h = await Harness.CreateAsync();
