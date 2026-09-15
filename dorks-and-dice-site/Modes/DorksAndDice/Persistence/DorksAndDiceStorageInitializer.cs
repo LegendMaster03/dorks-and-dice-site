@@ -1,4 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 
 namespace dorks_and_dice_site.Modes.DorksAndDice.Persistence;
 
@@ -24,6 +26,19 @@ public sealed class DorksAndDiceStorageInitializer(IServiceScopeFactory scopeFac
         {
             using var scope = _scopeFactory.CreateScope();
             var dbContext = scope.ServiceProvider.GetRequiredService<DorksAndDiceDbContext>();
+            var migrationsAssembly = dbContext.GetService<IMigrationsAssembly>();
+            var snapshot = migrationsAssembly.ModelSnapshot
+                ?? throw new InvalidOperationException("Dorks & Dice storage has no migration model snapshot.");
+            var modelDiffer = dbContext.GetService<IMigrationsModelDiffer>();
+
+            if (modelDiffer.HasDifferences(
+                    snapshot.Model.GetRelationalModel(),
+                    dbContext.Model.GetRelationalModel()))
+            {
+                throw new InvalidOperationException(
+                    "The Dorks & Dice storage model has pending relational schema changes. Add a migration before starting the site.");
+            }
+
             await dbContext.Database.MigrateAsync(cancellationToken);
         }
         finally
