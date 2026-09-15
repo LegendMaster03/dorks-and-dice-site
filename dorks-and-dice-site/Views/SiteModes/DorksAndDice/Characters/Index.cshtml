@@ -59,7 +59,10 @@
                 }
                 else if (Model.PlayerCampaigns.Count == 0) { <p class="text-muted">Join a campaign with the Player role to connect this character.</p> }
 
-                <form asp-controller="Characters" asp-action="Archive" asp-route-characterId="@character.Id" method="post">@Html.AntiForgeryToken()<button class="btn btn-sm btn-outline-danger" type="submit">Archive Character</button></form>
+                <div class="d-flex flex-wrap gap-2">
+                    <form asp-controller="Characters" asp-action="Archive" asp-route-characterId="@character.Id" method="post">@Html.AntiForgeryToken()<button class="btn btn-sm btn-outline-secondary" type="submit">Archive Character</button></form>
+                    <form method="post" action="/characters/@character.Id/delete" onsubmit="return confirm('Permanently delete this character? This can not be undone.');">@Html.AntiForgeryToken()<button class="btn btn-sm btn-outline-danger" type="submit">Delete Permanently</button></form>
+                </div>
             </div></div></div>
         }
         </div>
@@ -77,6 +80,7 @@
                 <div class="d-flex flex-wrap gap-2">
                     <form asp-controller="Characters" asp-action="Restore" asp-route-characterId="@character.Id" method="post">@Html.AntiForgeryToken()<button class="btn btn-sm btn-primary" type="submit">Restore</button></form>
                     <form asp-controller="Characters" asp-action="Rename" asp-route-characterId="@character.Id" method="post" class="d-flex gap-2">@Html.AntiForgeryToken()<input class="form-control form-control-sm" type="text" name="name" value="@character.Name" maxlength="160" required /><button class="btn btn-sm btn-outline-primary" type="submit">Rename</button></form>
+                    <form method="post" action="/characters/@character.Id/delete" onsubmit="return confirm('Permanently delete this character? This can not be undone.');">@Html.AntiForgeryToken()<button class="btn btn-sm btn-outline-danger" type="submit">Delete Permanently</button></form>
                 </div>
             </div></div></div>
         }
