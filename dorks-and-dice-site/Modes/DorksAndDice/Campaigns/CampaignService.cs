@@ -178,6 +178,7 @@ public sealed class CampaignService(DorksAndDiceDbContext dbContext, ICampaignAc
             foreach (var role in rolesToRemove)
             {
                 membership.Roles.Remove(role);
+                _dbContext.CampaignMembershipRoles.Remove(role);
             }
             foreach (var role in rolesToAdd)
             {
