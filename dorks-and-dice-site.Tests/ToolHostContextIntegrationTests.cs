@@ -54,7 +54,7 @@ public sealed class ToolHostContextIntegrationTests
             var user = json.RootElement.GetProperty("user");
 
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-            Assert.Equal("integration-test-user", user.GetProperty("id").GetString());
+            Assert.Equal(TestRoleAuthenticationHandler.DefaultUserId, user.GetProperty("id").GetString());
             Assert.Equal("Integration Test User", user.GetProperty("displayName").GetString());
             Assert.False(user.TryGetProperty("email", out _));
             Assert.False(json.RootElement.TryGetProperty("roles", out _));
@@ -129,7 +129,7 @@ public sealed class ToolHostContextIntegrationTests
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
             Assert.Equal(tool.Slug, json.RootElement.GetProperty("toolSlug").GetString());
             Assert.Equal(SiteModeValues.DorksAndDiceModeValue, json.RootElement.GetProperty("siteMode").GetString());
-            Assert.Equal("integration-test-user", user.GetProperty("id").GetString());
+            Assert.Equal(TestRoleAuthenticationHandler.DefaultUserId, user.GetProperty("id").GetString());
             Assert.Equal("Integration Test User", user.GetProperty("displayName").GetString());
             Assert.Equal("no-store", response.Headers.CacheControl?.ToString());
         }
