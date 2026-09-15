@@ -1,5 +1,3 @@
-using dorks_and_dice_site.Models.Campaigns;
-
 namespace dorks_and_dice_site.Models.Tools;
 
 public sealed class ToolHostApiSession
@@ -9,6 +7,18 @@ public sealed class ToolHostApiSession
     public required string SiteMode { get; init; }
     public required ToolHostUserContext User { get; init; }
     public IReadOnlyList<string> GlobalRoles { get; init; } = [];
+}
+
+/// <summary>
+/// Campaign authorization summary exposed through the Tool Host contract. This projection is
+/// independent of Dorks & Dice campaign persistence and exists only as a Tool integration DTO.
+/// Contract version 1 carries one campaign role per entry.
+/// </summary>
+public sealed class ToolHostCampaignAccessSummary
+{
+    public required Guid Id { get; init; }
+    public required string Name { get; init; }
+    public required string Role { get; init; }
 }
 
 /// <summary>
@@ -23,5 +33,5 @@ public sealed class ToolHostAuthenticationContext
     public required string SiteMode { get; init; }
     public required ToolHostUserContext User { get; init; }
     public IReadOnlyList<string> GlobalRoles { get; init; } = [];
-    public IReadOnlyList<CampaignAccessSummary> Campaigns { get; init; } = [];
+    public IReadOnlyList<ToolHostCampaignAccessSummary> Campaigns { get; init; } = [];
 }
