@@ -12,6 +12,7 @@ public sealed class TestRoleAuthenticationHandler : AuthenticationHandler<Authen
     public new const string Scheme = "IntegrationTestRoles";
     public const string RolesHeader = "X-Test-Roles";
     public const string ScopedRolesHeader = "X-Test-Scoped-Roles";
+    public const string UserIdHeader = "X-Test-User-Id";
 
     public TestRoleAuthenticationHandler(
         IOptionsMonitor<AuthenticationSchemeOptions> options,
@@ -30,9 +31,14 @@ public sealed class TestRoleAuthenticationHandler : AuthenticationHandler<Authen
             return Task.FromResult(AuthenticateResult.NoResult());
         }
 
+        var userId = Request.Headers.TryGetValue(UserIdHeader, out var rawUserId)
+            && !string.IsNullOrWhiteSpace(rawUserId.ToString())
+            ? rawUserId.ToString().Trim()
+            : "integration-test-user";
+
         var claims = new List<Claim>
         {
-            new(ClaimTypes.NameIdentifier, "integration-test-user"),
+            new(ClaimTypes.NameIdentifier, userId),
             new(ClaimTypes.Name, "Integration Test User")
         };
         if (hasRoles)
