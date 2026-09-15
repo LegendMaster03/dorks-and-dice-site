@@ -79,7 +79,7 @@ public sealed class CampaignService(DorksAndDiceDbContext dbContext, ICampaignAc
 
     public async Task RenameAsync(Guid actorUserId, Guid campaignId, string name, CancellationToken cancellationToken = default)
     {
-        await RequireDmIncludingArchivedAsync(actorUserId, campaignId, cancellationToken);
+        await _campaignAccess.RequireRoleAsync(actorUserId, campaignId, CampaignRoles.Dm, cancellationToken);
         var campaign = await GetCampaignForUpdateAsync(campaignId, cancellationToken);
         campaign.Name = NormalizeName(name);
         campaign.UpdatedAt = _timeProvider.GetUtcNow();
@@ -177,7 +177,6 @@ public sealed class CampaignService(DorksAndDiceDbContext dbContext, ICampaignAc
         {
             foreach (var role in rolesToRemove)
             {
-                membership.Roles.Remove(role);
                 _dbContext.CampaignMembershipRoles.Remove(role);
             }
             foreach (var role in rolesToAdd)
