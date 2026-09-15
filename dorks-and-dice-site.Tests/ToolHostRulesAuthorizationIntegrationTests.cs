@@ -60,7 +60,9 @@ public sealed class ToolHostRulesAuthorizationIntegrationTests
 
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
             Assert.Contains(AccountRoles.RulesLawyer, roles);
-            Assert.Equal("integration-test-user", json.RootElement.GetProperty("user").GetProperty("id").GetString());
+            Assert.Equal(
+                TestRoleAuthenticationHandler.DefaultUserId,
+                json.RootElement.GetProperty("user").GetProperty("id").GetString());
         }
         finally
         {

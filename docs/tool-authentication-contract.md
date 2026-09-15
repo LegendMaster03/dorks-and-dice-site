@@ -7,8 +7,11 @@ The main Dorks & Dice host is the identity and campaign authority for separately
 An authenticated Embedded Module can query the existing host API beneath its context `ApiBaseUrl`:
 
 - `GET /tool-host/{slug}/api/session` returns the stable user summary, active site mode, and the user's effective global roles.
-- `GET /tool-host/{slug}/api/campaigns` returns enabled campaigns in which the current user has an explicit membership and the campaign-scoped role (`DM` or `Player`).
-- `GET /tool-host/{slug}/api/campaigns/{campaignId}` verifies membership without accepting a browser-supplied user ID.
+- `GET /tool-host/{slug}/api/campaigns` returns active native Dorks & Dice campaigns in which the current user has an explicit membership. The response retains the original Tool Host `id`, `name`, and single `role` compatibility shape; when a native membership has both roles, `DM` is the compatibility role.
+- `GET /tool-host/{slug}/api/campaigns/{campaignId}` verifies membership without accepting a browser-supplied user ID and returns the compatibility campaign summary.
+- `GET /tool-host/{slug}/api/campaigns/{campaignId}/context` returns the stable native campaign projection for an authorized member: the campaign ID/name, all roles held by the requesting account, active table participants, and active campaign-linked characters. It does not expose persistence entities.
+
+The campaign context projection is the intended first-party Tool boundary for roster-aware integrations such as Block Initiative. Tools must not read the Dorks & Dice campaign database directly.
 
 This data is suitable for rendering UI controls, but UI visibility is not the enforcement boundary.
 
@@ -46,7 +49,9 @@ A successful introspection returns the authoritative `ToolHostAuthenticationCont
 - active site mode;
 - stable user ID and display name;
 - effective global roles;
-- enabled campaign memberships and campaign roles.
+- active campaign memberships and campaign roles.
+
+Authentication contract version 1 represents one campaign role per campaign entry. Native campaign memberships may contain both `DM` and `Player`; in that case the host emits one authentication-context entry per role so existing Tool backends can continue authorizing by `(campaignId, role)` without losing either grant.
 
 Tickets expire after 30 seconds, are scoped to one Tool slug, and are consumed on redemption. They are process-local because the site currently runs as one application instance. A future multi-instance deployment must replace the ticket store with shared ephemeral storage while preserving the contract.
 

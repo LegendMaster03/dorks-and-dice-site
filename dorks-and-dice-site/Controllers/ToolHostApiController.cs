@@ -1,7 +1,7 @@
 using System.Security.Claims;
 using dorks_and_dice_site.Models.Identity;
 using dorks_and_dice_site.Models.Tools;
-using dorks_and_dice_site.Services.Campaigns;
+using dorks_and_dice_site.Modes.DorksAndDice.Campaigns;
 using dorks_and_dice_site.Services.Identity;
 using dorks_and_dice_site.Services.Site;
 using dorks_and_dice_site.Services.Tools;
@@ -15,16 +15,16 @@ namespace dorks_and_dice_site.Controllers;
 public sealed class ToolHostApiController : ControllerBase
 {
     private readonly IToolRegistry _toolRegistry;
-    private readonly ICampaignAccessStore _campaignAccessStore;
+    private readonly ICampaignContextService _campaignContextService;
     private readonly IToolProxyService _toolProxyService;
 
     public ToolHostApiController(
         IToolRegistry toolRegistry,
-        ICampaignAccessStore campaignAccessStore,
+        ICampaignContextService campaignContextService,
         IToolProxyService toolProxyService)
     {
         _toolRegistry = toolRegistry;
-        _campaignAccessStore = campaignAccessStore;
+        _campaignContextService = campaignContextService;
         _toolProxyService = toolProxyService;
     }
 
@@ -57,11 +57,16 @@ public sealed class ToolHostApiController : ControllerBase
             return access.Result;
         }
 
-        var campaigns = await _campaignAccessStore.GetCampaignsForUserAsync(
-            access.UserId!,
+        if (!Guid.TryParse(access.UserId, out var userId))
+        {
+            return Forbid();
+        }
+
+        var campaigns = await _campaignContextService.GetAccessibleCampaignsAsync(
+            userId,
             cancellationToken);
         Response.Headers.CacheControl = "no-store";
-        return Ok(campaigns);
+        return Ok(campaigns.Select(ToToolHostSummary).ToArray());
     }
 
     [HttpGet("campaigns/{campaignId:guid}")]
@@ -76,9 +81,50 @@ public sealed class ToolHostApiController : ControllerBase
             return access.Result;
         }
 
-        var campaign = await _campaignAccessStore.GetCampaignForUserAsync(
+        if (!Guid.TryParse(access.UserId, out var userId))
+        {
+            return Forbid();
+        }
+
+        var campaign = await _campaignContextService.GetCampaignContextAsync(
+            userId,
             campaignId,
-            access.UserId!,
+            cancellationToken);
+        if (campaign is null)
+        {
+            return NotFound();
+        }
+
+        Response.Headers.CacheControl = "no-store";
+        return Ok(ToToolHostSummary(campaign));
+    }
+
+    /// <summary>
+    /// Returns the stable native campaign projection used by first-party Tools that need roster
+    /// data. Membership is derived exclusively from the authenticated site identity; callers can
+    /// not supply another user ID. The projection intentionally contains participants and linked
+    /// characters without exposing Dorks & Dice persistence entities.
+    /// </summary>
+    [HttpGet("campaigns/{campaignId:guid}/context")]
+    public async Task<IActionResult> CampaignContext(
+        string slug,
+        Guid campaignId,
+        CancellationToken cancellationToken)
+    {
+        var access = await ResolveToolAndUserAsync(slug, cancellationToken);
+        if (access.Result is not null)
+        {
+            return access.Result;
+        }
+
+        if (!Guid.TryParse(access.UserId, out var userId))
+        {
+            return Forbid();
+        }
+
+        var campaign = await _campaignContextService.GetCampaignContextAsync(
+            userId,
+            campaignId,
             cancellationToken);
         if (campaign is null)
         {
@@ -140,8 +186,13 @@ public sealed class ToolHostApiController : ControllerBase
             return new EmptyResult();
         }
 
-        var campaigns = await _campaignAccessStore.GetCampaignsForUserAsync(
-            userId,
+        if (!Guid.TryParse(userId, out var nativeUserId))
+        {
+            return Forbid();
+        }
+
+        var campaigns = await _campaignContextService.GetAccessibleCampaignsAsync(
+            nativeUserId,
             cancellationToken);
         var authenticationContext = new ToolHostAuthenticationContext
         {
@@ -150,6 +201,13 @@ public sealed class ToolHostApiController : ControllerBase
             User = BuildUserContext(userId),
             GlobalRoles = BuildEffectiveGlobalRoles(),
             Campaigns = campaigns
+                .SelectMany(campaign => campaign.Roles.Select(role => new ToolHostCampaignAccessSummary
+                {
+                    Id = campaign.CampaignId,
+                    Name = campaign.Name,
+                    Role = ToToolHostRole(role)
+                }))
+                .ToArray()
         };
         var ticket = ToolAuthenticationTickets.Issue(authenticationContext);
         var introspectionPath = $"/tool-host/{tool.Slug}/api/introspect";
@@ -191,6 +249,30 @@ public sealed class ToolHostApiController : ControllerBase
 
         return Ok(context);
     }
+
+    private static ToolHostCampaignAccessSummary ToToolHostSummary(CampaignAccessContext campaign) => new()
+    {
+        Id = campaign.CampaignId,
+        Name = campaign.Name,
+        Role = PreferredToolHostRole(campaign.Roles)
+    };
+
+    private static ToolHostCampaignAccessSummary ToToolHostSummary(CampaignContextSnapshot campaign) => new()
+    {
+        Id = campaign.CampaignId,
+        Name = campaign.Name,
+        Role = PreferredToolHostRole(campaign.RequestingUserRoles)
+    };
+
+    private static string PreferredToolHostRole(IReadOnlyList<string> roles) =>
+        roles.Any(role => string.Equals(role, CampaignRoles.Dm, StringComparison.OrdinalIgnoreCase))
+            ? "DM"
+            : "Player";
+
+    private static string ToToolHostRole(string role) =>
+        string.Equals(role, CampaignRoles.Dm, StringComparison.OrdinalIgnoreCase)
+            ? "DM"
+            : "Player";
 
     private async Task<(ToolRegistration? Tool, string? UserId, IActionResult? Result)>
         ResolveToolAndUserAsync(string slug, CancellationToken cancellationToken)

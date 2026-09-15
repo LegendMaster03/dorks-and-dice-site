@@ -31,7 +31,6 @@ public sealed class IdentityWebApplicationFactory : WebApplicationFactory<Progra
         // tests intentionally exercise both content initialization and Identity against PostgreSQL.
         builder.UseEnvironment("Testing");
         builder.UseSetting("ToolHosting:RegistryPath", Path.Combine(_toolDirectory, "tool-registry.json"));
-        builder.UseSetting("CampaignStorage:Path", Path.Combine(_toolDirectory, "campaign-access.json"));
         builder.UseSetting("ConnectionStrings:IdentityDatabase", _identityConnectionString);
         builder.UseSetting("IdentityStorage:ApplyMigrationsOnStartup", "true");
         builder.UseSetting("ConnectionStrings:IdentityTestContent", contentConnectionString);

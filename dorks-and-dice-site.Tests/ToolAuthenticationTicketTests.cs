@@ -1,4 +1,3 @@
-using dorks_and_dice_site.Models.Campaigns;
 using dorks_and_dice_site.Models.Tools;
 using dorks_and_dice_site.Services.Identity;
 using dorks_and_dice_site.Services.Tools;
@@ -32,7 +31,7 @@ public sealed class ToolAuthenticationTicketTests
         Assert.NotNull(redeemed);
         Assert.Contains(AccountRoles.RulesLawyer, redeemed.GlobalRoles);
         var campaign = Assert.Single(redeemed.Campaigns);
-        Assert.Equal(CampaignRoles.Dm, campaign.Role);
+        Assert.Equal("DM", campaign.Role);
         Assert.Equal("user-123", redeemed.User.Id);
     }
 
@@ -48,11 +47,11 @@ public sealed class ToolAuthenticationTicketTests
         GlobalRoles = [AccountRoles.RulesLawyer],
         Campaigns =
         [
-            new CampaignAccessSummary
+            new ToolHostCampaignAccessSummary
             {
                 Id = Guid.NewGuid(),
                 Name = "Test Campaign",
-                Role = CampaignRoles.Dm
+                Role = "DM"
             }
         ]
     };
