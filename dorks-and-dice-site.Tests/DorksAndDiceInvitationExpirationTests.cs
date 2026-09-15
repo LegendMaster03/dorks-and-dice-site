@@ -41,10 +41,11 @@ public sealed class DorksAndDiceInvitationExpirationTests
             [CampaignRoles.Player],
             participant.Id);
 
-        var stored = await db.CampaignInvitations
+        var stored = (await db.CampaignInvitations
             .AsNoTracking()
+            .ToListAsync())
             .OrderBy(invitation => invitation.CreatedAt)
-            .ToListAsync();
+            .ToList();
 
         Assert.Equal(2, stored.Count);
         Assert.Equal(CampaignInvitationStatus.Expired, stored[0].Status);

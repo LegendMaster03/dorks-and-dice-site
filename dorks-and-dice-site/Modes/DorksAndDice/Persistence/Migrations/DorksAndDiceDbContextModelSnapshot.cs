@@ -3,6 +3,7 @@ using dorks_and_dice_site.Modes.DorksAndDice.Characters;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
+using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 namespace dorks_and_dice_site.Modes.DorksAndDice.Persistence.Migrations;
 
@@ -11,7 +12,11 @@ public sealed class DorksAndDiceDbContextModelSnapshot : ModelSnapshot
 {
     protected override void BuildModel(ModelBuilder modelBuilder)
     {
-        modelBuilder.HasAnnotation("ProductVersion", "10.0.10");
+        modelBuilder
+            .HasAnnotation("ProductVersion", "10.0.10")
+            .HasAnnotation("Relational:MaxIdentifierLength", 63);
+
+        NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
         modelBuilder.Entity("dorks_and_dice_site.Modes.DorksAndDice.Campaigns.Campaign", b =>
         {
