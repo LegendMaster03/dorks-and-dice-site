@@ -252,29 +252,24 @@ public sealed class CampaignInvitationService(DorksAndDiceDbContext dbContext, I
     private async Task ExpireStalePendingInvitationsAsync(Guid campaignId, DateTimeOffset now, CancellationToken cancellationToken)
     {
         var pending = await _dbContext.CampaignInvitations
-            .AsNoTracking()
             .Where(invitation => invitation.CampaignId == campaignId
                 && invitation.Status == CampaignInvitationStatus.Pending)
-            .Select(invitation => new { invitation.Id, invitation.ExpiresAt })
             .ToListAsync(cancellationToken);
 
-        var staleIds = pending
+        var stale = pending
             .Where(invitation => invitation.ExpiresAt <= now)
-            .Select(invitation => invitation.Id)
             .ToArray();
-        if (staleIds.Length == 0)
+        if (stale.Length == 0)
         {
             return;
         }
 
-        await _dbContext.CampaignInvitations
-            .Where(invitation => staleIds.Contains(invitation.Id)
-                && invitation.Status == CampaignInvitationStatus.Pending)
-            .ExecuteUpdateAsync(
-                setters => setters.SetProperty(
-                    invitation => invitation.Status,
-                    CampaignInvitationStatus.Expired),
-                cancellationToken);
+        foreach (var invitation in stale)
+        {
+            invitation.Status = CampaignInvitationStatus.Expired;
+        }
+
+        await _dbContext.SaveChangesAsync(cancellationToken);
     }
 
     private static string SerializeRoles(IEnumerable<string> roles) => string.Join(',', roles);
