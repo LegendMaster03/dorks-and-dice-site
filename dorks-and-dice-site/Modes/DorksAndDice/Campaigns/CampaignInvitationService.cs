@@ -74,12 +74,15 @@ public sealed class CampaignInvitationService(DorksAndDiceDbContext dbContext, I
         await _campaignAccess.RequireRoleAsync(actorUserId, campaignId, CampaignRoles.Dm, cancellationToken);
         await ExpireStalePendingInvitationsAsync(campaignId, _timeProvider.GetUtcNow(), cancellationToken);
 
-        return await _dbContext.CampaignInvitations
+        var pendingInvitations = await _dbContext.CampaignInvitations
             .AsNoTracking()
             .Include(invitation => invitation.Participant)
             .Where(invitation => invitation.CampaignId == campaignId && invitation.Status == CampaignInvitationStatus.Pending)
-            .OrderBy(invitation => invitation.ExpiresAt)
             .ToListAsync(cancellationToken);
+
+        return pendingInvitations
+            .OrderBy(invitation => invitation.ExpiresAt)
+            .ToArray();
     }
 
     public async Task<CampaignInvitationPreview?> GetPreviewAsync(string token, CancellationToken cancellationToken = default)
