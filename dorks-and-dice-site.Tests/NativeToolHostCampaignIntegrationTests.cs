@@ -59,7 +59,8 @@ public sealed class NativeToolHostCampaignIntegrationTests(PublishedContentWebAp
         {
             using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
             {
-                AllowAutoRedirect = false
+                AllowAutoRedirect = false,
+                BaseAddress = new Uri("https://dorks-and-dice.com")
             });
             client.DefaultRequestHeaders.Add(TestRoleAuthenticationHandler.RolesHeader, "Member");
             client.DefaultRequestHeaders.Add(TestRoleAuthenticationHandler.UserIdHeader, userId.ToString());
