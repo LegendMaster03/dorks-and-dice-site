@@ -50,7 +50,6 @@ public sealed class PublishedContentWebApplicationFactory : WebApplicationFactor
         builder.UseSetting("IdentityStorage:ApplyMigrationsOnStartup", "false");
         builder.UseSetting("IdentityStorage:EnsureCreatedOnStartup", "true");
         builder.UseSetting("ToolHosting:RegistryPath", ToolRegistryPath);
-        builder.UseSetting("CampaignStorage:Path", Path.Combine(_directory, "campaign-access.json"));
         builder.UseSetting("Discord:WidgetUrl", "https://discord.com/widget?id=123456789&theme=dark");
         builder.ConfigureServices(services =>
         {
