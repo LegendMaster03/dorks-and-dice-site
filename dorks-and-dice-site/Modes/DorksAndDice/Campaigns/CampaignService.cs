@@ -175,15 +175,9 @@ public sealed class CampaignService(DorksAndDiceDbContext dbContext, ICampaignAc
         await using var transaction = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
         try
         {
-            if (rolesToRemove.Length > 0)
+            foreach (var role in rolesToRemove)
             {
-                var roleIds = rolesToRemove.Select(role => role.Id).ToArray();
-                await _dbContext.CampaignMembershipRoles.Where(role => roleIds.Contains(role.Id)).ExecuteDeleteAsync(cancellationToken);
-                foreach (var role in rolesToRemove)
-                {
-                    membership.Roles.Remove(role);
-                    _dbContext.Entry(role).State = EntityState.Detached;
-                }
+                membership.Roles.Remove(role);
             }
             foreach (var role in rolesToAdd)
             {
