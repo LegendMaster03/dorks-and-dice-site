@@ -1,9 +1,8 @@
 using System.Net;
 using System.Text.Json;
-using dorks_and_dice_site.Models.Campaigns;
 using dorks_and_dice_site.Models.Identity;
 using dorks_and_dice_site.Models.Tools;
-using dorks_and_dice_site.Services.Campaigns;
+using dorks_and_dice_site.Modes.DorksAndDice.Campaigns;
 using dorks_and_dice_site.Services.Identity;
 using dorks_and_dice_site.Services.Site;
 using dorks_and_dice_site.Services.Tools;
@@ -136,16 +135,27 @@ public sealed class ToolHostingClosureTests(PublishedContentWebApplicationFactor
     }
 
     [Fact]
-    public async Task CampaignApiUsesMembershipAndConcealsOtherCampaigns()
+    public async Task CampaignApiUsesNativeMembershipAndConcealsOtherCampaigns()
     {
         var tool = await RegisterAsync();
-        var store = factory.Services.GetRequiredService<ICampaignAccessStore>();
-        var member = new CampaignRecord { Id = Guid.NewGuid(), Name = "Member campaign" };
-        var other = new CampaignRecord { Id = Guid.NewGuid(), Name = "Private campaign" };
-        await store.SaveCampaignAsync(member);
-        await store.SaveCampaignAsync(other);
-        await store.SaveMembershipAsync(new() { CampaignId = member.Id, UserId = "integration-test-user", Role = CampaignRoles.Player });
-        await store.SaveMembershipAsync(new() { CampaignId = other.Id, UserId = "spoofed", Role = CampaignRoles.Dm });
+        var userId = Guid.Parse(TestRoleAuthenticationHandler.DefaultUserId);
+        var memberOwnerId = Guid.NewGuid();
+        var otherOwnerId = Guid.NewGuid();
+        Guid memberId;
+        Guid otherId;
+        string otherName;
+
+        using (var scope = factory.Services.CreateScope())
+        {
+            var campaigns = scope.ServiceProvider.GetRequiredService<ICampaignService>();
+            var member = await campaigns.CreateAsync(memberOwnerId, "Member campaign");
+            await campaigns.AddMemberAsync(memberOwnerId, member.Id, userId, [CampaignRoles.Player]);
+            var other = await campaigns.CreateAsync(otherOwnerId, "Private campaign");
+            memberId = member.Id;
+            otherId = other.Id;
+            otherName = other.Name;
+        }
+
         try
         {
             using var client = Client(factory);
@@ -157,20 +167,20 @@ public sealed class ToolHostingClosureTests(PublishedContentWebApplicationFactor
             Assert.Equal("no-store", list.Headers.CacheControl?.ToString());
             using var listJson = JsonDocument.Parse(await list.Content.ReadAsStringAsync());
             var summary = Assert.Single(listJson.RootElement.EnumerateArray());
-            Assert.Equal(member.Id, summary.GetProperty("id").GetGuid());
+            Assert.Equal(memberId, summary.GetProperty("id").GetGuid());
             Assert.Equal("Player", summary.GetProperty("role").GetString());
             Assert.Equal(3, summary.EnumerateObject().Count());
-            using var detail = await client.GetAsync($"{prefix}/{member.Id}?userId=spoofed");
+            using var detail = await client.GetAsync($"{prefix}/{memberId}?userId=spoofed");
             Assert.Equal(HttpStatusCode.OK, detail.StatusCode);
             Assert.Equal("no-store", detail.Headers.CacheControl?.ToString());
-            using var denied = await client.GetAsync($"{prefix}/{other.Id}");
+            using var denied = await client.GetAsync($"{prefix}/{otherId}");
             using var missing = await client.GetAsync($"{prefix}/{Guid.NewGuid()}");
             Assert.Equal(HttpStatusCode.NotFound, denied.StatusCode);
             Assert.Equal(missing.StatusCode, denied.StatusCode);
             // The shared error-page shell includes a fresh antiforgery token per response.
             var missingHtml = await missing.Content.ReadAsStringAsync();
             var deniedHtml = await denied.Content.ReadAsStringAsync();
-            Assert.DoesNotContain(other.Name, deniedHtml);
+            Assert.DoesNotContain(otherName, deniedHtml);
             Assert.Equal(
                 System.Text.RegularExpressions.Regex.Replace(missingHtml, "value=\"[^\"]*\"", "value=\"\""),
                 System.Text.RegularExpressions.Regex.Replace(deniedHtml, "value=\"[^\"]*\"", "value=\"\""));
@@ -180,8 +190,10 @@ public sealed class ToolHostingClosureTests(PublishedContentWebApplicationFactor
         }
         finally
         {
-            await store.DeleteCampaignAsync(member.Id);
-            await store.DeleteCampaignAsync(other.Id);
+            using var scope = factory.Services.CreateScope();
+            var campaigns = scope.ServiceProvider.GetRequiredService<ICampaignService>();
+            await campaigns.ArchiveAsync(memberOwnerId, memberId);
+            await campaigns.ArchiveAsync(otherOwnerId, otherId);
             await Registry.DeleteAsync(tool.Id);
         }
     }
