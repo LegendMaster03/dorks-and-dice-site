@@ -38,11 +38,14 @@
     {
         <div class="card shadow-sm mb-4"><div class="card-body">
             <h2 class="h5">Campaign settings</h2>
-            <form asp-controller="Campaigns" asp-action="Rename" asp-route-campaignId="@Model.Id" method="post" class="row g-2 align-items-end mb-3">
-                @Html.AntiForgeryToken()
-                <div class="col-md-8"><label class="form-label" for="campaignRename">Name</label><input id="campaignRename" class="form-control" type="text" name="name" value="@Model.Name" maxlength="160" required /></div>
-                <div class="col-md-4"><button class="btn btn-outline-primary w-100" type="submit">Rename</button></div>
-            </form>
+            @if (!Model.IsArchived)
+            {
+                <form asp-controller="Campaigns" asp-action="Rename" asp-route-campaignId="@Model.Id" method="post" class="row g-2 align-items-end mb-3">
+                    @Html.AntiForgeryToken()
+                    <div class="col-md-8"><label class="form-label" for="campaignRename">Name</label><input id="campaignRename" class="form-control" type="text" name="name" value="@Model.Name" maxlength="160" required /></div>
+                    <div class="col-md-4"><button class="btn btn-outline-primary w-100" type="submit">Rename</button></div>
+                </form>
+            }
             @if (Model.IsArchived)
             {
                 <form asp-controller="Campaigns" asp-action="Restore" asp-route-campaignId="@Model.Id" method="post">@Html.AntiForgeryToken()<button class="btn btn-primary" type="submit">Restore Campaign</button></form>
