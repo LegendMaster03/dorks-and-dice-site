@@ -52,8 +52,13 @@
             }
             else
             {
-                <form asp-controller="Campaigns" asp-action="Archive" asp-route-campaignId="@Model.Id" method="post">@Html.AntiForgeryToken()<button class="btn btn-outline-danger" type="submit">Archive Campaign</button></form>
+                <form asp-controller="Campaigns" asp-action="Archive" asp-route-campaignId="@Model.Id" method="post">@Html.AntiForgeryToken()<button class="btn btn-outline-secondary" type="submit">Archive Campaign</button></form>
             }
+            <hr />
+            <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+                <div><h3 class="h6 mb-1">Permanent deletion</h3><p class="small text-muted mb-0">Deletes this campaign, its memberships, participant records, invitations, and character connections. Player characters and accounts are not deleted.</p></div>
+                <form method="post" action="/campaigns/@Model.Id/delete" onsubmit="return confirm('Permanently delete this campaign and its campaign-only data? This can not be undone.');">@Html.AntiForgeryToken()<button class="btn btn-danger" type="submit">Delete Campaign Permanently</button></form>
+            </div>
         </div></div>
     }
 

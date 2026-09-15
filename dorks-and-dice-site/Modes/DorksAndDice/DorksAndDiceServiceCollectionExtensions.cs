@@ -1,5 +1,6 @@
 using dorks_and_dice_site.Modes.DorksAndDice.Campaigns;
 using dorks_and_dice_site.Modes.DorksAndDice.Characters;
+using dorks_and_dice_site.Modes.DorksAndDice.Lifecycle;
 using dorks_and_dice_site.Modes.DorksAndDice.Persistence;
 using dorks_and_dice_site.Services.Site;
 using Microsoft.EntityFrameworkCore;
@@ -67,6 +68,7 @@ public static class DorksAndDiceServiceCollectionExtensions
         services.AddScoped<ICampaignInvitationService, CampaignInvitationService>();
         services.AddScoped<ICampaignContextService, CampaignContextService>();
         services.AddScoped<ICharacterService, CharacterService>();
+        services.AddScoped<IDorksAndDiceDeletionService, DorksAndDiceDeletionService>();
         services.AddHostedService<DorksAndDiceStorageInitializer>();
         return services;
     }
