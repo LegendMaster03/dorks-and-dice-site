@@ -328,24 +328,66 @@ public sealed class ToolProxyTransportIntegrationTests(PublishedContentWebApplic
             TrustedTicketWasInjected = request.Headers.TryGetValues(ToolAuthenticationHeaders.Ticket, out var ticketValues)
                 && ticketValues.Single() != "browser-spoof";
 
-            await using var body = await content.ReadAsStreamAsync(cancellationToken);
-            var buffer = new byte[64 * 1024];
-            while (true)
-            {
-                var read = await body.ReadAsync(buffer.AsMemory(), cancellationToken);
-                if (read == 0)
-                {
-                    break;
-                }
-
-                BodyBytes += read;
-            }
+            await using var counter = new CountingWriteStream();
+            await content.CopyToAsync(counter, cancellationToken);
+            BodyBytes = counter.BytesWritten;
 
             return new HttpResponseMessage(HttpStatusCode.Created)
             {
                 Content = new StringContent("accepted")
             };
         }
+    }
+
+    private sealed class CountingWriteStream : Stream
+    {
+        public long BytesWritten { get; private set; }
+
+        public override bool CanRead => false;
+        public override bool CanSeek => false;
+        public override bool CanWrite => true;
+        public override long Length => BytesWritten;
+        public override long Position
+        {
+            get => BytesWritten;
+            set => throw new NotSupportedException();
+        }
+
+        public override void Flush()
+        {
+        }
+
+        public override Task FlushAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+
+        public override void Write(byte[] buffer, int offset, int count) => BytesWritten += count;
+
+        public override void Write(ReadOnlySpan<byte> buffer) => BytesWritten += buffer.Length;
+
+        public override ValueTask WriteAsync(
+            ReadOnlyMemory<byte> buffer,
+            CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            BytesWritten += buffer.Length;
+            return ValueTask.CompletedTask;
+        }
+
+        public override Task WriteAsync(
+            byte[] buffer,
+            int offset,
+            int count,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            BytesWritten += count;
+            return Task.CompletedTask;
+        }
+
+        public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+
+        public override void SetLength(long value) => throw new NotSupportedException();
     }
 
     private sealed class GeneratedContent(long length, bool reportLength) : HttpContent
