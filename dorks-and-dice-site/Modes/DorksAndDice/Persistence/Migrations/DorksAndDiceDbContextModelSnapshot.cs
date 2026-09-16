@@ -200,6 +200,32 @@ public sealed class DorksAndDiceDbContextModelSnapshot : ModelSnapshot
             b.ToTable("dd_character");
         });
 
+        modelBuilder.Entity("dorks_and_dice_site.Modes.DorksAndDice.Lifecycle.ToolLifecycleOutboxEvent", b =>
+        {
+            b.Property<Guid>("EventId");
+
+            b.Property<int>("AttemptCount");
+            b.Property<DateTimeOffset?>("DeliveredAt");
+            b.Property<string>("EventType")
+                .IsRequired()
+                .HasMaxLength(80);
+            b.Property<string>("LastError")
+                .HasMaxLength(2000);
+            b.Property<DateTimeOffset>("NextAttemptAt");
+            b.Property<DateTimeOffset>("OccurredAt");
+            b.Property<Guid>("SubjectId");
+            b.Property<string>("TargetToolSlug")
+                .IsRequired()
+                .HasMaxLength(80);
+
+            b.HasKey("EventId");
+
+            b.HasIndex("DeliveredAt", "NextAttemptAt");
+            b.HasIndex("TargetToolSlug");
+
+            b.ToTable("dd_tool_lifecycle_outbox");
+        });
+
         modelBuilder.Entity("dorks_and_dice_site.Modes.DorksAndDice.Campaigns.CampaignInvitation", b =>
         {
             b.HasOne("dorks_and_dice_site.Modes.DorksAndDice.Campaigns.Campaign", "Campaign")

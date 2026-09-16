@@ -10,9 +10,12 @@ public interface IDorksAndDiceDeletionService
     Task DeleteCampaignAsync(Guid actorUserId, Guid campaignId, CancellationToken cancellationToken = default);
 }
 
-public sealed class DorksAndDiceDeletionService(DorksAndDiceDbContext dbContext) : IDorksAndDiceDeletionService
+public sealed class DorksAndDiceDeletionService(
+    DorksAndDiceDbContext dbContext,
+    TimeProvider timeProvider) : IDorksAndDiceDeletionService
 {
     private readonly DorksAndDiceDbContext _dbContext = dbContext;
+    private readonly TimeProvider _timeProvider = timeProvider;
 
     public async Task DeleteCharacterAsync(Guid ownerUserId, Guid characterId, CancellationToken cancellationToken = default)
     {
@@ -35,6 +38,9 @@ public sealed class DorksAndDiceDeletionService(DorksAndDiceDbContext dbContext)
             }
 
             _dbContext.Characters.Remove(character);
+            _dbContext.ToolLifecycleOutboxEvents.Add(CreateLifecycleEvent(
+                ToolLifecycleEventTypes.CharacterDeleted,
+                characterId));
             await _dbContext.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
         }
@@ -87,6 +93,9 @@ public sealed class DorksAndDiceDeletionService(DorksAndDiceDbContext dbContext)
             }
 
             _dbContext.Campaigns.Remove(campaign);
+            _dbContext.ToolLifecycleOutboxEvents.Add(CreateLifecycleEvent(
+                ToolLifecycleEventTypes.CampaignDeleted,
+                campaignId));
             await _dbContext.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
         }
@@ -95,5 +104,20 @@ public sealed class DorksAndDiceDeletionService(DorksAndDiceDbContext dbContext)
             await transaction.RollbackAsync(cancellationToken);
             throw;
         }
+    }
+
+    private ToolLifecycleOutboxEvent CreateLifecycleEvent(string eventType, Guid subjectId)
+    {
+        var now = _timeProvider.GetUtcNow();
+        return new ToolLifecycleOutboxEvent
+        {
+            EventId = Guid.NewGuid(),
+            TargetToolSlug = ToolLifecycleTargets.CharacterSheet,
+            EventType = eventType,
+            SubjectId = subjectId,
+            OccurredAt = now,
+            AttemptCount = 0,
+            NextAttemptAt = now
+        };
     }
 }

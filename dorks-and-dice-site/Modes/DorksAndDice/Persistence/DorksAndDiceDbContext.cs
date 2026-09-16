@@ -1,5 +1,6 @@
 using dorks_and_dice_site.Modes.DorksAndDice.Campaigns;
 using dorks_and_dice_site.Modes.DorksAndDice.Characters;
+using dorks_and_dice_site.Modes.DorksAndDice.Lifecycle;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 
@@ -14,6 +15,7 @@ public sealed class DorksAndDiceDbContext(DbContextOptions<DorksAndDiceDbContext
     public DbSet<CampaignInvitation> CampaignInvitations => Set<CampaignInvitation>();
     public DbSet<Character> Characters => Set<Character>();
     public DbSet<CampaignCharacterAssociation> CampaignCharacters => Set<CampaignCharacterAssociation>();
+    public DbSet<ToolLifecycleOutboxEvent> ToolLifecycleOutboxEvents => Set<ToolLifecycleOutboxEvent>();
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
@@ -93,6 +95,21 @@ public sealed class DorksAndDiceDbContext(DbContextOptions<DorksAndDiceDbContext
             entity.HasIndex(item => new { item.CampaignId, item.CharacterId }).HasDatabaseName("IX_dd_campaign_character_active_pair").HasFilter("\"Status\" = 0").IsUnique();
             entity.HasOne(item => item.Campaign).WithMany(item => item.CharacterAssociations).HasForeignKey(item => item.CampaignId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne(item => item.Character).WithMany(item => item.CampaignAssociations).HasForeignKey(item => item.CharacterId).OnDelete(DeleteBehavior.Restrict);
+        });
+        modelBuilder.Entity<ToolLifecycleOutboxEvent>(entity =>
+        {
+            entity.ToTable("dd_tool_lifecycle_outbox");
+            entity.HasKey(item => item.EventId);
+            entity.Property(item => item.EventId).ValueGeneratedNever();
+            entity.Property(item => item.TargetToolSlug).HasMaxLength(80).IsRequired();
+            entity.Property(item => item.EventType).HasMaxLength(80).IsRequired();
+            entity.Property(item => item.SubjectId).IsRequired();
+            entity.Property(item => item.OccurredAt).IsRequired();
+            entity.Property(item => item.AttemptCount).IsRequired();
+            entity.Property(item => item.NextAttemptAt).IsRequired();
+            entity.Property(item => item.LastError).HasMaxLength(2000);
+            entity.HasIndex(item => new { item.DeliveredAt, item.NextAttemptAt });
+            entity.HasIndex(item => item.TargetToolSlug);
         });
     }
 }
