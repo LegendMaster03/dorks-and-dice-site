@@ -70,11 +70,15 @@ public sealed class ToolProxyTransportIntegrationTests(PublishedContentWebApplic
         using var host = factory.WithWebHostBuilder(builder => builder.ConfigureServices(services =>
             services.AddHttpClient(ToolHttpClientNames.Proxy)
                 .ConfigurePrimaryHttpMessageHandler(() => new AsyncHandler(capture.HandleAsync))));
+        host.UseKestrel(0);
         var tool = await RegisterAsync(host);
 
         try
         {
-            using var client = Client(host);
+            using var client = host.CreateClient(new WebApplicationFactoryClientOptions
+            {
+                AllowAutoRedirect = false
+            });
             const string boundary = "dorks-large-upload-boundary";
             using var multipart = new MultipartFormDataContent(boundary);
             using var fileContent = new GeneratedContent(LargeMultipartPayloadBytes, reportLength: true);
@@ -88,6 +92,7 @@ public sealed class ToolProxyTransportIntegrationTests(PublishedContentWebApplic
             {
                 Content = multipart
             };
+            request.Headers.Host = "dorks-and-dice.com";
             request.Headers.Add(TestRoleAuthenticationHandler.RolesHeader, "Member");
             request.Headers.Add(ToolAuthenticationHeaders.Ticket, "browser-spoof");
 
