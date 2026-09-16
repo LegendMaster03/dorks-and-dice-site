@@ -145,12 +145,13 @@ public sealed class ToolHostApiController : ControllerBase
     /// identity headers. Authenticated requests retain the ticket/introspection contract.
     /// </summary>
     [AllowAnonymous]
+    [DisableFormValueModelBinding]
     [AcceptVerbs("GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")]
     [Route("upstream")]
     [Route("upstream/{**proxyPath}")]
     public async Task<IActionResult> Upstream(
-        string slug,
-        string? proxyPath,
+        [FromRoute] string slug,
+        [FromRoute] string? proxyPath,
         CancellationToken cancellationToken)
     {
         var tool = await ResolveAvailableToolAsync(slug, cancellationToken);
