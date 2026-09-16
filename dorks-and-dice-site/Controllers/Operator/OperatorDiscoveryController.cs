@@ -2,6 +2,7 @@ using System.Security.Claims;
 using dorks_and_dice_site.Framework.Operator;
 using dorks_and_dice_site.Models.Identity;
 using dorks_and_dice_site.Models.Operator;
+using dorks_and_dice_site.Models.Tools;
 using dorks_and_dice_site.Services.Identity;
 using dorks_and_dice_site.Services.Operator;
 using dorks_and_dice_site.Services.Tools;

@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using dorks_and_dice_site.Models.Identity;
 using dorks_and_dice_site.Models.Tools;
 using dorks_and_dice_site.Modes.DorksAndDice.Campaigns;
 using dorks_and_dice_site.Modes.DorksAndDice.Characters;
