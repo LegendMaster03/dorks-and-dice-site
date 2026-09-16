@@ -2,6 +2,7 @@ using System.Security.Claims;
 using dorks_and_dice_site.Models.Identity;
 using dorks_and_dice_site.Models.Tools;
 using dorks_and_dice_site.Modes.DorksAndDice.Campaigns;
+using dorks_and_dice_site.Modes.DorksAndDice.Characters;
 using dorks_and_dice_site.Services.Identity;
 using dorks_and_dice_site.Services.Site;
 using dorks_and_dice_site.Services.Tools;
@@ -16,15 +17,18 @@ public sealed class ToolHostApiController : ControllerBase
 {
     private readonly IToolRegistry _toolRegistry;
     private readonly ICampaignContextService _campaignContextService;
+    private readonly ICharacterService _characterService;
     private readonly IToolProxyService _toolProxyService;
 
     public ToolHostApiController(
         IToolRegistry toolRegistry,
         ICampaignContextService campaignContextService,
+        ICharacterService characterService,
         IToolProxyService toolProxyService)
     {
         _toolRegistry = toolRegistry;
         _campaignContextService = campaignContextService;
+        _characterService = characterService;
         _toolProxyService = toolProxyService;
     }
 
@@ -194,6 +198,10 @@ public sealed class ToolHostApiController : ControllerBase
         var campaigns = await _campaignContextService.GetAccessibleCampaignsAsync(
             nativeUserId,
             cancellationToken);
+        var characters = await BuildCharacterAccessProjectionAsync(
+            tool.Slug,
+            nativeUserId,
+            cancellationToken);
         var authenticationContext = new ToolHostAuthenticationContext
         {
             ToolSlug = tool.Slug,
@@ -207,7 +215,8 @@ public sealed class ToolHostApiController : ControllerBase
                     Name = campaign.Name,
                     Role = ToToolHostRole(role)
                 }))
-                .ToArray()
+                .ToArray(),
+            Characters = characters
         };
         var ticket = ToolAuthenticationTickets.Issue(authenticationContext);
         var introspectionPath = $"/tool-host/{tool.Slug}/api/introspect";
@@ -249,6 +258,36 @@ public sealed class ToolHostApiController : ControllerBase
 
         return Ok(context);
     }
+
+    private async Task<IReadOnlyList<ToolHostCharacterAccessSummary>?> BuildCharacterAccessProjectionAsync(
+        string toolSlug,
+        Guid userId,
+        CancellationToken cancellationToken)
+    {
+        if (!string.Equals(toolSlug, CharacterToolContract.Slug, StringComparison.Ordinal))
+        {
+            return null;
+        }
+
+        var characters = await _characterService.GetForOwnerIncludingArchivedAsync(
+            userId,
+            cancellationToken);
+        return characters.Select(ToToolHostSummary).ToArray();
+    }
+
+    private static ToolHostCharacterAccessSummary ToToolHostSummary(Character character) => new()
+    {
+        Id = character.Id,
+        Name = character.Name,
+        Status = character.Status.ToString(),
+        ArchivedAt = character.ArchivedAt,
+        CampaignIds = character.CampaignAssociations
+            .Where(association => association.Status == CampaignCharacterAssociationStatus.Active)
+            .Select(association => association.CampaignId)
+            .Distinct()
+            .OrderBy(campaignId => campaignId)
+            .ToArray()
+    };
 
     private static ToolHostCampaignAccessSummary ToToolHostSummary(CampaignAccessContext campaign) => new()
     {

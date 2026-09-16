@@ -49,9 +49,30 @@ A successful introspection returns the authoritative `ToolHostAuthenticationCont
 - active site mode;
 - stable user ID and display name;
 - effective global roles;
-- active campaign memberships and campaign roles.
+- active campaign memberships and campaign roles;
+- optional Tool-specific authorization projections supplied by the Site.
 
 Authentication contract version 1 represents one campaign role per campaign entry. Native campaign memberships may contain both `DM` and `Player`; in that case the host emits one authentication-context entry per role so existing Tool backends can continue authorizing by `(campaignId, role)` without losing either grant.
+
+Version 1 also permits backward-compatible additive Tool-specific projections. Existing Tools that do not need a projection continue receiving their prior payload shape.
+
+### Character Sheet owner authorization projection
+
+For the `character-sheet` Tool, the Site adds a `characters` collection to the backend authentication context. Each entry contains:
+
+- `id`: the canonical Site `CharacterId`;
+- `name`: the current Site-owned Character name;
+- `status`: the current Site Character lifecycle status (`Active` or `Archived`);
+- `archivedAt`: the Site archive timestamp when archived, otherwise `null`;
+- `campaignIds`: the Character's current active Site campaign associations.
+
+This projection contains only Characters canonically owned by the authenticated Site account. Archived owned Characters remain present so Character Sheet can distinguish owned-but-archived Characters from Characters that do not exist or are not owned by the account. Archiving a Character ends its active campaign associations, so an archived Character normally has an empty `campaignIds` collection unless the Site domain rules later establish another active association state.
+
+`campaignIds` is a current authorization snapshot, not Character association history. Ended or historical associations are not included; ownership of that history remains with the Site.
+
+Campaign authority does not broaden Character ownership. A DM does not receive another player's Character in this projection merely because that Character is associated with a campaign the DM can administer. Cross-owner DM access to detailed Character Sheet data requires a separate authorization contract.
+
+Character Sheet may use this projection to authorize the current request, but it must not persist the projection as its authoritative Character ownership record. The Site remains authoritative for Character identity, account ownership, lifecycle, name, and campaign association.
 
 Tickets expire after 30 seconds, are scoped to one Tool slug, and are consumed on redemption. They are process-local because the site currently runs as one application instance. A future multi-instance deployment must replace the ticket store with shared ephemeral storage while preserving the contract.
 
