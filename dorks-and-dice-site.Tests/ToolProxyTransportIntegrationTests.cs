@@ -70,7 +70,7 @@ public sealed class ToolProxyTransportIntegrationTests(PublishedContentWebApplic
         using var host = factory.WithWebHostBuilder(builder => builder.ConfigureServices(services =>
             services.AddHttpClient(ToolHttpClientNames.Proxy)
                 .ConfigurePrimaryHttpMessageHandler(() => new AsyncHandler(capture.HandleAsync))));
-        host.UseKestrel(0);
+        host.UseKestrel(options => options.Listen(IPAddress.Loopback, 0));
         host.StartServer();
         var tool = await RegisterAsync(host);
 
