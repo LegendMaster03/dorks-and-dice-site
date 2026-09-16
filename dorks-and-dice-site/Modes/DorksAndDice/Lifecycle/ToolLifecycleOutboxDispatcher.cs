@@ -24,12 +24,20 @@ public sealed class ToolLifecycleOutboxDispatcher(
     public async Task<int> DispatchDueAsync(CancellationToken cancellationToken = default)
     {
         var now = timeProvider.GetUtcNow();
-        var pending = await dbContext.ToolLifecycleOutboxEvents
-            .Where(item => item.DeliveredAt == null && item.NextAttemptAt <= now)
+
+        // SQLite does not translate DateTimeOffset ordering/comparison. Keep the durable shape
+        // provider-neutral by loading only undelivered rows from the database, then apply the
+        // due-time comparison and bounded batch selection in memory. PostgreSQL uses the same
+        // code path so retry semantics stay identical across supported providers.
+        var undelivered = await dbContext.ToolLifecycleOutboxEvents
+            .Where(item => item.DeliveredAt == null)
+            .ToListAsync(cancellationToken);
+        var pending = undelivered
+            .Where(item => item.NextAttemptAt <= now)
             .OrderBy(item => item.NextAttemptAt)
             .ThenBy(item => item.OccurredAt)
             .Take(BatchSize)
-            .ToListAsync(cancellationToken);
+            .ToList();
 
         foreach (var lifecycleEvent in pending)
         {
