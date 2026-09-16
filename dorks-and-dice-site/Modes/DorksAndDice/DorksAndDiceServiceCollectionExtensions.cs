@@ -69,7 +69,9 @@ public static class DorksAndDiceServiceCollectionExtensions
         services.AddScoped<ICampaignContextService, CampaignContextService>();
         services.AddScoped<ICharacterService, CharacterService>();
         services.AddScoped<IDorksAndDiceDeletionService, DorksAndDiceDeletionService>();
+        services.AddScoped<IToolLifecycleOutboxDispatcher, ToolLifecycleOutboxDispatcher>();
         services.AddHostedService<DorksAndDiceStorageInitializer>();
+        services.AddHostedService<ToolLifecycleDeliveryWorker>();
         return services;
     }
 

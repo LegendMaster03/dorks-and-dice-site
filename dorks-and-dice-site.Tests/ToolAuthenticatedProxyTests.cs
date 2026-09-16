@@ -27,6 +27,8 @@ public sealed class ToolAuthenticatedProxyTests
         context.Request.Host = new HostString("dorks-and-dice.com");
         context.Request.Headers[ToolAuthenticationHeaders.Ticket] = "browser-spoof";
         context.Request.Headers[ToolAuthenticationHeaders.IntrospectionPath] = "/spoofed";
+        context.Request.Headers[ToolLifecycleHeaders.Ticket] = "browser-lifecycle-spoof";
+        context.Request.Headers[ToolLifecycleHeaders.IntrospectionPath] = "/spoofed-lifecycle";
         context.Response.Body = new MemoryStream();
 
         await service.ProxyAuthenticatedAsync(
@@ -43,7 +45,34 @@ public sealed class ToolAuthenticatedProxyTests
         Assert.Equal(
             "/tool-host/rules-core/api/introspect",
             captured.Headers.GetValues(ToolAuthenticationHeaders.IntrospectionPath).Single());
+        Assert.False(captured.Headers.Contains(ToolLifecycleHeaders.Ticket));
+        Assert.False(captured.Headers.Contains(ToolLifecycleHeaders.IntrospectionPath));
         Assert.Equal("no-store", context.Response.Headers.CacheControl.ToString());
+    }
+
+    [Fact]
+    public async Task AnonymousProxyStripsBrowserSuppliedLifecycleHeaders()
+    {
+        HttpRequestMessage? captured = null;
+        var handler = new RecordingHandler(request =>
+        {
+            captured = request;
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK));
+        });
+        var service = CreateService(handler);
+        var context = new DefaultHttpContext();
+        context.Request.Method = HttpMethods.Get;
+        context.Request.Scheme = "https";
+        context.Request.Host = new HostString("dorks-and-dice.com");
+        context.Request.Headers[ToolLifecycleHeaders.Ticket] = "browser-lifecycle-spoof";
+        context.Request.Headers[ToolLifecycleHeaders.IntrospectionPath] = "/spoofed-lifecycle";
+        context.Response.Body = new MemoryStream();
+
+        await service.ProxyAsync(context, Tool(), "/api/rules");
+
+        Assert.NotNull(captured);
+        Assert.False(captured!.Headers.Contains(ToolLifecycleHeaders.Ticket));
+        Assert.False(captured.Headers.Contains(ToolLifecycleHeaders.IntrospectionPath));
     }
 
     private static ToolProxyService CreateService(HttpMessageHandler handler)

@@ -196,7 +196,8 @@ public sealed class ToolProxyService : IToolProxyService
 
     private static bool IsBlockedRequestHeader(string headerName) =>
         BlockedRequestHeaders.Contains(headerName)
-        || headerName.StartsWith(ToolAuthenticationHeaders.ReservedPrefix, StringComparison.OrdinalIgnoreCase);
+        || headerName.StartsWith(ToolAuthenticationHeaders.ReservedPrefix, StringComparison.OrdinalIgnoreCase)
+        || headerName.StartsWith(ToolLifecycleHeaders.ReservedPrefix, StringComparison.OrdinalIgnoreCase);
 
     private static void CopyResponseHeaders(HttpResponse response, HttpResponseMessage upstreamResponse)
     {
