@@ -4,7 +4,10 @@ using dorks_and_dice_site.Models.Site;
 using dorks_and_dice_site.Models.Tools;
 using dorks_and_dice_site.Services.Site;
 using dorks_and_dice_site.Services.Tools;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Hosting.Server;
+using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
@@ -67,12 +70,12 @@ public sealed class ToolProxyTransportIntegrationTests(PublishedContentWebApplic
     public async Task AuthenticatedEmbeddedMultipartUploadAboveOldKestrelLimitStreamsCompletePayload()
     {
         var capture = new MultipartCapture();
-        using var host = factory.WithWebHostBuilder(builder => builder.ConfigureServices(services =>
-            services.AddHttpClient(ToolHttpClientNames.Proxy)
-                .ConfigurePrimaryHttpMessageHandler(() => new AsyncHandler(capture.HandleAsync))));
+        await using var upstream = await StartMultipartCaptureUpstreamAsync(capture);
+        var upstreamBaseUrl = GetServerAddress(upstream);
+        using var host = factory.WithWebHostBuilder(_ => { });
         host.UseKestrel(options => options.Listen(IPAddress.Loopback, 0));
         host.StartServer();
-        var tool = await RegisterAsync(host);
+        var tool = await RegisterAsync(host, upstreamBaseUrl);
 
         try
         {
@@ -270,7 +273,30 @@ public sealed class ToolProxyTransportIntegrationTests(PublishedContentWebApplic
             cancellation.Token));
     }
 
-    private static async Task<ToolRegistration> RegisterAsync(WebApplicationFactory<Program> host)
+    private static async Task<WebApplication> StartMultipartCaptureUpstreamAsync(MultipartCapture capture)
+    {
+        var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+        {
+            EnvironmentName = "Testing"
+        });
+        builder.WebHost.ConfigureKestrel(options => options.Listen(IPAddress.Loopback, 0));
+
+        var app = builder.Build();
+        app.MapPost("/{**proxyPath}", capture.HandleAsync);
+        await app.StartAsync();
+        return app;
+    }
+
+    private static string GetServerAddress(WebApplication app)
+    {
+        var server = app.Services.GetRequiredService<IServer>();
+        var addresses = server.Features.Get<IServerAddressesFeature>();
+        return Assert.Single(addresses!.Addresses);
+    }
+
+    private static async Task<ToolRegistration> RegisterAsync(
+        WebApplicationFactory<Program> host,
+        string upstreamBaseUrl = "http://transport-test:8080")
     {
         var tool = new ToolRegistration
         {
@@ -278,7 +304,7 @@ public sealed class ToolProxyTransportIntegrationTests(PublishedContentWebApplic
             Slug = $"transport-{Guid.NewGuid():N}",
             DisplayName = "Transport Test Tool",
             IntegrationType = ToolIntegrationType.EmbeddedModule,
-            UpstreamBaseUrl = "http://transport-test:8080",
+            UpstreamBaseUrl = upstreamBaseUrl,
             FrontendEntryPoint = "/app.js",
             Modes = [SiteModeValues.DorksAndDiceModeValue],
             AllowAnonymous = false,
@@ -316,81 +342,40 @@ public sealed class ToolProxyTransportIntegrationTests(PublishedContentWebApplic
         public long BodyBytes { get; private set; }
         public bool TrustedTicketWasInjected { get; private set; }
 
-        public async Task<HttpResponseMessage> HandleAsync(
-            HttpRequestMessage request,
-            CancellationToken cancellationToken)
+        public async Task HandleAsync(HttpContext context)
         {
-            Method = request.Method;
-            var content = Assert.IsAssignableFrom<HttpContent>(request.Content);
-            MediaType = content.Headers.ContentType?.MediaType;
-            Boundary = content.Headers.ContentType?.Parameters
-                ?.FirstOrDefault(parameter => string.Equals(parameter.Name, "boundary", StringComparison.OrdinalIgnoreCase))
-                ?.Value
-                ?.Trim('"');
-            ContentLength = content.Headers.ContentLength;
-            TrustedTicketWasInjected = request.Headers.TryGetValues(ToolAuthenticationHeaders.Ticket, out var ticketValues)
-                && ticketValues.Single() != "browser-spoof";
-
-            await using var counter = new CountingWriteStream();
-            await content.CopyToAsync(counter, cancellationToken);
-            BodyBytes = counter.BytesWritten;
-
-            return new HttpResponseMessage(HttpStatusCode.Created)
+            Method = new HttpMethod(context.Request.Method);
+            if (MediaTypeHeaderValue.TryParse(context.Request.ContentType, out var contentType))
             {
-                Content = new StringContent("accepted")
-            };
+                MediaType = contentType.MediaType;
+                Boundary = contentType.Parameters
+                    .FirstOrDefault(parameter => string.Equals(parameter.Name, "boundary", StringComparison.OrdinalIgnoreCase))
+                    ?.Value
+                    ?.Trim('"');
+            }
+
+            ContentLength = context.Request.ContentLength;
+            TrustedTicketWasInjected = context.Request.Headers.TryGetValue(ToolAuthenticationHeaders.Ticket, out var ticketValues)
+                && ticketValues.Count == 1
+                && ticketValues[0] != "browser-spoof";
+
+            var buffer = new byte[64 * 1024];
+            long total = 0;
+            while (true)
+            {
+                var read = await context.Request.Body.ReadAsync(buffer, context.RequestAborted);
+                if (read == 0)
+                {
+                    break;
+                }
+
+                total += read;
+            }
+
+            BodyBytes = total;
+            context.Response.StatusCode = StatusCodes.Status201Created;
+            await context.Response.WriteAsync("accepted", context.RequestAborted);
         }
-    }
-
-    private sealed class CountingWriteStream : Stream
-    {
-        public long BytesWritten { get; private set; }
-
-        public override bool CanRead => false;
-        public override bool CanSeek => false;
-        public override bool CanWrite => true;
-        public override long Length => BytesWritten;
-        public override long Position
-        {
-            get => BytesWritten;
-            set => throw new NotSupportedException();
-        }
-
-        public override void Flush()
-        {
-        }
-
-        public override Task FlushAsync(CancellationToken cancellationToken) => Task.CompletedTask;
-
-        public override void Write(byte[] buffer, int offset, int count) => BytesWritten += count;
-
-        public override void Write(ReadOnlySpan<byte> buffer) => BytesWritten += buffer.Length;
-
-        public override ValueTask WriteAsync(
-            ReadOnlyMemory<byte> buffer,
-            CancellationToken cancellationToken = default)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            BytesWritten += buffer.Length;
-            return ValueTask.CompletedTask;
-        }
-
-        public override Task WriteAsync(
-            byte[] buffer,
-            int offset,
-            int count,
-            CancellationToken cancellationToken)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            BytesWritten += count;
-            return Task.CompletedTask;
-        }
-
-        public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException();
-
-        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
-
-        public override void SetLength(long value) => throw new NotSupportedException();
     }
 
     private sealed class GeneratedContent(long length, bool reportLength) : HttpContent
