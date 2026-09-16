@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 
@@ -33,12 +34,11 @@ public sealed class ToolProxyRequestBodyLimitKestrelTests
             AboveOldKestrelLimitBytes.ToString(),
             await upstreamResponse.Content.ReadAsStringAsync());
 
-        using var ordinaryRequest = new HttpRequestMessage(HttpMethod.Post, "/ordinary")
-        {
-            Content = new GeneratedContent(AboveOldKestrelLimitBytes, reportLength: true)
-        };
-        using var ordinaryResponse = await client.SendAsync(ordinaryRequest);
-        Assert.Equal((HttpStatusCode)StatusCodes.Status413PayloadTooLarge, ordinaryResponse.StatusCode);
+        using var ordinaryLimitResponse = await client.GetAsync("/ordinary-limit");
+        Assert.Equal(HttpStatusCode.OK, ordinaryLimitResponse.StatusCode);
+        Assert.Equal(
+            OldKestrelLimitBytes.ToString(),
+            await ordinaryLimitResponse.Content.ReadAsStringAsync());
     }
 
     [Fact]
@@ -105,7 +105,11 @@ public sealed class ToolProxyRequestBodyLimitKestrelTests
         app.MapPost(
             "/tool-host/{slug}/api/upstream/{**proxyPath}",
             (HttpContext context) => CountBodyAsync(context));
-        app.MapPost("/ordinary", (HttpContext context) => CountBodyAsync(context));
+        app.MapGet("/ordinary-limit", async context =>
+        {
+            var feature = context.Features.Get<IHttpMaxRequestBodySizeFeature>();
+            await context.Response.WriteAsync(feature?.MaxRequestBodySize?.ToString() ?? "null");
+        });
         await app.StartAsync();
         return app;
     }

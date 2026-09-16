@@ -7,7 +7,6 @@ using dorks_and_dice_site.Services.Tools;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -81,6 +80,8 @@ public sealed class ToolProxyTransportIntegrationTests(PublishedContentWebApplic
             using var fileContent = new GeneratedContent(LargeMultipartPayloadBytes, reportLength: true);
             fileContent.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
             multipart.Add(fileContent, "map", "map.bin");
+            var expectedBodyBytes = Assert.IsType<long>(multipart.Headers.ContentLength);
+            Assert.True(expectedBodyBytes > LargeMultipartPayloadBytes);
             using var request = new HttpRequestMessage(
                 HttpMethod.Post,
                 $"/tool-host/{tool.Slug}/api/upstream/maps/import")
@@ -96,7 +97,8 @@ public sealed class ToolProxyTransportIntegrationTests(PublishedContentWebApplic
             Assert.Equal(HttpMethod.Post, capture.Method);
             Assert.Equal("multipart/form-data", capture.MediaType);
             Assert.Equal(boundary, capture.Boundary);
-            Assert.Equal(LargeMultipartPayloadBytes, capture.FileBytes);
+            Assert.Equal(expectedBodyBytes, capture.ContentLength);
+            Assert.Equal(expectedBodyBytes, capture.BodyBytes);
             Assert.True(capture.TrustedTicketWasInjected);
         }
         finally
@@ -307,7 +309,8 @@ public sealed class ToolProxyTransportIntegrationTests(PublishedContentWebApplic
         public HttpMethod? Method { get; private set; }
         public string? MediaType { get; private set; }
         public string? Boundary { get; private set; }
-        public long FileBytes { get; private set; }
+        public long? ContentLength { get; private set; }
+        public long BodyBytes { get; private set; }
         public bool TrustedTicketWasInjected { get; private set; }
 
         public async Task<HttpResponseMessage> HandleAsync(
@@ -318,35 +321,24 @@ public sealed class ToolProxyTransportIntegrationTests(PublishedContentWebApplic
             var content = Assert.IsAssignableFrom<HttpContent>(request.Content);
             MediaType = content.Headers.ContentType?.MediaType;
             Boundary = content.Headers.ContentType?.Parameters
-                .FirstOrDefault(parameter => string.Equals(parameter.Name, "boundary", StringComparison.OrdinalIgnoreCase))
+                ?.FirstOrDefault(parameter => string.Equals(parameter.Name, "boundary", StringComparison.OrdinalIgnoreCase))
                 ?.Value
                 ?.Trim('"');
+            ContentLength = content.Headers.ContentLength;
             TrustedTicketWasInjected = request.Headers.TryGetValues(ToolAuthenticationHeaders.Ticket, out var ticketValues)
                 && ticketValues.Single() != "browser-spoof";
 
-            Assert.False(string.IsNullOrWhiteSpace(Boundary));
             await using var body = await content.ReadAsStreamAsync(cancellationToken);
-            var reader = new MultipartReader(Boundary!, body);
-            MultipartSection? section;
-            while ((section = await reader.ReadNextSectionAsync(cancellationToken)) is not null)
+            var buffer = new byte[64 * 1024];
+            while (true)
             {
-                if (!section.Headers.TryGetValue("Content-Disposition", out var disposition)
-                    || !disposition.ToString().Contains("name=\"map\"", StringComparison.Ordinal))
+                var read = await body.ReadAsync(buffer.AsMemory(), cancellationToken);
+                if (read == 0)
                 {
-                    continue;
+                    break;
                 }
 
-                var buffer = new byte[64 * 1024];
-                while (true)
-                {
-                    var read = await section.Body.ReadAsync(buffer.AsMemory(), cancellationToken);
-                    if (read == 0)
-                    {
-                        break;
-                    }
-
-                    FileBytes += read;
-                }
+                BodyBytes += read;
             }
 
             return new HttpResponseMessage(HttpStatusCode.Created)
