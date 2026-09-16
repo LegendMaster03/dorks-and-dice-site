@@ -71,14 +71,12 @@ public sealed class ToolProxyTransportIntegrationTests(PublishedContentWebApplic
             services.AddHttpClient(ToolHttpClientNames.Proxy)
                 .ConfigurePrimaryHttpMessageHandler(() => new AsyncHandler(capture.HandleAsync))));
         host.UseKestrel(0);
+        host.StartServer();
         var tool = await RegisterAsync(host);
 
         try
         {
-            using var client = host.CreateClient(new WebApplicationFactoryClientOptions
-            {
-                AllowAutoRedirect = false
-            });
+            using var client = host.CreateClient();
             const string boundary = "dorks-large-upload-boundary";
             using var multipart = new MultipartFormDataContent(boundary);
             using var fileContent = new GeneratedContent(LargeMultipartPayloadBytes, reportLength: true);
