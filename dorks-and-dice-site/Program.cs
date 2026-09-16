@@ -17,6 +17,7 @@ using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -39,6 +40,16 @@ builder.Services.AddSingleton<IToolUpstreamPolicy, ToolUpstreamPolicy>();
 builder.Services.AddSingleton<IToolHealthService, ToolHealthService>();
 builder.Services.AddSingleton<IToolProxyService, ToolProxyService>();
 builder.Services
+    .AddOptions<ToolProxyOptions>()
+    .Bind(builder.Configuration.GetSection(ToolProxyOptions.SectionName))
+    .Validate(
+        options => options.MaxRequestBodyBytes > 0,
+        "ToolHosting:Proxy:MaxRequestBodyBytes must be greater than zero.")
+    .Validate(
+        options => options.RequestTimeout > TimeSpan.Zero,
+        "ToolHosting:Proxy:RequestTimeout must be greater than zero.")
+    .ValidateOnStart();
+builder.Services
     .AddHttpClient(ToolHttpClientNames.Hosting, client =>
     {
         client.Timeout = TimeSpan.FromSeconds(3);
@@ -49,9 +60,12 @@ builder.Services
         UseCookies = false
     });
 builder.Services
-    .AddHttpClient(ToolHttpClientNames.Proxy, client =>
+    .AddHttpClient(ToolHttpClientNames.Proxy, (services, client) =>
     {
-        client.Timeout = TimeSpan.FromSeconds(30);
+        client.Timeout = services
+            .GetRequiredService<IOptions<ToolProxyOptions>>()
+            .Value
+            .RequestTimeout;
     })
     .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
     {
@@ -318,6 +332,7 @@ app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseMiddleware<SiteModeMiddleware>();
 app.UseRouting();
+app.UseMiddleware<ToolProxyRequestBodyLimitMiddleware>();
 app.UseStatusCodePagesWithReExecute("/Home/NotFoundPage");
 app.UseRateLimiter();
 app.UseAuthorization();

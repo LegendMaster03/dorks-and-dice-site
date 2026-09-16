@@ -145,6 +145,15 @@ public sealed class ToolProxyService : IToolProxyService
         {
             context.Response.StatusCode = StatusCodes.Status504GatewayTimeout;
         }
+        catch (HttpRequestException exception) when (IsRequestBodyTooLarge(exception))
+        {
+            context.Response.StatusCode = StatusCodes.Status413PayloadTooLarge;
+        }
+        catch (BadHttpRequestException exception)
+            when (exception.StatusCode == StatusCodes.Status413PayloadTooLarge)
+        {
+            context.Response.StatusCode = StatusCodes.Status413PayloadTooLarge;
+        }
         catch (HttpRequestException)
         {
             context.Response.StatusCode = StatusCodes.Status502BadGateway;
@@ -215,6 +224,20 @@ public sealed class ToolProxyService : IToolProxyService
         }
 
         response.Headers.Remove("transfer-encoding");
+    }
+
+    private static bool IsRequestBodyTooLarge(Exception exception)
+    {
+        for (Exception? current = exception; current is not null; current = current.InnerException)
+        {
+            if (current is BadHttpRequestException badRequest
+                && badRequest.StatusCode == StatusCodes.Status413PayloadTooLarge)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static HashSet<string> ConnectionHeaderNames(IEnumerable<string> values) =>

@@ -73,6 +73,19 @@ and selected representation headers, including Content-Encoding and Vary; they a
 general conditional-request proxy. Upstream redirects are rejected. Module/health
 requests have a three-second timeout until response headers arrive.
 
+Embedded Module backend traffic uses
+`/tool-host/{slug}/api/upstream` and `/tool-host/{slug}/api/upstream/{**proxyPath}`. Request
+bodies are forwarded as streams; the Site does not JSON/base64-wrap or fully buffer them.
+`ToolHosting:Proxy:MaxRequestBodyBytes` controls the transport ceiling for these upstream
+routes only and defaults to 134217728 bytes (128 MiB). The per-request Kestrel body-size
+feature is raised before the request body is consumed, so both known-length and streamed
+or chunked bodies remain bounded. Bodies that exceed the configured Site ceiling receive
+413 Payload Too Large rather than being reported as an upstream 502. Ordinary Site routes
+and Proxied Application routes retain their existing server request-body limits.
+Application-specific upload limits, media rules, parsing, and validation remain the Tool
+backend's responsibility; raising the Site transport ceiling does not require any Tool to
+accept bodies up to that size.
+
 Proxied Application: the tool owns the response/page subtree under /tools/{slug}/.
 GET/HEAD on the root without its slash receive a method-preserving 307 with the query
 intact. The canonical root does not redirect. Relative links resolve beneath the slash.
@@ -85,8 +98,10 @@ bodies detected by length, Transfer-Encoding, or POST/PUT/PATCH. Exotic body-bea
 HTTP/2 GET/DELETE/OPTIONS without a length are not an advertised contract. HEAD suppresses
 the response body. Safe end-to-end headers pass through; hop-by-hop headers, including
 Connection-nominated fields, are removed. Bodies are not transformed. Content-Length,
-Content-Encoding, Vary, validators, and Cache-Control are preserved when provided.
-Conditional 304 responses pass through without a body.
+Content-Type, Content-Encoding, Content-Disposition, Content-Range, Vary, validators, and
+Cache-Control are preserved when provided. Conditional 304 responses pass through without
+a body. Arbitrary binary response bytes are stream-copied and are not decoded as text or
+transformed into JSON.
 
 Other 3xx responses produce 502: there is no redirect following or Location rewriting.
 Location on non-3xx responses passes through, so upstream applications must generate
@@ -94,12 +109,16 @@ public-prefix-safe links themselves. Root-relative links, absolute URLs, HTML, a
 JavaScript are not rewritten. Cookies and tool-owned cookie sessions are unsupported.
 WebSocket upgrades are unsupported.
 
-Responses use ResponseHeadersRead and stream-copy rather than full buffering. The
-30-second proxy timeout covers obtaining headers, not the entire response stream.
-There is no explicit SSE flush/heartbeat contract, stream idle timeout, WebSocket tunnel,
-or recovery guarantee after response bytes are committed. Treat SSE and indefinite
-responses as unsupported for this provisional proxy. Transport failure before headers
-maps to 502; a pre-header timeout maps to 504. Mid-stream failures may abort/error the
+Responses use ResponseHeadersRead and stream-copy rather than full buffering.
+`ToolHosting:Proxy:RequestTimeout` controls proxy forwarding and defaults to five minutes.
+The timeout covers sending the request body and waiting for upstream response headers; it
+does not impose a whole-body deadline on the streamed response after headers arrive.
+The incoming request cancellation token is also passed to the upstream send and response
+copy, so a disconnected browser cancels the corresponding upstream work. A forwarding
+timeout before headers maps to 504. There is no explicit SSE flush/heartbeat contract,
+stream idle timeout, WebSocket tunnel, or recovery guarantee after response bytes are
+committed. Treat SSE and indefinite responses as unsupported for this provisional proxy.
+Transport failure before headers maps to 502. Mid-stream failures may abort/error the
 request rather than produce a clean replacement error page.
 
 There is no proxy cache. Upstream cache policy is passed through; deployments must avoid
