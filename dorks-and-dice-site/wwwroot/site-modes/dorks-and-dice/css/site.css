@@ -171,6 +171,8 @@ body {
   max-width: 72rem;
   font-size: 0.8rem;
   line-height: 1.45;
+  white-space: normal;
+  overflow-wrap: break-word;
 }
 
 @media (min-width: 768px) {
