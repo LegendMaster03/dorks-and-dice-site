@@ -50,7 +50,7 @@ public sealed class ToolProxyRequestBodyLimitMiddleware
         }
     }
 
-    internal static bool IsToolHostUpstreamRequest(PathString path)
+    public static bool IsToolHostUpstreamRequest(PathString path)
     {
         var value = path.Value;
         if (string.IsNullOrWhiteSpace(value))

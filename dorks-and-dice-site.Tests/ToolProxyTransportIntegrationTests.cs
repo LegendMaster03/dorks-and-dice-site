@@ -315,17 +315,17 @@ public sealed class ToolProxyTransportIntegrationTests(PublishedContentWebApplic
             CancellationToken cancellationToken)
         {
             Method = request.Method;
-            MediaType = request.Content?.Headers.ContentType?.MediaType;
-            Boundary = request.Content?.Headers.ContentType?.Parameters
+            var content = Assert.IsAssignableFrom<HttpContent>(request.Content);
+            MediaType = content.Headers.ContentType?.MediaType;
+            Boundary = content.Headers.ContentType?.Parameters
                 .FirstOrDefault(parameter => string.Equals(parameter.Name, "boundary", StringComparison.OrdinalIgnoreCase))
                 ?.Value
                 ?.Trim('"');
             TrustedTicketWasInjected = request.Headers.TryGetValues(ToolAuthenticationHeaders.Ticket, out var ticketValues)
                 && ticketValues.Single() != "browser-spoof";
 
-            Assert.NotNull(request.Content);
             Assert.False(string.IsNullOrWhiteSpace(Boundary));
-            await using var body = await request.Content.ReadAsStreamAsync(cancellationToken);
+            await using var body = await content.ReadAsStreamAsync(cancellationToken);
             var reader = new MultipartReader(Boundary!, body);
             MultipartSection? section;
             while ((section = await reader.ReadNextSectionAsync(cancellationToken)) is not null)
