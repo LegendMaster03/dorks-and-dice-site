@@ -63,46 +63,8 @@ public sealed class OperatorDiscoveryController(
 
     [HttpGet("openapi.json")]
     [OperatorCapability("operator.openapi")]
-    public IActionResult OpenApi()
-    {
-        var paths = capabilities.GetSiteCapabilities()
-            .GroupBy(capability => capability.Route, StringComparer.Ordinal)
-            .ToDictionary(
-                group => group.Key,
-                group => (object)group.ToDictionary(
-                    capability => capability.Method.ToLowerInvariant(),
-                    capability => (object)new
-                    {
-                        operationId = capability.Name,
-                        summary = capability.Description,
-                        security = new[] { new Dictionary<string, string[]> { ["OperatorBearer"] = [] } }
-                    },
-                    StringComparer.Ordinal),
-                StringComparer.Ordinal);
-
-        return Ok(new
-        {
-            openapi = "3.1.0",
-            info = new
-            {
-                title = "Dorks & Dice Operator API",
-                version = "1.0"
-            },
-            paths,
-            components = new
-            {
-                securitySchemes = new Dictionary<string, object>
-                {
-                    ["OperatorBearer"] = new
-                    {
-                        type = "http",
-                        scheme = "bearer",
-                        bearerFormat = "ddop_v1"
-                    }
-                }
-            }
-        });
-    }
+    public IActionResult OpenApi() =>
+        Ok(OperatorOpenApiDocument.Create(capabilities.GetSiteCapabilities()));
 
     private static IReadOnlyList<string> EffectiveGlobalRoles(ClaimsPrincipal principal) =>
         AccountRoleHierarchy.GlobalRoleNames

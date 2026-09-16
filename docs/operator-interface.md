@@ -10,6 +10,34 @@ Service principals have no password login path. Operator credentials are separat
 
 Operator credentials are stored as a credential ID plus SHA-256 hash of the random secret. The plaintext token is returned only when the credential is created. Provisioning is performed through ASP.NET Identity (`UserManager` and `RoleManager`), not direct inserts into Identity tables.
 
+## Provisioning and credential lifecycle
+
+Create a service principal with explicit existing Site roles:
+
+```text
+dotnet dorks-and-dice-site.dll operator create \
+  --display-name "ChatGPT Operator" \
+  --role "Global Editor" \
+  --role "Rules Lawyer" \
+  --credential-name "initial"
+```
+
+The command creates no password and prints the plaintext Operator token once. Store that token through the deployment secret mechanism used by the client; do not place it in source control or application configuration committed to the repository.
+
+Rotation is intentionally two-step so the old credential remains usable until the replacement has been deployed and verified:
+
+```text
+dotnet dorks-and-dice-site.dll operator credential create \
+  --user-id <service-principal-guid> \
+  --credential-name "rotation-2026-09"
+
+# After the replacement token is installed and verified:
+dotnet dorks-and-dice-site.dll operator credential revoke \
+  --credential-id <old-credential-guid>
+```
+
+`--expires-at <ISO-8601>` may be supplied when creating either the initial or replacement credential. Revocation is immediate for subsequent requests. Credentials are independently revocable so rotation does not require replacing the Site account or changing its roles.
+
 ## Domain-service reuse
 
 Operator capabilities are adapters over existing services:
@@ -37,6 +65,12 @@ ddop_v1_<credential-id>_<random-secret>
 Only the random-secret hash is persisted. Successful authentication loads the owning `ApplicationUser` and creates the principal through `IUserClaimsPrincipalFactory<ApplicationUser>`, preserving the existing global-role hierarchy, scoped roles, and claims behavior.
 
 Every authenticated Operator action is recorded without request or response bodies. The audit record contains the invocation ID, Site user ID, credential ID, client/credential name, capability, resource path, start/completion timestamps, and outcome. Restricted source material and other response payloads are intentionally excluded.
+
+## Discovery and schemas
+
+`GET /operator/v1/capabilities` returns Site capability descriptors plus participating Tools. Site descriptors include the HTTP method, route, description, request schema name when applicable, response schema name when applicable, and normal success status code.
+
+`GET /operator/v1/openapi.json` returns the canonical OpenAPI 3.1 description. It declares the `OperatorBearer` security scheme, path parameters, request bodies, response objects, and reusable JSON schemas for the Site-owned Operator contract. Tool-specific request and response payloads remain defined by each Tool manifest rather than being invented by the Site gateway.
 
 ## Tool Operator Contract v1
 
@@ -66,7 +100,7 @@ Tools that do not opt into Operator Contract v1 remain unchanged.
 
 ## Protocol and adapters
 
-HTTPS/JSON is canonical. `/operator/v1/openapi.json` describes the Site Operator surface. AI- or agent-specific protocols are adapters only; MCP, OpenAI/ChatGPT integration, local models, and future clients must call the same domain surface rather than owning business logic.
+HTTPS/JSON is canonical. AI- or agent-specific protocols are adapters only; MCP, OpenAI/ChatGPT integration, local models, and future clients must call the same domain surface rather than owning business logic.
 
 ## Browser/runtime boundary
 

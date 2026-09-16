@@ -19,75 +19,26 @@ public sealed class OperatorProvisioningHostedService(
 
         try
         {
-            if (args.Length < 2 || !string.Equals(args[1], "create", StringComparison.OrdinalIgnoreCase))
-            {
-                throw new InvalidOperationException("Supported command: operator create --display-name <name> --role <role> [--role <role> ...] [--credential-name <name>] [--expires-at <ISO-8601>].");
-            }
-
-            var options = ParseCreateOptions(args[2..]);
             await using var scope = services.CreateAsyncScope();
-            var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
-            var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole<Guid>>>();
-            var credentials = scope.ServiceProvider.GetRequiredService<IOperatorCredentialService>();
-
-            var unknownRoles = options.Roles
-                .Where(role => !AccountRoleHierarchy.GlobalRoleNames.Contains(role, StringComparer.Ordinal))
-                .ToArray();
-            if (unknownRoles.Length > 0)
+            if (args.Length >= 2 && string.Equals(args[1], "create", StringComparison.OrdinalIgnoreCase))
             {
-                throw new InvalidOperationException($"Unknown global role(s): {string.Join(", ", unknownRoles)}.");
+                await CreateServicePrincipalAsync(scope.ServiceProvider, args[2..], cancellationToken);
             }
-
-            foreach (var role in options.Roles)
+            else if (args.Length >= 3
+                && string.Equals(args[1], "credential", StringComparison.OrdinalIgnoreCase)
+                && string.Equals(args[2], "create", StringComparison.OrdinalIgnoreCase))
             {
-                if (!await roleManager.RoleExistsAsync(role))
-                {
-                    var createRole = await roleManager.CreateAsync(new IdentityRole<Guid>(role));
-                    ThrowIfFailed(createRole, $"create role '{role}'");
-                }
+                await CreateCredentialAsync(scope.ServiceProvider, args[3..], cancellationToken);
             }
-
-            var userId = Guid.NewGuid();
-            var serviceIdentity = $"operator-{userId:N}@service.invalid";
-            var user = new ApplicationUser
+            else if (args.Length >= 3
+                && string.Equals(args[1], "credential", StringComparison.OrdinalIgnoreCase)
+                && string.Equals(args[2], "revoke", StringComparison.OrdinalIgnoreCase))
             {
-                Id = userId,
-                AccountKind = AccountKind.ServicePrincipal,
-                UserName = serviceIdentity,
-                Email = serviceIdentity,
-                EmailConfirmed = true,
-                DisplayName = options.DisplayName,
-                CreatedAt = DateTimeOffset.UtcNow,
-                LockoutEnabled = false
-            };
-
-            var created = await userManager.CreateAsync(user);
-            ThrowIfFailed(created, "create service principal");
-            try
-            {
-                if (options.Roles.Count > 0)
-                {
-                    var addRoles = await userManager.AddToRolesAsync(user, options.Roles);
-                    ThrowIfFailed(addRoles, "assign service-principal roles");
-                }
-
-                var createdCredential = await credentials.CreateAsync(
-                    user.Id,
-                    options.CredentialName,
-                    options.ExpiresAt,
-                    cancellationToken);
-
-                Console.Out.WriteLine("Operator service principal created.");
-                Console.Out.WriteLine($"UserId: {user.Id:D}");
-                Console.Out.WriteLine($"DisplayName: {user.DisplayName}");
-                Console.Out.WriteLine($"CredentialId: {createdCredential.Credential.Id:D}");
-                Console.Out.WriteLine($"Token: {createdCredential.Token}");
-                Console.Out.WriteLine("The token is displayed once and is not stored in plaintext.");
+                await RevokeCredentialAsync(scope.ServiceProvider, args[3..], cancellationToken);
             }
-            catch
+            else
             {
-                await userManager.DeleteAsync(user);
-                throw;
+                throw new InvalidOperationException(Usage);
             }
         }
         catch (Exception exception)
@@ -104,6 +55,111 @@ public sealed class OperatorProvisioningHostedService(
 
     public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 
+    private static async Task CreateServicePrincipalAsync(
+        IServiceProvider services,
+        IReadOnlyList<string> args,
+        CancellationToken cancellationToken)
+    {
+        var options = ParseCreateOptions(args);
+        var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
+        var roleManager = services.GetRequiredService<RoleManager<IdentityRole<Guid>>>();
+        var credentials = services.GetRequiredService<IOperatorCredentialService>();
+
+        var unknownRoles = options.Roles
+            .Where(role => !AccountRoleHierarchy.GlobalRoleNames.Contains(role, StringComparer.Ordinal))
+            .ToArray();
+        if (unknownRoles.Length > 0)
+        {
+            throw new InvalidOperationException($"Unknown global role(s): {string.Join(", ", unknownRoles)}.");
+        }
+
+        foreach (var role in options.Roles)
+        {
+            if (!await roleManager.RoleExistsAsync(role))
+            {
+                var createRole = await roleManager.CreateAsync(new IdentityRole<Guid>(role));
+                ThrowIfFailed(createRole, $"create role '{role}'");
+            }
+        }
+
+        var userId = Guid.NewGuid();
+        var serviceIdentity = $"operator-{userId:N}@service.invalid";
+        var user = new ApplicationUser
+        {
+            Id = userId,
+            AccountKind = AccountKind.ServicePrincipal,
+            UserName = serviceIdentity,
+            Email = serviceIdentity,
+            EmailConfirmed = true,
+            DisplayName = options.DisplayName,
+            CreatedAt = DateTimeOffset.UtcNow,
+            LockoutEnabled = false
+        };
+
+        var created = await userManager.CreateAsync(user);
+        ThrowIfFailed(created, "create service principal");
+        try
+        {
+            var addRoles = await userManager.AddToRolesAsync(user, options.Roles);
+            ThrowIfFailed(addRoles, "assign service-principal roles");
+
+            var createdCredential = await credentials.CreateAsync(
+                user.Id,
+                options.CredentialName,
+                options.ExpiresAt,
+                cancellationToken);
+
+            Console.Out.WriteLine("Operator service principal created.");
+            WriteCredential(user.Id, createdCredential);
+        }
+        catch
+        {
+            await userManager.DeleteAsync(user);
+            throw;
+        }
+    }
+
+    private static async Task CreateCredentialAsync(
+        IServiceProvider services,
+        IReadOnlyList<string> args,
+        CancellationToken cancellationToken)
+    {
+        var options = ParseCredentialCreateOptions(args);
+        var credentials = services.GetRequiredService<IOperatorCredentialService>();
+        var createdCredential = await credentials.CreateAsync(
+            options.UserId,
+            options.CredentialName,
+            options.ExpiresAt,
+            cancellationToken);
+
+        Console.Out.WriteLine("Operator credential created.");
+        WriteCredential(options.UserId, createdCredential);
+    }
+
+    private static async Task RevokeCredentialAsync(
+        IServiceProvider services,
+        IReadOnlyList<string> args,
+        CancellationToken cancellationToken)
+    {
+        var credentialId = ParseCredentialRevokeOptions(args);
+        var credentials = services.GetRequiredService<IOperatorCredentialService>();
+        if (!await credentials.RevokeAsync(credentialId, cancellationToken))
+        {
+            throw new InvalidOperationException($"Operator credential '{credentialId:D}' was not found.");
+        }
+
+        Console.Out.WriteLine($"Operator credential revoked: {credentialId:D}");
+    }
+
+    private static void WriteCredential(Guid userId, OperatorCredentialCreationResult createdCredential)
+    {
+        Console.Out.WriteLine($"UserId: {userId:D}");
+        Console.Out.WriteLine($"CredentialId: {createdCredential.Credential.Id:D}");
+        Console.Out.WriteLine($"CredentialName: {createdCredential.Credential.Name}");
+        Console.Out.WriteLine($"Token: {createdCredential.Token}");
+        Console.Out.WriteLine("The token is displayed once and is not stored in plaintext.");
+    }
+
     private static CreateOptions ParseCreateOptions(IReadOnlyList<string> args)
     {
         string? displayName = null;
@@ -114,12 +170,7 @@ public sealed class OperatorProvisioningHostedService(
         for (var index = 0; index < args.Count; index++)
         {
             var option = args[index];
-            if (index + 1 >= args.Count)
-            {
-                throw new InvalidOperationException($"Missing value for '{option}'.");
-            }
-
-            var value = args[++index].Trim();
+            var value = RequireOptionValue(args, ref index, option);
             switch (option)
             {
                 case "--display-name":
@@ -132,14 +183,10 @@ public sealed class OperatorProvisioningHostedService(
                     credentialName = value;
                     break;
                 case "--expires-at":
-                    if (!DateTimeOffset.TryParse(value, out var parsed))
-                    {
-                        throw new InvalidOperationException("--expires-at must be a valid ISO-8601 timestamp.");
-                    }
-                    expiresAt = parsed;
+                    expiresAt = ParseTimestamp(value);
                     break;
                 default:
-                    throw new InvalidOperationException($"Unknown option '{option}'.");
+                    throw new InvalidOperationException($"Unknown option '{option}'. {Usage}");
             }
         }
 
@@ -160,12 +207,99 @@ public sealed class OperatorProvisioningHostedService(
             throw new InvalidOperationException("At least one --role is required.");
         }
 
+        ValidateCredentialName(credentialName);
+        return new CreateOptions(displayName, roles, credentialName, expiresAt);
+    }
+
+    private static CredentialCreateOptions ParseCredentialCreateOptions(IReadOnlyList<string> args)
+    {
+        Guid? userId = null;
+        string credentialName = "rotated";
+        DateTimeOffset? expiresAt = null;
+
+        for (var index = 0; index < args.Count; index++)
+        {
+            var option = args[index];
+            var value = RequireOptionValue(args, ref index, option);
+            switch (option)
+            {
+                case "--user-id":
+                    if (!Guid.TryParse(value, out var parsedUserId) || parsedUserId == Guid.Empty)
+                    {
+                        throw new InvalidOperationException("--user-id must be a non-empty GUID.");
+                    }
+                    userId = parsedUserId;
+                    break;
+                case "--credential-name":
+                    credentialName = value;
+                    break;
+                case "--expires-at":
+                    expiresAt = ParseTimestamp(value);
+                    break;
+                default:
+                    throw new InvalidOperationException($"Unknown option '{option}'. {Usage}");
+            }
+        }
+
+        if (!userId.HasValue)
+        {
+            throw new InvalidOperationException("--user-id is required.");
+        }
+
+        ValidateCredentialName(credentialName);
+        return new CredentialCreateOptions(userId.Value, credentialName, expiresAt);
+    }
+
+    private static Guid ParseCredentialRevokeOptions(IReadOnlyList<string> args)
+    {
+        Guid? credentialId = null;
+        for (var index = 0; index < args.Count; index++)
+        {
+            var option = args[index];
+            var value = RequireOptionValue(args, ref index, option);
+            if (!string.Equals(option, "--credential-id", StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException($"Unknown option '{option}'. {Usage}");
+            }
+
+            if (!Guid.TryParse(value, out var parsedCredentialId) || parsedCredentialId == Guid.Empty)
+            {
+                throw new InvalidOperationException("--credential-id must be a non-empty GUID.");
+            }
+            credentialId = parsedCredentialId;
+        }
+
+        return credentialId
+            ?? throw new InvalidOperationException("--credential-id is required.");
+    }
+
+    private static string RequireOptionValue(
+        IReadOnlyList<string> args,
+        ref int index,
+        string option)
+    {
+        if (index + 1 >= args.Count)
+        {
+            throw new InvalidOperationException($"Missing value for '{option}'.");
+        }
+        return args[++index].Trim();
+    }
+
+    private static DateTimeOffset ParseTimestamp(string value)
+    {
+        if (!DateTimeOffset.TryParse(value, out var parsed))
+        {
+            throw new InvalidOperationException("--expires-at must be a valid ISO-8601 timestamp.");
+        }
+        return parsed;
+    }
+
+    private static void ValidateCredentialName(string credentialName)
+    {
         if (string.IsNullOrWhiteSpace(credentialName))
         {
             throw new InvalidOperationException("--credential-name may not be empty.");
         }
-
-        return new CreateOptions(displayName, roles, credentialName, expiresAt);
     }
 
     private static void ThrowIfFailed(IdentityResult result, string operation)
@@ -179,9 +313,20 @@ public sealed class OperatorProvisioningHostedService(
             $"Could not {operation}: {string.Join("; ", result.Errors.Select(error => error.Description))}");
     }
 
+    private const string Usage =
+        "Supported commands: " +
+        "operator create --display-name <name> --role <role> [--role <role> ...] [--credential-name <name>] [--expires-at <ISO-8601>]; " +
+        "operator credential create --user-id <guid> [--credential-name <name>] [--expires-at <ISO-8601>]; " +
+        "operator credential revoke --credential-id <guid>.";
+
     private sealed record CreateOptions(
         string DisplayName,
         IReadOnlyList<string> Roles,
+        string CredentialName,
+        DateTimeOffset? ExpiresAt);
+
+    private sealed record CredentialCreateOptions(
+        Guid UserId,
         string CredentialName,
         DateTimeOffset? ExpiresAt);
 }
