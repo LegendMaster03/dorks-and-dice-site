@@ -137,6 +137,8 @@ public static class SiteRouteOwnership
             || path == "/llms.txt"
             || path == "/development-preview"
             || IsToolHostIntrospectionPath(path)
+            || path == "/operator"
+            || path.StartsWith("/operator/", StringComparison.Ordinal)
             || path == "/account"
             || path.StartsWith("/account/", StringComparison.Ordinal)
             || path == "/editor"
