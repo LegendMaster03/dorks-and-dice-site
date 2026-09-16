@@ -279,7 +279,11 @@ public sealed class ToolProxyTransportIntegrationTests(PublishedContentWebApplic
         {
             EnvironmentName = "Testing"
         });
-        builder.WebHost.ConfigureKestrel(options => options.Listen(IPAddress.Loopback, 0));
+        builder.WebHost.ConfigureKestrel(options =>
+        {
+            options.Listen(IPAddress.Loopback, 0);
+            options.Limits.MaxRequestBodySize = 128L * 1024 * 1024;
+        });
 
         var app = builder.Build();
         app.MapPost("/{**proxyPath}", capture.HandleAsync);
