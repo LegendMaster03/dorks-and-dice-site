@@ -11,6 +11,11 @@ public static class ToolIntegrationContractVersions
     public const int EmbeddedModuleCurrent = 2;
 }
 
+public static class ToolOperatorContractVersions
+{
+    public const int Current = 1;
+}
+
 public enum ToolHealthStatus
 {
     NotConfigured,
@@ -32,6 +37,8 @@ public sealed class ToolRegistration
     public string? Description { get; set; }
     public ToolIntegrationType IntegrationType { get; set; } = ToolIntegrationType.EmbeddedModule;
     public int? IntegrationContractVersion { get; set; } = ToolIntegrationContractVersions.EmbeddedModuleCurrent;
+    public int? OperatorContractVersion { get; set; }
+    public string? OperatorManifestPath { get; set; }
     public string? UpstreamBaseUrl { get; set; }
     public string? FrontendEntryPoint { get; set; }
     public string? HealthPath { get; set; }
@@ -50,6 +57,8 @@ public sealed class ToolRegistrationEditViewModel
     public string? Description { get; set; }
     public ToolIntegrationType IntegrationType { get; set; } = ToolIntegrationType.EmbeddedModule;
     public int? IntegrationContractVersion { get; set; } = ToolIntegrationContractVersions.EmbeddedModuleCurrent;
+    public int? OperatorContractVersion { get; set; }
+    public string? OperatorManifestPath { get; set; }
     public string? UpstreamBaseUrl { get; set; }
     public string? FrontendEntryPoint { get; set; }
     public string? HealthPath { get; set; }

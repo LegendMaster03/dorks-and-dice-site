@@ -49,10 +49,7 @@ public sealed partial class DevelopmentToolsController : Controller
     public async Task<IActionResult> Edit(Guid id, CancellationToken cancellationToken)
     {
         var tool = await _toolRegistry.GetByIdAsync(id, cancellationToken);
-        if (tool is null)
-        {
-            return NotFound();
-        }
+        if (tool is null) return NotFound();
 
         return View(PopulateModeOptions(new ToolRegistrationEditViewModel
         {
@@ -62,6 +59,8 @@ public sealed partial class DevelopmentToolsController : Controller
             Description = tool.Description,
             IntegrationType = tool.IntegrationType,
             IntegrationContractVersion = tool.IntegrationContractVersion,
+            OperatorContractVersion = tool.OperatorContractVersion,
+            OperatorManifestPath = tool.OperatorManifestPath,
             UpstreamBaseUrl = tool.UpstreamBaseUrl,
             FrontendEntryPoint = tool.FrontendEntryPoint,
             HealthPath = tool.HealthPath,
@@ -78,18 +77,12 @@ public sealed partial class DevelopmentToolsController : Controller
         Normalize(model);
         PopulateModeOptions(model);
         Validate(model);
-        if (!ModelState.IsValid)
-        {
-            return View("Edit", model);
-        }
+        if (!ModelState.IsValid) return View("Edit", model);
 
         var existing = model.Id.HasValue
             ? await _toolRegistry.GetByIdAsync(model.Id.Value, cancellationToken)
             : null;
-        if (model.Id.HasValue && existing is null)
-        {
-            return NotFound();
-        }
+        if (model.Id.HasValue && existing is null) return NotFound();
 
         var duplicate = await _toolRegistry.GetBySlugAsync(model.Slug, cancellationToken);
         if (duplicate is not null && duplicate.Id != model.Id)
@@ -115,6 +108,8 @@ public sealed partial class DevelopmentToolsController : Controller
             IntegrationContractVersion = model.IntegrationType == ToolIntegrationType.EmbeddedModule
                 ? model.IntegrationContractVersion
                 : null,
+            OperatorContractVersion = model.OperatorContractVersion,
+            OperatorManifestPath = model.OperatorManifestPath,
             UpstreamBaseUrl = model.UpstreamBaseUrl,
             FrontendEntryPoint = model.FrontendEntryPoint,
             HealthPath = model.HealthPath,
@@ -141,34 +136,35 @@ public sealed partial class DevelopmentToolsController : Controller
 
     private ToolRegistrationEditViewModel PopulateModeOptions(ToolRegistrationEditViewModel model)
     {
-        model.ModeOptions = _siteModeRegistry.All
-            .Select(mode => new ToolModeOptionViewModel
-            {
-                Id = mode.Id,
-                DisplayName = mode.DisplayName
-            })
-            .ToList();
+        model.ModeOptions = _siteModeRegistry.All.Select(mode => new ToolModeOptionViewModel
+        {
+            Id = mode.Id,
+            DisplayName = mode.DisplayName
+        }).ToList();
         return model;
     }
 
     private void Validate(ToolRegistrationEditViewModel model)
     {
         if (string.IsNullOrWhiteSpace(model.DisplayName))
-        {
             ModelState.AddModelError(nameof(model.DisplayName), "Display name is required.");
-        }
 
         if (string.IsNullOrWhiteSpace(model.Slug) || !ToolSlugRegex().IsMatch(model.Slug))
-        {
             ModelState.AddModelError(nameof(model.Slug), "Slug must contain only lowercase letters, numbers, and hyphens.");
-        }
 
         var contractError = ToolIntegrationContractPolicy.GetUnsupportedReason(
             model.IntegrationType,
             model.IntegrationContractVersion);
         if (contractError is not null)
-        {
             ModelState.AddModelError(nameof(model.IntegrationContractVersion), contractError);
+
+        if (model.OperatorContractVersion.HasValue || !string.IsNullOrWhiteSpace(model.OperatorManifestPath))
+        {
+            var operatorError = ToolOperatorContractPolicy.GetUnsupportedReason(
+                model.OperatorContractVersion,
+                model.OperatorManifestPath);
+            if (operatorError is not null)
+                ModelState.AddModelError(nameof(model.OperatorContractVersion), operatorError);
         }
 
         if (model.Modes.Count == 0)
@@ -177,33 +173,21 @@ public sealed partial class DevelopmentToolsController : Controller
         }
         else
         {
-            var unknownModes = model.Modes
-                .Where(modeId => !_siteModeRegistry.TryGetById(modeId, out _))
-                .ToArray();
+            var unknownModes = model.Modes.Where(modeId => !_siteModeRegistry.TryGetById(modeId, out _)).ToArray();
             if (unknownModes.Length > 0)
-            {
                 ModelState.AddModelError(nameof(model.Modes), "One or more selected site modes are not registered.");
-            }
         }
 
         if (!_upstreamPolicy.IsAllowed(model.UpstreamBaseUrl, out var upstreamReason))
-        {
-            ModelState.AddModelError(
-                nameof(model.UpstreamBaseUrl),
-                upstreamReason ?? "Upstream base URL is not allowed.");
-        }
+            ModelState.AddModelError(nameof(model.UpstreamBaseUrl), upstreamReason ?? "Upstream base URL is not allowed.");
 
         if (!string.IsNullOrWhiteSpace(model.FrontendEntryPoint)
             && !model.FrontendEntryPoint.StartsWith("/", StringComparison.Ordinal))
-        {
             ModelState.AddModelError(nameof(model.FrontendEntryPoint), "Frontend entry point must be an absolute path beginning with '/'.");
-        }
 
         if (!string.IsNullOrWhiteSpace(model.HealthPath)
             && !model.HealthPath.StartsWith("/", StringComparison.Ordinal))
-        {
             ModelState.AddModelError(nameof(model.HealthPath), "Health path must begin with '/'.");
-        }
     }
 
     private static void Normalize(ToolRegistrationEditViewModel model)
@@ -214,6 +198,7 @@ public sealed partial class DevelopmentToolsController : Controller
         model.UpstreamBaseUrl = NullIfWhiteSpace(model.UpstreamBaseUrl)?.TrimEnd('/');
         model.FrontendEntryPoint = NullIfWhiteSpace(model.FrontendEntryPoint);
         model.HealthPath = NullIfWhiteSpace(model.HealthPath);
+        model.OperatorManifestPath = NullIfWhiteSpace(model.OperatorManifestPath);
         model.Modes = (model.Modes ?? [])
             .Where(mode => !string.IsNullOrWhiteSpace(mode))
             .Select(mode => mode.Trim())
@@ -221,9 +206,10 @@ public sealed partial class DevelopmentToolsController : Controller
             .ToList();
 
         if (model.IntegrationType != ToolIntegrationType.EmbeddedModule)
-        {
             model.IntegrationContractVersion = null;
-        }
+
+        if (!model.OperatorContractVersion.HasValue && string.IsNullOrWhiteSpace(model.OperatorManifestPath))
+            model.OperatorManifestPath = null;
     }
 
     private static string? NullIfWhiteSpace(string? value) =>

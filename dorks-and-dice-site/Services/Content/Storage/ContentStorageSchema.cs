@@ -52,16 +52,44 @@ internal static class ContentStorageSchema
                     SqliteAddToolIntegrationContractVersion,
                     cancellationToken);
             }
+
+            if (!await HasSqliteColumnAsync(
+                    context,
+                    "tool_registration",
+                    "tool_operator_contract_version",
+                    cancellationToken))
+            {
+                await context.Database.ExecuteSqlRawAsync(
+                    SqliteAddToolOperatorContractVersion,
+                    cancellationToken);
+            }
+
+            if (!await HasSqliteColumnAsync(
+                    context,
+                    "tool_registration",
+                    "tool_operator_manifest_path",
+                    cancellationToken))
+            {
+                await context.Database.ExecuteSqlRawAsync(
+                    SqliteAddToolOperatorManifestPath,
+                    cancellationToken);
+            }
         }
         else if (context.Database.IsNpgsql())
         {
             await context.Database.ExecuteSqlRawAsync(
                 PostgresEnsureToolIntegrationContractVersion,
                 cancellationToken);
+            await context.Database.ExecuteSqlRawAsync(
+                PostgresEnsureToolOperatorContract,
+                cancellationToken);
         }
 
         await context.Database.ExecuteSqlRawAsync(
             MigrateKnownEmbeddedModuleContracts,
+            cancellationToken);
+        await context.Database.ExecuteSqlRawAsync(
+            MigrateKnownOperatorContracts,
             cancellationToken);
     }
 
@@ -210,6 +238,8 @@ internal static class ContentStorageSchema
             tool_description TEXT NULL,
             tool_integration_type INTEGER NOT NULL DEFAULT 0,
             tool_integration_contract_version INTEGER NULL,
+            tool_operator_contract_version INTEGER NULL,
+            tool_operator_manifest_path TEXT NULL,
             tool_upstream_base_url TEXT NULL,
             tool_frontend_entry_point TEXT NULL,
             tool_health_path TEXT NULL,
@@ -236,6 +266,8 @@ internal static class ContentStorageSchema
             tool_description text NULL,
             tool_integration_type smallint NOT NULL DEFAULT 0,
             tool_integration_contract_version integer NULL,
+            tool_operator_contract_version integer NULL,
+            tool_operator_manifest_path text NULL,
             tool_upstream_base_url text NULL,
             tool_frontend_entry_point text NULL,
             tool_health_path text NULL,
@@ -260,9 +292,26 @@ internal static class ContentStorageSchema
         ADD COLUMN tool_integration_contract_version INTEGER NULL;
         """;
 
+    private const string SqliteAddToolOperatorContractVersion = """
+        ALTER TABLE tool_registration
+        ADD COLUMN tool_operator_contract_version INTEGER NULL;
+        """;
+
+    private const string SqliteAddToolOperatorManifestPath = """
+        ALTER TABLE tool_registration
+        ADD COLUMN tool_operator_manifest_path TEXT NULL;
+        """;
+
     private const string PostgresEnsureToolIntegrationContractVersion = """
         ALTER TABLE tool_registration
         ADD COLUMN IF NOT EXISTS tool_integration_contract_version integer NULL;
+        """;
+
+    private const string PostgresEnsureToolOperatorContract = """
+        ALTER TABLE tool_registration
+        ADD COLUMN IF NOT EXISTS tool_operator_contract_version integer NULL;
+        ALTER TABLE tool_registration
+        ADD COLUMN IF NOT EXISTS tool_operator_manifest_path text NULL;
         """;
 
     private const string MigrateKnownEmbeddedModuleContracts = """
@@ -271,5 +320,13 @@ internal static class ContentStorageSchema
         WHERE tool_integration_type = 0
           AND tool_integration_contract_version IS NULL
           AND lower(tool_slug) IN ('block-initiative', 'rules-core');
+        """;
+
+    private const string MigrateKnownOperatorContracts = """
+        UPDATE tool_registration
+        SET tool_operator_contract_version = 1,
+            tool_operator_manifest_path = '/operator/manifest'
+        WHERE lower(tool_slug) = 'rules-core'
+          AND tool_operator_contract_version IS NULL;
         """;
 }
