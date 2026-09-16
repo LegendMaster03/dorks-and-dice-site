@@ -1,5 +1,6 @@
 using System.Text.Json;
 using dorks_and_dice_site.Services.Operator;
+using Microsoft.AspNetCore.Http;
 
 namespace dorks_and_dice_site.Tests;
 
