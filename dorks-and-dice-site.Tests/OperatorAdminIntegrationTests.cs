@@ -52,7 +52,7 @@ public sealed class OperatorAdminIntegrationTests(PublishedContentWebApplication
         using var created = await client.PostAsync("/admin/agents/create", createForm);
         var createdHtml = await created.Content.ReadAsStringAsync();
         Assert.Equal(HttpStatusCode.OK, created.StatusCode);
-        Assert.Equal("no-store", created.Headers.CacheControl?.ToString());
+        Assert.True(created.Headers.CacheControl?.NoStore == true);
         Assert.Contains("Agent created", createdHtml, StringComparison.Ordinal);
         Assert.Contains("ddop_v1_", createdHtml, StringComparison.Ordinal);
 
@@ -89,7 +89,7 @@ public sealed class OperatorAdminIntegrationTests(PublishedContentWebApplication
         using var issued = await client.PostAsync($"/admin/agents/{userId}/credentials", issueForm);
         var issuedHtml = await issued.Content.ReadAsStringAsync();
         Assert.Equal(HttpStatusCode.OK, issued.StatusCode);
-        Assert.Equal("no-store", issued.Headers.CacheControl?.ToString());
+        Assert.True(issued.Headers.CacheControl?.NoStore == true);
         Assert.Contains("Credential created", issuedHtml, StringComparison.Ordinal);
         Assert.Contains("ddop_v1_", issuedHtml, StringComparison.Ordinal);
 
