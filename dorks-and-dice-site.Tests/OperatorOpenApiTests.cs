@@ -1,65 +1,91 @@
 using System.Text.Json;
 using dorks_and_dice_site.Services.Operator;
-using Microsoft.AspNetCore.Http;
 
 namespace dorks_and_dice_site.Tests;
 
 public sealed class OperatorOpenApiTests
 {
     [Fact]
-    public void CapabilityDiscoveryIsFrameworkOwnedAndIncludesBrowserBootstrap()
+    public void CapabilityDiscoveryContainsOnlyFrameworkOperatorOperations()
     {
         var registry = new OperatorCapabilityRegistry();
         var capabilities = registry.GetSiteCapabilities();
 
-        Assert.DoesNotContain(capabilities, value => value.Route.Contains("/tools/", StringComparison.Ordinal));
-        Assert.DoesNotContain(capabilities, value => value.Name.StartsWith("tools.", StringComparison.Ordinal));
+        Assert.Equal(
+            [
+                "operator.me",
+                "operator.capabilities",
+                "operator.browser_bootstrap",
+                "operator.openapi"
+            ],
+            capabilities.Select(value => value.Name).ToArray());
 
-        var bootstrap = capabilities.Single(value => value.Name == "operator.browser_bootstrap");
-        Assert.Equal("POST", bootstrap.Method);
-        Assert.Equal("/operator/v1/browser-bootstrap", bootstrap.Route);
-        Assert.Equal("OperatorBrowserBootstrapResponse", bootstrap.ResponseSchema);
+        Assert.All(capabilities, capability =>
+        {
+            Assert.StartsWith("/operator/v1/", capability.Route, StringComparison.Ordinal);
+            Assert.DoesNotContain("/tools/", capability.Route, StringComparison.Ordinal);
+        });
+    }
 
-        var create = capabilities.Single(value => value.Name == "content.create");
-        Assert.Equal("OperatorContentWriteRequest", create.RequestSchema);
-        Assert.Equal("OperatorContentDocumentResponse", create.ResponseSchema);
-        Assert.Equal(StatusCodes.Status201Created, create.SuccessStatusCode);
+    [Fact]
+    public void OpenApiMatchesTheRemainingOperatorEndpoints()
+    {
+        var registry = new OperatorCapabilityRegistry();
+        var document = JsonSerializer.SerializeToElement(
+            OperatorOpenApiDocument.Create(registry.GetSiteCapabilities()));
 
-        var document = JsonSerializer.SerializeToElement(OperatorOpenApiDocument.Create(capabilities));
         Assert.Equal("3.1.0", document.GetProperty("openapi").GetString());
 
-        var capabilityResponse = document
+        var paths = document.GetProperty("paths");
+        Assert.Equal(4, paths.EnumerateObject().Count());
+        Assert.True(paths.TryGetProperty("/operator/v1/me", out var mePath));
+        Assert.True(paths.TryGetProperty("/operator/v1/capabilities", out var capabilitiesPath));
+        Assert.True(paths.TryGetProperty("/operator/v1/browser-bootstrap", out var bootstrapPath));
+        Assert.True(paths.TryGetProperty("/operator/v1/openapi.json", out var openApiPath));
+
+        AssertOperation(mePath.GetProperty("get"), "operator.me");
+        AssertOperation(capabilitiesPath.GetProperty("get"), "operator.capabilities");
+        AssertOperation(bootstrapPath.GetProperty("post"), "operator.browser_bootstrap");
+        AssertOperation(openApiPath.GetProperty("get"), "operator.openapi");
+
+        var schemas = document
             .GetProperty("components")
-            .GetProperty("schemas")
-            .GetProperty("OperatorCapabilitiesResponse");
-        var capabilityProperties = capabilityResponse.GetProperty("properties");
-        Assert.True(capabilityProperties.TryGetProperty("site", out _));
-        Assert.False(capabilityProperties.TryGetProperty("tools", out _));
+            .GetProperty("schemas");
+        Assert.Equal(4, schemas.EnumerateObject().Count());
+        Assert.True(schemas.TryGetProperty("OperatorMeResponse", out _));
+        Assert.True(schemas.TryGetProperty("OperatorCapabilityDescriptor", out var capabilitySchema));
+        Assert.True(schemas.TryGetProperty("OperatorCapabilitiesResponse", out _));
+        Assert.True(schemas.TryGetProperty("OperatorBrowserBootstrapResponse", out var bootstrapSchema));
 
-        var bootstrapOperation = document
-            .GetProperty("paths")
-            .GetProperty("/operator/v1/browser-bootstrap")
-            .GetProperty("post");
-        Assert.True(bootstrapOperation.GetProperty("responses").TryGetProperty("200", out _));
-
-        var schemas = document.GetProperty("components").GetProperty("schemas");
-        Assert.True(schemas.TryGetProperty("OperatorBrowserBootstrapResponse", out _));
-        Assert.False(schemas.TryGetProperty("OperatorToolSummary", out _));
-        Assert.False(schemas.TryGetProperty("ToolOperatorManifest", out _));
-
-        var createOperation = document
-            .GetProperty("paths")
-            .GetProperty("/operator/v1/content")
-            .GetProperty("post");
-        Assert.True(createOperation.GetProperty("responses").TryGetProperty("201", out _));
+        var capabilityProperties = capabilitySchema.GetProperty("properties");
         Assert.Equal(
-            "#/components/schemas/OperatorContentWriteRequest",
-            createOperation
-                .GetProperty("requestBody")
-                .GetProperty("content")
-                .GetProperty("application/json")
-                .GetProperty("schema")
-                .GetProperty("$ref")
-                .GetString());
+            ["description", "method", "name", "route"],
+            capabilityProperties
+                .EnumerateObject()
+                .Select(value => value.Name)
+                .OrderBy(value => value, StringComparer.Ordinal)
+                .ToArray());
+
+        var bootstrapProperties = bootstrapSchema.GetProperty("properties");
+        Assert.Equal(
+            "uri-reference",
+            bootstrapProperties.GetProperty("bootstrapUrl").GetProperty("format").GetString());
+
+        Assert.False(schemas.TryGetProperty("OperatorContentWriteRequest", out _));
+        Assert.False(schemas.TryGetProperty("ContentAssetInfo", out _));
+        Assert.False(schemas.TryGetProperty("ToolOperatorManifest", out _));
+    }
+
+    private static void AssertOperation(JsonElement operation, string operationId)
+    {
+        Assert.Equal(operationId, operation.GetProperty("operationId").GetString());
+        Assert.False(operation.TryGetProperty("requestBody", out _));
+        Assert.False(operation.TryGetProperty("parameters", out _));
+
+        var responses = operation.GetProperty("responses");
+        Assert.Equal(["200", "401"], responses.EnumerateObject().Select(value => value.Name).ToArray());
+
+        var security = Assert.Single(operation.GetProperty("security").EnumerateArray().ToArray());
+        Assert.True(security.TryGetProperty("OperatorBearer", out _));
     }
 }

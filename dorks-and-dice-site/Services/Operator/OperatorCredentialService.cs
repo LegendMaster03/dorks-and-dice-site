@@ -30,6 +30,11 @@ public interface IOperatorCredentialService
         string token,
         CancellationToken cancellationToken = default);
 
+    Task<bool> IsActiveForUserAsync(
+        Guid credentialId,
+        Guid userId,
+        CancellationToken cancellationToken = default);
+
     Task<bool> RevokeAsync(
         Guid credentialId,
         CancellationToken cancellationToken = default);
@@ -148,20 +153,44 @@ public sealed class OperatorCredentialService : IOperatorCredentialService
         return new OperatorCredentialAuthenticationResult(user, credential);
     }
 
+    public Task<bool> IsActiveForUserAsync(
+        Guid credentialId,
+        Guid userId,
+        CancellationToken cancellationToken = default)
+    {
+        var now = DateTimeOffset.UtcNow;
+        return _dbContext.OperatorCredentials
+            .AsNoTracking()
+            .AnyAsync(
+                credential => credential.Id == credentialId
+                    && credential.UserId == userId
+                    && credential.RevokedAt == null
+                    && (!credential.ExpiresAt.HasValue || credential.ExpiresAt > now)
+                    && _dbContext.Users.Any(user =>
+                        user.Id == userId
+                        && user.DeletedAt == null
+                        && user.AccountKind == AccountKind.ServicePrincipal),
+                cancellationToken);
+    }
+
     public async Task<bool> RevokeAsync(
         Guid credentialId,
         CancellationToken cancellationToken = default)
     {
-        var credential = await _dbContext.OperatorCredentials
-            .SingleOrDefaultAsync(value => value.Id == credentialId, cancellationToken);
-        if (credential is null)
+        var now = DateTimeOffset.UtcNow;
+        var updated = await _dbContext.OperatorCredentials
+            .Where(credential => credential.Id == credentialId && credential.RevokedAt == null)
+            .ExecuteUpdateAsync(
+                setters => setters.SetProperty(credential => credential.RevokedAt, now),
+                cancellationToken);
+        if (updated == 1)
         {
-            return false;
+            return true;
         }
 
-        credential.RevokedAt ??= DateTimeOffset.UtcNow;
-        await _dbContext.SaveChangesAsync(cancellationToken);
-        return true;
+        return await _dbContext.OperatorCredentials
+            .AsNoTracking()
+            .AnyAsync(credential => credential.Id == credentialId, cancellationToken);
     }
 
     private static bool TryParseToken(

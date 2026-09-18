@@ -3,7 +3,6 @@ using System.Text;
 using dorks_and_dice_site.Models.Identity;
 using dorks_and_dice_site.Models.Operator;
 using dorks_and_dice_site.Services.Identity;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
 
@@ -16,6 +15,7 @@ public sealed record OperatorBrowserBootstrapIssueResult(
 public sealed record OperatorBrowserBootstrapConsumeResult(
     bool Succeeded,
     ApplicationUser? User,
+    Guid? CredentialId,
     Guid? InvocationId);
 
 public interface IOperatorBrowserBootstrapService
@@ -32,8 +32,7 @@ public interface IOperatorBrowserBootstrapService
 }
 
 public sealed class OperatorBrowserBootstrapService(
-    IdentityDbContext dbContext,
-    UserManager<ApplicationUser> userManager) : IOperatorBrowserBootstrapService
+    IdentityDbContext dbContext) : IOperatorBrowserBootstrapService
 {
     private const string TokenPrefix = "ddboot_v1_";
     private static readonly TimeSpan Lifetime = TimeSpan.FromMinutes(1);
@@ -45,21 +44,27 @@ public sealed class OperatorBrowserBootstrapService(
         CancellationToken cancellationToken = default)
     {
         var now = DateTimeOffset.UtcNow;
-        var user = await userManager.FindByIdAsync(userId.ToString("D"));
-        if (user is null
-            || user.DeletedAt is not null
-            || user.AccountKind != AccountKind.ServicePrincipal)
+        var userIsActive = await dbContext.Users
+            .AsNoTracking()
+            .AnyAsync(
+                user => user.Id == userId
+                    && user.DeletedAt == null
+                    && user.AccountKind == AccountKind.ServicePrincipal,
+                cancellationToken);
+        if (!userIsActive)
         {
             throw new InvalidOperationException("Browser bootstrap is available only to active service principals.");
         }
 
-        var credential = await dbContext.OperatorCredentials
+        var credentialIsActive = await dbContext.OperatorCredentials
             .AsNoTracking()
-            .SingleOrDefaultAsync(value => value.Id == credentialId, cancellationToken);
-        if (credential is null
-            || credential.UserId != userId
-            || credential.RevokedAt.HasValue
-            || credential.ExpiresAt is { } expiresAt && expiresAt <= now)
+            .AnyAsync(
+                credential => credential.Id == credentialId
+                    && credential.UserId == userId
+                    && credential.RevokedAt == null
+                    && (!credential.ExpiresAt.HasValue || credential.ExpiresAt > now),
+                cancellationToken);
+        if (!credentialIsActive)
         {
             throw new InvalidOperationException("The Operator credential is not active for this service principal.");
         }
@@ -90,7 +95,7 @@ public sealed class OperatorBrowserBootstrapService(
     {
         if (!TryParseToken(token, out var bootstrapId, out var secret))
         {
-            return new(false, null, null);
+            return new(false, null, null, null);
         }
 
         var bootstrap = await dbContext.OperatorBrowserBootstraps
@@ -98,80 +103,103 @@ public sealed class OperatorBrowserBootstrapService(
             .SingleOrDefaultAsync(value => value.Id == bootstrapId, cancellationToken);
         if (bootstrap is null)
         {
-            return new(false, null, null);
+            return new(false, null, null, null);
         }
 
         var invocationId = Guid.NewGuid();
         if (!SecretMatches(bootstrap.SecretHash, secret))
         {
             await WriteAuditAsync(bootstrap, invocationId, "Invalid", cancellationToken);
-            return new(false, null, invocationId);
+            return new(false, null, null, invocationId);
         }
 
         var now = DateTimeOffset.UtcNow;
         if (bootstrap.ExpiresAt <= now)
         {
             await WriteAuditAsync(bootstrap, invocationId, "Expired", cancellationToken);
-            return new(false, null, invocationId);
+            return new(false, null, null, invocationId);
         }
 
         if (bootstrap.ConsumedAt.HasValue)
         {
             await WriteAuditAsync(bootstrap, invocationId, "AlreadyConsumed", cancellationToken);
-            return new(false, null, invocationId);
+            return new(false, null, null, invocationId);
         }
 
-        var credential = await dbContext.OperatorCredentials
-            .AsNoTracking()
-            .SingleOrDefaultAsync(value => value.Id == bootstrap.CredentialId, cancellationToken);
-        if (credential is null
-            || credential.UserId != bootstrap.UserId
-            || credential.RevokedAt.HasValue
-            || credential.ExpiresAt is { } credentialExpiresAt && credentialExpiresAt <= now)
-        {
-            await WriteAuditAsync(bootstrap, invocationId, "CredentialUnavailable", cancellationToken);
-            return new(false, null, invocationId);
-        }
-
-        var user = await userManager.FindByIdAsync(bootstrap.UserId.ToString("D"));
-        if (user is null
-            || user.DeletedAt is not null
-            || user.AccountKind != AccountKind.ServicePrincipal)
-        {
-            await WriteAuditAsync(bootstrap, invocationId, "PrincipalUnavailable", cancellationToken);
-            return new(false, null, invocationId);
-        }
-
-        var consumed = false;
+        ApplicationUser? user = null;
+        string? failedOutcome = null;
         await using (var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken))
         {
-            var updated = await dbContext.OperatorBrowserBootstraps
-                .Where(value => value.Id == bootstrap.Id
-                    && value.ConsumedAt == null
-                    && value.ExpiresAt > now)
+            // This conditional no-op UPDATE is deliberate. It both revalidates the credential
+            // inside the consumption transaction and acquires the credential row's write lock.
+            // RevokeAsync updates the same row, so concurrent revoke/consume operations are
+            // serialized by the database instead of relying on the earlier in-memory check.
+            var activeCredentialRows = await dbContext.OperatorCredentials
+                .Where(credential => credential.Id == bootstrap.CredentialId
+                    && credential.UserId == bootstrap.UserId
+                    && credential.RevokedAt == null
+                    && (!credential.ExpiresAt.HasValue || credential.ExpiresAt > now))
                 .ExecuteUpdateAsync(
-                    setters => setters.SetProperty(value => value.ConsumedAt, now),
+                    setters => setters.SetProperty(
+                        credential => credential.LastUsedAt,
+                        credential => credential.LastUsedAt),
                     cancellationToken);
-            if (updated == 1)
+
+            if (activeCredentialRows != 1)
             {
-                dbContext.OperatorAuditRecords.Add(BuildAudit(bootstrap, invocationId, "Succeeded", now));
-                await dbContext.SaveChangesAsync(cancellationToken);
-                await transaction.CommitAsync(cancellationToken);
-                consumed = true;
+                failedOutcome = "CredentialUnavailable";
+                await transaction.RollbackAsync(cancellationToken);
             }
             else
             {
-                await transaction.RollbackAsync(cancellationToken);
+                user = await dbContext.Users
+                    .AsNoTracking()
+                    .SingleOrDefaultAsync(
+                        candidate => candidate.Id == bootstrap.UserId
+                            && candidate.DeletedAt == null
+                            && candidate.AccountKind == AccountKind.ServicePrincipal,
+                        cancellationToken);
+
+                if (user is null)
+                {
+                    failedOutcome = "PrincipalUnavailable";
+                    await transaction.RollbackAsync(cancellationToken);
+                }
+                else
+                {
+                    var consumedRows = await dbContext.OperatorBrowserBootstraps
+                        .Where(value => value.Id == bootstrap.Id
+                            && value.UserId == bootstrap.UserId
+                            && value.CredentialId == bootstrap.CredentialId
+                            && value.ConsumedAt == null
+                            && value.ExpiresAt > now)
+                        .ExecuteUpdateAsync(
+                            setters => setters.SetProperty(value => value.ConsumedAt, now),
+                            cancellationToken);
+
+                    if (consumedRows != 1)
+                    {
+                        failedOutcome = "AlreadyConsumed";
+                        await transaction.RollbackAsync(cancellationToken);
+                    }
+                    else
+                    {
+                        dbContext.OperatorAuditRecords.Add(
+                            BuildAudit(bootstrap, invocationId, "Succeeded", now));
+                        await dbContext.SaveChangesAsync(cancellationToken);
+                        await transaction.CommitAsync(cancellationToken);
+                    }
+                }
             }
         }
 
-        if (!consumed)
+        if (failedOutcome is not null)
         {
-            await WriteAuditAsync(bootstrap, invocationId, "AlreadyConsumed", cancellationToken);
-            return new(false, null, invocationId);
+            await WriteAuditAsync(bootstrap, invocationId, failedOutcome, cancellationToken);
+            return new(false, null, null, invocationId);
         }
 
-        return new(true, user, invocationId);
+        return new(true, user, bootstrap.CredentialId, invocationId);
     }
 
     private async Task WriteAuditAsync(

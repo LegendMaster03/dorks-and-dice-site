@@ -10,10 +10,7 @@ public sealed record OperatorCapabilityDescriptor(
     string Name,
     string Method,
     string Route,
-    string Description,
-    string? RequestSchema = null,
-    string? ResponseSchema = null,
-    int SuccessStatusCode = StatusCodes.Status200OK);
+    string Description);
 
 public interface IOperatorCapabilityRegistry
 {

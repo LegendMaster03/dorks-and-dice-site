@@ -59,13 +59,21 @@ public sealed class OperatorDiscoveryController(
                 ? parsedInvocationId
                 : Guid.NewGuid();
 
-        var issued = await browserBootstrapService.IssueAsync(
-            userId,
-            credentialId,
-            invocationId,
-            cancellationToken);
-        Response.Headers.CacheControl = "no-store";
+        OperatorBrowserBootstrapIssueResult issued;
+        try
+        {
+            issued = await browserBootstrapService.IssueAsync(
+                userId,
+                credentialId,
+                invocationId,
+                cancellationToken);
+        }
+        catch (InvalidOperationException)
+        {
+            return Unauthorized();
+        }
 
+        Response.Headers.CacheControl = "no-store";
         return Ok(new OperatorBrowserBootstrapResponse(
             issued.Bootstrap.Id,
             $"/operator/bootstrap?token={Uri.EscapeDataString(issued.Token)}",

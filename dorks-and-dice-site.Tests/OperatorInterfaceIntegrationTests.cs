@@ -1,11 +1,10 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using dorks_and_dice_site.Framework.Operator;
+using System.Text.RegularExpressions;
 using dorks_and_dice_site.Models.Identity;
 using dorks_and_dice_site.Models.Operator;
 using dorks_and_dice_site.Models.Tools;
-using dorks_and_dice_site.Services.Content;
 using dorks_and_dice_site.Services.Identity;
 using dorks_and_dice_site.Services.Operator;
 using dorks_and_dice_site.Services.Site;
@@ -57,16 +56,10 @@ public sealed class OperatorInterfaceIntegrationTests
             Assert.True(response.Headers.Contains("X-Dorks-Operator-Invocation-Id"));
         }
 
-        using (var scope = factory.Services.CreateScope())
-        {
-            var credentials = scope.ServiceProvider.GetRequiredService<IOperatorCredentialService>();
-            Assert.True(await credentials.RevokeAsync(principal.CredentialId));
-        }
+        await RevokeCredentialAsync(factory.Services, principal.CredentialId);
 
-        using (var revoked = await client.GetAsync("/operator/v1/me"))
-        {
-            Assert.Equal(HttpStatusCode.Unauthorized, revoked.StatusCode);
-        }
+        using var revoked = await client.GetAsync("/operator/v1/me");
+        Assert.Equal(HttpStatusCode.Unauthorized, revoked.StatusCode);
     }
 
     [Fact]
@@ -77,113 +70,11 @@ public sealed class OperatorInterfaceIntegrationTests
 
         using var factory = new IdentityWebApplicationFactory(connectionString);
         var principal = await CreateServicePrincipalAsync(factory.Services, []);
-
-        using (var scope = factory.Services.CreateScope())
-        {
-            var db = scope.ServiceProvider.GetRequiredService<IdentityDbContext>();
-            var credential = await db.OperatorCredentials.SingleAsync(value => value.Id == principal.CredentialId);
-            credential.ExpiresAt = DateTimeOffset.UtcNow.AddSeconds(-1);
-            await db.SaveChangesAsync();
-        }
+        await ExpireCredentialAsync(factory.Services, principal.CredentialId);
 
         using var client = CreateOperatorClient(factory, principal.Token);
         using var response = await client.GetAsync("/operator/v1/me");
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
-    }
-
-    [Fact]
-    public async Task GlobalEditorOperatorUsesExistingAuthoringRevisionAndAuditBoundaries()
-    {
-        var connectionString = Environment.GetEnvironmentVariable("IDENTITY_TEST_POSTGRES");
-        if (string.IsNullOrWhiteSpace(connectionString)) return;
-
-        using var factory = new IdentityWebApplicationFactory(connectionString);
-        var principal = await CreateServicePrincipalAsync(factory.Services, [AccountRoles.GlobalEditor]);
-        string metadataJson;
-        using (var scope = factory.Services.CreateScope())
-        {
-            var authoring = scope.ServiceProvider.GetRequiredService<IContentAuthoringService>();
-            metadataJson = authoring.GetNew("External").Document.MetadataJson;
-        }
-
-        var suffix = Guid.NewGuid().ToString("N");
-        var request = new OperatorContentWriteRequest
-        {
-            Id = $"operator-content-{suffix}",
-            Slug = $"operator-content-{suffix}",
-            MetadataJson = metadataJson,
-            Tags = ["article"],
-            VisibleModes = [SiteModeValues.DorksAndDiceModeValue, SiteModeValues.ProfessionalModeValue],
-            BodyFormat = "markdown",
-            Body = "## Operator draft\n\nFirst revision."
-        };
-
-        using var client = CreateOperatorClient(factory, principal.Token);
-        OperatorContentDocumentResponse created;
-        using (var create = await client.PostAsJsonAsync("/operator/v1/content?source=External", request))
-        {
-            Assert.Equal(HttpStatusCode.Created, create.StatusCode);
-            created = (await create.Content.ReadFromJsonAsync<OperatorContentDocumentResponse>())!;
-            Assert.Equal(request.Id, created.Id);
-            Assert.Equal(request.VisibleModes.OrderBy(value => value), created.VisibleModes.OrderBy(value => value));
-            Assert.Single(created.History);
-        }
-
-        var saveRequest = new OperatorContentWriteRequest
-        {
-            Id = created.Id,
-            Slug = created.Slug,
-            ExpectedRevisionId = created.RevisionId,
-            MetadataJson = created.MetadataJson,
-            Tags = created.Tags,
-            VisibleModes = created.VisibleModes,
-            BodyFormat = created.BodyFormat,
-            Body = created.Body + "\n\nSecond revision."
-        };
-
-        OperatorContentDocumentResponse saved;
-        using (var save = await client.PutAsJsonAsync(
-                   $"/operator/v1/content/External/{created.Slug}",
-                   saveRequest))
-        {
-            Assert.Equal(HttpStatusCode.OK, save.StatusCode);
-            saved = (await save.Content.ReadFromJsonAsync<OperatorContentDocumentResponse>())!;
-            Assert.NotEqual(created.RevisionId, saved.RevisionId);
-            Assert.Equal(2, saved.History.Count);
-            Assert.Contains("Second revision.", saved.Body, StringComparison.Ordinal);
-        }
-
-        using (var stale = await client.PutAsJsonAsync(
-                   $"/operator/v1/content/External/{created.Slug}",
-                   saveRequest))
-        {
-            Assert.Equal(HttpStatusCode.Conflict, stale.StatusCode);
-        }
-
-        using (var preview = await client.PostAsJsonAsync(
-                   $"/operator/v1/content/External/{created.Slug}/preview",
-                   new OperatorContentPreviewRequest
-                   {
-                       BodyFormat = "markdown",
-                       Body = "## Preview heading"
-                   }))
-        {
-            Assert.Equal(HttpStatusCode.OK, preview.StatusCode);
-            var result = (await preview.Content.ReadFromJsonAsync<OperatorContentPreviewResponse>())!;
-            Assert.Contains("Preview heading", result.Html, StringComparison.Ordinal);
-        }
-
-        using (var scope = factory.Services.CreateScope())
-        {
-            var db = scope.ServiceProvider.GetRequiredService<IdentityDbContext>();
-            var audits = await db.OperatorAuditRecords
-                .Where(value => value.UserId == principal.UserId)
-                .ToListAsync();
-            Assert.Contains(audits, value => value.Capability == "content.create" && value.Outcome == "Succeeded");
-            Assert.Contains(audits, value => value.Capability == "content.save_revision" && value.Outcome == "Succeeded");
-            Assert.Contains(audits, value => value.Capability == "content.save_revision" && value.Outcome == "Failed");
-            Assert.Contains(audits, value => value.Capability == "content.preview" && value.Outcome == "Succeeded");
-        }
     }
 
     [Fact]
@@ -205,17 +96,7 @@ public sealed class OperatorInterfaceIntegrationTests
 
         var principal = await CreateServicePrincipalAsync(factory.Services, [AccountRoles.GlobalEditor]);
         using var operatorClient = CreateOperatorClient(factory, principal.Token);
-
-        OperatorBrowserBootstrapResponse bootstrap;
-        using (var issue = await operatorClient.PostAsync("/operator/v1/browser-bootstrap", null))
-        {
-            Assert.Equal(HttpStatusCode.OK, issue.StatusCode);
-            Assert.Equal("no-store", issue.Headers.CacheControl?.ToString());
-            bootstrap = (await issue.Content.ReadFromJsonAsync<OperatorBrowserBootstrapResponse>())!;
-            Assert.NotEqual(Guid.Empty, bootstrap.BootstrapId);
-            Assert.StartsWith("/operator/bootstrap?token=", bootstrap.BootstrapUrl, StringComparison.Ordinal);
-            Assert.True(bootstrap.ExpiresAt > DateTimeOffset.UtcNow);
-        }
+        var bootstrap = await IssueBootstrapAsync(operatorClient);
 
         using var browser = CreateBrowserClient(factory);
         using (var consume = await browser.GetAsync(bootstrap.BootstrapUrl))
@@ -229,7 +110,10 @@ public sealed class OperatorInterfaceIntegrationTests
         using (var account = await browser.GetAsync("/account"))
         {
             Assert.Equal(HttpStatusCode.OK, account.StatusCode);
-            Assert.Contains("Operator Integration Test", await account.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+            Assert.Contains(
+                "Operator Integration Test",
+                await account.Content.ReadAsStringAsync(),
+                StringComparison.Ordinal);
         }
 
         using (var editor = await browser.GetAsync("/editor/content"))
@@ -278,32 +162,122 @@ public sealed class OperatorInterfaceIntegrationTests
             await registry.DeleteAsync(tool.Id);
         }
 
-        using (var scope = factory.Services.CreateScope())
-        {
-            var db = scope.ServiceProvider.GetRequiredService<IdentityDbContext>();
-            var stored = await db.OperatorBrowserBootstraps
-                .SingleAsync(value => value.Id == bootstrap.BootstrapId);
-            Assert.Equal(principal.UserId, stored.UserId);
-            Assert.Equal(principal.CredentialId, stored.CredentialId);
-            Assert.NotEqual(Guid.Empty, stored.IssuanceInvocationId);
-            Assert.NotNull(stored.ConsumedAt);
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<IdentityDbContext>();
+        var stored = await db.OperatorBrowserBootstraps
+            .SingleAsync(value => value.Id == bootstrap.BootstrapId);
+        Assert.Equal(principal.UserId, stored.UserId);
+        Assert.Equal(principal.CredentialId, stored.CredentialId);
+        Assert.NotEqual(Guid.Empty, stored.IssuanceInvocationId);
+        Assert.NotNull(stored.ConsumedAt);
 
-            var audits = await db.OperatorAuditRecords
-                .Where(value => value.UserId == principal.UserId)
-                .ToListAsync();
-            Assert.Contains(audits, value =>
-                value.Capability == "operator.browser_bootstrap"
-                && value.Outcome == "Succeeded");
-            Assert.Contains(audits, value =>
-                value.Capability == "operator.browser_bootstrap.consume"
-                && value.Outcome == "Succeeded");
-            Assert.Contains(audits, value =>
-                value.Capability == "operator.browser_bootstrap.consume"
-                && value.Outcome == "AlreadyConsumed");
-        }
+        var audits = await db.OperatorAuditRecords
+            .Where(value => value.UserId == principal.UserId)
+            .ToListAsync();
+        Assert.Contains(audits, value =>
+            value.Capability == "operator.browser_bootstrap"
+            && value.Outcome == "Succeeded");
+        Assert.Contains(audits, value =>
+            value.Capability == "operator.browser_bootstrap.consume"
+            && value.Outcome == "Succeeded");
+        Assert.Contains(audits, value =>
+            value.Capability == "operator.browser_bootstrap.consume"
+            && value.Outcome == "AlreadyConsumed");
 
         Assert.Null(typeof(ToolRegistration).GetProperty("OperatorContractVersion"));
         Assert.Null(typeof(ToolRegistration).GetProperty("OperatorManifestPath"));
+    }
+
+    [Fact]
+    public async Task RevokingCredentialInvalidatesExistingBootstrappedSession()
+    {
+        var connectionString = Environment.GetEnvironmentVariable("IDENTITY_TEST_POSTGRES");
+        if (string.IsNullOrWhiteSpace(connectionString)) return;
+
+        using var factory = new IdentityWebApplicationFactory(connectionString);
+        var principal = await CreateServicePrincipalAsync(factory.Services, []);
+
+        using var operatorClient = CreateOperatorClient(factory, principal.Token);
+        var bootstrap = await IssueBootstrapAsync(operatorClient);
+        using var browser = CreateBrowserClient(factory);
+        Assert.Equal(HttpStatusCode.Redirect, (await browser.GetAsync(bootstrap.BootstrapUrl)).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await browser.GetAsync("/account")).StatusCode);
+
+        await RevokeCredentialAsync(factory.Services, principal.CredentialId);
+
+        using var rejected = await browser.GetAsync("/account");
+        AssertLoginRedirect(rejected);
+    }
+
+    [Fact]
+    public async Task ExpiringCredentialInvalidatesExistingBootstrappedSession()
+    {
+        var connectionString = Environment.GetEnvironmentVariable("IDENTITY_TEST_POSTGRES");
+        if (string.IsNullOrWhiteSpace(connectionString)) return;
+
+        using var factory = new IdentityWebApplicationFactory(connectionString);
+        var principal = await CreateServicePrincipalAsync(factory.Services, []);
+
+        using var operatorClient = CreateOperatorClient(factory, principal.Token);
+        var bootstrap = await IssueBootstrapAsync(operatorClient);
+        using var browser = CreateBrowserClient(factory);
+        Assert.Equal(HttpStatusCode.Redirect, (await browser.GetAsync(bootstrap.BootstrapUrl)).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await browser.GetAsync("/account")).StatusCode);
+
+        await ExpireCredentialAsync(factory.Services, principal.CredentialId);
+
+        using var rejected = await browser.GetAsync("/account");
+        AssertLoginRedirect(rejected);
+    }
+
+    [Fact]
+    public async Task CredentialBoundSessionsRemainIndependentForSameServicePrincipal()
+    {
+        var connectionString = Environment.GetEnvironmentVariable("IDENTITY_TEST_POSTGRES");
+        if (string.IsNullOrWhiteSpace(connectionString)) return;
+
+        using var factory = new IdentityWebApplicationFactory(connectionString);
+        var first = await CreateServicePrincipalAsync(factory.Services, []);
+        var second = await CreateCredentialAsync(factory.Services, first.UserId, "second-session");
+
+        using var firstOperatorClient = CreateOperatorClient(factory, first.Token);
+        using var secondOperatorClient = CreateOperatorClient(factory, second.Token);
+        var firstBootstrap = await IssueBootstrapAsync(firstOperatorClient);
+        var secondBootstrap = await IssueBootstrapAsync(secondOperatorClient);
+
+        using var firstBrowser = CreateBrowserClient(factory);
+        using var secondBrowser = CreateBrowserClient(factory);
+        Assert.Equal(HttpStatusCode.Redirect, (await firstBrowser.GetAsync(firstBootstrap.BootstrapUrl)).StatusCode);
+        Assert.Equal(HttpStatusCode.Redirect, (await secondBrowser.GetAsync(secondBootstrap.BootstrapUrl)).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await firstBrowser.GetAsync("/account")).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await secondBrowser.GetAsync("/account")).StatusCode);
+
+        await RevokeCredentialAsync(factory.Services, first.CredentialId);
+
+        using var firstRejected = await firstBrowser.GetAsync("/account");
+        AssertLoginRedirect(firstRejected);
+        Assert.Equal(HttpStatusCode.OK, (await secondBrowser.GetAsync("/account")).StatusCode);
+    }
+
+    [Fact]
+    public async Task RevokingCredentialBeforeBootstrapConsumptionPreventsSessionCreation()
+    {
+        var connectionString = Environment.GetEnvironmentVariable("IDENTITY_TEST_POSTGRES");
+        if (string.IsNullOrWhiteSpace(connectionString)) return;
+
+        using var factory = new IdentityWebApplicationFactory(connectionString);
+        var principal = await CreateServicePrincipalAsync(factory.Services, []);
+
+        using var operatorClient = CreateOperatorClient(factory, principal.Token);
+        var bootstrap = await IssueBootstrapAsync(operatorClient);
+        await RevokeCredentialAsync(factory.Services, principal.CredentialId);
+
+        using var browser = CreateBrowserClient(factory);
+        using var consume = await browser.GetAsync(bootstrap.BootstrapUrl);
+        Assert.Equal(HttpStatusCode.Unauthorized, consume.StatusCode);
+
+        using var account = await browser.GetAsync("/account");
+        AssertLoginRedirect(account);
     }
 
     [Fact]
@@ -314,19 +288,15 @@ public sealed class OperatorInterfaceIntegrationTests
 
         using var factory = new IdentityWebApplicationFactory(connectionString);
         var principal = await CreateServicePrincipalAsync(factory.Services, []);
-        using var operatorClient = CreateOperatorClient(factory, principal.Token);
 
-        OperatorBrowserBootstrapResponse bootstrap;
-        using (var issue = await operatorClient.PostAsync("/operator/v1/browser-bootstrap", null))
-        {
-            Assert.Equal(HttpStatusCode.OK, issue.StatusCode);
-            bootstrap = (await issue.Content.ReadFromJsonAsync<OperatorBrowserBootstrapResponse>())!;
-        }
+        using var operatorClient = CreateOperatorClient(factory, principal.Token);
+        var bootstrap = await IssueBootstrapAsync(operatorClient);
 
         using (var scope = factory.Services.CreateScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<IdentityDbContext>();
-            var stored = await db.OperatorBrowserBootstraps.SingleAsync(value => value.Id == bootstrap.BootstrapId);
+            var stored = await db.OperatorBrowserBootstraps
+                .SingleAsync(value => value.Id == bootstrap.BootstrapId);
             stored.ExpiresAt = DateTimeOffset.UtcNow.AddSeconds(-1);
             await db.SaveChangesAsync();
         }
@@ -334,7 +304,9 @@ public sealed class OperatorInterfaceIntegrationTests
         using var browser = CreateBrowserClient(factory);
         using var consume = await browser.GetAsync(bootstrap.BootstrapUrl);
         Assert.Equal(HttpStatusCode.Unauthorized, consume.StatusCode);
-        Assert.Equal(HttpStatusCode.Redirect, (await browser.GetAsync("/account")).StatusCode);
+
+        using var account = await browser.GetAsync("/account");
+        AssertLoginRedirect(account);
 
         using var auditScope = factory.Services.CreateScope();
         var auditDb = auditScope.ServiceProvider.GetRequiredService<IdentityDbContext>();
@@ -344,6 +316,41 @@ public sealed class OperatorInterfaceIntegrationTests
         Assert.Contains(audits, value =>
             value.Capability == "operator.browser_bootstrap.consume"
             && value.Outcome == "Expired");
+    }
+
+    [Fact]
+    public async Task HumanApplicationCookieContinuesToAuthenticateNormally()
+    {
+        var connectionString = Environment.GetEnvironmentVariable("IDENTITY_TEST_POSTGRES");
+        if (string.IsNullOrWhiteSpace(connectionString)) return;
+
+        using var factory = new IdentityWebApplicationFactory(connectionString);
+        var email = $"human-cookie-{Guid.NewGuid():N}@example.test";
+        const string password = "correct horse battery staple";
+        await CreateHumanUserAsync(factory.Services, email, password);
+
+        using var browser = CreateBrowserClient(factory);
+        using var login = await LoginHumanAsync(browser, email, password);
+        Assert.Equal(HttpStatusCode.Redirect, login.StatusCode);
+        Assert.Equal("/", login.Headers.Location?.OriginalString);
+
+        using var account = await browser.GetAsync("/account");
+        Assert.Equal(HttpStatusCode.OK, account.StatusCode);
+        Assert.Contains("Human Cookie Test", await account.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+    }
+
+    private static async Task<OperatorBrowserBootstrapResponse> IssueBootstrapAsync(HttpClient operatorClient)
+    {
+        using var issue = await operatorClient.PostAsync("/operator/v1/browser-bootstrap", null);
+        Assert.Equal(HttpStatusCode.OK, issue.StatusCode);
+        Assert.Equal("no-store", issue.Headers.CacheControl?.ToString());
+
+        var bootstrap = await issue.Content.ReadFromJsonAsync<OperatorBrowserBootstrapResponse>();
+        Assert.NotNull(bootstrap);
+        Assert.NotEqual(Guid.Empty, bootstrap.BootstrapId);
+        Assert.StartsWith("/operator/bootstrap?token=", bootstrap.BootstrapUrl, StringComparison.Ordinal);
+        Assert.True(bootstrap.ExpiresAt > DateTimeOffset.UtcNow);
+        return bootstrap;
     }
 
     private static HttpClient CreateOperatorClient(WebApplicationFactory<Program> factory, string token)
@@ -381,7 +388,9 @@ public sealed class OperatorInterfaceIntegrationTests
             if (!await roleManager.RoleExistsAsync(roleName))
             {
                 var roleResult = await roleManager.CreateAsync(new IdentityRole<Guid>(roleName));
-                Assert.True(roleResult.Succeeded, string.Join(", ", roleResult.Errors.Select(error => error.Description)));
+                Assert.True(
+                    roleResult.Succeeded,
+                    string.Join(", ", roleResult.Errors.Select(error => error.Description)));
             }
         }
 
@@ -401,19 +410,127 @@ public sealed class OperatorInterfaceIntegrationTests
         var createResult = password is null
             ? await userManager.CreateAsync(user)
             : await userManager.CreateAsync(user, password);
-        Assert.True(createResult.Succeeded, string.Join(", ", createResult.Errors.Select(error => error.Description)));
+        Assert.True(
+            createResult.Succeeded,
+            string.Join(", ", createResult.Errors.Select(error => error.Description)));
 
         if (roles.Count > 0)
         {
             var roleResult = await userManager.AddToRolesAsync(user, roles);
-            Assert.True(roleResult.Succeeded, string.Join(", ", roleResult.Errors.Select(error => error.Description)));
+            Assert.True(
+                roleResult.Succeeded,
+                string.Join(", ", roleResult.Errors.Select(error => error.Description)));
         }
 
         var credential = await credentials.CreateAsync(user.Id, "integration-test");
-        return new CreatedOperatorPrincipal(user.Id, credential.Credential.Id, credential.Token);
+        return new CreatedOperatorPrincipal(
+            user.Id,
+            credential.Credential.Id,
+            credential.Token);
     }
 
-    private sealed record CreatedOperatorPrincipal(Guid UserId, Guid CredentialId, string Token);
+    private static async Task<CreatedCredential> CreateCredentialAsync(
+        IServiceProvider services,
+        Guid userId,
+        string name)
+    {
+        using var scope = services.CreateScope();
+        var credentials = scope.ServiceProvider.GetRequiredService<IOperatorCredentialService>();
+        var created = await credentials.CreateAsync(userId, name);
+        return new CreatedCredential(created.Credential.Id, created.Token);
+    }
+
+    private static async Task RevokeCredentialAsync(
+        IServiceProvider services,
+        Guid credentialId)
+    {
+        using var scope = services.CreateScope();
+        var credentials = scope.ServiceProvider.GetRequiredService<IOperatorCredentialService>();
+        Assert.True(await credentials.RevokeAsync(credentialId));
+    }
+
+    private static async Task ExpireCredentialAsync(
+        IServiceProvider services,
+        Guid credentialId)
+    {
+        using var scope = services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<IdentityDbContext>();
+        var credential = await db.OperatorCredentials
+            .SingleAsync(value => value.Id == credentialId);
+        credential.ExpiresAt = DateTimeOffset.UtcNow.AddSeconds(-1);
+        await db.SaveChangesAsync();
+    }
+
+    private static async Task CreateHumanUserAsync(
+        IServiceProvider services,
+        string email,
+        string password)
+    {
+        using var scope = services.CreateScope();
+        var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+        var user = new ApplicationUser
+        {
+            Id = Guid.NewGuid(),
+            AccountKind = AccountKind.Human,
+            UserName = email,
+            Email = email,
+            EmailConfirmed = true,
+            DisplayName = "Human Cookie Test",
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+        var result = await userManager.CreateAsync(user, password);
+        Assert.True(
+            result.Succeeded,
+            string.Join(", ", result.Errors.Select(error => error.Description)));
+    }
+
+    private static async Task<HttpResponseMessage> LoginHumanAsync(
+        HttpClient client,
+        string email,
+        string password)
+    {
+        using var loginPage = await client.GetAsync("/account/login");
+        Assert.Equal(HttpStatusCode.OK, loginPage.StatusCode);
+        var token = ExtractAntiforgeryToken(await loginPage.Content.ReadAsStringAsync());
+
+        using var loginForm = new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["Email"] = email,
+            ["Password"] = password,
+            ["RememberMe"] = "false",
+            ["__RequestVerificationToken"] = token
+        });
+        return await client.PostAsync("/account/login", loginForm);
+    }
+
+    private static string ExtractAntiforgeryToken(string html)
+    {
+        var match = Regex.Match(
+            html,
+            "<input[^>]+name=\"__RequestVerificationToken\"[^>]+value=\"([^\"]+)\"[^>]*>",
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+        Assert.True(match.Success, "The form did not contain an antiforgery token.");
+        return match.Groups[1].Value;
+    }
+
+    private static void AssertLoginRedirect(HttpResponseMessage response)
+    {
+        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+        Assert.NotNull(response.Headers.Location);
+        var path = response.Headers.Location!.IsAbsoluteUri
+            ? response.Headers.Location.AbsolutePath
+            : response.Headers.Location.OriginalString.Split('?', 2)[0];
+        Assert.Equal("/account/login", path);
+    }
+
+    private sealed record CreatedOperatorPrincipal(
+        Guid UserId,
+        Guid CredentialId,
+        string Token);
+
+    private sealed record CreatedCredential(
+        Guid CredentialId,
+        string Token);
 
     private sealed class RecordingToolProxyService : IToolProxyService
     {
@@ -443,7 +560,10 @@ public sealed class OperatorInterfaceIntegrationTests
             Path = path;
             ToolSlug = tool.Slug;
             BrowserAuthorizationHeader = context.Request.Headers.Authorization.ToString();
-            if (!ToolAuthenticationTickets.TryRedeem(tool.Slug, authenticationTicket, out var authenticationContext)
+            if (!ToolAuthenticationTickets.TryRedeem(
+                    tool.Slug,
+                    authenticationTicket,
+                    out var authenticationContext)
                 || authenticationContext is null)
             {
                 context.Response.StatusCode = StatusCodes.Status401Unauthorized;

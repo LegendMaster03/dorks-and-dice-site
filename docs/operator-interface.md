@@ -1,6 +1,6 @@
 # Operator Interface
 
-The Operator Interface extends the Dorks & Dice Site framework so an authorized machine identity can use the same Site and Tool interfaces as an authenticated human user. It is not a parallel Tool API system.
+The Operator Interface lets an authorized machine identity use the Dorks & Dice Site through the same Site and Tool surfaces used by an authenticated human. It is not a parallel Tool API system.
 
 ## Identity
 
@@ -18,7 +18,7 @@ No password is required or created for an Operator account.
 
 ## Operator credentials
 
-Machine authentication uses separate Operator bearer credentials. The canonical credential format is:
+Machine authentication uses separately revocable Operator bearer credentials:
 
 ```text
 ddop_v1_<credential-id>_<random-secret>
@@ -26,13 +26,13 @@ ddop_v1_<credential-id>_<random-secret>
 
 Only the credential ID, metadata, and SHA-256 hash of the random secret are persisted. Plaintext credentials are returned only when created.
 
-Credentials can be created, replaced, expired, and revoked independently of the service-principal account. They authenticate only endpoints that explicitly select the Operator bearer scheme; they are not normal Site cookies and are never forwarded to Tools.
+Credentials can be created, rotated, expired, and revoked independently for the same service principal. They authenticate only endpoints that explicitly select the Operator bearer scheme. They are not normal Site cookies and are never forwarded to Tools.
 
 Provisioning and credential maintenance use ASP.NET Identity and the Operator credential service rather than raw Identity-table writes.
 
 ## Browser-session bootstrap
 
-The central machine-to-Site transition is a short-lived browser bootstrap:
+The machine-to-Site transition is a short-lived one-use browser bootstrap:
 
 ```text
 machine client
@@ -50,28 +50,46 @@ short-lived bootstrap URL
     v
 GET /operator/bootstrap?token=...
     |
-    | consumes token atomically
+    | atomically consumes token
     | issues normal Identity application cookie
     v
 normal authenticated Site session
 ```
 
-Bootstrap tokens are generated from cryptographically strong random bytes, expire after one minute, are bound to one Site user and the Operator credential that requested them, and can be consumed only once. A revoked or expired credential can not consume an outstanding bootstrap.
+Bootstrap tokens use cryptographically strong random bytes, expire after one minute, are bound to one Site user and one Operator credential, and can be consumed only once.
+
+Bootstrap consumption revalidates and locks the bound credential row in the same database transaction that consumes the bootstrap. Credential revocation updates that same row. The database therefore serializes concurrent revoke/consume operations instead of relying on an earlier in-memory credential check.
 
 The long-lived Operator credential is never placed in a browser URL or converted into a cookie.
 
-The bootstrap endpoint deliberately signs the validated service principal into the normal ASP.NET Identity application-cookie scheme. `ApplicationSignInManager.CanSignInAsync` continues to reject service principals from password/interactive login; the explicit bootstrap path is separate from that prohibited login flow.
+## Credential-bound Site cookies
 
-After bootstrap, the browser is an ordinary authenticated Site session. Normal Site authorization, mode/scoped-role authorization, campaign membership, and cookie validation apply.
+A cookie created by Operator bootstrap is a normal ASP.NET Identity application cookie with one additional claim containing the specific Operator credential ID that created the session.
+
+Application-cookie validation preserves the normal Identity security-stamp validation path. After normal validation, only cookies carrying the Operator credential claim perform an Operator credential lookup.
+
+The service-principal session is rejected when the bound credential:
+
+- is revoked;
+- is expired;
+- no longer exists;
+- no longer belongs to that Site user;
+- or the Site user is no longer an active service principal.
+
+Security-stamp principal refresh can replace the cookie principal. When that occurs, the Operator credential claim is reattached before cookie renewal so sliding expiration can not detach the session from its credential.
+
+Human application cookies do not contain the Operator credential claim and therefore do not query Operator credential state. Their existing authentication behavior is unchanged.
+
+Multiple credentials for one service principal remain independent. Revoking one credential invalidates only browser sessions bound to that credential.
 
 ## Tools
 
 Tools do not implement Operator support.
 
-For an embedded Tool, a bootstrapped service principal follows the existing path:
+A bootstrapped service principal follows the existing Tool path:
 
 ```text
-authenticated browser cookie
+authenticated Site application cookie
         |
         v
 /tools/{slug}/...
@@ -84,34 +102,39 @@ existing Tool Host
 existing Tool
 ```
 
-`ToolHostAuthenticationContextFactory` is the authoritative implementation for turning an authenticated Site principal into the trusted Tool Host authentication context used by the authenticated upstream proxy. Human principals and service principals therefore receive the same projection rules for:
+`ToolHostAuthenticationContextFactory` is the shared implementation used by the normal authenticated Tool Host proxy to project:
 
 - Site user ID and display name;
 - effective global roles;
 - campaign memberships and campaign roles;
-- Tool-specific shared projections such as Character access where already defined.
+- existing Tool-specific shared projections such as Character access.
 
-The Tool continues to perform its existing authorization. Rules Core, for example, remains responsible for Rules Lawyer authorization and source grants. It neither knows nor needs to know whether the Site user is a human, ChatGPT, a local model, or another automation client.
+Human principals and service principals therefore use the same Tool Host path.
+
+The Tool continues to perform its existing authorization. Rules Core, for example, remains responsible for Rules Lawyer authorization and source grants. It does not need to know whether the Site user is a human or a service principal.
 
 No Operator bearer credential is sent to a Tool. The normal Tool proxy strips browser `Authorization` and `Cookie` headers and injects only the existing short-lived Tool Host ticket and introspection path.
 
-There is no Tool Operator Contract, Tool Operator manifest, Operator capability endpoint inside individual Tools, or Operator-specific Tool registration metadata.
+There is no Tool Operator Contract, Tool Operator manifest, Tool-specific Operator capability endpoint, Operator registration metadata, or parallel Tool API.
 
-## Framework-owned structured APIs
+## Operator HTTPS/JSON surface
 
-HTTPS/JSON remains the canonical machine protocol for framework-owned facilities.
+The retained machine-facing JSON surface is intentionally small and framework-owned:
 
-The Site-owned structured content endpoints are retained as an optional convenience because content authoring is a Site-native framework domain and the endpoints call the existing `IContentAuthoringService`, `IContentPageComposer`, `IContentAssetService`, and existing mode/editor authorization logic.
+- `GET /operator/v1/me`
+- `GET /operator/v1/capabilities`
+- `POST /operator/v1/browser-bootstrap`
+- `GET /operator/v1/openapi.json`
 
-These endpoints are not required for general machine operation and do not establish a requirement that Tools expose parallel Operator APIs. A machine client can always use the normal Site interface through browser bootstrap.
+There is no separate Operator content-authoring API. Once bootstrapped, a machine editor uses the normal Site authoring surfaces and therefore receives the same mode-editor authorization, Development/trusted-access boundaries, input limits, and mode-preservation behavior as a human editor.
 
-Capability discovery describes only framework-owned facilities such as identity inspection, browser bootstrap, and optional Site-native content operations.
+Capability discovery and OpenAPI describe only the four framework-owned Operator operations above.
 
 ## Audit
 
 Bearer-authenticated Operator API actions are recorded by the Operator audit filter without request or response bodies.
 
-Browser bootstrap persistence records the service-principal user ID, requesting Operator credential ID, issuance invocation ID, issuance time, expiration time, and consumption time. Consumption attempts that can be attributed to a known bootstrap are also written to the Operator audit log with a separate invocation ID and outcome.
+Browser bootstrap persistence records the service-principal user ID, requesting Operator credential ID, issuance invocation ID, issuance time, expiration time, and consumption time. Attributable bootstrap-consumption attempts are also written to the Operator audit log with a separate invocation ID and outcome.
 
 Secrets, browser cookies, and restricted content payloads are not logged.
 
@@ -130,12 +153,12 @@ A future external Operator Runtime may own:
 - console inspection;
 - network inspection.
 
-That runtime will authenticate to the Site with an Operator credential only to request a short-lived bootstrap, then operate the normal Site with the resulting browser cookie.
+That runtime authenticates to the Site with an Operator credential only to request a short-lived bootstrap, then operates the normal Site with the resulting credential-bound application cookie.
 
 The Site does not own that runtime and this branch does not create it.
 
 ## Architectural acceptance rule
 
-A new first-party Tool that implements the existing Tool Host contracts must be usable by an authorized service principal without any Operator-specific Tool changes.
+A first-party Tool that implements the existing Tool Host contracts must be usable by an authorized service principal without any Operator-specific Tool changes.
 
-Tools receive a normal trusted Site identity context. They do not branch on whether the identity originated from a human login or a service-principal browser bootstrap.
+Tools receive the normal trusted Site identity context. They do not branch on whether the identity originated from a human login or a service-principal browser bootstrap.

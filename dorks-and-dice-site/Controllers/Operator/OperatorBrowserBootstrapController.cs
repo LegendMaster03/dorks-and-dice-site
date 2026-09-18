@@ -1,3 +1,5 @@
+using System.Security.Claims;
+using dorks_and_dice_site.Framework.Operator;
 using dorks_and_dice_site.Models.Identity;
 using dorks_and_dice_site.Services.Identity;
 using dorks_and_dice_site.Services.Operator;
@@ -26,15 +28,24 @@ public sealed class OperatorBrowserBootstrapController(
             Response.Headers["X-Dorks-Operator-Invocation-Id"] = result.InvocationId.Value.ToString("D");
         }
 
-        if (!result.Succeeded || result.User is null)
+        if (!result.Succeeded
+            || result.User is null
+            || !result.CredentialId.HasValue)
         {
             return Unauthorized();
         }
 
         // Password and ordinary interactive login remain blocked by ApplicationSignInManager.
-        // This explicit bootstrap is the only deliberate service-principal path into the normal
-        // Identity application-cookie session.
-        await signInManager.SignInAsync(result.User, isPersistent: false);
+        // This explicit bootstrap creates the normal Identity application cookie and binds that
+        // cookie to the specific Operator credential that authorized this bootstrap.
+        await signInManager.SignInWithClaimsAsync(
+            result.User,
+            isPersistent: false,
+            [
+                new Claim(
+                    OperatorClaimTypes.CredentialId,
+                    result.CredentialId.Value.ToString("D"))
+            ]);
         return LocalRedirect("/");
     }
 }

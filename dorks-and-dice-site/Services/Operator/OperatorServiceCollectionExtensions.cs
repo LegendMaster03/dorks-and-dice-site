@@ -17,13 +17,20 @@ public static class OperatorServiceCollectionExtensions
             .AddScheme<AuthenticationSchemeOptions, OperatorAuthenticationHandler>(
                 OperatorAuthenticationDefaults.Scheme,
                 _ => { });
+
         services.AddScoped<IOperatorCredentialService, OperatorCredentialService>();
         services.AddScoped<IOperatorBrowserBootstrapService, OperatorBrowserBootstrapService>();
-        services.AddScoped<IOperatorContentAccessService, OperatorContentAccessService>();
         services.AddScoped<OperatorAuditFilter>();
+        services.AddScoped<OperatorApplicationCookieEvents>();
         services.AddSingleton<IOperatorCapabilityRegistry, OperatorCapabilityRegistry>();
         services.AddHostedService<OperatorProvisioningHostedService>();
         services.AddScoped<SignInManager<ApplicationUser>, ApplicationSignInManager>();
+
+        services.ConfigureApplicationCookie(options =>
+        {
+            options.EventsType = typeof(OperatorApplicationCookieEvents);
+        });
+
         return services;
     }
 }
