@@ -89,6 +89,9 @@ public sealed class DatabaseToolRegistry : IToolRegistry
             throw DuplicateSlug(registration.Slug);
         }
 
+        registration.DelegationTargets = NormalizeDelegationTargets(
+            registration.DelegationTargets);
+
         var (connection, provider) = CreateConnection();
         await using (connection)
         {
@@ -234,6 +237,15 @@ public sealed class DatabaseToolRegistry : IToolRegistry
                 $"Tool registry content database provider '{source.Provider}' is not supported.")
         };
     }
+
+    private static List<string> NormalizeDelegationTargets(
+        IEnumerable<string>? targets) =>
+        (targets ?? [])
+            .Where(target => !string.IsNullOrWhiteSpace(target))
+            .Select(target => target.Trim().ToLowerInvariant())
+            .Distinct(StringComparer.Ordinal)
+            .OrderBy(target => target, StringComparer.Ordinal)
+            .ToList();
 
     private static ToolRegistration ReadRegistration(DbDataReader reader, RegistryProvider provider) => new()
     {

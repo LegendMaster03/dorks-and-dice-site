@@ -31,7 +31,7 @@ public sealed class DatabaseToolRegistryTests
                 FrontendEntryPoint = "/app.js",
                 HealthPath = "/ready",
                 Modes = ["dorks-and-dice", "professional"],
-                DelegationTargets = ["rules-core", "other-tool"],
+                DelegationTargets = ["Rules-Core", "rules-core", " other-tool "],
                 AllowAnonymous = false,
                 Enabled = true,
                 CreatedAt = now,
@@ -46,6 +46,7 @@ public sealed class DatabaseToolRegistryTests
             Assert.NotNull(bySlug);
             Assert.Equal(tool.Id, bySlug.Id);
             Assert.Equal(tool.Modes, bySlug.Modes);
+            Assert.Equal(new[] { "other-tool", "rules-core" }, tool.DelegationTargets);
             Assert.Equal(tool.DelegationTargets, bySlug.DelegationTargets);
             Assert.False(bySlug.AllowAnonymous);
             Assert.True(bySlug.Enabled);
@@ -141,7 +142,7 @@ public sealed class DatabaseToolRegistryPostgresIntegrationTests
             UpstreamBaseUrl = "http://postgres-registry-test:8080",
             HealthPath = "/health",
             Modes = ["dorks-and-dice", "professional"],
-            DelegationTargets = ["rules-core", "other-tool"],
+            DelegationTargets = ["Rules-Core", "rules-core", " other-tool "],
             AllowAnonymous = false,
             Enabled = true,
             CreatedAt = DateTimeOffset.UtcNow,
@@ -157,6 +158,7 @@ public sealed class DatabaseToolRegistryPostgresIntegrationTests
             Assert.Equal(tool.Id, stored.Id);
             Assert.Equal(tool.IntegrationType, stored.IntegrationType);
             Assert.Equal(tool.Modes, stored.Modes);
+            Assert.Equal(new[] { "other-tool", "rules-core" }, tool.DelegationTargets);
             Assert.Equal(tool.DelegationTargets, stored.DelegationTargets);
             Assert.False(stored.AllowAnonymous);
             Assert.True(stored.Enabled);

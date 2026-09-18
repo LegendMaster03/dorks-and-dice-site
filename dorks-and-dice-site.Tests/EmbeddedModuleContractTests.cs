@@ -180,11 +180,44 @@ public sealed class EmbeddedModuleContractIntegrationTests(PublishedContentWebAp
             Assert.Equal(
                 new[] { "other-tool", "rules-core" },
                 stored.DelegationTargets);
+
+            var editHtml = await client.GetStringAsync($"/development/tools/{stored.Id:D}");
+            Assert.Contains("other-tool", editHtml, StringComparison.Ordinal);
+            Assert.Contains("rules-core", editHtml, StringComparison.Ordinal);
         }
         finally
         {
             await registry.DeleteAsync(stored.Id);
         }
+
+        var invalidHtml = await client.GetStringAsync("/development/tools/new");
+        var invalidTokenMatch = System.Text.RegularExpressions.Regex.Match(
+            invalidHtml,
+            "name=\"__RequestVerificationToken\" type=\"hidden\" value=\"([^\"]+)\"");
+        Assert.True(invalidTokenMatch.Success);
+        var selfSlug = $"self-delegation-{Guid.NewGuid():N}";
+
+        using var invalidResponse = await client.PostAsync(
+            "/development/tools/save",
+            new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                ["__RequestVerificationToken"] =
+                    WebUtility.HtmlDecode(invalidTokenMatch.Groups[1].Value),
+                ["Slug"] = selfSlug,
+                ["DisplayName"] = "Self Delegation Test",
+                ["IntegrationType"] =
+                    ((int)ToolIntegrationType.EmbeddedModule).ToString(),
+                ["IntegrationContractVersion"] =
+                    ToolIntegrationContractVersions.EmbeddedModuleCurrent.ToString(),
+                ["Modes"] = SiteModeValues.DorksAndDiceModeValue,
+                ["DelegationTargetsText"] = selfSlug
+            }));
+        var invalidBody = await invalidResponse.Content.ReadAsStringAsync();
+        Assert.Equal(HttpStatusCode.OK, invalidResponse.StatusCode);
+        Assert.Contains(
+            "A Tool can not delegate to itself.",
+            invalidBody,
+            StringComparison.Ordinal);
     }
 
     private async Task<ToolRegistration> RegisterAsync(ToolRegistration tool)
