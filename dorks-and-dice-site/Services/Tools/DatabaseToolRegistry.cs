@@ -83,6 +83,7 @@ public sealed class DatabaseToolRegistry : IToolRegistry
     {
         ArgumentNullException.ThrowIfNull(registration);
 
+        var existingById = await GetByIdAsync(registration.Id, cancellationToken);
         var duplicate = await GetBySlugAsync(registration.Slug, cancellationToken);
         if (duplicate is not null && duplicate.Id != registration.Id)
         {
@@ -91,6 +92,10 @@ public sealed class DatabaseToolRegistry : IToolRegistry
 
         registration.DelegationTargets = NormalizeDelegationTargets(
             registration.DelegationTargets);
+        if (existingById is null)
+        {
+            ApplyInitialDelegationDefaults(registration);
+        }
 
         var (connection, provider) = CreateConnection();
         await using (connection)
@@ -236,6 +241,26 @@ public sealed class DatabaseToolRegistry : IToolRegistry
             _ => throw new NotSupportedException(
                 $"Tool registry content database provider '{source.Provider}' is not supported.")
         };
+    }
+
+    private static void ApplyInitialDelegationDefaults(ToolRegistration registration)
+    {
+        const string characterSheetSlug = "character-sheet";
+        const string rulesCoreSlug = "rules-core";
+
+        if (!string.Equals(
+                registration.Slug,
+                characterSheetSlug,
+                StringComparison.OrdinalIgnoreCase)
+            || registration.DelegationTargets.Contains(
+                rulesCoreSlug,
+                StringComparer.Ordinal))
+        {
+            return;
+        }
+
+        registration.DelegationTargets.Add(rulesCoreSlug);
+        registration.DelegationTargets.Sort(StringComparer.Ordinal);
     }
 
     private static List<string> NormalizeDelegationTargets(

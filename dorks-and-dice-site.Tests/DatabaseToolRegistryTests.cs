@@ -93,6 +93,92 @@ public sealed class DatabaseToolRegistryTests
         }
     }
 
+    [Fact]
+    public async Task FreshRegistryAppliesCharacterSheetDelegationDefaultOnlyOnInitialInsert()
+    {
+        var databasePath = Path.Combine(
+            Path.GetTempPath(),
+            $"tool-registry-first-party-defaults-{Guid.NewGuid():N}.db");
+        try
+        {
+            var sourceRegistry = CreateSourceRegistry(
+                "Sqlite",
+                $"Data Source={databasePath};Pooling=False");
+            var initializer = new ContentStorageInitializer(sourceRegistry);
+            await initializer.InitializeAsync();
+            var registry = new DatabaseToolRegistry(sourceRegistry);
+            var now = DateTimeOffset.UtcNow;
+
+            var characterSheet = new ToolRegistration
+            {
+                Id = Guid.NewGuid(),
+                Slug = "character-sheet",
+                DisplayName = "Character Sheet",
+                IntegrationType = ToolIntegrationType.EmbeddedModule,
+                IntegrationContractVersion =
+                    ToolIntegrationContractVersions.EmbeddedModuleCurrent,
+                Modes = ["dorks-and-dice"],
+                DelegationTargets = [],
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+            var rulesCore = new ToolRegistration
+            {
+                Id = Guid.NewGuid(),
+                Slug = "rules-core",
+                DisplayName = "Rules Core",
+                IntegrationType = ToolIntegrationType.EmbeddedModule,
+                IntegrationContractVersion =
+                    ToolIntegrationContractVersions.EmbeddedModuleCurrent,
+                Modes = ["dorks-and-dice"],
+                DelegationTargets = [],
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+            var unrelated = new ToolRegistration
+            {
+                Id = Guid.NewGuid(),
+                Slug = "unrelated-tool",
+                DisplayName = "Unrelated Tool",
+                IntegrationType = ToolIntegrationType.EmbeddedModule,
+                IntegrationContractVersion =
+                    ToolIntegrationContractVersions.EmbeddedModuleCurrent,
+                Modes = ["dorks-and-dice"],
+                DelegationTargets = [],
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+
+            await registry.SaveAsync(characterSheet);
+            await registry.SaveAsync(rulesCore);
+            await registry.SaveAsync(unrelated);
+
+            Assert.Equal(
+                new[] { "rules-core" },
+                (await registry.GetByIdAsync(characterSheet.Id))!.DelegationTargets);
+            Assert.Empty((await registry.GetByIdAsync(rulesCore.Id))!.DelegationTargets);
+            Assert.Empty((await registry.GetByIdAsync(unrelated.Id))!.DelegationTargets);
+
+            characterSheet.DelegationTargets = [];
+            characterSheet.UpdatedAt = now.AddMinutes(1);
+            await registry.SaveAsync(characterSheet);
+
+            Assert.Empty(
+                (await registry.GetByIdAsync(characterSheet.Id))!.DelegationTargets);
+
+            await initializer.InitializeAsync();
+
+            Assert.Empty(
+                (await registry.GetByIdAsync(characterSheet.Id))!.DelegationTargets);
+        }
+        finally
+        {
+            TryDelete(databasePath);
+            TryDelete(databasePath + "-shm");
+            TryDelete(databasePath + "-wal");
+        }
+    }
+
     private static ContentSourceRegistry CreateSourceRegistry(string provider, string connectionString)
     {
         var configuration = new ConfigurationBuilder()

@@ -107,27 +107,80 @@ public sealed class ContentStorageSchemaTests
                          0,
                          1,
                          '2026-09-18T00:00:00.0000000+00:00',
+                         '2026-09-18T00:00:00.0000000+00:00'),
+                        ('22222222-2222-2222-2222-222222222222',
+                         'rules-core',
+                         'Rules Core',
+                         0,
+                         2,
+                         '["dorks-and-dice"]',
+                         0,
+                         1,
+                         '2026-09-18T00:00:00.0000000+00:00',
+                         '2026-09-18T00:00:00.0000000+00:00'),
+                        ('33333333-3333-3333-3333-333333333333',
+                         'unrelated-tool',
+                         'Unrelated Tool',
+                         0,
+                         2,
+                         '["dorks-and-dice"]',
+                         0,
+                         1,
+                         '2026-09-18T00:00:00.0000000+00:00',
                          '2026-09-18T00:00:00.0000000+00:00');
                     """;
                 await command.ExecuteNonQueryAsync();
             }
 
             await CreateInitializer(directory).InitializeAsync();
+
+            await using (var verifyConnection =
+                new SqliteConnection($"Data Source={databasePath};Pooling=False"))
+            {
+                await verifyConnection.OpenAsync();
+                await using var verifyCommand = verifyConnection.CreateCommand();
+                verifyCommand.CommandText = """
+                    SELECT tool_slug, tool_delegation_targets
+                    FROM tool_registration
+                    ORDER BY tool_slug
+                    """;
+
+                var targets = new Dictionary<string, string>(StringComparer.Ordinal);
+                await using (var reader = await verifyCommand.ExecuteReaderAsync())
+                {
+                    while (await reader.ReadAsync())
+                    {
+                        targets[reader.GetString(0)] = reader.GetString(1);
+                    }
+                }
+
+                Assert.Equal("[\"rules-core\"]", targets["character-sheet"]);
+                Assert.Equal("[]", targets["rules-core"]);
+                Assert.Equal("[]", targets["unrelated-tool"]);
+
+                verifyCommand.CommandText = """
+                    UPDATE tool_registration
+                    SET tool_delegation_targets = '[]'
+                    WHERE tool_slug = 'character-sheet'
+                    """;
+                await verifyCommand.ExecuteNonQueryAsync();
+            }
+
             await CreateInitializer(directory).InitializeAsync();
 
-            await using var verifyConnection =
+            await using var restartedConnection =
                 new SqliteConnection($"Data Source={databasePath};Pooling=False");
-            await verifyConnection.OpenAsync();
-            await using var verifyCommand = verifyConnection.CreateCommand();
-            verifyCommand.CommandText = """
+            await restartedConnection.OpenAsync();
+            await using var restartedCommand = restartedConnection.CreateCommand();
+            restartedCommand.CommandText = """
                 SELECT tool_delegation_targets
                 FROM tool_registration
                 WHERE tool_slug = 'character-sheet'
                 """;
 
             Assert.Equal(
-                "[\"rules-core\"]",
-                (string)(await verifyCommand.ExecuteScalarAsync())!);
+                "[]",
+                (string)(await restartedCommand.ExecuteScalarAsync())!);
         }
         finally
         {
