@@ -76,7 +76,7 @@ public sealed class OperatorInterfaceIntegrationTests
         if (string.IsNullOrWhiteSpace(connectionString)) return;
 
         using var factory = new IdentityWebApplicationFactory(connectionString);
-        var principal = await CreateServicePrincipalAsync(factory.Services, [AccountRoles.Member]);
+        var principal = await CreateServicePrincipalAsync(factory.Services, []);
 
         using (var scope = factory.Services.CreateScope())
         {
@@ -313,7 +313,7 @@ public sealed class OperatorInterfaceIntegrationTests
         if (string.IsNullOrWhiteSpace(connectionString)) return;
 
         using var factory = new IdentityWebApplicationFactory(connectionString);
-        var principal = await CreateServicePrincipalAsync(factory.Services, [AccountRoles.Member]);
+        var principal = await CreateServicePrincipalAsync(factory.Services, []);
         using var operatorClient = CreateOperatorClient(factory, principal.Token);
 
         OperatorBrowserBootstrapResponse bootstrap;
