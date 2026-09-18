@@ -140,6 +140,53 @@ public sealed class EmbeddedModuleContractIntegrationTests(PublishedContentWebAp
         Assert.Contains("Supported version is 2", body, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task DevPortalNormalizesAndPersistsDelegationTargets()
+    {
+        using var client = Client(factory, "localhost");
+        client.DefaultRequestHeaders.Add(TestRoleAuthenticationHandler.RolesHeader, "Dev");
+
+        var html = await client.GetStringAsync("/development/tools/new");
+        Assert.Contains("Delegation targets", html, StringComparison.Ordinal);
+        var tokenMatch = System.Text.RegularExpressions.Regex.Match(
+            html,
+            "name=\"__RequestVerificationToken\" type=\"hidden\" value=\"([^\"]+)\"");
+        Assert.True(tokenMatch.Success);
+
+        var slug = $"delegation-editor-{Guid.NewGuid():N}";
+        using var response = await client.PostAsync(
+            "/development/tools/save",
+            new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                ["__RequestVerificationToken"] = WebUtility.HtmlDecode(tokenMatch.Groups[1].Value),
+                ["Slug"] = slug,
+                ["DisplayName"] = "Delegation Editor Test",
+                ["IntegrationType"] = ((int)ToolIntegrationType.EmbeddedModule).ToString(),
+                ["IntegrationContractVersion"] =
+                    ToolIntegrationContractVersions.EmbeddedModuleCurrent.ToString(),
+                ["Modes"] = SiteModeValues.DorksAndDiceModeValue,
+                ["DelegationTargetsText"] = " Rules-Core\nrules-core, other-tool ",
+                ["AllowAnonymous"] = "false",
+                ["Enabled"] = "true"
+            }));
+        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+
+        using var scope = factory.Services.CreateScope();
+        var registry = scope.ServiceProvider.GetRequiredService<IToolRegistry>();
+        var stored = await registry.GetBySlugAsync(slug);
+        Assert.NotNull(stored);
+        try
+        {
+            Assert.Equal(
+                new[] { "other-tool", "rules-core" },
+                stored.DelegationTargets);
+        }
+        finally
+        {
+            await registry.DeleteAsync(stored.Id);
+        }
+    }
+
     private async Task<ToolRegistration> RegisterAsync(ToolRegistration tool)
     {
         tool.CreatedAt = DateTimeOffset.UtcNow;
