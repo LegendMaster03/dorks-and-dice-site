@@ -33,6 +33,14 @@ public static class ToolVisibility
         return GetEffectiveModeIds(tool).Contains(modeId, StringComparer.Ordinal);
     }
 
+    public static bool IsVisibleToUser(
+        ToolRegistration tool,
+        string? modeId,
+        bool isAuthenticated) =>
+        tool.Enabled
+        && IsVisibleInMode(tool, modeId)
+        && (tool.AllowAnonymous || isAuthenticated);
+
     public static IReadOnlyList<string> GetEffectiveModeIds(ToolRegistration tool)
     {
         ArgumentNullException.ThrowIfNull(tool);

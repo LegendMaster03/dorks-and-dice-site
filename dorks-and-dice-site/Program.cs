@@ -9,6 +9,7 @@ using dorks_and_dice_site.Plugins.MinecraftServerStatus;
 using dorks_and_dice_site.Plugins.ProfessionalPortfolio;
 using dorks_and_dice_site.Services.Content.Storage;
 using dorks_and_dice_site.Services.Identity;
+using dorks_and_dice_site.Services.Operator;
 using dorks_and_dice_site.Services.Site;
 using dorks_and_dice_site.Services.Tools;
 using Microsoft.AspNetCore.Authorization;
@@ -39,6 +40,7 @@ builder.Services.AddSingleton<IToolRegistry, DatabaseToolRegistry>();
 builder.Services.AddSingleton<IToolUpstreamPolicy, ToolUpstreamPolicy>();
 builder.Services.AddSingleton<IToolHealthService, ToolHealthService>();
 builder.Services.AddSingleton<IToolProxyService, ToolProxyService>();
+builder.Services.AddScoped<IToolHostAuthenticationContextFactory, ToolHostAuthenticationContextFactory>();
 builder.Services
     .AddOptions<ToolProxyOptions>()
     .Bind(builder.Configuration.GetSection(ToolProxyOptions.SectionName))
@@ -150,6 +152,7 @@ builder.Services.Configure<SecurityStampValidatorOptions>(options =>
 builder.Services.AddScoped<IUserClaimsPrincipalFactory<ApplicationUser>, ApplicationUserClaimsPrincipalFactory>();
 builder.Services.AddScoped<IScopedRoleService, ScopedRoleService>();
 builder.Services.AddHttpContextAccessor();
+builder.Services.AddOperatorInterface();
 builder.Services.AddTransient<Microsoft.AspNetCore.Authentication.IClaimsTransformation, TrustedPrivilegeClaimsTransformation>();
 builder.Services.AddSingleton<IAuthorizationHandler, TrustedAccessAuthorizationHandler>();
 builder.Services.AddSingleton<IAuthorizationHandler, ModeScopedRoleAuthorizationHandler>();

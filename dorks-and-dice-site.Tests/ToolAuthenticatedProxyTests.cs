@@ -25,6 +25,7 @@ public sealed class ToolAuthenticatedProxyTests
         context.Request.Method = HttpMethods.Post;
         context.Request.Scheme = "https";
         context.Request.Host = new HostString("dorks-and-dice.com");
+        context.Request.Headers.Authorization = "Bearer ddop_v1_must-not-reach-tool";
         context.Request.Headers[ToolAuthenticationHeaders.Ticket] = "browser-spoof";
         context.Request.Headers[ToolAuthenticationHeaders.IntrospectionPath] = "/spoofed";
         context.Request.Headers[ToolLifecycleHeaders.Ticket] = "browser-lifecycle-spoof";
@@ -47,6 +48,7 @@ public sealed class ToolAuthenticatedProxyTests
             captured.Headers.GetValues(ToolAuthenticationHeaders.IntrospectionPath).Single());
         Assert.False(captured.Headers.Contains(ToolLifecycleHeaders.Ticket));
         Assert.False(captured.Headers.Contains(ToolLifecycleHeaders.IntrospectionPath));
+        Assert.False(captured.Headers.Contains("Authorization"));
         Assert.Equal("no-store", context.Response.Headers.CacheControl.ToString());
     }
 

@@ -13,6 +13,7 @@
                 <li class="nav-item">
                     <a class="nav-link" asp-area="" asp-controller="Articles" asp-action="Index">Articles</a>
                 </li>
+                @await Component.InvokeAsync("ToolNavigation")
                 @if (User.Identity?.IsAuthenticated == true)
                 {
                     <li class="nav-item">
