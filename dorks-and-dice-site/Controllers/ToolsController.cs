@@ -26,7 +26,10 @@ public sealed class ToolsController : Controller
     {
         var modeId = HttpContext.GetSiteModeContext().ActiveModeId;
         var tools = (await _toolRegistry.GetAllAsync(cancellationToken))
-            .Where(tool => tool.Enabled && ToolVisibility.IsVisibleInMode(tool, modeId))
+            .Where(tool => ToolVisibility.IsVisibleToUser(
+                tool,
+                modeId,
+                User.Identity?.IsAuthenticated == true))
             .ToArray();
         return View(tools);
     }
