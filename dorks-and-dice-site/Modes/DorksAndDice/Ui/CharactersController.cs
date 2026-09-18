@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using dorks_and_dice_site.Modes.DorksAndDice.Campaigns;
 using dorks_and_dice_site.Modes.DorksAndDice.Characters;
+using dorks_and_dice_site.Services.Site;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -12,6 +13,16 @@ public sealed class CharactersController(ICharacterService characterService, ICa
 {
     private readonly ICharacterService _characterService = characterService;
     private readonly ICampaignService _campaignService = campaignService;
+
+    [AcceptVerbs("GET", "HEAD")]
+    [Route("~" + CharacterToolContract.RootPath)]
+    public IActionResult CharacterSheetRoot()
+    {
+        var modeId = HttpContext.GetSiteModeContext().ActiveModeId;
+        return string.Equals(modeId, SiteModeValues.DorksAndDiceModeValue, StringComparison.Ordinal)
+            ? Redirect(CharacterToolContract.CharacterIndexPath)
+            : NotFound();
+    }
 
     [HttpGet("")]
     public async Task<IActionResult> Index(CancellationToken cancellationToken)
