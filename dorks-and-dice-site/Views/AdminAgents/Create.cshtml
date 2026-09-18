@@ -1,0 +1,58 @@
+@model dorks_and_dice_site.Models.Operator.AdminAgentCreateViewModel
+@{
+    ViewData["Title"] = "Add agent";
+    ViewData["Robots"] = "noindex,nofollow";
+}
+
+<div class="mb-4">
+    <p class="text-uppercase text-muted small mb-1">Administration</p>
+    <h1 class="h2 mb-2">Add agent</h1>
+    <p class="text-body-secondary mb-0">Creates a non-interactive Site service principal and its first Operator credential.</p>
+</div>
+
+<form asp-action="Create" method="post" class="card card-body shadow-sm">
+    <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+    <div class="mb-3">
+        <label asp-for="DisplayName" class="form-label">Display name</label>
+        <input asp-for="DisplayName" class="form-control" autocomplete="off" />
+        <span asp-validation-for="DisplayName" class="text-danger"></span>
+    </div>
+
+    <fieldset class="mb-3">
+        <legend class="h6">Global roles</legend>
+        <div class="form-text mb-2">Owner is intentionally unavailable to service principals.</div>
+        @foreach (var role in Model.AvailableRoles)
+        {
+            var id = $"agent-role-{role.Replace(" ", "-", StringComparison.Ordinal).ToLowerInvariant()}";
+            <div class="form-check">
+                <input class="form-check-input"
+                       type="checkbox"
+                       id="@id"
+                       name="Roles"
+                       value="@role"
+                       checked="@Model.Roles.Contains(role, StringComparer.Ordinal)" />
+                <label class="form-check-label" for="@id">@role</label>
+            </div>
+        }
+        <span asp-validation-for="Roles" class="text-danger"></span>
+    </fieldset>
+
+    <div class="row g-3">
+        <div class="col-md-6">
+            <label asp-for="CredentialName" class="form-label">Credential name</label>
+            <input asp-for="CredentialName" class="form-control" autocomplete="off" />
+            <span asp-validation-for="CredentialName" class="text-danger"></span>
+        </div>
+        <div class="col-md-6">
+            <label asp-for="ExpiresAt" class="form-label">Expires at (optional)</label>
+            <input asp-for="ExpiresAt" class="form-control" />
+            <span asp-validation-for="ExpiresAt" class="text-danger"></span>
+        </div>
+    </div>
+
+    <div class="d-flex gap-2 mt-4">
+        <button type="submit" class="btn btn-primary">Create agent</button>
+        <a class="btn btn-outline-secondary" href="/admin/agents">Cancel</a>
+    </div>
+</form>

@@ -1,0 +1,59 @@
+@model dorks_and_dice_site.Models.Operator.AdminAgentListViewModel
+@{
+    ViewData["Title"] = "Agents";
+    ViewData["Robots"] = "noindex,nofollow";
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+    <div>
+        <p class="text-uppercase text-muted small mb-1">Administration</p>
+        <h1 class="h2 mb-2">Agents</h1>
+        <p class="text-body-secondary mb-0">Manage machine identities and their Operator credentials.</p>
+    </div>
+    <a class="btn btn-primary" href="/admin/agents/create">Add agent</a>
+</div>
+
+@if (Model.Agents.Count == 0)
+{
+    <div class="alert alert-secondary">No service principals have been created.</div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table align-middle">
+            <thead>
+            <tr>
+                <th>Agent</th>
+                <th>Roles</th>
+                <th>Active credentials</th>
+                <th>Status</th>
+                <th></th>
+            </tr>
+            </thead>
+            <tbody>
+            @foreach (var agent in Model.Agents)
+            {
+                <tr>
+                    <td>
+                        <div class="fw-semibold">@agent.DisplayName</div>
+                        <div class="small text-body-secondary">@agent.UserId</div>
+                    </td>
+                    <td>
+                        @foreach (var role in agent.GlobalRoles)
+                        {
+                            <span class="badge text-bg-secondary me-1">@role</span>
+                        }
+                    </td>
+                    <td>@agent.ActiveCredentialCount</td>
+                    <td>@(agent.DeletedAt.HasValue ? "Deleted" : "Active")</td>
+                    <td class="text-end">
+                        <a class="btn btn-sm btn-outline-primary" href="/admin/agents/@agent.UserId">Manage</a>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+}
+
+<a class="btn btn-link px-0" href="/admin">Back to Admin</a>

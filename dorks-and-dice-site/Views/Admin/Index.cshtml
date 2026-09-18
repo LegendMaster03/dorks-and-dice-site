@@ -1,3 +1,4 @@
+@using dorks_and_dice_site.Services.Identity
 @{
     ViewData["Title"] = "Admin";
     ViewData["Robots"] = "noindex,nofollow";
@@ -19,6 +20,18 @@
             </div>
         </section>
     </div>
+    @if (User.IsInRole(AccountRoles.Owner))
+    {
+        <div class="col-md-6 col-lg-4">
+            <section class="card h-100">
+                <div class="card-body d-flex flex-column">
+                    <h2 class="h5">Agent management</h2>
+                    <p class="text-body-secondary">Create service principals and issue or revoke their Operator credentials.</p>
+                    <a class="btn btn-outline-primary mt-auto align-self-start" href="/admin/agents">Manage agents</a>
+                </div>
+            </section>
+        </div>
+    }
     <div class="col-md-6 col-lg-4">
         <section class="card h-100">
             <div class="card-body d-flex flex-column">

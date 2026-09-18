@@ -162,3 +162,14 @@ The Site does not own that runtime and this branch does not create it.
 A first-party Tool that implements the existing Tool Host contracts must be usable by an authorized service principal without any Operator-specific Tool changes.
 
 Tools receive the normal trusted Site identity context. They do not branch on whether the identity originated from a human login or a service-principal browser bootstrap.
+
+
+## Owner administration UI
+
+Trusted Owner accounts can manage service principals at `/admin/agents`.
+
+The dashboard can create a service principal, issue additional credentials, and revoke credentials. Agent creation and credential management are Owner-only; ordinary Admin accounts continue to use `/admin/accounts` for the account-management functions they are authorized to perform.
+
+The dashboard and the server-side `operator create` command both use `IOperatorPrincipalService`, so service-principal identity creation, role validation, and initial credential issuance have one implementation. Service principals may receive the normal UI-assignable roles but can not be assigned the Owner role.
+
+Plaintext credentials are shown only in the immediate successful create/issue response.

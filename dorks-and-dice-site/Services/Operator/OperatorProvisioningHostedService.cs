@@ -1,6 +1,5 @@
 using dorks_and_dice_site.Models.Identity;
 using dorks_and_dice_site.Services.Identity;
-using Microsoft.AspNetCore.Identity;
 
 namespace dorks_and_dice_site.Services.Operator;
 
@@ -61,62 +60,16 @@ public sealed class OperatorProvisioningHostedService(
         CancellationToken cancellationToken)
     {
         var options = ParseCreateOptions(args);
-        var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
-        var roleManager = services.GetRequiredService<RoleManager<IdentityRole<Guid>>>();
-        var credentials = services.GetRequiredService<IOperatorCredentialService>();
+        var principals = services.GetRequiredService<IOperatorPrincipalService>();
+        var created = await principals.CreateAsync(
+            options.DisplayName,
+            options.Roles,
+            options.CredentialName,
+            options.ExpiresAt,
+            cancellationToken);
 
-        var unknownRoles = options.Roles
-            .Where(role => !AccountRoleHierarchy.GlobalRoleNames.Contains(role, StringComparer.Ordinal))
-            .ToArray();
-        if (unknownRoles.Length > 0)
-        {
-            throw new InvalidOperationException($"Unknown global role(s): {string.Join(", ", unknownRoles)}.");
-        }
-
-        foreach (var role in options.Roles)
-        {
-            if (!await roleManager.RoleExistsAsync(role))
-            {
-                var createRole = await roleManager.CreateAsync(new IdentityRole<Guid>(role));
-                ThrowIfFailed(createRole, $"create role '{role}'");
-            }
-        }
-
-        var userId = Guid.NewGuid();
-        var serviceIdentity = $"operator-{userId:N}@service.invalid";
-        var user = new ApplicationUser
-        {
-            Id = userId,
-            AccountKind = AccountKind.ServicePrincipal,
-            UserName = serviceIdentity,
-            Email = serviceIdentity,
-            EmailConfirmed = true,
-            DisplayName = options.DisplayName,
-            CreatedAt = DateTimeOffset.UtcNow,
-            LockoutEnabled = false
-        };
-
-        var created = await userManager.CreateAsync(user);
-        ThrowIfFailed(created, "create service principal");
-        try
-        {
-            var addRoles = await userManager.AddToRolesAsync(user, options.Roles);
-            ThrowIfFailed(addRoles, "assign service-principal roles");
-
-            var createdCredential = await credentials.CreateAsync(
-                user.Id,
-                options.CredentialName,
-                options.ExpiresAt,
-                cancellationToken);
-
-            Console.Out.WriteLine("Operator service principal created.");
-            WriteCredential(user.Id, createdCredential);
-        }
-        catch
-        {
-            await userManager.DeleteAsync(user);
-            throw;
-        }
+        Console.Out.WriteLine("Operator service principal created.");
+        WriteCredential(created.User.Id, created.Credential);
     }
 
     private static async Task CreateCredentialAsync(
@@ -300,17 +253,6 @@ public sealed class OperatorProvisioningHostedService(
         {
             throw new InvalidOperationException("--credential-name may not be empty.");
         }
-    }
-
-    private static void ThrowIfFailed(IdentityResult result, string operation)
-    {
-        if (result.Succeeded)
-        {
-            return;
-        }
-
-        throw new InvalidOperationException(
-            $"Could not {operation}: {string.Join("; ", result.Errors.Select(error => error.Description))}");
     }
 
     private const string Usage =
