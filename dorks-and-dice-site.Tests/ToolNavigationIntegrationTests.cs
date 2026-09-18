@@ -2,6 +2,7 @@ using System.Net;
 using dorks_and_dice_site.Models.Identity;
 using dorks_and_dice_site.Models.Site;
 using dorks_and_dice_site.Models.Tools;
+using dorks_and_dice_site.Services.Identity;
 using dorks_and_dice_site.Services.Tools;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
