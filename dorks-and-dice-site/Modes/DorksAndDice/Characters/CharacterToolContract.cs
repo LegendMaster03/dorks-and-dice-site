@@ -9,6 +9,8 @@ public static class CharacterToolContract
 {
     public const string Slug = "character-sheet";
     public const string DisplayName = "Character Sheet";
+    public const string RootPath = "/tools/character-sheet";
+    public const string CharacterIndexPath = "/characters";
     public const string NewCharacterPath = "/tools/character-sheet/new";
 
     public static string CharacterPath(Guid characterId) =>
