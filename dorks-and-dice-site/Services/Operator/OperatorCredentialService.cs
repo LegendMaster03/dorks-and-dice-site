@@ -35,6 +35,15 @@ public interface IOperatorCredentialService
         Guid userId,
         CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<OperatorCredential>> GetForUserAsync(
+        Guid userId,
+        CancellationToken cancellationToken = default);
+
+    Task<bool> RevokeForUserAsync(
+        Guid userId,
+        Guid credentialId,
+        CancellationToken cancellationToken = default);
+
     Task<bool> RevokeAsync(
         Guid credentialId,
         CancellationToken cancellationToken = default);
@@ -170,6 +179,40 @@ public sealed class OperatorCredentialService : IOperatorCredentialService
                         user.Id == userId
                         && user.DeletedAt == null
                         && user.AccountKind == AccountKind.ServicePrincipal),
+                cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<OperatorCredential>> GetForUserAsync(
+        Guid userId,
+        CancellationToken cancellationToken = default) =>
+        await _dbContext.OperatorCredentials
+            .AsNoTracking()
+            .Where(credential => credential.UserId == userId)
+            .OrderByDescending(credential => credential.CreatedAt)
+            .ToArrayAsync(cancellationToken);
+
+    public async Task<bool> RevokeForUserAsync(
+        Guid userId,
+        Guid credentialId,
+        CancellationToken cancellationToken = default)
+    {
+        var now = DateTimeOffset.UtcNow;
+        var updated = await _dbContext.OperatorCredentials
+            .Where(credential => credential.Id == credentialId
+                && credential.UserId == userId
+                && credential.RevokedAt == null)
+            .ExecuteUpdateAsync(
+                setters => setters.SetProperty(credential => credential.RevokedAt, now),
+                cancellationToken);
+        if (updated == 1)
+        {
+            return true;
+        }
+
+        return await _dbContext.OperatorCredentials
+            .AsNoTracking()
+            .AnyAsync(
+                credential => credential.Id == credentialId && credential.UserId == userId,
                 cancellationToken);
     }
 

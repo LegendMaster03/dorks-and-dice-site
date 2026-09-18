@@ -169,6 +169,12 @@ builder.Services.AddAuthorization(options =>
         policy.RequireRole(AccountRoles.Admin);
         policy.Requirements.Add(new TrustedAccessRequirement());
     });
+    options.AddPolicy(AuthorizationPolicies.OwnerAccess, policy =>
+    {
+        policy.RequireAuthenticatedUser();
+        policy.RequireRole(AccountRoles.Owner);
+        policy.Requirements.Add(new TrustedAccessRequirement());
+    });
     options.AddPolicy(AuthorizationPolicies.DevAccess, policy =>
     {
         policy.RequireAuthenticatedUser();

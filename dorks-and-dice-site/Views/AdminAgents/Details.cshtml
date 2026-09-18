@@ -1,0 +1,114 @@
+@model dorks_and_dice_site.Models.Operator.AdminAgentDetailViewModel
+@{
+    ViewData["Title"] = Model.DisplayName;
+    ViewData["Robots"] = "noindex,nofollow";
+}
+
+@if (TempData["AdminAgentMessage"] is string message)
+{
+    <div class="alert alert-success">@message</div>
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+    <div>
+        <p class="text-uppercase text-muted small mb-1">Agent</p>
+        <h1 class="h2 mb-2">@Model.DisplayName</h1>
+        <div class="text-body-secondary">@Model.UserId</div>
+    </div>
+    <a class="btn btn-outline-secondary" href="/admin/accounts/@Model.UserId">Manage account and roles</a>
+</div>
+
+<div class="card card-body shadow-sm mb-4">
+    <h2 class="h5">Identity</h2>
+    <dl class="row mb-0">
+        <dt class="col-sm-3">Status</dt>
+        <dd class="col-sm-9">@(Model.DeletedAt.HasValue ? "Deleted" : "Active")</dd>
+        <dt class="col-sm-3">Created</dt>
+        <dd class="col-sm-9">@Model.CreatedAt</dd>
+        <dt class="col-sm-3">Roles</dt>
+        <dd class="col-sm-9">
+            @foreach (var role in Model.GlobalRoles)
+            {
+                <span class="badge text-bg-secondary me-1">@role</span>
+            }
+        </dd>
+    </dl>
+</div>
+
+<div class="card card-body shadow-sm mb-4">
+    <h2 class="h5">Credentials</h2>
+    @if (Model.Credentials.Count == 0)
+    {
+        <p class="text-body-secondary mb-0">No credentials.</p>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Created</th>
+                    <th>Expires</th>
+                    <th>Last used</th>
+                    <th>Status</th>
+                    <th></th>
+                </tr>
+                </thead>
+                <tbody>
+                @foreach (var credential in Model.Credentials)
+                {
+                    <tr>
+                        <td>
+                            <div class="fw-semibold">@credential.Name</div>
+                            <div class="small text-body-secondary">@credential.CredentialId</div>
+                        </td>
+                        <td>@credential.CreatedAt</td>
+                        <td>@(credential.ExpiresAt?.ToString() ?? "Never")</td>
+                        <td>@(credential.LastUsedAt?.ToString() ?? "Never")</td>
+                        <td>@(credential.IsActive ? "Active" : credential.RevokedAt.HasValue ? "Revoked" : "Expired")</td>
+                        <td class="text-end">
+                            @if (credential.IsActive)
+                            {
+                                <form method="post"
+                                      action="/admin/agents/@Model.UserId/credentials/@credential.CredentialId/revoke"
+                                      onsubmit="return confirm('Revoke this credential? Existing browser sessions bound to it will stop working.');">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">Revoke</button>
+                                </form>
+                            }
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+@if (!Model.DeletedAt.HasValue)
+{
+    <form method="post" action="/admin/agents/@Model.UserId/credentials" class="card card-body shadow-sm mb-4">
+        <h2 class="h5">Issue credential</h2>
+        <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label">Credential name</label>
+                <input name="CredentialName"
+                       value="@Model.NewCredential.CredentialName"
+                       class="form-control"
+                       autocomplete="off" />
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Expires at (optional)</label>
+                <input name="ExpiresAt"
+                       value="@Model.NewCredential.ExpiresAt"
+                       class="form-control" />
+            </div>
+        </div>
+        @Html.AntiForgeryToken()
+        <button type="submit" class="btn btn-primary align-self-start mt-3">Issue credential</button>
+    </form>
+}
+
+<a class="btn btn-link px-0" href="/admin/agents">Back to Agents</a>

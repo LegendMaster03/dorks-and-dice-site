@@ -19,6 +19,7 @@ public static class OperatorServiceCollectionExtensions
                 _ => { });
 
         services.AddScoped<IOperatorCredentialService, OperatorCredentialService>();
+        services.AddScoped<IOperatorPrincipalService, OperatorPrincipalService>();
         services.AddScoped<IOperatorBrowserBootstrapService, OperatorBrowserBootstrapService>();
         services.AddScoped<OperatorAuditFilter>();
         services.AddScoped<OperatorApplicationCookieEvents>();
