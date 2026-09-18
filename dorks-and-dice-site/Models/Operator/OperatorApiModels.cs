@@ -8,15 +8,13 @@ public sealed record OperatorMeResponse(
     string AccountKind,
     IReadOnlyList<string> GlobalRoles);
 
-public sealed record OperatorToolSummary(
-    string Slug,
-    string DisplayName,
-    int OperatorContractVersion,
-    string ManifestPath);
-
 public sealed record OperatorCapabilitiesResponse(
-    IReadOnlyList<OperatorCapabilityDescriptor> Site,
-    IReadOnlyList<OperatorToolSummary> Tools);
+    IReadOnlyList<OperatorCapabilityDescriptor> Site);
+
+public sealed record OperatorBrowserBootstrapResponse(
+    Guid BootstrapId,
+    string BootstrapUrl,
+    DateTimeOffset ExpiresAt);
 
 public sealed record OperatorContentListItem(
     string SourceKey,

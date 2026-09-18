@@ -46,6 +46,30 @@ public partial class AddOperatorIdentity : Migration
             });
 
         migrationBuilder.CreateTable(
+            name: "OperatorBrowserBootstraps",
+            columns: table => new
+            {
+                Id = table.Column<Guid>(type: "uuid", nullable: false),
+                UserId = table.Column<Guid>(type: "uuid", nullable: false),
+                CredentialId = table.Column<Guid>(type: "uuid", nullable: false),
+                IssuanceInvocationId = table.Column<Guid>(type: "uuid", nullable: false),
+                SecretHash = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: false),
+                IssuedAt = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
+                ExpiresAt = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
+                ConsumedAt = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true)
+            },
+            constraints: table =>
+            {
+                table.PrimaryKey("PK_OperatorBrowserBootstraps", x => x.Id);
+                table.ForeignKey(
+                    name: "FK_OperatorBrowserBootstraps_OperatorCredentials_CredentialId",
+                    column: x => x.CredentialId,
+                    principalTable: "OperatorCredentials",
+                    principalColumn: "Id",
+                    onDelete: ReferentialAction.Restrict);
+            });
+
+        migrationBuilder.CreateTable(
             name: "OperatorAuditRecords",
             columns: table => new
             {
@@ -78,6 +102,23 @@ public partial class AddOperatorIdentity : Migration
             });
 
         migrationBuilder.CreateIndex(
+            name: "IX_OperatorBrowserBootstraps_CredentialId",
+            table: "OperatorBrowserBootstraps",
+            column: "CredentialId");
+        migrationBuilder.CreateIndex(
+            name: "IX_OperatorBrowserBootstraps_ExpiresAt",
+            table: "OperatorBrowserBootstraps",
+            column: "ExpiresAt");
+        migrationBuilder.CreateIndex(
+            name: "IX_OperatorBrowserBootstraps_IssuanceInvocationId",
+            table: "OperatorBrowserBootstraps",
+            column: "IssuanceInvocationId",
+            unique: true);
+        migrationBuilder.CreateIndex(
+            name: "IX_OperatorBrowserBootstraps_UserId",
+            table: "OperatorBrowserBootstraps",
+            column: "UserId");
+        migrationBuilder.CreateIndex(
             name: "IX_OperatorCredentials_UserId",
             table: "OperatorCredentials",
             column: "UserId");
@@ -99,6 +140,7 @@ public partial class AddOperatorIdentity : Migration
     protected override void Down(MigrationBuilder migrationBuilder)
     {
         migrationBuilder.DropTable(name: "OperatorAuditRecords");
+        migrationBuilder.DropTable(name: "OperatorBrowserBootstraps");
         migrationBuilder.DropTable(name: "OperatorCredentials");
         migrationBuilder.DropColumn(name: "AccountKind", table: "AspNetUsers");
     }

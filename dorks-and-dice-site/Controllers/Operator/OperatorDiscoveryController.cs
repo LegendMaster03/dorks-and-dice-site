@@ -2,10 +2,8 @@ using System.Security.Claims;
 using dorks_and_dice_site.Framework.Operator;
 using dorks_and_dice_site.Models.Identity;
 using dorks_and_dice_site.Models.Operator;
-using dorks_and_dice_site.Models.Tools;
 using dorks_and_dice_site.Services.Identity;
 using dorks_and_dice_site.Services.Operator;
-using dorks_and_dice_site.Services.Tools;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -19,7 +17,7 @@ namespace dorks_and_dice_site.Controllers.Operator;
 public sealed class OperatorDiscoveryController(
     UserManager<ApplicationUser> userManager,
     IOperatorCapabilityRegistry capabilities,
-    IToolRegistry toolRegistry) : ControllerBase
+    IOperatorBrowserBootstrapService browserBootstrapService) : ControllerBase
 {
     [HttpGet("me")]
     [OperatorCapability("operator.me")]
@@ -42,23 +40,36 @@ public sealed class OperatorDiscoveryController(
 
     [HttpGet("capabilities")]
     [OperatorCapability("operator.capabilities")]
-    public async Task<IActionResult> Capabilities(CancellationToken cancellationToken)
-    {
-        var tools = (await toolRegistry.GetAllAsync(cancellationToken))
-            .Where(tool => tool.Enabled
-                && tool.OperatorContractVersion == ToolOperatorContractVersions.Current
-                && !string.IsNullOrWhiteSpace(tool.OperatorManifestPath))
-            .Select(tool => new OperatorToolSummary(
-                tool.Slug,
-                tool.DisplayName,
-                tool.OperatorContractVersion!.Value,
-                tool.OperatorManifestPath!))
-            .OrderBy(tool => tool.Slug, StringComparer.Ordinal)
-            .ToArray();
+    public IActionResult Capabilities() =>
+        Ok(new OperatorCapabilitiesResponse(capabilities.GetSiteCapabilities()));
 
-        return Ok(new OperatorCapabilitiesResponse(
-            capabilities.GetSiteCapabilities(),
-            tools));
+    [HttpPost("browser-bootstrap")]
+    [OperatorCapability("operator.browser_bootstrap")]
+    public async Task<IActionResult> BrowserBootstrap(CancellationToken cancellationToken)
+    {
+        if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)
+            || !Guid.TryParse(User.FindFirstValue(OperatorClaimTypes.CredentialId), out var credentialId))
+        {
+            return Unauthorized();
+        }
+
+        var invocationId = Guid.TryParse(
+            Response.Headers["X-Dorks-Operator-Invocation-Id"].FirstOrDefault(),
+            out var parsedInvocationId)
+                ? parsedInvocationId
+                : Guid.NewGuid();
+
+        var issued = await browserBootstrapService.IssueAsync(
+            userId,
+            credentialId,
+            invocationId,
+            cancellationToken);
+        Response.Headers.CacheControl = "no-store";
+
+        return Ok(new OperatorBrowserBootstrapResponse(
+            issued.Bootstrap.Id,
+            $"/operator/bootstrap?token={Uri.EscapeDataString(issued.Token)}",
+            issued.Bootstrap.ExpiresAt));
     }
 
     [HttpGet("openapi.json")]

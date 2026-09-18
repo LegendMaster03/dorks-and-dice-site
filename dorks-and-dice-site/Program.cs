@@ -40,6 +40,7 @@ builder.Services.AddSingleton<IToolRegistry, DatabaseToolRegistry>();
 builder.Services.AddSingleton<IToolUpstreamPolicy, ToolUpstreamPolicy>();
 builder.Services.AddSingleton<IToolHealthService, ToolHealthService>();
 builder.Services.AddSingleton<IToolProxyService, ToolProxyService>();
+builder.Services.AddScoped<IToolHostAuthenticationContextFactory, ToolHostAuthenticationContextFactory>();
 builder.Services
     .AddOptions<ToolProxyOptions>()
     .Bind(builder.Configuration.GetSection(ToolProxyOptions.SectionName))

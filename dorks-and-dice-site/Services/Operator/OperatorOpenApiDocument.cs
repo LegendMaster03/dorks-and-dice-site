@@ -130,22 +130,20 @@ public static class OperatorOpenApiDocument
                 ["successStatusCode"] = IntegerSchema()
             },
             "name", "method", "route", "description", "successStatusCode"),
-        ["OperatorToolSummary"] = ObjectSchema(
-            new()
-            {
-                ["slug"] = StringSchema(),
-                ["displayName"] = StringSchema(),
-                ["operatorContractVersion"] = IntegerSchema(),
-                ["manifestPath"] = StringSchema()
-            },
-            "slug", "displayName", "operatorContractVersion", "manifestPath"),
         ["OperatorCapabilitiesResponse"] = ObjectSchema(
             new()
             {
-                ["site"] = ArraySchema(Ref("OperatorCapabilityDescriptor")),
-                ["tools"] = ArraySchema(Ref("OperatorToolSummary"))
+                ["site"] = ArraySchema(Ref("OperatorCapabilityDescriptor"))
             },
-            "site", "tools"),
+            "site"),
+        ["OperatorBrowserBootstrapResponse"] = ObjectSchema(
+            new()
+            {
+                ["bootstrapId"] = UuidSchema(),
+                ["bootstrapUrl"] = StringSchema(),
+                ["expiresAt"] = DateTimeSchema()
+            },
+            "bootstrapId", "bootstrapUrl", "expiresAt"),
         ["OperatorContentListItem"] = ObjectSchema(
             new()
             {
@@ -234,24 +232,6 @@ public static class OperatorOpenApiDocument
             },
             "assetKey", "fileName", "mediaType", "length", "sha256", "createdUtc", "url", "markdownReference", "sourceKey", "isAttached"),
         ["OperatorMediaListResponse"] = ArraySchema(Ref("ContentAssetInfo")),
-        ["ToolOperatorManifest"] = new Dictionary<string, object>
-        {
-            ["type"] = "object",
-            ["additionalProperties"] = true,
-            ["description"] = "Tool-defined Operator Contract v1 manifest returned by the registered Tool."
-        },
-        ["ToolCapabilityRequest"] = new Dictionary<string, object>
-        {
-            ["type"] = "object",
-            ["additionalProperties"] = true,
-            ["description"] = "Capability-specific JSON request defined by the Tool manifest."
-        },
-        ["ToolCapabilityResponse"] = new Dictionary<string, object>
-        {
-            ["type"] = "object",
-            ["additionalProperties"] = true,
-            ["description"] = "Capability-specific JSON response defined by the Tool manifest."
-        }
     };
 
     private static IEnumerable<string> RouteParameters(string route) =>

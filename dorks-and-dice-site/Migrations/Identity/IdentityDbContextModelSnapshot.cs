@@ -287,6 +287,49 @@ namespace dorks_and_dice_site.Migrations.Identity
                     b.ToTable("OperatorAuditRecords", (string)null);
                 });
 
+            modelBuilder.Entity("dorks_and_dice_site.Models.Operator.OperatorBrowserBootstrap", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("ConsumedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("CredentialId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("IssuanceInvocationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("IssuedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("SecretHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CredentialId");
+
+                    b.HasIndex("ExpiresAt");
+
+                    b.HasIndex("IssuanceInvocationId")
+                        .IsUnique();
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("OperatorBrowserBootstraps", (string)null);
+                });
+
             modelBuilder.Entity("dorks_and_dice_site.Models.Operator.OperatorCredential", b =>
                 {
                     b.Property<Guid>("Id")
@@ -392,6 +435,15 @@ namespace dorks_and_dice_site.Migrations.Identity
                     b.HasOne("dorks_and_dice_site.Models.Identity.ApplicationUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("dorks_and_dice_site.Models.Operator.OperatorBrowserBootstrap", b =>
+                {
+                    b.HasOne("dorks_and_dice_site.Models.Operator.OperatorCredential", null)
+                        .WithMany()
+                        .HasForeignKey("CredentialId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });

@@ -14,6 +14,7 @@ public sealed class IdentityDbContext : IdentityDbContext<ApplicationUser, Ident
     }
 
     public DbSet<OperatorCredential> OperatorCredentials => Set<OperatorCredential>();
+    public DbSet<OperatorBrowserBootstrap> OperatorBrowserBootstraps => Set<OperatorBrowserBootstrap>();
     public DbSet<OperatorAuditRecord> OperatorAuditRecords => Set<OperatorAuditRecord>();
 
     protected override void OnModelCreating(ModelBuilder builder)
@@ -56,6 +57,23 @@ public sealed class IdentityDbContext : IdentityDbContext<ApplicationUser, Ident
                 .WithMany()
                 .HasForeignKey(value => value.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<OperatorBrowserBootstrap>(bootstrap =>
+        {
+            bootstrap.ToTable("OperatorBrowserBootstraps");
+            bootstrap.HasKey(value => value.Id);
+            bootstrap.Property(value => value.SecretHash)
+                .HasMaxLength(OperatorBrowserBootstrap.SecretHashMaxLength)
+                .IsRequired();
+            bootstrap.HasIndex(value => value.UserId);
+            bootstrap.HasIndex(value => value.CredentialId);
+            bootstrap.HasIndex(value => value.ExpiresAt);
+            bootstrap.HasIndex(value => value.IssuanceInvocationId).IsUnique();
+            bootstrap.HasOne<OperatorCredential>()
+                .WithMany()
+                .HasForeignKey(value => value.CredentialId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         builder.Entity<OperatorAuditRecord>(audit =>

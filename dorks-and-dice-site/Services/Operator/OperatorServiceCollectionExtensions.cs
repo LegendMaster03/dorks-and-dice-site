@@ -1,7 +1,6 @@
 using dorks_and_dice_site.Framework.Operator;
 using dorks_and_dice_site.Models.Identity;
 using dorks_and_dice_site.Services.Identity;
-using dorks_and_dice_site.Services.Tools;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
 
@@ -19,8 +18,8 @@ public static class OperatorServiceCollectionExtensions
                 OperatorAuthenticationDefaults.Scheme,
                 _ => { });
         services.AddScoped<IOperatorCredentialService, OperatorCredentialService>();
+        services.AddScoped<IOperatorBrowserBootstrapService, OperatorBrowserBootstrapService>();
         services.AddScoped<IOperatorContentAccessService, OperatorContentAccessService>();
-        services.AddScoped<IToolHostAuthenticationContextFactory, ToolHostAuthenticationContextFactory>();
         services.AddScoped<OperatorAuditFilter>();
         services.AddSingleton<IOperatorCapabilityRegistry, OperatorCapabilityRegistry>();
         services.AddHostedService<OperatorProvisioningHostedService>();

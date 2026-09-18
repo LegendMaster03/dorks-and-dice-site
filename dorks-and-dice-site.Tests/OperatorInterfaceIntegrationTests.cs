@@ -70,6 +70,28 @@ public sealed class OperatorInterfaceIntegrationTests
     }
 
     [Fact]
+    public async Task ExpiredOperatorCredentialCanNotAuthenticate()
+    {
+        var connectionString = Environment.GetEnvironmentVariable("IDENTITY_TEST_POSTGRES");
+        if (string.IsNullOrWhiteSpace(connectionString)) return;
+
+        using var factory = new IdentityWebApplicationFactory(connectionString);
+        var principal = await CreateServicePrincipalAsync(factory.Services, [AccountRoles.Member]);
+
+        using (var scope = factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<IdentityDbContext>();
+            var credential = await db.OperatorCredentials.SingleAsync(value => value.Id == principal.CredentialId);
+            credential.ExpiresAt = DateTimeOffset.UtcNow.AddSeconds(-1);
+            await db.SaveChangesAsync();
+        }
+
+        using var client = CreateOperatorClient(factory, principal.Token);
+        using var response = await client.GetAsync("/operator/v1/me");
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
     public async Task GlobalEditorOperatorUsesExistingAuthoringRevisionAndAuditBoundaries()
     {
         var connectionString = Environment.GetEnvironmentVariable("IDENTITY_TEST_POSTGRES");
@@ -165,7 +187,7 @@ public sealed class OperatorInterfaceIntegrationTests
     }
 
     [Fact]
-    public async Task ToolGatewayIssuesNormalToolHostContextForOperatorServicePrincipal()
+    public async Task BrowserBootstrapCreatesNormalCookieAndUsesExistingToolHostPath()
     {
         var connectionString = Environment.GetEnvironmentVariable("IDENTITY_TEST_POSTGRES");
         if (string.IsNullOrWhiteSpace(connectionString)) return;
@@ -181,17 +203,54 @@ public sealed class OperatorInterfaceIntegrationTests
             });
         });
 
-        var principal = await CreateServicePrincipalAsync(factory.Services, [AccountRoles.RulesLawyer]);
+        var principal = await CreateServicePrincipalAsync(factory.Services, [AccountRoles.GlobalEditor]);
+        using var operatorClient = CreateOperatorClient(factory, principal.Token);
+
+        OperatorBrowserBootstrapResponse bootstrap;
+        using (var issue = await operatorClient.PostAsync("/operator/v1/browser-bootstrap", null))
+        {
+            Assert.Equal(HttpStatusCode.OK, issue.StatusCode);
+            Assert.Equal("no-store", issue.Headers.CacheControl?.ToString());
+            bootstrap = (await issue.Content.ReadFromJsonAsync<OperatorBrowserBootstrapResponse>())!;
+            Assert.NotEqual(Guid.Empty, bootstrap.BootstrapId);
+            Assert.StartsWith("/operator/bootstrap?token=", bootstrap.BootstrapUrl, StringComparison.Ordinal);
+            Assert.True(bootstrap.ExpiresAt > DateTimeOffset.UtcNow);
+        }
+
+        using var browser = CreateBrowserClient(factory);
+        using (var consume = await browser.GetAsync(bootstrap.BootstrapUrl))
+        {
+            Assert.Equal(HttpStatusCode.Redirect, consume.StatusCode);
+            Assert.Equal("/", consume.Headers.Location?.OriginalString);
+            Assert.Equal("no-referrer", consume.Headers.GetValues("Referrer-Policy").Single());
+            Assert.True(consume.Headers.Contains("X-Dorks-Operator-Invocation-Id"));
+        }
+
+        using (var account = await browser.GetAsync("/account"))
+        {
+            Assert.Equal(HttpStatusCode.OK, account.StatusCode);
+            Assert.Contains("Operator Integration Test", await account.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+        }
+
+        using (var editor = await browser.GetAsync("/editor/content"))
+        {
+            Assert.Equal(HttpStatusCode.OK, editor.StatusCode);
+        }
+
+        using (var secondBrowser = CreateBrowserClient(factory))
+        using (var secondConsume = await secondBrowser.GetAsync(bootstrap.BootstrapUrl))
+        {
+            Assert.Equal(HttpStatusCode.Unauthorized, secondConsume.StatusCode);
+        }
+
         var tool = new ToolRegistration
         {
             Id = Guid.NewGuid(),
-            Slug = $"operator-test-{Guid.NewGuid():N}",
-            DisplayName = "Operator Test Tool",
+            Slug = $"bootstrap-test-{Guid.NewGuid():N}",
+            DisplayName = "Bootstrap Test Tool",
             IntegrationType = ToolIntegrationType.EmbeddedModule,
             IntegrationContractVersion = ToolIntegrationContractVersions.EmbeddedModuleCurrent,
-            OperatorContractVersion = ToolOperatorContractVersions.Current,
-            OperatorManifestPath = "/operator/manifest",
-            UpstreamBaseUrl = "http://operator-test-tool",
+            UpstreamBaseUrl = "http://bootstrap-test-tool",
             FrontendEntryPoint = "/app.js",
             Modes = [SiteModeValues.DorksAndDiceModeValue],
             AllowAnonymous = false,
@@ -204,30 +263,87 @@ public sealed class OperatorInterfaceIntegrationTests
         await registry.SaveAsync(tool);
         try
         {
-            using var client = CreateOperatorClient(factory, principal.Token);
-            using (var capabilities = await client.GetAsync("/operator/v1/capabilities"))
-            {
-                Assert.Equal(HttpStatusCode.OK, capabilities.StatusCode);
-                var response = (await capabilities.Content.ReadFromJsonAsync<OperatorCapabilitiesResponse>())!;
-                Assert.Contains(response.Tools, value => value.Slug == tool.Slug);
-            }
-
-            using (var manifest = await client.GetAsync($"/operator/v1/tools/{tool.Slug}/manifest"))
-            {
-                Assert.Equal(HttpStatusCode.OK, manifest.StatusCode);
-            }
-
-            Assert.Equal("/operator/manifest", proxy.Path);
+            using var upstream = await browser.GetAsync($"/tool-host/{tool.Slug}/api/upstream/ping");
+            Assert.Equal(HttpStatusCode.OK, upstream.StatusCode);
+            Assert.Equal("/ping", proxy.Path);
             Assert.Equal(tool.Slug, proxy.ToolSlug);
             Assert.NotNull(proxy.AuthenticationContext);
             Assert.Equal(principal.UserId.ToString("D"), proxy.AuthenticationContext!.User.Id);
-            Assert.Contains(AccountRoles.RulesLawyer, proxy.AuthenticationContext.GlobalRoles);
+            Assert.Contains(AccountRoles.GlobalEditor, proxy.AuthenticationContext.GlobalRoles);
             Assert.Empty(proxy.AuthenticationContext.Campaigns);
+            Assert.True(string.IsNullOrWhiteSpace(proxy.BrowserAuthorizationHeader));
         }
         finally
         {
             await registry.DeleteAsync(tool.Id);
         }
+
+        using (var scope = factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<IdentityDbContext>();
+            var stored = await db.OperatorBrowserBootstraps
+                .SingleAsync(value => value.Id == bootstrap.BootstrapId);
+            Assert.Equal(principal.UserId, stored.UserId);
+            Assert.Equal(principal.CredentialId, stored.CredentialId);
+            Assert.NotEqual(Guid.Empty, stored.IssuanceInvocationId);
+            Assert.NotNull(stored.ConsumedAt);
+
+            var audits = await db.OperatorAuditRecords
+                .Where(value => value.UserId == principal.UserId)
+                .ToListAsync();
+            Assert.Contains(audits, value =>
+                value.Capability == "operator.browser_bootstrap"
+                && value.Outcome == "Succeeded");
+            Assert.Contains(audits, value =>
+                value.Capability == "operator.browser_bootstrap.consume"
+                && value.Outcome == "Succeeded");
+            Assert.Contains(audits, value =>
+                value.Capability == "operator.browser_bootstrap.consume"
+                && value.Outcome == "AlreadyConsumed");
+        }
+
+        Assert.Null(typeof(ToolRegistration).GetProperty("OperatorContractVersion"));
+        Assert.Null(typeof(ToolRegistration).GetProperty("OperatorManifestPath"));
+    }
+
+    [Fact]
+    public async Task BrowserBootstrapExpiresBeforeItCanCreateCookieSession()
+    {
+        var connectionString = Environment.GetEnvironmentVariable("IDENTITY_TEST_POSTGRES");
+        if (string.IsNullOrWhiteSpace(connectionString)) return;
+
+        using var factory = new IdentityWebApplicationFactory(connectionString);
+        var principal = await CreateServicePrincipalAsync(factory.Services, [AccountRoles.Member]);
+        using var operatorClient = CreateOperatorClient(factory, principal.Token);
+
+        OperatorBrowserBootstrapResponse bootstrap;
+        using (var issue = await operatorClient.PostAsync("/operator/v1/browser-bootstrap", null))
+        {
+            Assert.Equal(HttpStatusCode.OK, issue.StatusCode);
+            bootstrap = (await issue.Content.ReadFromJsonAsync<OperatorBrowserBootstrapResponse>())!;
+        }
+
+        using (var scope = factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<IdentityDbContext>();
+            var stored = await db.OperatorBrowserBootstraps.SingleAsync(value => value.Id == bootstrap.BootstrapId);
+            stored.ExpiresAt = DateTimeOffset.UtcNow.AddSeconds(-1);
+            await db.SaveChangesAsync();
+        }
+
+        using var browser = CreateBrowserClient(factory);
+        using var consume = await browser.GetAsync(bootstrap.BootstrapUrl);
+        Assert.Equal(HttpStatusCode.Unauthorized, consume.StatusCode);
+        Assert.Equal(HttpStatusCode.Redirect, (await browser.GetAsync("/account")).StatusCode);
+
+        using var auditScope = factory.Services.CreateScope();
+        var auditDb = auditScope.ServiceProvider.GetRequiredService<IdentityDbContext>();
+        var audits = await auditDb.OperatorAuditRecords
+            .Where(value => value.UserId == principal.UserId)
+            .ToListAsync();
+        Assert.Contains(audits, value =>
+            value.Capability == "operator.browser_bootstrap.consume"
+            && value.Outcome == "Expired");
     }
 
     private static HttpClient CreateOperatorClient(WebApplicationFactory<Program> factory, string token)
@@ -235,11 +351,20 @@ public sealed class OperatorInterfaceIntegrationTests
         var client = factory.CreateClient(new WebApplicationFactoryClientOptions
         {
             AllowAutoRedirect = false,
+            HandleCookies = true,
             BaseAddress = new Uri("https://dorks-and-dice.com")
         });
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
         return client;
     }
+
+    private static HttpClient CreateBrowserClient(WebApplicationFactory<Program> factory) =>
+        factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+            HandleCookies = true,
+            BaseAddress = new Uri("https://dorks-and-dice.com")
+        });
 
     private static async Task<CreatedOperatorPrincipal> CreateServicePrincipalAsync(
         IServiceProvider services,
@@ -294,6 +419,7 @@ public sealed class OperatorInterfaceIntegrationTests
     {
         public string? Path { get; private set; }
         public string? ToolSlug { get; private set; }
+        public string? BrowserAuthorizationHeader { get; private set; }
         public ToolHostAuthenticationContext? AuthenticationContext { get; private set; }
 
         public Task ProxyAsync(
@@ -316,6 +442,7 @@ public sealed class OperatorInterfaceIntegrationTests
         {
             Path = path;
             ToolSlug = tool.Slug;
+            BrowserAuthorizationHeader = context.Request.Headers.Authorization.ToString();
             if (!ToolAuthenticationTickets.TryRedeem(tool.Slug, authenticationTicket, out var authenticationContext)
                 || authenticationContext is null)
             {

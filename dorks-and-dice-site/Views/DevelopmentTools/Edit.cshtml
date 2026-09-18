@@ -47,25 +47,13 @@
         <div class="col-md-6">
             <label asp-for="IntegrationContractVersion" class="form-label">Integration contract version</label>
             <input asp-for="IntegrationContractVersion" class="form-control" type="number" min="1" />
-            <div class="form-text">Embedded Modules must use the currently supported contract version <strong>@ToolIntegrationContractVersions.EmbeddedModuleCurrent</strong>. Proxied applications do not use this field.</div>
+            <div class="form-text">Embedded Modules must use the currently supported contract version <strong>@ToolIntegrationContractVersions.EmbeddedModuleCurrent</strong>. New registrations default to that version. Proxied applications do not use this field.</div>
             <span asp-validation-for="IntegrationContractVersion" class="text-danger"></span>
-        </div>
-        <div class="col-md-6">
-            <label asp-for="OperatorContractVersion" class="form-label">Operator contract version</label>
-            <input asp-for="OperatorContractVersion" class="form-control" type="number" min="1" />
-            <div class="form-text">Optional. Tools that expose machine-operable capabilities currently use Operator Tool Contract v<strong>@ToolOperatorContractVersions.Current</strong>.</div>
-            <span asp-validation-for="OperatorContractVersion" class="text-danger"></span>
-        </div>
-        <div class="col-md-6">
-            <label asp-for="OperatorManifestPath" class="form-label">Operator manifest path</label>
-            <input asp-for="OperatorManifestPath" class="form-control" placeholder="/operator/manifest" />
-            <div class="form-text">Optional. Must be an internal Tool path under <code>/operator/</code>. Leave both Operator fields blank for Tools that do not expose Operator capabilities.</div>
-            <span asp-validation-for="OperatorManifestPath" class="text-danger"></span>
         </div>
         <div class="col-md-6">
             <label asp-for="UpstreamBaseUrl" class="form-label">Upstream base URL</label>
             <input asp-for="UpstreamBaseUrl" class="form-control" placeholder="http://initiative:8080" />
-            <div class="form-text">Internal HTTP address where the running tool can be reached. <code>localhost</code> and single-label service names are allowed by default; FQDNs and literal non-loopback IPs must be explicitly allowlisted in <code>ToolHosting:AllowedUpstreamHosts</code>.</div>
+            <div class="form-text">Internal HTTP address where the running tool can be reached. <code>localhost</code> and single-label service names such as <code>initiative</code> are allowed by default; FQDNs and literal non-loopback IPs must be explicitly allowlisted in <code>ToolHosting:AllowedUpstreamHosts</code>.</div>
             <span asp-validation-for="UpstreamBaseUrl" class="text-danger"></span>
         </div>
         <div class="col-md-6">
@@ -77,17 +65,12 @@
         <div class="col-md-6">
             <label asp-for="HealthPath" class="form-label">Health path</label>
             <input asp-for="HealthPath" class="form-control" placeholder="/health" />
-            <div class="form-text">Optional lightweight endpoint the host can call to verify that the tool service is running and responsive.</div>
+            <div class="form-text">Optional lightweight endpoint the host can call to verify that the tool service is running and responsive. It is combined with the upstream base URL.</div>
             <span asp-validation-for="HealthPath" class="text-danger"></span>
         </div>
         <div class="col-12">
             <div class="alert alert-secondary mb-0" role="note">
-                Embedded Module contract v@ToolIntegrationContractVersions.EmbeddedModuleCurrent requires an explicit application render lifecycle. Application-owned DOM must not use <code>MutationObserver</code> as the normal rendering mechanism; post-render enhancement must be idempotent, and observers are reserved for guarded external boundaries.
-            </div>
-        </div>
-        <div class="col-12">
-            <div class="alert alert-secondary mb-0" role="note">
-                Operator Tool Contract is independent of frontend integration. Operator requests are routed through the Site and receive the same short-lived Tool authentication ticket/introspection context as normal authenticated Tool traffic. The Site does not grant Tool-specific authorization or restricted source access.
+                Embedded Module contract v@ToolIntegrationContractVersions.EmbeddedModuleCurrent requires an explicit application render lifecycle. Application-owned DOM must not use <code>MutationObserver</code> as the normal rendering mechanism; post-render enhancement must be idempotent, and observers are reserved for guarded external boundaries. Existing Tool Host context, routing, authorization, upstream API, and <code>#tool-root</code> contracts still apply.
             </div>
         </div>
         <div class="col-12">
