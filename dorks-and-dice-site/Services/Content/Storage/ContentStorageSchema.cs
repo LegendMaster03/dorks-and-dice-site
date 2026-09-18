@@ -40,6 +40,7 @@ internal static class ContentStorageSchema
             context.Database.IsSqlite() ? SqliteCreateToolRegistrySchema : PostgresCreateToolRegistrySchema,
             cancellationToken);
 
+        var addedDelegationTargets = false;
         if (context.Database.IsSqlite())
         {
             if (!await HasSqliteColumnAsync(
@@ -52,17 +53,50 @@ internal static class ContentStorageSchema
                     SqliteAddToolIntegrationContractVersion,
                     cancellationToken);
             }
+
+            if (!await HasSqliteColumnAsync(
+                    context,
+                    "tool_registration",
+                    "tool_delegation_targets",
+                    cancellationToken))
+            {
+                await context.Database.ExecuteSqlRawAsync(
+                    SqliteAddToolDelegationTargets,
+                    cancellationToken);
+                addedDelegationTargets = true;
+            }
         }
         else if (context.Database.IsNpgsql())
         {
             await context.Database.ExecuteSqlRawAsync(
                 PostgresEnsureToolIntegrationContractVersion,
                 cancellationToken);
+
+            if (!await HasPostgresColumnAsync(
+                    context,
+                    "tool_registration",
+                    "tool_delegation_targets",
+                    cancellationToken))
+            {
+                await context.Database.ExecuteSqlRawAsync(
+                    PostgresEnsureToolDelegationTargets,
+                    cancellationToken);
+                addedDelegationTargets = true;
+            }
         }
 
         await context.Database.ExecuteSqlRawAsync(
             MigrateKnownEmbeddedModuleContracts,
             cancellationToken);
+
+        if (addedDelegationTargets)
+        {
+            await context.Database.ExecuteSqlRawAsync(
+                context.Database.IsSqlite()
+                    ? SqliteConfigureKnownDelegationTargets
+                    : PostgresConfigureKnownDelegationTargets,
+                cancellationToken);
+        }
     }
 
     private static async Task<bool> HasTableAsync(
@@ -106,6 +140,41 @@ internal static class ContentStorageSchema
             parameter.ParameterName = "$name";
             parameter.Value = columnName;
             command.Parameters.Add(parameter);
+            return Convert.ToInt32(await command.ExecuteScalarAsync(cancellationToken)) == 1;
+        }
+        finally
+        {
+            if (close) await context.Database.CloseConnectionAsync();
+        }
+    }
+
+    private static async Task<bool> HasPostgresColumnAsync(
+        ContentDbContext context,
+        string tableName,
+        string columnName,
+        CancellationToken cancellationToken)
+    {
+        var connection = context.Database.GetDbConnection();
+        var close = connection.State != System.Data.ConnectionState.Open;
+        if (close) await context.Database.OpenConnectionAsync(cancellationToken);
+        try
+        {
+            await using var command = connection.CreateCommand();
+            command.CommandText = """
+                SELECT COUNT(*)
+                FROM information_schema.columns
+                WHERE table_schema = current_schema()
+                  AND table_name = @table_name
+                  AND column_name = @column_name
+                """;
+            var tableParameter = command.CreateParameter();
+            tableParameter.ParameterName = "@table_name";
+            tableParameter.Value = tableName;
+            command.Parameters.Add(tableParameter);
+            var columnParameter = command.CreateParameter();
+            columnParameter.ParameterName = "@column_name";
+            columnParameter.Value = columnName;
+            command.Parameters.Add(columnParameter);
             return Convert.ToInt32(await command.ExecuteScalarAsync(cancellationToken)) == 1;
         }
         finally
@@ -214,6 +283,7 @@ internal static class ContentStorageSchema
             tool_frontend_entry_point TEXT NULL,
             tool_health_path TEXT NULL,
             tool_modes TEXT NOT NULL DEFAULT '[]',
+            tool_delegation_targets TEXT NOT NULL DEFAULT '[]',
             tool_allow_anonymous INTEGER NOT NULL DEFAULT 1,
             tool_enabled INTEGER NOT NULL DEFAULT 0,
             tool_created_at TEXT NOT NULL,
@@ -240,6 +310,7 @@ internal static class ContentStorageSchema
             tool_frontend_entry_point text NULL,
             tool_health_path text NULL,
             tool_modes text[] NOT NULL DEFAULT ARRAY[]::text[],
+            tool_delegation_targets text[] NOT NULL DEFAULT ARRAY[]::text[],
             tool_allow_anonymous boolean NOT NULL DEFAULT true,
             tool_enabled boolean NOT NULL DEFAULT false,
             tool_created_at timestamp with time zone NOT NULL,
@@ -263,6 +334,28 @@ internal static class ContentStorageSchema
     private const string PostgresEnsureToolIntegrationContractVersion = """
         ALTER TABLE tool_registration
         ADD COLUMN IF NOT EXISTS tool_integration_contract_version integer NULL;
+        """;
+
+    private const string SqliteAddToolDelegationTargets = """
+        ALTER TABLE tool_registration
+        ADD COLUMN tool_delegation_targets TEXT NOT NULL DEFAULT '[]';
+        """;
+
+    private const string PostgresEnsureToolDelegationTargets = """
+        ALTER TABLE tool_registration
+        ADD COLUMN IF NOT EXISTS tool_delegation_targets text[] NOT NULL DEFAULT ARRAY[]::text[];
+        """;
+
+    private const string SqliteConfigureKnownDelegationTargets = """
+        UPDATE tool_registration
+        SET tool_delegation_targets = '["rules-core"]'
+        WHERE lower(tool_slug) = 'character-sheet';
+        """;
+
+    private const string PostgresConfigureKnownDelegationTargets = """
+        UPDATE tool_registration
+        SET tool_delegation_targets = ARRAY['rules-core']::text[]
+        WHERE lower(tool_slug) = 'character-sheet';
         """;
 
     private const string MigrateKnownEmbeddedModuleContracts = """

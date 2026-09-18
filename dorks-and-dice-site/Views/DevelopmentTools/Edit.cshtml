@@ -69,6 +69,15 @@
             <span asp-validation-for="HealthPath" class="text-danger"></span>
         </div>
         <div class="col-12">
+            <label asp-for="DelegationTargetsText" class="form-label">Delegation targets</label>
+            <textarea asp-for="DelegationTargetsText"
+                      class="form-control"
+                      rows="3"
+                      placeholder="rules-core"></textarea>
+            <div class="form-text">Optional server-to-server Tool slugs this Tool may call through the Site delegation gateway. Use one slug per line or separate entries with commas. No delegation targets are permitted by default.</div>
+            <span asp-validation-for="DelegationTargetsText" class="text-danger"></span>
+        </div>
+        <div class="col-12">
             <div class="alert alert-secondary mb-0" role="note">
                 Embedded Module contract v@ToolIntegrationContractVersions.EmbeddedModuleCurrent requires an explicit application render lifecycle. Application-owned DOM must not use <code>MutationObserver</code> as the normal rendering mechanism; post-render enhancement must be idempotent, and observers are reserved for guarded external boundaries. Existing Tool Host context, routing, authorization, upstream API, and <code>#tool-root</code> contracts still apply.
             </div>

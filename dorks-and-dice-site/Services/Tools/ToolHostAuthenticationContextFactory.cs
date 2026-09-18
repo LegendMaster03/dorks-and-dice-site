@@ -14,6 +14,11 @@ public interface IToolHostAuthenticationContextFactory
         ClaimsPrincipal principal,
         string siteMode,
         CancellationToken cancellationToken = default);
+
+    Task<ToolHostAuthenticationContext?> CreateDelegatedAsync(
+        ToolRegistration targetTool,
+        ToolHostAuthenticationContext sourceContext,
+        CancellationToken cancellationToken = default);
 }
 
 public sealed class ToolHostAuthenticationContextFactory(
@@ -64,6 +69,46 @@ public sealed class ToolHostAuthenticationContextFactory(
                         ? "DM"
                         : "Player"
                 }))
+                .ToArray(),
+            Characters = characters
+        };
+    }
+
+    public async Task<ToolHostAuthenticationContext?> CreateDelegatedAsync(
+        ToolRegistration targetTool,
+        ToolHostAuthenticationContext sourceContext,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(targetTool);
+        ArgumentNullException.ThrowIfNull(sourceContext);
+
+        if (!Guid.TryParse(sourceContext.User.Id, out var userId))
+        {
+            return null;
+        }
+
+        var characters = await BuildCharacterAccessProjectionAsync(
+            targetTool.Slug,
+            userId,
+            cancellationToken);
+
+        return new ToolHostAuthenticationContext
+        {
+            ToolSlug = targetTool.Slug,
+            SiteMode = sourceContext.SiteMode,
+            User = new ToolHostUserContext
+            {
+                Id = sourceContext.User.Id,
+                DisplayName = sourceContext.User.DisplayName
+            },
+            GlobalRoles = sourceContext.GlobalRoles.ToArray(),
+            Campaigns = sourceContext.Campaigns
+                .Select(campaign => new ToolHostCampaignAccessSummary
+                {
+                    Id = campaign.Id,
+                    Name = campaign.Name,
+                    Role = campaign.Role
+                })
                 .ToArray(),
             Characters = characters
         };

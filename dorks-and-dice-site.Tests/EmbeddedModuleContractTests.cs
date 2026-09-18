@@ -140,6 +140,86 @@ public sealed class EmbeddedModuleContractIntegrationTests(PublishedContentWebAp
         Assert.Contains("Supported version is 2", body, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task DevPortalNormalizesAndPersistsDelegationTargets()
+    {
+        using var client = Client(factory, "localhost");
+        client.DefaultRequestHeaders.Add(TestRoleAuthenticationHandler.RolesHeader, "Dev");
+
+        var html = await client.GetStringAsync("/development/tools/new");
+        Assert.Contains("Delegation targets", html, StringComparison.Ordinal);
+        var tokenMatch = System.Text.RegularExpressions.Regex.Match(
+            html,
+            "name=\"__RequestVerificationToken\" type=\"hidden\" value=\"([^\"]+)\"");
+        Assert.True(tokenMatch.Success);
+
+        var slug = $"delegation-editor-{Guid.NewGuid():N}";
+        using var response = await client.PostAsync(
+            "/development/tools/save",
+            new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                ["__RequestVerificationToken"] = WebUtility.HtmlDecode(tokenMatch.Groups[1].Value),
+                ["Slug"] = slug,
+                ["DisplayName"] = "Delegation Editor Test",
+                ["IntegrationType"] = ((int)ToolIntegrationType.EmbeddedModule).ToString(),
+                ["IntegrationContractVersion"] =
+                    ToolIntegrationContractVersions.EmbeddedModuleCurrent.ToString(),
+                ["Modes"] = SiteModeValues.DorksAndDiceModeValue,
+                ["DelegationTargetsText"] = " Rules-Core\nrules-core, other-tool ",
+                ["AllowAnonymous"] = "false",
+                ["Enabled"] = "true"
+            }));
+        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+
+        using var scope = factory.Services.CreateScope();
+        var registry = scope.ServiceProvider.GetRequiredService<IToolRegistry>();
+        var stored = await registry.GetBySlugAsync(slug);
+        Assert.NotNull(stored);
+        try
+        {
+            Assert.Equal(
+                new[] { "other-tool", "rules-core" },
+                stored.DelegationTargets);
+
+            var editHtml = await client.GetStringAsync($"/development/tools/{stored.Id:D}");
+            Assert.Contains("other-tool", editHtml, StringComparison.Ordinal);
+            Assert.Contains("rules-core", editHtml, StringComparison.Ordinal);
+        }
+        finally
+        {
+            await registry.DeleteAsync(stored.Id);
+        }
+
+        var invalidHtml = await client.GetStringAsync("/development/tools/new");
+        var invalidTokenMatch = System.Text.RegularExpressions.Regex.Match(
+            invalidHtml,
+            "name=\"__RequestVerificationToken\" type=\"hidden\" value=\"([^\"]+)\"");
+        Assert.True(invalidTokenMatch.Success);
+        var selfSlug = $"self-delegation-{Guid.NewGuid():N}";
+
+        using var invalidResponse = await client.PostAsync(
+            "/development/tools/save",
+            new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                ["__RequestVerificationToken"] =
+                    WebUtility.HtmlDecode(invalidTokenMatch.Groups[1].Value),
+                ["Slug"] = selfSlug,
+                ["DisplayName"] = "Self Delegation Test",
+                ["IntegrationType"] =
+                    ((int)ToolIntegrationType.EmbeddedModule).ToString(),
+                ["IntegrationContractVersion"] =
+                    ToolIntegrationContractVersions.EmbeddedModuleCurrent.ToString(),
+                ["Modes"] = SiteModeValues.DorksAndDiceModeValue,
+                ["DelegationTargetsText"] = selfSlug
+            }));
+        var invalidBody = await invalidResponse.Content.ReadAsStringAsync();
+        Assert.Equal(HttpStatusCode.OK, invalidResponse.StatusCode);
+        Assert.Contains(
+            "A Tool can not delegate to itself.",
+            invalidBody,
+            StringComparison.Ordinal);
+    }
+
     private async Task<ToolRegistration> RegisterAsync(ToolRegistration tool)
     {
         tool.CreatedAt = DateTimeOffset.UtcNow;

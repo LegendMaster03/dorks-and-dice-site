@@ -79,11 +79,49 @@ public sealed class ToolNavigationIntegrationTests(PublishedContentWebApplicatio
             Assert.Contains("data-site-tools-navigation", html, StringComparison.Ordinal);
             Assert.Contains($"/tools/{anonymousTool.Slug}", html, StringComparison.Ordinal);
             Assert.Contains($"/tools/{authenticatedTool.Slug}", html, StringComparison.Ordinal);
+            Assert.Contains(
+                "class=\"dropdown-item\" href=\"/Characters\">Characters</a>",
+                html,
+                StringComparison.OrdinalIgnoreCase);
+            Assert.Contains(
+                "class=\"dropdown-item\" href=\"/Campaigns\">Campaigns</a>",
+                html,
+                StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain(
+                "class=\"nav-link\" href=\"/Characters\">Characters</a>",
+                html,
+                StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain(
+                "class=\"nav-link\" href=\"/Campaigns\">Campaigns</a>",
+                html,
+                StringComparison.OrdinalIgnoreCase);
         }
         finally
         {
             await DeleteAsync(anonymousTool, authenticatedTool);
         }
+    }
+
+    [Fact]
+    public async Task ProfessionalAccountMenuDoesNotRenderDorksCharacterOrCampaignLinks()
+    {
+        using var client = CreateClient("https://kylebarnett.com");
+        client.DefaultRequestHeaders.Add(
+            TestRoleAuthenticationHandler.RolesHeader,
+            AccountRoles.GlobalEditor);
+
+        using var response = await client.GetAsync("/");
+        var html = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.DoesNotContain(
+            ">Characters</a>",
+            html,
+            StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain(
+            ">Campaigns</a>",
+            html,
+            StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

@@ -18,17 +18,23 @@ public sealed class ToolHostApiController : ControllerBase
     private readonly ICampaignContextService _campaignContextService;
     private readonly IToolHostAuthenticationContextFactory _authenticationContextFactory;
     private readonly IToolProxyService _toolProxyService;
+    private readonly IToolDelegationCapabilityService _delegationCapabilities;
+    private readonly IToolUpstreamPolicy _upstreamPolicy;
 
     public ToolHostApiController(
         IToolRegistry toolRegistry,
         ICampaignContextService campaignContextService,
         IToolHostAuthenticationContextFactory authenticationContextFactory,
-        IToolProxyService toolProxyService)
+        IToolProxyService toolProxyService,
+        IToolDelegationCapabilityService delegationCapabilities,
+        IToolUpstreamPolicy upstreamPolicy)
     {
         _toolRegistry = toolRegistry;
         _campaignContextService = campaignContextService;
         _authenticationContextFactory = authenticationContextFactory;
         _toolProxyService = toolProxyService;
+        _delegationCapabilities = delegationCapabilities;
+        _upstreamPolicy = upstreamPolicy;
     }
 
     [HttpGet("session")]
@@ -219,25 +225,141 @@ public sealed class ToolHostApiController : ControllerBase
     /// </summary>
     [AllowAnonymous]
     [HttpPost("introspect")]
-    public IActionResult Introspect(string slug)
+    public async Task<IActionResult> Introspect(
+        string slug,
+        CancellationToken cancellationToken)
     {
         Response.Headers.CacheControl = "no-store";
 
-        var authorization = Request.Headers.Authorization.ToString();
-        const string bearerPrefix = "Bearer ";
-        if (!authorization.StartsWith(bearerPrefix, StringComparison.OrdinalIgnoreCase))
-        {
-            return Unauthorized();
-        }
-
-        var ticket = authorization[bearerPrefix.Length..].Trim();
-        if (!ToolAuthenticationTickets.TryRedeem(slug, ticket, out var context)
+        if (!TryReadBearerToken(out var ticket)
+            || !ToolAuthenticationTickets.TryRedeem(slug, ticket, out var context)
             || context is null)
         {
             return Unauthorized();
         }
 
+        var sourceTool = await _toolRegistry.GetBySlugAsync(slug, cancellationToken);
+        if (sourceTool is not null
+            && sourceTool.Enabled
+            && sourceTool.IntegrationType == ToolIntegrationType.EmbeddedModule
+            && ToolIntegrationContractPolicy.IsSupported(sourceTool)
+            && ToolVisibility.IsVisibleInMode(sourceTool, context.SiteMode)
+            && sourceTool.DelegationTargets.Count > 0)
+        {
+            var capability = _delegationCapabilities.Issue(sourceTool.Slug, context);
+            Response.Headers[ToolDelegationHeaders.Capability] = capability;
+            Response.Headers[ToolDelegationHeaders.Path] =
+                $"/tool-host/{sourceTool.Slug}/api/delegate/{{targetSlug}}/upstream";
+        }
+
         return Ok(context);
+    }
+
+    [AllowAnonymous]
+    [DisableFormValueModelBinding]
+    [AcceptVerbs("GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")]
+    [Route("delegate/{targetSlug}/upstream")]
+    [Route("delegate/{targetSlug}/upstream/{**proxyPath}")]
+    public async Task<IActionResult> DelegatedUpstream(
+        [FromRoute] string slug,
+        [FromRoute] string targetSlug,
+        [FromRoute] string? proxyPath,
+        CancellationToken cancellationToken)
+    {
+        Response.Headers.CacheControl = "no-store";
+
+        if (!TryReadBearerToken(out var capability)
+            || !_delegationCapabilities.TryUse(
+                slug,
+                capability,
+                out var sourceContext)
+            || sourceContext is null)
+        {
+            return Unauthorized();
+        }
+
+        var sourceTool = await _toolRegistry.GetBySlugAsync(slug, cancellationToken);
+        if (sourceTool is null
+            || !sourceTool.Enabled
+            || sourceTool.IntegrationType != ToolIntegrationType.EmbeddedModule
+            || !ToolIntegrationContractPolicy.IsSupported(sourceTool)
+            || !ToolVisibility.IsVisibleInMode(sourceTool, sourceContext.SiteMode))
+        {
+            return Unauthorized();
+        }
+
+        if (!sourceTool.DelegationTargets.Contains(
+                targetSlug,
+                StringComparer.OrdinalIgnoreCase))
+        {
+            return StatusCode(StatusCodes.Status403Forbidden);
+        }
+
+        var targetTool = await _toolRegistry.GetBySlugAsync(targetSlug, cancellationToken);
+        if (targetTool is null
+            || !targetTool.Enabled
+            || !ToolVisibility.IsVisibleInMode(targetTool, sourceContext.SiteMode))
+        {
+            return NotFound();
+        }
+
+        var contractError = ToolIntegrationContractPolicy.GetUnsupportedReason(targetTool);
+        if (targetTool.IntegrationType != ToolIntegrationType.EmbeddedModule
+            || contractError is not null)
+        {
+            return Problem(
+                title: "Unsupported tool integration contract",
+                detail: targetTool.IntegrationType != ToolIntegrationType.EmbeddedModule
+                    ? "Delegated upstream targets must use the Embedded Module integration contract."
+                    : contractError,
+                statusCode: StatusCodes.Status503ServiceUnavailable);
+        }
+
+        var upstreamPath = string.IsNullOrWhiteSpace(proxyPath) ? "/" : $"/{proxyPath}";
+        if (!_upstreamPolicy.TryBuild(
+                targetTool,
+                upstreamPath,
+                Request.QueryString,
+                out _,
+                out _))
+        {
+            return StatusCode(StatusCodes.Status502BadGateway);
+        }
+
+        var targetContext = await _authenticationContextFactory.CreateDelegatedAsync(
+            targetTool,
+            sourceContext,
+            cancellationToken);
+        if (targetContext is null)
+        {
+            return Unauthorized();
+        }
+
+        var targetTicket = ToolAuthenticationTickets.Issue(targetContext);
+        var introspectionPath = $"/tool-host/{targetTool.Slug}/api/introspect";
+
+        await _toolProxyService.ProxyAuthenticatedAsync(
+            HttpContext,
+            targetTool,
+            upstreamPath,
+            targetTicket,
+            introspectionPath,
+            cancellationToken);
+        return new EmptyResult();
+    }
+
+    private bool TryReadBearerToken(out string token)
+    {
+        token = string.Empty;
+        var authorization = Request.Headers.Authorization.ToString();
+        const string bearerPrefix = "Bearer ";
+        if (!authorization.StartsWith(bearerPrefix, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        token = authorization[bearerPrefix.Length..].Trim();
+        return !string.IsNullOrWhiteSpace(token);
     }
 
     private static ToolHostCampaignAccessSummary ToToolHostSummary(CampaignAccessContext campaign) => new()

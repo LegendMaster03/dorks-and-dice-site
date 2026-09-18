@@ -20,6 +20,10 @@ public sealed class ToolHostIntrospectionRoutingTests
     {
         Assert.True(SiteRouteOwnership.IsAllowedInFrameworkFallback(
             new PathString("/tool-host/rules-core/api/introspect")));
+        Assert.True(SiteRouteOwnership.IsAllowedInFrameworkFallback(
+            new PathString("/tool-host/character-sheet/api/delegate/rules-core/upstream")));
+        Assert.True(SiteRouteOwnership.IsAllowedInFrameworkFallback(
+            new PathString("/tool-host/character-sheet/api/delegate/rules-core/upstream/api/rules")));
 
         Assert.False(SiteRouteOwnership.IsAllowedInFrameworkFallback(
             new PathString("/tool-host/rules-core/api/session")));
@@ -27,6 +31,28 @@ public sealed class ToolHostIntrospectionRoutingTests
             new PathString("/tool-host/rules-core/context")));
         Assert.False(SiteRouteOwnership.IsAllowedInFrameworkFallback(
             new PathString("/tool-host/rules-core/extra/api/introspect")));
+        Assert.False(SiteRouteOwnership.IsAllowedInFrameworkFallback(
+            new PathString("/tool-host/character-sheet/api/delegate/rules-core")));
+        Assert.False(SiteRouteOwnership.IsAllowedInFrameworkFallback(
+            new PathString("/tool-host/character-sheet/api/session")));
+    }
+
+    [Fact]
+    public async Task DelegatedUpstreamEndpointIsReachableThroughInternalDockerHostWithoutSiteMode()
+    {
+        using var client = _factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false
+        });
+        using var request = new HttpRequestMessage(
+            HttpMethod.Get,
+            "/tool-host/character-sheet/api/delegate/rules-core/upstream/api/rules");
+        request.Headers.Host = "dorks-and-dice-site";
+
+        using var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Equal("no-store", response.Headers.CacheControl?.ToString());
     }
 
     [Fact]

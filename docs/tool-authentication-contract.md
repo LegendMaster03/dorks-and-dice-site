@@ -76,6 +76,59 @@ Character Sheet may use this projection to authorize the current request, but it
 
 Tickets expire after 30 seconds, are scoped to one Tool slug, and are consumed on redemption. They are process-local because the site currently runs as one application instance. A future multi-instance deployment must replace the ticket store with shared ephemeral storage while preserving the contract.
 
+## Tool-to-Tool backend delegation
+
+A source Tool authentication ticket can not be forwarded to another Tool. Normal tickets are one-time, Tool-scoped capabilities, so forwarding a `character-sheet` ticket to Rules Core would either fail the Tool-slug check or weaken the isolation the ticket contract is intended to provide.
+
+When a successfully introspected source Tool has one or more configured `DelegationTargets`, the Site returns two additive response headers alongside the unchanged version-1 JSON authentication context:
+
+```text
+X-Dorks-Tool-Delegation-Capability: <random short-lived capability>
+X-Dorks-Tool-Delegation-Path: /tool-host/{sourceSlug}/api/delegate/{targetSlug}/upstream
+```
+
+These headers are server-only. They are not added to browser-visible Tool context. Existing Tools may ignore them without changing their authentication implementation.
+
+The delegation capability:
+
+- is generated from 32 cryptographically random bytes and uses the `ddtd_v1_` namespace;
+- expires after 30 seconds;
+- is bound to the authenticated source Tool and the authoritative Site authentication snapshot;
+- may be reused for at most 32 delegated calls during that short window, allowing one backend request to make several downstream calls;
+- is not a normal Tool ticket and can not be redeemed through a Tool introspection endpoint;
+- is never forwarded to a target Tool.
+
+The source backend calls the Site through:
+
+```text
+/tool-host/{sourceSlug}/api/delegate/{targetSlug}/upstream/{targetPath}
+```
+
+and authenticates that server-to-server request with:
+
+```text
+Authorization: Bearer <delegation capability>
+```
+
+Browser cookies, browser identity headers, browser-supplied user IDs, Tool authentication headers, and delegation headers do not establish delegated identity.
+
+Delegation is explicitly allowlisted on the source Tool registration through `DelegationTargets`. Existing registrations default to no permitted targets. The immediate Dorks & Dice relationship is `character-sheet -> rules-core`; there is no reverse `rules-core -> character-sheet` grant. When a Character Sheet registration is created for the first time, the registry adds `rules-core` as its initial first-party delegation target. Upgrade migration also seeds that target when the delegation-target column is first introduced. These defaults apply only at initial provisioning/migration: later Development Tool edits, including deliberately removing `rules-core`, remain authoritative and are not restored on subsequent startups. The Development Tool editor is the authorized configuration surface for these target slugs.
+
+For a delegated request, the Site validates the source registration, the source-to-target allowlist, the target registration, target enabled state, the target's visibility in the **captured source Site mode**, the supported integration contract, and the normal upstream URL policy. The internal server-to-server request's Host does not determine the Site mode.
+
+The Site then reconstructs a target-specific `ToolHostAuthenticationContext`. It preserves the authoritative source snapshot for stable Site user ID, display name, Site mode, effective global roles, and campaign memberships/roles, but it rebuilds Tool-specific projections for the target. For example, Character Sheet's `characters` projection is not copied into a Rules Core context.
+
+Finally, the Site issues a fresh normal target Tool authentication ticket and proxies the request through the existing authenticated Tool proxy. The target receives the same normal headers it would receive from a browser-originated authenticated gateway request:
+
+```text
+X-Dorks-Tool-Auth-Ticket: <fresh target-scoped one-time ticket>
+X-Dorks-Tool-Auth-Introspection-Path: /tool-host/{targetSlug}/api/introspect
+```
+
+The target therefore requires no new authentication protocol. It redeems the fresh ticket through its existing introspection endpoint and applies its normal authorization rules. For Rules Core, this preserves the same stable Site user identity so its existing per-user source grants continue to apply independently of global or campaign authority.
+
+The delegated route reuses normal proxy streaming, redirect rejection, timeout behavior, upstream host policy, query/body forwarding, target `X-Forwarded-*` semantics, target context URL, and request-body limits. `Authorization`, `Cookie`, `X-Dorks-Tool-Auth-*`, `X-Dorks-Tool-Lifecycle-*`, and `X-Dorks-Tool-Delegation-*` are reserved and stripped before the target request. Reserved Tool authentication/delegation response headers are likewise not exposed back through the proxy.
+
 ## Rules Core authorization axes
 
 Rules Core intentionally keeps two authorization questions independent:

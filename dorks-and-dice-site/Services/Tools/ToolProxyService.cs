@@ -197,14 +197,21 @@ public sealed class ToolProxyService : IToolProxyService
     private static bool IsBlockedRequestHeader(string headerName) =>
         BlockedRequestHeaders.Contains(headerName)
         || headerName.StartsWith(ToolAuthenticationHeaders.ReservedPrefix, StringComparison.OrdinalIgnoreCase)
-        || headerName.StartsWith(ToolLifecycleHeaders.ReservedPrefix, StringComparison.OrdinalIgnoreCase);
+        || headerName.StartsWith(ToolLifecycleHeaders.ReservedPrefix, StringComparison.OrdinalIgnoreCase)
+        || headerName.StartsWith(ToolDelegationHeaders.ReservedPrefix, StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsBlockedResponseHeader(string headerName) =>
+        BlockedResponseHeaders.Contains(headerName)
+        || headerName.StartsWith(ToolAuthenticationHeaders.ReservedPrefix, StringComparison.OrdinalIgnoreCase)
+        || headerName.StartsWith(ToolLifecycleHeaders.ReservedPrefix, StringComparison.OrdinalIgnoreCase)
+        || headerName.StartsWith(ToolDelegationHeaders.ReservedPrefix, StringComparison.OrdinalIgnoreCase);
 
     private static void CopyResponseHeaders(HttpResponse response, HttpResponseMessage upstreamResponse)
     {
         var connectionHeaders = ConnectionHeaderNames(upstreamResponse.Headers.Connection);
         foreach (var header in upstreamResponse.Headers)
         {
-            if (HopByHopHeaders.Contains(header.Key) || BlockedResponseHeaders.Contains(header.Key)
+            if (HopByHopHeaders.Contains(header.Key) || IsBlockedResponseHeader(header.Key)
                 || connectionHeaders.Contains(header.Key))
             {
                 continue;
@@ -215,7 +222,7 @@ public sealed class ToolProxyService : IToolProxyService
 
         foreach (var header in upstreamResponse.Content.Headers)
         {
-            if (HopByHopHeaders.Contains(header.Key) || BlockedResponseHeaders.Contains(header.Key)
+            if (HopByHopHeaders.Contains(header.Key) || IsBlockedResponseHeader(header.Key)
                 || connectionHeaders.Contains(header.Key))
             {
                 continue;

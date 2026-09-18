@@ -60,11 +60,34 @@ public sealed class ToolProxyRequestBodyLimitKestrelTests
         Assert.Equal((HttpStatusCode)StatusCodes.Status413PayloadTooLarge, response.StatusCode);
     }
 
+    [Fact]
+    public async Task ChunkedDelegatedUpstreamBodyOverConfiguredLimitReturnsPayloadTooLarge()
+    {
+        const long configuredLimit = 1024 * 1024;
+        await using var app = await StartServerAsync(configuredLimit);
+        using var client = Client(app);
+        using var request = new HttpRequestMessage(
+            HttpMethod.Post,
+            "/tool-host/source/api/delegate/target/upstream/maps/import")
+        {
+            Content = new GeneratedContent(configuredLimit + 1, reportLength: false)
+        };
+        request.Headers.TransferEncodingChunked = true;
+
+        using var response = await client.SendAsync(request);
+
+        Assert.Equal((HttpStatusCode)StatusCodes.Status413PayloadTooLarge, response.StatusCode);
+    }
+
     [Theory]
     [InlineData("/tool-host/tool/api/upstream")]
     [InlineData("/tool-host/tool/api/upstream/")]
     [InlineData("/tool-host/tool/api/upstream/maps/import")]
     [InlineData("/TOOL-HOST/tool/API/UPSTREAM/maps/import")]
+    [InlineData("/tool-host/source/api/delegate/target/upstream")]
+    [InlineData("/tool-host/source/api/delegate/target/upstream/")]
+    [InlineData("/tool-host/source/api/delegate/target/upstream/maps/import")]
+    [InlineData("/TOOL-HOST/source/API/DELEGATE/target/UPSTREAM/maps/import")]
     public void RouteMatcherIncludesOnlyToolHostUpstreamNamespace(string path)
     {
         Assert.True(ToolProxyRequestBodyLimitMiddleware.IsToolHostUpstreamRequest(new PathString(path)));
@@ -77,6 +100,9 @@ public sealed class ToolProxyRequestBodyLimitKestrelTests
     [InlineData("/tool-host/tool/context")]
     [InlineData("/tools/tool/api/upstream")]
     [InlineData("/tool-host/tool/api/upstream-other")]
+    [InlineData("/tool-host/source/api/delegate")]
+    [InlineData("/tool-host/source/api/delegate/target")]
+    [InlineData("/tool-host/source/api/delegate/target/not-upstream")]
     public void RouteMatcherExcludesNonUpstreamSiteRoutes(string path)
     {
         Assert.False(ToolProxyRequestBodyLimitMiddleware.IsToolHostUpstreamRequest(new PathString(path)));
@@ -104,6 +130,9 @@ public sealed class ToolProxyRequestBodyLimitKestrelTests
         app.UseMiddleware<ToolProxyRequestBodyLimitMiddleware>();
         app.MapPost(
             "/tool-host/{slug}/api/upstream/{**proxyPath}",
+            (HttpContext context) => CountBodyAsync(context));
+        app.MapPost(
+            "/tool-host/{slug}/api/delegate/{targetSlug}/upstream/{**proxyPath}",
             (HttpContext context) => CountBodyAsync(context));
         app.MapGet("/ordinary-limit", async context =>
         {
