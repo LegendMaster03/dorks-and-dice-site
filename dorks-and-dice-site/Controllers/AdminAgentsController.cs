@@ -19,10 +19,12 @@ public sealed class AdminAgentsController(
     [HttpGet("")]
     public async Task<IActionResult> Index(CancellationToken cancellationToken)
     {
-        var users = await userManager.Users
+        var storedUsers = await userManager.Users
             .Where(user => user.AccountKind == AccountKind.ServicePrincipal)
-            .OrderByDescending(user => user.CreatedAt)
             .ToArrayAsync(cancellationToken);
+        var users = storedUsers
+            .OrderByDescending(user => user.CreatedAt)
+            .ToArray();
 
         var now = DateTimeOffset.UtcNow;
         var agents = new List<AdminAgentListItemViewModel>(users.Length);
@@ -91,6 +93,7 @@ public sealed class AdminAgentsController(
                 model.CredentialName,
                 model.ExpiresAt,
                 cancellationToken);
+            Response.Headers.CacheControl = "no-store";
             return View("CredentialCreated", ToCreatedViewModel(
                 created.User,
                 created.Credential,
@@ -150,6 +153,7 @@ public sealed class AdminAgentsController(
                 model.CredentialName,
                 model.ExpiresAt,
                 cancellationToken);
+            Response.Headers.CacheControl = "no-store";
             return View("CredentialCreated", ToCreatedViewModel(user, created, newAgent: false));
         }
         catch (Exception exception) when (exception is ArgumentException or InvalidOperationException)

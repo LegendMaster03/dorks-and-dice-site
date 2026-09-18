@@ -184,12 +184,16 @@ public sealed class OperatorCredentialService : IOperatorCredentialService
 
     public async Task<IReadOnlyList<OperatorCredential>> GetForUserAsync(
         Guid userId,
-        CancellationToken cancellationToken = default) =>
-        await _dbContext.OperatorCredentials
+        CancellationToken cancellationToken = default)
+    {
+        var stored = await _dbContext.OperatorCredentials
             .AsNoTracking()
             .Where(credential => credential.UserId == userId)
-            .OrderByDescending(credential => credential.CreatedAt)
             .ToArrayAsync(cancellationToken);
+        return stored
+            .OrderByDescending(credential => credential.CreatedAt)
+            .ToArray();
+    }
 
     public async Task<bool> RevokeForUserAsync(
         Guid userId,
