@@ -1,6 +1,7 @@
 using System.Net;
 using System.Text.Json;
 using dorks_and_dice_site.Models.Site;
+using dorks_and_dice_site.Modes.DorksAndDice.Characters;
 using dorks_and_dice_site.Models.Tools;
 using dorks_and_dice_site.Services.Site;
 using dorks_and_dice_site.Services.Tools;
@@ -12,6 +13,18 @@ namespace dorks_and_dice_site.Tests;
 [Collection(PublishedContentIntegrationCollection.Name)]
 public sealed class EmbeddedToolRouteIntegrationTests(PublishedContentWebApplicationFactory factory)
 {
+    [Fact]
+    public async Task CharacterSheetRootRedirectsToSiteCharacterIndex()
+    {
+        using var client = Client(factory);
+        client.DefaultRequestHeaders.Add(TestRoleAuthenticationHandler.RolesHeader, "Member");
+
+        using var response = await client.GetAsync(CharacterToolContract.RootPath);
+
+        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+        Assert.Equal(CharacterToolContract.CharacterIndexPath, response.Headers.Location?.OriginalString);
+    }
+
     [Fact]
     public async Task EmbeddedRootAndNestedRoutesRenderHostShellWithRouteContext()
     {
