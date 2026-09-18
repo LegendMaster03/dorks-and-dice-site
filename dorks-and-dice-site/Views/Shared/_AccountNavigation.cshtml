@@ -15,6 +15,10 @@
         && AccountRoleHierarchy.PrincipalHasGlobalRole(User, AccountRoles.Admin);
     var canUseDevelopmentTools = hasTrustedAccess
         && AccountRoleHierarchy.PrincipalHasGlobalRole(User, AccountRoles.Dev);
+    var showDorksAccountLinks = string.Equals(
+        siteModeContext.ActiveModeId,
+        SiteModeValues.DorksAndDiceModeValue,
+        StringComparison.Ordinal);
 }
 @if (User.Identity?.IsAuthenticated == true)
 {
@@ -26,6 +30,16 @@
             @(string.IsNullOrWhiteSpace(displayName) ? "Account" : displayName)
         </button>
         <ul class="dropdown-menu dropdown-menu-end">
+            @if (showDorksAccountLinks)
+            {
+                <li>
+                    <a class="dropdown-item" asp-controller="Characters" asp-action="Index">Characters</a>
+                </li>
+                <li>
+                    <a class="dropdown-item" asp-controller="Campaigns" asp-action="Index">Campaigns</a>
+                </li>
+                <li><hr class="dropdown-divider" /></li>
+            }
             <li>
                 <a class="dropdown-item" asp-controller="Account" asp-action="Index">Account settings</a>
             </li>

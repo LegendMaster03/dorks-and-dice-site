@@ -36,6 +36,7 @@ public sealed class ToolRegistration
     public string? FrontendEntryPoint { get; set; }
     public string? HealthPath { get; set; }
     public List<string> Modes { get; set; } = [];
+    public List<string> DelegationTargets { get; set; } = [];
     public bool AllowAnonymous { get; set; } = true;
     public bool Enabled { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
@@ -55,6 +56,8 @@ public sealed class ToolRegistrationEditViewModel
     public string? HealthPath { get; set; }
     public List<string> Modes { get; set; } = [];
     public List<ToolModeOptionViewModel> ModeOptions { get; set; } = [];
+    public List<string> DelegationTargets { get; set; } = [];
+    public string? DelegationTargetsText { get; set; }
     public bool AllowAnonymous { get; set; } = true;
     public bool Enabled { get; set; }
 }

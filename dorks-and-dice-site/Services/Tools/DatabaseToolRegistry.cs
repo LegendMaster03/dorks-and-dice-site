@@ -23,6 +23,7 @@ public sealed class DatabaseToolRegistry : IToolRegistry
             tool_frontend_entry_point,
             tool_health_path,
             tool_modes,
+            tool_delegation_targets,
             tool_allow_anonymous,
             tool_enabled,
             tool_created_at,
@@ -106,6 +107,7 @@ public sealed class DatabaseToolRegistry : IToolRegistry
                     tool_frontend_entry_point,
                     tool_health_path,
                     tool_modes,
+                    tool_delegation_targets,
                     tool_allow_anonymous,
                     tool_enabled,
                     tool_created_at,
@@ -123,6 +125,7 @@ public sealed class DatabaseToolRegistry : IToolRegistry
                     @tool_frontend_entry_point,
                     @tool_health_path,
                     @tool_modes,
+                    @tool_delegation_targets,
                     @tool_allow_anonymous,
                     @tool_enabled,
                     @tool_created_at,
@@ -138,6 +141,7 @@ public sealed class DatabaseToolRegistry : IToolRegistry
                     tool_frontend_entry_point = excluded.tool_frontend_entry_point,
                     tool_health_path = excluded.tool_health_path,
                     tool_modes = excluded.tool_modes,
+                    tool_delegation_targets = excluded.tool_delegation_targets,
                     tool_allow_anonymous = excluded.tool_allow_anonymous,
                     tool_enabled = excluded.tool_enabled,
                     tool_created_at = excluded.tool_created_at,
@@ -153,7 +157,12 @@ public sealed class DatabaseToolRegistry : IToolRegistry
             AddParameter(command, "@tool_upstream_base_url", registration.UpstreamBaseUrl);
             AddParameter(command, "@tool_frontend_entry_point", registration.FrontendEntryPoint);
             AddParameter(command, "@tool_health_path", registration.HealthPath);
-            AddModesParameter(command, "@tool_modes", registration.Modes, provider);
+            AddStringListParameter(command, "@tool_modes", registration.Modes, provider);
+            AddStringListParameter(
+                command,
+                "@tool_delegation_targets",
+                registration.DelegationTargets,
+                provider);
             AddParameter(command, "@tool_allow_anonymous", registration.AllowAnonymous);
             AddParameter(command, "@tool_enabled", registration.Enabled);
             AddTimestampParameter(command, "@tool_created_at", registration.CreatedAt, provider);
@@ -239,11 +248,12 @@ public sealed class DatabaseToolRegistry : IToolRegistry
         UpstreamBaseUrl = ReadNullableString(reader, 6),
         FrontendEntryPoint = ReadNullableString(reader, 7),
         HealthPath = ReadNullableString(reader, 8),
-        Modes = ReadModes(reader.GetValue(9), provider),
-        AllowAnonymous = Convert.ToBoolean(reader.GetValue(10), CultureInfo.InvariantCulture),
-        Enabled = Convert.ToBoolean(reader.GetValue(11), CultureInfo.InvariantCulture),
-        CreatedAt = ReadTimestamp(reader.GetValue(12)),
-        UpdatedAt = ReadTimestamp(reader.GetValue(13))
+        Modes = ReadStringList(reader.GetValue(9), provider),
+        DelegationTargets = ReadStringList(reader.GetValue(10), provider),
+        AllowAnonymous = Convert.ToBoolean(reader.GetValue(11), CultureInfo.InvariantCulture),
+        Enabled = Convert.ToBoolean(reader.GetValue(12), CultureInfo.InvariantCulture),
+        CreatedAt = ReadTimestamp(reader.GetValue(13)),
+        UpdatedAt = ReadTimestamp(reader.GetValue(14))
     };
 
     private static Guid ReadGuid(object value) => value switch
@@ -257,7 +267,7 @@ public sealed class DatabaseToolRegistry : IToolRegistry
     private static string? ReadNullableString(DbDataReader reader, int ordinal) =>
         reader.IsDBNull(ordinal) ? null : reader.GetString(ordinal);
 
-    private static List<string> ReadModes(object value, RegistryProvider provider)
+    private static List<string> ReadStringList(object value, RegistryProvider provider)
     {
         if (provider == RegistryProvider.PostgreSql)
         {
@@ -292,7 +302,7 @@ public sealed class DatabaseToolRegistry : IToolRegistry
         RegistryProvider provider) =>
         AddParameter(command, name, provider == RegistryProvider.Sqlite ? value.ToString("D") : value);
 
-    private static void AddModesParameter(
+    private static void AddStringListParameter(
         DbCommand command,
         string name,
         IReadOnlyCollection<string> modes,

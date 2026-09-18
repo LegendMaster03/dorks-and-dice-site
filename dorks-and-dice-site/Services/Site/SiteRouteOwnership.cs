@@ -9,9 +9,6 @@ public static class SiteRouteOwnership
         return IsModeAdaptivePath(path.ToString().ToLowerInvariant());
     }
 
-    /// <summary>
-    /// Evaluates route ownership for a normal hosted site mode using registry metadata.
-    /// </summary>
     public static bool IsAllowedInMode(PathString path, SiteModeDefinition mode)
     {
         ArgumentNullException.ThrowIfNull(mode);
@@ -23,9 +20,6 @@ public static class SiteRouteOwnership
             || mode.AdditionalAssetPaths.Contains(normalizedPath, StringComparer.OrdinalIgnoreCase);
     }
 
-    /// <summary>
-    /// Evaluates the framework fallback used when no normal hosted mode owns the request.
-    /// </summary>
     public static bool IsAllowedInFrameworkFallback(PathString path)
     {
         var normalizedPath = NormalizePath(path);
@@ -37,12 +31,6 @@ public static class SiteRouteOwnership
             || IsSharedSystemPath(normalizedPath);
     }
 
-    /// <summary>
-    /// Evaluates the request surface while a synthetic control-plane mode is active. A selected
-    /// normal preview target keeps its normal route ownership, while the synthetic mode contributes
-    /// its own assets and shared framework routes. Developer route-inspection bypass remains a
-    /// separate trusted-access decision in middleware.
-    /// </summary>
     public static bool IsAllowedInSyntheticMode(
         PathString path,
         SyntheticSiteModeDefinition syntheticMode,
@@ -58,7 +46,6 @@ public static class SiteRouteOwnership
             || IsFrameworkAssetPath(normalizedPath, syntheticMode.AssetFolder);
     }
 
-    // Compatibility name while callers/tests migrate from Trusted Preview terminology.
     public static bool IsAllowedInTrustedPreview(PathString path, SiteModeDefinition? activeMode) =>
         IsAllowedInSyntheticMode(path, SyntheticSiteModes.Development, activeMode);
 
@@ -80,10 +67,6 @@ public static class SiteRouteOwnership
         return IsAllowedInFrameworkFallback(path);
     }
 
-    /// <summary>
-    /// Compatibility bridge for enum-based callers that have not yet migrated to the registry.
-    /// New runtime code should pass a concrete normal or synthetic mode definition instead.
-    /// </summary>
     public static bool IsAllowedInMode(PathString path, SiteMode siteMode)
     {
         if (BuiltInSiteModes.TryGetByLegacyMode(siteMode, out var mode))
@@ -137,6 +120,7 @@ public static class SiteRouteOwnership
             || path == "/llms.txt"
             || path == "/development-preview"
             || IsToolHostIntrospectionPath(path)
+            || IsToolHostDelegatedUpstreamPath(path)
             || path == "/operator"
             || path.StartsWith("/operator/", StringComparison.Ordinal)
             || path == "/account"
@@ -173,10 +157,20 @@ public static class SiteRouteOwnership
         return !slug.Contains('/');
     }
 
+    private static bool IsToolHostDelegatedUpstreamPath(string path)
+    {
+        var segments = path.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        return segments.Length >= 6
+            && string.Equals(segments[0], "tool-host", StringComparison.Ordinal)
+            && !string.IsNullOrWhiteSpace(segments[1])
+            && string.Equals(segments[2], "api", StringComparison.Ordinal)
+            && string.Equals(segments[3], "delegate", StringComparison.Ordinal)
+            && !string.IsNullOrWhiteSpace(segments[4])
+            && string.Equals(segments[5], "upstream", StringComparison.Ordinal);
+    }
+
     private static bool IsContentMediaPath(string path)
     {
-        // Route ownership only permits the request to reach the controller. ContentAssetService
-        // still requires a current revision reference from a page visible in the active mode.
         return path.StartsWith("/content/media/", StringComparison.Ordinal);
     }
 

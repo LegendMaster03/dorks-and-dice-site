@@ -66,6 +66,10 @@ public sealed partial class DevelopmentToolsController : Controller
             FrontendEntryPoint = tool.FrontendEntryPoint,
             HealthPath = tool.HealthPath,
             Modes = tool.Modes?.ToList() ?? [],
+            DelegationTargets = tool.DelegationTargets?.ToList() ?? [],
+            DelegationTargetsText = string.Join(
+                Environment.NewLine,
+                tool.DelegationTargets ?? []),
             AllowAnonymous = tool.AllowAnonymous,
             Enabled = tool.Enabled
         }));
@@ -119,6 +123,7 @@ public sealed partial class DevelopmentToolsController : Controller
             FrontendEntryPoint = model.FrontendEntryPoint,
             HealthPath = model.HealthPath,
             Modes = modes,
+            DelegationTargets = model.DelegationTargets.ToList(),
             AllowAnonymous = model.AllowAnonymous,
             Enabled = model.Enabled,
             CreatedAt = existing?.CreatedAt ?? now,
@@ -186,6 +191,22 @@ public sealed partial class DevelopmentToolsController : Controller
             }
         }
 
+        var invalidDelegationTarget = model.DelegationTargets
+            .FirstOrDefault(target => !ToolSlugRegex().IsMatch(target));
+        if (invalidDelegationTarget is not null)
+        {
+            ModelState.AddModelError(
+                nameof(model.DelegationTargetsText),
+                "Delegation targets must be valid lowercase Tool slugs.");
+        }
+
+        if (model.DelegationTargets.Contains(model.Slug, StringComparer.Ordinal))
+        {
+            ModelState.AddModelError(
+                nameof(model.DelegationTargetsText),
+                "A Tool can not delegate to itself.");
+        }
+
         if (!_upstreamPolicy.IsAllowed(model.UpstreamBaseUrl, out var upstreamReason))
         {
             ModelState.AddModelError(
@@ -219,6 +240,17 @@ public sealed partial class DevelopmentToolsController : Controller
             .Select(mode => mode.Trim())
             .Distinct(StringComparer.Ordinal)
             .ToList();
+        model.DelegationTargets = (model.DelegationTargetsText ?? string.Empty)
+            .Split(
+                [',', ';', '\r', '\n'],
+                StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(target => target.ToLowerInvariant())
+            .Distinct(StringComparer.Ordinal)
+            .OrderBy(target => target, StringComparer.Ordinal)
+            .ToList();
+        model.DelegationTargetsText = string.Join(
+            Environment.NewLine,
+            model.DelegationTargets);
 
         if (model.IntegrationType != ToolIntegrationType.EmbeddedModule)
         {

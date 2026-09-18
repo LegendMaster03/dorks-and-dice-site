@@ -59,10 +59,21 @@ public sealed class ToolProxyRequestBodyLimitMiddleware
         }
 
         var segments = value.Split('/', StringSplitOptions.RemoveEmptyEntries);
-        return segments.Length >= 4
+        if (segments.Length >= 4
             && string.Equals(segments[0], "tool-host", StringComparison.OrdinalIgnoreCase)
             && !string.IsNullOrWhiteSpace(segments[1])
             && string.Equals(segments[2], "api", StringComparison.OrdinalIgnoreCase)
-            && string.Equals(segments[3], "upstream", StringComparison.OrdinalIgnoreCase);
+            && string.Equals(segments[3], "upstream", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        return segments.Length >= 6
+            && string.Equals(segments[0], "tool-host", StringComparison.OrdinalIgnoreCase)
+            && !string.IsNullOrWhiteSpace(segments[1])
+            && string.Equals(segments[2], "api", StringComparison.OrdinalIgnoreCase)
+            && string.Equals(segments[3], "delegate", StringComparison.OrdinalIgnoreCase)
+            && !string.IsNullOrWhiteSpace(segments[4])
+            && string.Equals(segments[5], "upstream", StringComparison.OrdinalIgnoreCase);
     }
 }
