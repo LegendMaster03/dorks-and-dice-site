@@ -6,8 +6,7 @@ using Microsoft.AspNetCore.Identity;
 
 namespace dorks_and_dice_site.Services.Operator;
 
-public sealed class OperatorApplicationCookieEvents(
-    IOperatorCredentialService credentialService) : CookieAuthenticationEvents
+public sealed class OperatorApplicationCookieEvents : CookieAuthenticationEvents
 {
     public override async Task ValidatePrincipal(CookieValidatePrincipalContext context)
     {
@@ -15,8 +14,7 @@ public sealed class OperatorApplicationCookieEvents(
         var originalUserId = context.Principal?.FindFirstValue(ClaimTypes.NameIdentifier);
 
         // Preserve the normal ASP.NET Identity security-stamp behavior for every application
-        // cookie, including human sessions. Operator credential state is checked only for cookies
-        // explicitly created by browser bootstrap.
+        // cookie, including human sessions.
         await SecurityStampValidator.ValidatePrincipalAsync(context);
 
         if (string.IsNullOrWhiteSpace(credentialClaim))
@@ -25,8 +23,17 @@ public sealed class OperatorApplicationCookieEvents(
         }
 
         if (!Guid.TryParse(credentialClaim, out var credentialId)
-            || !Guid.TryParse(originalUserId, out var userId)
-            || !await credentialService.IsActiveForUserAsync(
+            || !Guid.TryParse(originalUserId, out var userId))
+        {
+            await RejectAsync(context);
+            return;
+        }
+
+        // Resolve Operator state only for cookies explicitly created by browser bootstrap.
+        // Ordinary human cookie validation never queries Operator credentials.
+        var credentialService = context.HttpContext.RequestServices
+            .GetRequiredService<IOperatorCredentialService>();
+        if (!await credentialService.IsActiveForUserAsync(
                 credentialId,
                 userId,
                 context.HttpContext.RequestAborted))
