@@ -94,7 +94,9 @@ public sealed class OperatorInterfaceIntegrationTests
             });
         });
 
-        var principal = await CreateServicePrincipalAsync(factory.Services, [AccountRoles.GlobalEditor]);
+        var principal = await CreateServicePrincipalAsync(
+            factory.Services,
+            [AccountRoles.GlobalEditor, AccountRoles.RulesLawyer]);
         using var operatorClient = CreateOperatorClient(factory, principal.Token);
         var bootstrap = await IssueBootstrapAsync(operatorClient);
 
@@ -154,6 +156,10 @@ public sealed class OperatorInterfaceIntegrationTests
             Assert.NotNull(proxy.AuthenticationContext);
             Assert.Equal(principal.UserId.ToString("D"), proxy.AuthenticationContext!.User.Id);
             Assert.Contains(AccountRoles.GlobalEditor, proxy.AuthenticationContext.GlobalRoles);
+            Assert.Contains(AccountRoles.RulesLawyer, proxy.AuthenticationContext.GlobalRoles);
+            Assert.Equal(
+                SiteModeValues.DorksAndDiceModeValue,
+                proxy.AuthenticationContext.SiteMode);
             Assert.Empty(proxy.AuthenticationContext.Campaigns);
             Assert.True(string.IsNullOrWhiteSpace(proxy.BrowserAuthorizationHeader));
         }
@@ -186,6 +192,55 @@ public sealed class OperatorInterfaceIntegrationTests
 
         Assert.Null(typeof(ToolRegistration).GetProperty("OperatorContractVersion"));
         Assert.Null(typeof(ToolRegistration).GetProperty("OperatorManifestPath"));
+    }
+
+    [Fact]
+    public async Task OperatorCredentialDoesNotGrantUnassignedRulesLawyerThroughToolHost()
+    {
+        var connectionString = Environment.GetEnvironmentVariable("IDENTITY_TEST_POSTGRES");
+        if (string.IsNullOrWhiteSpace(connectionString)) return;
+
+        using var factory = new IdentityWebApplicationFactory(connectionString);
+        var principal = await CreateServicePrincipalAsync(factory.Services, []);
+
+        using var operatorClient = CreateOperatorClient(factory, principal.Token);
+        var bootstrap = await IssueBootstrapAsync(operatorClient);
+        using var browser = CreateBrowserClient(factory);
+        Assert.Equal(
+            HttpStatusCode.Redirect,
+            (await browser.GetAsync(bootstrap.BootstrapUrl)).StatusCode);
+
+        var tool = new ToolRegistration
+        {
+            Id = Guid.NewGuid(),
+            Slug = $"rules-lawyer-negative-{Guid.NewGuid():N}",
+            DisplayName = "Rules Lawyer Negative Test",
+            IntegrationType = ToolIntegrationType.EmbeddedModule,
+            IntegrationContractVersion = ToolIntegrationContractVersions.EmbeddedModuleCurrent,
+            Modes = [SiteModeValues.DorksAndDiceModeValue],
+            AllowAnonymous = false,
+            Enabled = true,
+            CreatedAt = DateTimeOffset.UtcNow,
+            UpdatedAt = DateTimeOffset.UtcNow
+        };
+
+        var registry = factory.Services.GetRequiredService<IToolRegistry>();
+        await registry.SaveAsync(tool);
+        try
+        {
+            using var response = await browser.GetAsync($"/tool-host/{tool.Slug}/api/session");
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+            var session = await response.Content.ReadFromJsonAsync<ToolHostApiSession>();
+            Assert.NotNull(session);
+            Assert.Equal(principal.UserId.ToString("D"), session.User.Id);
+            Assert.Equal(SiteModeValues.DorksAndDiceModeValue, session.SiteMode);
+            Assert.DoesNotContain(AccountRoles.RulesLawyer, session.GlobalRoles);
+        }
+        finally
+        {
+            await registry.DeleteAsync(tool.Id);
+        }
     }
 
     [Fact]
