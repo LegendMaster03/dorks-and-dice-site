@@ -47,6 +47,10 @@ mount point. For example, `/tools/rules-core/monsters/ancient-red-dragon` resolv
 its current Tool route. The stable Tool base path is `/tools/{slug}` and the root Tool
 route is `/`.
 
+The host shell does not add a registration title or description above an Embedded Module's
+working interface. The Tool owns its in-application heading and introductory UI; the Site
+still uses the registration display name for listings and the document title.
+
 The shell imports the configured module through `/tool-modules/{slug}/...`; that asset
 namespace remains host-owned and is not interpreted as Tool route state. Relative ES
 imports resolve in the module subtree. The module mounts itself into `#tool-root` and
