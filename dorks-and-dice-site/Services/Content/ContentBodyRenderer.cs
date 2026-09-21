@@ -1,4 +1,6 @@
+using System.Net;
 using System.Text;
+using System.Text.Encodings.Web;
 using System.Text.RegularExpressions;
 using Ganss.Xss;
 using Markdig;
@@ -21,6 +23,10 @@ public sealed class ContentBodyRenderer : IContentBodyRenderer
         | RegexOptions.IgnoreCase
         | RegexOptions.Multiline);
 
+    private static readonly Regex AbsoluteHrefPattern = new(
+        @"href=""(?<url>https?://[^""]+)""",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
+
     private static readonly HtmlSanitizer Sanitizer = CreateSanitizer();
 
     private readonly IReadOnlyDictionary<string, IContentDirectiveRenderer> _directives;
@@ -32,7 +38,7 @@ public sealed class ContentBodyRenderer : IContentBodyRenderer
             StringComparer.OrdinalIgnoreCase);
     }
 
-    public string Render(string format, string body)
+    public string Render(string format, string body, string? sameApplicationHost = null)
     {
         if (!string.Equals(format, "markdown", StringComparison.OrdinalIgnoreCase))
         {
@@ -46,8 +52,49 @@ public sealed class ContentBodyRenderer : IContentBodyRenderer
         }
 
         var rendered = RenderMarkdownAndDirectives(body);
-        return Sanitizer.Sanitize(rendered);
+        var sanitized = Sanitizer.Sanitize(rendered);
+        return RewriteSameApplicationLinks(sanitized, sameApplicationHost);
     }
+
+    private static string RewriteSameApplicationLinks(string html, string? sameApplicationHost)
+    {
+        if (string.IsNullOrWhiteSpace(sameApplicationHost)
+            || !Uri.TryCreate($"https://{sameApplicationHost.Trim()}", UriKind.Absolute, out var sameApplicationOrigin))
+        {
+            return html;
+        }
+
+        return AbsoluteHrefPattern.Replace(html, match =>
+        {
+            var authoredUrl = WebUtility.HtmlDecode(match.Groups["url"].Value);
+            if (!Uri.TryCreate(authoredUrl, UriKind.Absolute, out var target)
+                || !string.Equals(
+                    NormalizeHost(target.Host),
+                    NormalizeHost(sameApplicationOrigin.Host),
+                    StringComparison.OrdinalIgnoreCase)
+                || !PortsMatch(target, sameApplicationOrigin))
+            {
+                return match.Value;
+            }
+
+            var relativeUrl = target.PathAndQuery + target.Fragment;
+            if (relativeUrl.StartsWith("//", StringComparison.Ordinal))
+            {
+                relativeUrl = $"/.{relativeUrl}";
+            }
+
+            return $"href=\"{HtmlEncoder.Default.Encode(relativeUrl)}\"";
+        });
+    }
+
+    private static bool PortsMatch(Uri target, Uri sameApplicationOrigin) =>
+        target.IsDefaultPort && sameApplicationOrigin.IsDefaultPort
+        || target.Port == sameApplicationOrigin.Port;
+
+    private static string NormalizeHost(string host) =>
+        host.StartsWith("www.", StringComparison.OrdinalIgnoreCase)
+            ? host[4..]
+            : host;
 
     private string RenderMarkdownAndDirectives(string body)
     {

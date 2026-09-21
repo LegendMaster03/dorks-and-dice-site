@@ -8,15 +8,6 @@
     var contextUrl = ViewData["ToolContextUrl"] as string ?? $"/tool-host/{Model.Slug}/context";
 }
 
-<div class="mb-4">
-    <p class="text-uppercase text-muted small mb-1">Hosted tool</p>
-    <h1 class="h2 mb-2">@Model.DisplayName</h1>
-    @if (!string.IsNullOrWhiteSpace(Model.Description))
-    {
-        <p class="text-body-secondary mb-0">@Model.Description</p>
-    }
-</div>
-
 @if (Model.IntegrationType == ToolIntegrationType.EmbeddedModule)
 {
     <div id="tool-root"

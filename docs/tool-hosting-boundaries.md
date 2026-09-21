@@ -47,6 +47,10 @@ mount point. For example, `/tools/rules-core/monsters/ancient-red-dragon` resolv
 its current Tool route. The stable Tool base path is `/tools/{slug}` and the root Tool
 route is `/`.
 
+The host shell does not add a registration title or description above an Embedded Module's
+working interface. The Tool owns its in-application heading and introductory UI; the Site
+still uses the registration display name for listings and the document title.
+
 The shell imports the configured module through `/tool-modules/{slug}/...`; that asset
 namespace remains host-owned and is not interpreted as Tool route state. Relative ES
 imports resolve in the module subtree. The module mounts itself into `#tool-root` and
@@ -154,6 +158,37 @@ The authenticated upstream ticket is populated from the same native campaign aut
 Authentication contract version 1 represents one campaign role per entry; a native
 membership holding both DM and Player is emitted as two entries for the same campaign so
 existing `(campaignId, role)` authorization checks preserve both grants.
+
+## Deployment diagnostics
+
+Tool Management has authoritative registration metadata (enabled state, integration type,
+integration contract version, configured upstream/health endpoint, and registration
+timestamps) plus live transport health (HTTP result and request duration). Those values do
+not identify the software build currently running in the Tool.
+
+The current Tool contracts do not provide an authoritative application build/version
+identifier or deployment timestamp. In particular:
+
+- `IntegrationContractVersion` is the Site/Tool protocol version, not the Tool software
+  version.
+- `ToolRegistration.UpdatedAt` is when the Site registration changed, not when the Tool
+  was built or deployed.
+- a published content/rules revision belongs to Tool-owned domain data and is not an
+  application build identifier.
+- the health-check request time and latency say when the Site observed the service, not
+  when that service was deployed.
+
+Exposing build/deployment diagnostics therefore requires an explicit versioned contract
+from each Tool runtime. At minimum, that contract must supply an opaque application build
+identifier (or application version tied to a specific build) and the UTC deployment time
+for the currently running build. A source revision or immutable image digest may also be
+included when the Tool can supply it authoritatively. The Site should display missing
+fields as unavailable rather than infer them from registration, content, container, or
+health-check metadata.
+
+The diagnostics contract may be a dedicated endpoint or a versioned extension of the
+existing health contract, but its fields must be Tool/deployment supplied and must remain
+distinct from the Embedded Module integration contract version.
 
 ## Runtime files
 

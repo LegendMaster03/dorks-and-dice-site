@@ -176,6 +176,37 @@ public sealed class ToolHostingIntegrationTests
     }
 
     [Fact]
+    public async Task EmbeddedToolShellDoesNotDuplicateToolHeadingOrDescription()
+    {
+        const string shellDescription = "Site shell description marker";
+
+        var tool = await RegisterAsync(new ToolRegistration
+        {
+            Slug = UniqueSlug(),
+            DisplayName = "Embedded Tool Shell Test",
+            Description = shellDescription,
+            Modes = [SiteModeValues.DorksAndDiceModeValue],
+            IntegrationType = ToolIntegrationType.EmbeddedModule,
+            Enabled = true
+        });
+
+        try
+        {
+            var response = await SendAsync("dorks-and-dice.com", $"/tools/{tool.Slug}");
+            var html = await response.Content.ReadAsStringAsync();
+
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            Assert.Contains("id=\"tool-root\"", html, StringComparison.Ordinal);
+            Assert.DoesNotContain(">Hosted tool<", html, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain(shellDescription, html, StringComparison.Ordinal);
+        }
+        finally
+        {
+            await DeleteAsync(tool.Id);
+        }
+    }
+
+    [Fact]
     public async Task DisabledToolAndModuleRoutesReturnNotFound()
     {
         var tool = await RegisterAsync(new ToolRegistration
