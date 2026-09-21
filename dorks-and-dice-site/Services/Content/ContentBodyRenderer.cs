@@ -78,6 +78,11 @@ public sealed class ContentBodyRenderer : IContentBodyRenderer
             }
 
             var relativeUrl = target.PathAndQuery + target.Fragment;
+            if (relativeUrl.StartsWith("//", StringComparison.Ordinal))
+            {
+                relativeUrl = $"/.{relativeUrl}";
+            }
+
             return $"href=\"{HtmlEncoder.Default.Encode(relativeUrl)}\"";
         });
     }
