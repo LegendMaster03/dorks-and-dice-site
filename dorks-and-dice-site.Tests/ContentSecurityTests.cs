@@ -54,6 +54,26 @@ public sealed class ContentSecurityTests
     }
 
     [Fact]
+    public void RendererDoesNotCreateSchemeRelativeLinksFromDoubleSlashPaths()
+    {
+        var renderer = new ContentBodyRenderer(Array.Empty<IContentDirectiveRenderer>());
+
+        var html = renderer.Render(
+            "markdown",
+            "[Open tool](https://dorks-and-dice.com//tools/block-initiative)",
+            "dorks-and-dice.com");
+
+        Assert.Contains(
+            "href=\"/.//tools/block-initiative\"",
+            html,
+            StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain(
+            "href=\"//tools/block-initiative\"",
+            html,
+            StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void RendererDoesNotRewriteLinksToAnotherModeCanonicalHost()
     {
         var renderer = new ContentBodyRenderer(Array.Empty<IContentDirectiveRenderer>());
