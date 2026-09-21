@@ -13,17 +13,20 @@ public sealed class ContentController : Controller
     private readonly IContentBodyRenderer _bodyRenderer;
     private readonly IContentRedirectService _redirects;
     private readonly IAuthorizationService _authorizationService;
+    private readonly SiteModeOptions _siteHosting;
 
     public ContentController(
         IContentCatalogService catalog,
         IContentBodyRenderer bodyRenderer,
         IContentRedirectService redirects,
-        IAuthorizationService authorizationService)
+        IAuthorizationService authorizationService,
+        SiteModeOptions siteHosting)
     {
         _catalog = catalog;
         _bodyRenderer = bodyRenderer;
         _redirects = redirects;
         _authorizationService = authorizationService;
+        _siteHosting = siteHosting;
     }
 
     [HttpGet("/resume/{slug}")]
@@ -111,11 +114,15 @@ public sealed class ContentController : Controller
             AuthorizationPolicies.ModeEditor)).Succeeded;
         var isSyntheticDevelopment = modeContext.SyntheticMode is not null;
         var backLinks = BuildBackLinks(item, contextTag);
+        var sameApplicationHost = modeContext.ActiveModeId is { Length: > 0 } activeModeId
+            && _siteHosting.TryGetCanonicalHost(activeModeId, out var canonicalHost)
+                ? canonicalHost
+                : null;
         var viewModel = new ContentDetailViewModel
         {
             Item = item,
             ContextTag = contextTag,
-            RenderedBodyHtml = _bodyRenderer.Render(item.BodyFormat, item.Body),
+            RenderedBodyHtml = _bodyRenderer.Render(item.BodyFormat, item.Body, sameApplicationHost),
             BackLinks = backLinks,
             IsDevelopmentVisibilityOverride = isSyntheticDevelopment
                 && !item.IsVisibleInMode(modeContext.ActiveModeId),
