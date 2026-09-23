@@ -1,5 +1,6 @@
 using dorks_and_dice_site.Models.Identity;
 using dorks_and_dice_site.Services.Identity;
+using Microsoft.AspNetCore.Authentication;
 
 namespace dorks_and_dice_site.Services.Site;
 
@@ -21,6 +22,8 @@ public sealed class SiteModeMiddleware
 
     public async Task InvokeAsync(HttpContext context)
     {
+        await EnsureSitePrincipalAsync(context);
+
         var host = NormalizeHost(context.Request.Host.Host);
         var hostedModeId = _options.ResolveModeId(host);
         var hasTrustedAccess = TrustedAccessEvaluator.IsAuthorized(context, _options);
@@ -70,6 +73,25 @@ public sealed class SiteModeMiddleware
         }
 
         await _next(context);
+    }
+
+    private static async Task EnsureSitePrincipalAsync(HttpContext context)
+    {
+        // SiteMode must run before endpoint routing because it rewrites disallowed paths.
+        // Authenticate only the configured default Site scheme here so role/scoped-role
+        // decisions remain available without moving the full authentication middleware
+        // ahead of routing. The normal middleware still runs after UseRouting(), which is
+        // required by OpenIddict's ASP.NET Core client integration.
+        if (context.User.Identity?.IsAuthenticated == true)
+        {
+            return;
+        }
+
+        var result = await context.AuthenticateAsync();
+        if (result.Succeeded && result.Principal is not null)
+        {
+            context.User = result.Principal;
+        }
     }
 
     private static string NormalizeHost(string host)

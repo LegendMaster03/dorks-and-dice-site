@@ -342,9 +342,9 @@ app.Use(async (context, next) =>
     await next();
 });
 app.UseHttpsRedirection();
-app.UseAuthentication();
 app.UseMiddleware<SiteModeMiddleware>();
 app.UseRouting();
+app.UseAuthentication();
 app.UseMiddleware<ToolProxyRequestBodyLimitMiddleware>();
 app.UseStatusCodePagesWithReExecute("/Home/NotFoundPage");
 app.UseRateLimiter();
