@@ -31,9 +31,7 @@ builder.Services
         options.ViewLocationExpanders.Add(new SiteModeViewLocationExpander());
     });
 builder.Services.AddContentStorage(builder.Configuration, builder.Environment.ContentRootPath);
-builder.Services
-    .AddAccountLinking()
-    .AddOpenIddictAccountLinking();
+builder.Services.AddAccountLinking();
 builder.Services.AddSitePlugins(
 [
     new ProfessionalPortfolioPlugin(),

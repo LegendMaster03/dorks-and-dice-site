@@ -15,6 +15,14 @@ public static class AccountLinkingServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
 
+        if (services.Any(static descriptor =>
+            descriptor.ServiceType == typeof(OpenIddictAccountLinkingRegistrationMarker)))
+        {
+            return services;
+        }
+
+        services.AddSingleton(new OpenIddictAccountLinkingRegistrationMarker());
+
         services.AddOpenIddict()
             .AddClient(options =>
             {
@@ -58,3 +66,6 @@ public static class AccountLinkingServiceCollectionExtensions
         return services;
     }
 }
+
+
+internal sealed class OpenIddictAccountLinkingRegistrationMarker;

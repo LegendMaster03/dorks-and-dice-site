@@ -42,6 +42,8 @@ public sealed class DiscordAccountLinkPlugin : ISitePlugin
                 "AccountLinks:Discord requires ClientId and ClientSecret when enabled.");
         }
 
+        services.AddOpenIddictAccountLinking();
+
         services.AddOpenIddict()
             .AddClient(options =>
             {
