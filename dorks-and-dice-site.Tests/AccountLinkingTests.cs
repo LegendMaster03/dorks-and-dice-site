@@ -3,6 +3,7 @@ using System.Text.RegularExpressions;
 using dorks_and_dice_site.Models.Identity;
 using dorks_and_dice_site.Services.Identity;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -34,6 +35,36 @@ public sealed class AccountLinkingTests
         Assert.Equal(AccountLinkProtocol.OAuth, resolvedOAuth.Descriptor.Protocol);
         Assert.True(catalog.TryGet("OPENIDDICT-TEST", out var resolvedOpenIddict));
         Assert.Equal(AccountLinkProtocol.OpenIddict, resolvedOpenIddict.Descriptor.Protocol);
+    }
+
+    [Fact]
+    public async Task DiscordPluginCanBeEnabledAndRegistersProvider()
+    {
+        var connectionString = Environment.GetEnvironmentVariable("IDENTITY_TEST_POSTGRES");
+        if (string.IsNullOrWhiteSpace(connectionString)) return;
+
+        using var factory = new IdentityWebApplicationFactory(connectionString)
+            .WithWebHostBuilder(builder =>
+            {
+                builder.UseSetting("AccountLinks:Discord:Enabled", "true");
+                builder.UseSetting("AccountLinks:Discord:ClientId", "test-discord-client");
+                builder.UseSetting("AccountLinks:Discord:ClientSecret", "test-discord-secret");
+            });
+
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+            BaseAddress = new Uri("https://dorks-and-dice.com")
+        });
+
+        var account = await client.GetAsync("/account");
+        Assert.Equal(HttpStatusCode.Redirect, account.StatusCode);
+
+        using var scope = factory.Services.CreateScope();
+        var catalog = scope.ServiceProvider.GetRequiredService<IAccountLinkProviderCatalog>();
+        Assert.True(catalog.TryGet("discord", out var provider));
+        Assert.Equal("Discord", provider.Descriptor.DisplayName);
+        Assert.Equal(AccountLinkProtocol.OpenIddict, provider.Descriptor.Protocol);
     }
 
     [Fact]
