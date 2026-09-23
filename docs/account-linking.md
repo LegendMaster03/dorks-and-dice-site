@@ -15,6 +15,8 @@ Provider implementations may be installed through the Site plugin system. Protoc
 
 A link attempt carries a cryptographically random one-time nonce stored through ASP.NET Identity. The protected OAuth/OpenIddict state also carries the current Site user ID and nonce. The callback must match the authenticated Site account, provider, and unconsumed nonce before a login is attached. This application-level nonce preserves one-time linking semantics when the OpenIddict client is configured without its general-purpose token store.
 
+OpenIddict still requires a client encryption credential for interactive flows. The shared account-link client uses an ephemeral encryption key because provider access and refresh tokens are never stored and an in-progress link attempt is intentionally disposable across a Site restart. Established account links remain in ASP.NET Identity and are unaffected.
+
 ## Discord
 
 Discord is the first provider plugin and uses OpenIddict's maintained Discord web-provider integration.

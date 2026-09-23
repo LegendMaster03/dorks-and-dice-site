@@ -1,6 +1,7 @@
 using dorks_and_dice_site.Models.Identity;
 using dorks_and_dice_site.Services.Identity;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace dorks_and_dice_site.Services.Site;
 
@@ -87,7 +88,13 @@ public sealed class SiteModeMiddleware
             return;
         }
 
-        var result = await context.AuthenticateAsync();
+        var authentication = context.RequestServices?.GetService<IAuthenticationService>();
+        if (authentication is null)
+        {
+            return;
+        }
+
+        var result = await authentication.AuthenticateAsync(context, scheme: null);
         if (result.Succeeded && result.Principal is not null)
         {
             context.User = result.Principal;

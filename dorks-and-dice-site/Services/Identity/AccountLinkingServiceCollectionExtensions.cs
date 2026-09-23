@@ -32,6 +32,13 @@ public static class AccountLinkingServiceCollectionExtensions
                 options.DisableTokenStorage();
                 options.UseDataProtection();
 
+                // OpenIddict requires an encryption credential for interactive client
+                // operations. Account links are transient and provider access/refresh
+                // tokens are never persisted, so a process-local credential is sufficient:
+                // a restart may invalidate an in-flight link attempt, but never an
+                // established account link.
+                options.AddEphemeralEncryptionKey();
+
                 options.UseAspNetCore()
                     .EnableRedirectionEndpointPassthrough();
 
