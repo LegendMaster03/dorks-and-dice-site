@@ -18,8 +18,6 @@ public static class AccountLinkingServiceCollectionExtensions
         services.AddOpenIddict()
             .AddClient(options =>
             {
-                options.AllowAuthorizationCodeFlow();
-
                 // Account linking stores no provider access/refresh tokens. State tokens are
                 // self-contained Data Protection payloads; one-time application nonces stored
                 // in ASP.NET Identity preserve replay protection at the linking boundary.

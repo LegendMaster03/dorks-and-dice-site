@@ -45,6 +45,10 @@ public sealed class DiscordAccountLinkPlugin : ISitePlugin
         services.AddOpenIddict()
             .AddClient(options =>
             {
+                // Protocol flow enablement belongs to the provider registration so the
+                // OpenIddict core remains valid when no OpenIddict link provider is enabled.
+                options.AllowAuthorizationCodeFlow();
+
                 options.UseWebProviders()
                     .AddDiscord(discord =>
                     {
