@@ -38,6 +38,7 @@ public static class AccountLinkingServiceCollectionExtensions
                 // a restart may invalidate an in-flight link attempt, but never an
                 // established account link.
                 options.AddEphemeralEncryptionKey();
+                options.AddEphemeralSigningKey();
 
                 options.UseAspNetCore()
                     .EnableRedirectionEndpointPassthrough();
