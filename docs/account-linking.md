@@ -41,10 +41,13 @@ AccountLinks__Discord__ClientId=...
 AccountLinks__Discord__ClientSecret=...
 ```
 
-Configure the Discord OAuth application with this redirect URI:
+The provider redirect URI is host-relative so the linking flow returns to the same canonical Site host that started it. Configure the Discord OAuth application to allow each production host where account linking is available:
 
 ```text
 https://dorks-and-dice.com/account/links/callback/discord
+https://kylebarnett.com/account/links/callback/discord
 ```
+
+A local or preview deployment that performs real Discord linking must register its own exact callback URI as well.
 
 The initial Discord plugin requests OpenIddict's required Discord `identify` scope only. Discord role synchronization is intentionally outside this first account-linking layer.

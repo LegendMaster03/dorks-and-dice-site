@@ -61,6 +61,7 @@ public static class AccountLinkingServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(descriptor);
 
+        services.AddOpenIddictAccountLinking();
         services.AddSingleton<IAccountLinkProvider>(
             new OpenIddictAccountLinkProvider(descriptor));
         return services;

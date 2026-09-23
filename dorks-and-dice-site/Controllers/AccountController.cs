@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.EntityFrameworkCore;
 
 namespace dorks_and_dice_site.Controllers;
 
@@ -22,6 +23,7 @@ public sealed class AccountController : Controller
     private readonly ISiteModePresentationService _siteModePresentationService;
     private readonly IAccountEmailSender _emailSender;
     private readonly IAccountLinkProviderCatalog _accountLinkProviders;
+    private readonly IdentityDbContext _identityDbContext;
     private readonly ILogger<AccountController> _logger;
 
     public AccountController(
@@ -32,6 +34,7 @@ public sealed class AccountController : Controller
         ISiteModePresentationService siteModePresentationService,
         IAccountEmailSender emailSender,
         IAccountLinkProviderCatalog accountLinkProviders,
+        IdentityDbContext identityDbContext,
         ILogger<AccountController> logger)
     {
         _userManager = userManager;
@@ -41,6 +44,7 @@ public sealed class AccountController : Controller
         _siteModePresentationService = siteModePresentationService;
         _emailSender = emailSender;
         _accountLinkProviders = accountLinkProviders;
+        _identityDbContext = identityDbContext;
         _logger = logger;
     }
 
@@ -632,6 +636,8 @@ public sealed class AccountController : Controller
             return View(model);
         }
 
+        await using var transaction = await _identityDbContext.Database.BeginTransactionAsync();
+
         foreach (var login in await _userManager.GetLoginsAsync(user))
         {
             var removeLoginResult = await _userManager.RemoveLoginAsync(
@@ -687,6 +693,8 @@ public sealed class AccountController : Controller
 
             return View(model);
         }
+
+        await transaction.CommitAsync();
 
         await _signInManager.SignOutAsync();
         return RedirectToAction(nameof(Deleted));
