@@ -222,11 +222,12 @@ public sealed class AccountLinkingTests
         var callback = await client.GetAsync("/account/links/callback/test-provider");
         Assert.Equal(HttpStatusCode.Redirect, callback.StatusCode);
 
-        using var scope = factory.Services.CreateScope();
-        var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
-        var user = await userManager.FindByIdAsync(userId.ToString());
-        Assert.NotNull(user);
-        Assert.Empty(await userManager.GetLoginsAsync(user));
+        using var verificationScope = factory.Services.CreateScope();
+        var verificationUserManager =
+            verificationScope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+        var verificationUser = await verificationUserManager.FindByIdAsync(userId.ToString());
+        Assert.NotNull(verificationUser);
+        Assert.Empty(await verificationUserManager.GetLoginsAsync(verificationUser));
     }
 
     private static async Task LoginAsync(HttpClient client, string email, string password)
