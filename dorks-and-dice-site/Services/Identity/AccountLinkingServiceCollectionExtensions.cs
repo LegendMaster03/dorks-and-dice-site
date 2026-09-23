@@ -68,4 +68,6 @@ public static class AccountLinkingServiceCollectionExtensions
 }
 
 
-internal sealed class OpenIddictAccountLinkingRegistrationMarker;
+internal sealed class OpenIddictAccountLinkingRegistrationMarker
+{
+}
