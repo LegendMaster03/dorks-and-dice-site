@@ -508,28 +508,32 @@ public sealed class AccountController : Controller
             return NotFound();
         }
 
-        var login = (await _userManager.GetLoginsAsync(user))
-            .SingleOrDefault(candidate =>
+        var logins = (await _userManager.GetLoginsAsync(user))
+            .Where(candidate =>
                 string.Equals(
                     candidate.LoginProvider,
                     provider.Descriptor.Id,
-                    StringComparison.OrdinalIgnoreCase));
-        if (login is null)
+                    StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        if (logins.Count == 0)
         {
             TempData["AccountError"] = $"{provider.Descriptor.DisplayName} is not connected.";
             return RedirectToAction(nameof(Index));
         }
 
-        var removeResult = await _userManager.RemoveLoginAsync(
-            user,
-            login.LoginProvider,
-            login.ProviderKey);
-        if (!removeResult.Succeeded)
+        foreach (var login in logins)
         {
-            TempData["AccountError"] = string.Join(
-                " ",
-                removeResult.Errors.Select(error => error.Description));
-            return RedirectToAction(nameof(Index));
+            var removeResult = await _userManager.RemoveLoginAsync(
+                user,
+                login.LoginProvider,
+                login.ProviderKey);
+            if (!removeResult.Succeeded)
+            {
+                TempData["AccountError"] = string.Join(
+                    " ",
+                    removeResult.Errors.Select(error => error.Description));
+                return RedirectToAction(nameof(Index));
+            }
         }
 
         await _userManager.RemoveAuthenticationTokenAsync(
@@ -730,15 +734,14 @@ public sealed class AccountController : Controller
     private async Task<IReadOnlyList<AccountLinkViewModel>> BuildAccountLinksAsync(
         ApplicationUser user)
     {
-        var existingLogins = await _userManager.GetLoginsAsync(user);
-        var byProvider = existingLogins.ToDictionary(
-            login => login.LoginProvider,
-            StringComparer.OrdinalIgnoreCase);
+        var existingProviders = (await _userManager.GetLoginsAsync(user))
+            .Select(login => login.LoginProvider)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
         var links = new List<AccountLinkViewModel>(_accountLinkProviders.All.Count);
 
         foreach (var provider in _accountLinkProviders.All)
         {
-            if (!byProvider.TryGetValue(provider.Descriptor.Id, out _))
+            if (!existingProviders.Contains(provider.Descriptor.Id))
             {
                 links.Add(new AccountLinkViewModel(
                     provider.Descriptor.Id,

@@ -260,7 +260,7 @@ public sealed class AccountLinkingTests
         public AccountLinkProviderDescriptor Descriptor { get; } = new(
             "test-provider",
             "Test Provider",
-            "FakeAccountLink",
+            IdentityConstants.ApplicationScheme,
             AccountLinkProtocol.OAuth);
 
         public AuthenticationProperties? LastChallengeProperties { get; private set; }
