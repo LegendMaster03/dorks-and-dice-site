@@ -4,6 +4,7 @@ using dorks_and_dice_site.Framework.Plugins;
 using dorks_and_dice_site.Models.Identity;
 using dorks_and_dice_site.Models.Site;
 using dorks_and_dice_site.Modes.DorksAndDice;
+using dorks_and_dice_site.Plugins.AccountLinks.Discord;
 using dorks_and_dice_site.Plugins.DiscordWidget;
 using dorks_and_dice_site.Plugins.MinecraftServerStatus;
 using dorks_and_dice_site.Plugins.ProfessionalPortfolio;
@@ -30,10 +31,14 @@ builder.Services
         options.ViewLocationExpanders.Add(new SiteModeViewLocationExpander());
     });
 builder.Services.AddContentStorage(builder.Configuration, builder.Environment.ContentRootPath);
+builder.Services
+    .AddAccountLinking()
+    .AddOpenIddictAccountLinking();
 builder.Services.AddSitePlugins(
 [
     new ProfessionalPortfolioPlugin(),
     new DiscordWidgetPlugin(),
+    new DiscordAccountLinkPlugin(builder.Configuration),
     new MinecraftServerStatusPlugin()
 ]);
 builder.Services.AddSingleton<IToolRegistry, DatabaseToolRegistry>();
@@ -339,9 +344,9 @@ app.Use(async (context, next) =>
     await next();
 });
 app.UseHttpsRedirection();
+app.UseRouting();
 app.UseAuthentication();
 app.UseMiddleware<SiteModeMiddleware>();
-app.UseRouting();
 app.UseMiddleware<ToolProxyRequestBodyLimitMiddleware>();
 app.UseStatusCodePagesWithReExecute("/Home/NotFoundPage");
 app.UseRateLimiter();
