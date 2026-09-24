@@ -3,6 +3,7 @@
 @using dorks_and_dice_site.Models.Tools
 @{
     ViewData["Title"] = Model.DisplayName;
+    ViewData["FullWidthContent"] = Model.IntegrationType == ToolIntegrationType.EmbeddedModule;
     var toolBasePath = ViewData["ToolBasePath"] as string ?? $"/tools/{Model.Slug}";
     var toolRoute = ViewData["ToolRoute"] as string ?? "/";
     var contextUrl = ViewData["ToolContextUrl"] as string ?? $"/tool-host/{Model.Slug}/context";

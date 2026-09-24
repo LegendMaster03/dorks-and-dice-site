@@ -95,6 +95,10 @@
     var structuredDataJson = SiteModePresentationService.GetStructuredDataJson(
         siteModeContext,
         canonicalOrigin);
+    var fullWidthContent = Equals(ViewData["FullWidthContent"], true);
+    var contentContainerClass = fullWidthContent
+        ? "container-fluid py-3 px-2 px-md-3 px-xl-4"
+        : "container py-4";
 }
 <!DOCTYPE html>
 <html lang="en">
@@ -142,7 +146,8 @@
             @await Html.PartialAsync(developmentToolsPartialPath, developmentTools)
         }
     </header>
-    <div class="container py-4">
+    <div class="@contentContainerClass"
+         data-site-content-width="@(fullWidthContent ? "fluid" : "standard")">
         <main role="main">
             @RenderBody()
         </main>
