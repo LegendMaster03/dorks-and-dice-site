@@ -210,6 +210,9 @@ public sealed class DorksAndDiceDbContextModelSnapshot : ModelSnapshot
             b.Property<string>("GuildId")
                 .IsRequired()
                 .HasMaxLength(32);
+            b.Property<string>("GuildName")
+                .IsRequired()
+                .HasMaxLength(100);
             b.Property<Guid>("OwnerUserId");
             b.Property<DateTimeOffset>("UpdatedAt");
 

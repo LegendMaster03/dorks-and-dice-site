@@ -25,7 +25,6 @@
     </div>
 
     @if (TempData["CampaignError"] is string error) { <div class="alert alert-danger" role="alert">@error</div> }
-    @if (TempData["CampaignMessage"] is string campaignMessage) { <div class="alert alert-success" role="status">@campaignMessage</div> }
     @if (TempData["CampaignInviteLink"] is string inviteLink)
     {
         <div class="alert alert-success" role="status"><strong>Invite created.</strong><p class="mb-2">Share this one-time link with the intended participant:</p><input class="form-control" type="text" value="@inviteLink" readonly /></div>
@@ -55,72 +54,6 @@
             {
                 <form asp-controller="Campaigns" asp-action="Archive" asp-route-campaignId="@Model.Id" method="post">@Html.AntiForgeryToken()<button class="btn btn-outline-secondary" type="submit">Archive Campaign</button></form>
             }
-
-            <hr />
-            <h3 class="h6">Dedicated Discord server</h3>
-            <p class="small text-muted">
-                Optional. The main Dorks &amp; Dice Discord receives this campaign's membership role.
-                A dedicated campaign server receives only the Player and DM roles for this campaign.
-            </p>
-            @if (Model.DiscordBotInstallUrl is not null)
-            {
-                <p>
-                    <a class="btn btn-sm btn-outline-primary"
-                       href="@Model.DiscordBotInstallUrl"
-                       target="_blank"
-                       rel="noopener noreferrer">Install bot in Discord server</a>
-                </p>
-            }
-            @if (!Model.IsArchived)
-            {
-                <form asp-controller="Campaigns"
-                      asp-action="ConfigureDiscord"
-                      asp-route-campaignId="@Model.Id"
-                      method="post"
-                      class="row g-2 align-items-end">
-                    @Html.AntiForgeryToken()
-                    <div class="col-md-8">
-                        <label class="form-label" for="campaignDiscordGuild">Discord server ID</label>
-                        <input id="campaignDiscordGuild"
-                               class="form-control"
-                               type="text"
-                               inputmode="numeric"
-                               pattern="[0-9]+"
-                               name="guildId"
-                               value="@Model.DedicatedDiscordGuildId"
-                               maxlength="32"
-                               required />
-                        <div class="form-text">
-                            Install the bot in the campaign server, then enter that server's Discord ID here.
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <button class="btn btn-outline-primary w-100" type="submit">
-                            @(Model.DedicatedDiscordGuildId is null ? "Connect Server" : "Update Server")
-                        </button>
-                    </div>
-                </form>
-                @if (Model.DedicatedDiscordGuildId is not null)
-                {
-                    <form asp-controller="Campaigns"
-                          asp-action="RemoveDiscord"
-                          asp-route-campaignId="@Model.Id"
-                          method="post"
-                          class="mt-2">
-                        @Html.AntiForgeryToken()
-                        <button class="btn btn-sm btn-outline-danger" type="submit">
-                            Disconnect Dedicated Server
-                        </button>
-                    </form>
-                }
-            }
-            else if (Model.DedicatedDiscordGuildId is not null)
-            {
-                <div class="small text-muted">
-                    Dedicated Discord server @Model.DedicatedDiscordGuildId remains configured while the campaign is archived.
-                </div>
-            }
-
             <hr />
             <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
                 <div><h3 class="h6 mb-1">Permanent deletion</h3><p class="small text-muted mb-0">Deletes this campaign, its memberships, participant records, invitations, and character connections. Player characters and accounts are not deleted.</p></div>

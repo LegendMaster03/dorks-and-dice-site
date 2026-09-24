@@ -15,6 +15,7 @@ public sealed class AddDiscordServerBindings : Migration
             {
                 Id = table.Column<Guid>(nullable: false),
                 GuildId = table.Column<string>(maxLength: 32, nullable: false),
+                GuildName = table.Column<string>(maxLength: 100, nullable: false),
                 OwnerUserId = table.Column<Guid>(nullable: false),
                 CampaignScope = table.Column<int>(nullable: false),
                 CreatedAt = table.Column<DateTimeOffset>(nullable: false),

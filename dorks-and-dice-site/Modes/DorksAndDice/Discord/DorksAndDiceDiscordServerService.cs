@@ -48,6 +48,7 @@ public sealed class DorksAndDiceDiscordServerService(
             .AsNoTracking()
             .Where(binding => binding.OwnerUserId == ownerUserId)
             .Include(binding => binding.Campaigns)
+                .ThenInclude(selection => selection.Campaign)
             .OrderBy(binding => binding.CreatedAt)
             .ToListAsync(cancellationToken);
 
@@ -230,7 +231,11 @@ public sealed class DorksAndDiceDiscordServerService(
 
     private static string NormalizeGuildId(string guildId)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(guildId);
+        if (string.IsNullOrWhiteSpace(guildId))
+        {
+            throw new CampaignDomainException("Discord server ID is required.");
+        }
+
         var normalized = guildId.Trim();
         if (normalized.Length > DorksAndDiceDiscordServerBinding.GuildIdMaxLength
             || normalized.Any(character => character is < '0' or > '9'))

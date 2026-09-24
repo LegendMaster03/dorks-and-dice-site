@@ -10,9 +10,11 @@ public enum DiscordServerCampaignScope
 public sealed class DorksAndDiceDiscordServerBinding
 {
     public const int GuildIdMaxLength = 32;
+    public const int GuildNameMaxLength = 100;
 
     public Guid Id { get; set; }
     public string GuildId { get; set; } = string.Empty;
+    public string GuildName { get; set; } = string.Empty;
     public Guid OwnerUserId { get; set; }
     public DiscordServerCampaignScope CampaignScope { get; set; }
     public DateTimeOffset CreatedAt { get; set; }

@@ -1,0 +1,184 @@
+@using dorks_and_dice_site.Modes.DorksAndDice.Discord
+@model dorks_and_dice_site.Modes.DorksAndDice.Ui.DiscordServersViewModel
+@{
+    ViewData["Title"] = "Discord Servers";
+}
+
+<div class="container py-4">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-start gap-3 mb-4">
+        <div>
+            <p class="text-uppercase text-muted small mb-1">Dorks &amp; Dice</p>
+            <h1 class="h2 mb-2">Discord Servers</h1>
+            <p class="text-muted mb-0">
+                Connect Discord servers you own to the campaigns you DM. The main Dorks &amp; Dice server is managed separately by the mode.
+            </p>
+        </div>
+        <a class="btn btn-outline-primary" asp-controller="Campaigns" asp-action="Index">Campaigns</a>
+    </div>
+
+    @if (TempData["DiscordServerError"] is string error)
+    {
+        <div class="alert alert-danger" role="alert">@error</div>
+    }
+    @if (TempData["DiscordServerMessage"] is string message)
+    {
+        <div class="alert alert-success" role="status">@message</div>
+    }
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <h2 class="h5">Add a Discord server</h2>
+            <p class="text-muted small">
+                First install the Dorks &amp; Dice bot in a Discord server owned by your linked Discord account.
+                Then copy that server's ID into the form below. Your Discord account must be enabled for the Dorks &amp; Dice mode.
+            </p>
+
+            @if (Model.InstallUrl is not null)
+            {
+                <p>
+                    <a class="btn btn-outline-primary"
+                       href="@Model.InstallUrl"
+                       target="_blank"
+                       rel="noopener noreferrer">Install Bot in a Server</a>
+                </p>
+            }
+            else
+            {
+                <div class="alert alert-secondary">
+                    Discord bot installation is not enabled on this deployment yet.
+                </div>
+            }
+
+            <form asp-controller="DiscordServers"
+                  asp-action="Configure"
+                  method="post"
+                  class="row g-3">
+                @Html.AntiForgeryToken()
+
+                <div class="col-md-6">
+                    <label class="form-label" for="discordGuildId">Discord server ID</label>
+                    <input id="discordGuildId"
+                           class="form-control"
+                           type="text"
+                           inputmode="numeric"
+                           pattern="[0-9]+"
+                           name="guildId"
+                           maxlength="32"
+                           required />
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label" for="discordCampaignScope">Campaign scope</label>
+                    <select id="discordCampaignScope"
+                            class="form-select"
+                            name="campaignScope">
+                        <option value="@((int)DiscordServerCampaignScope.SingleCampaign)">One campaign</option>
+                        <option value="@((int)DiscordServerCampaignScope.SelectedCampaigns)">Selected campaigns</option>
+                        <option value="@((int)DiscordServerCampaignScope.AllDmCampaigns)">All campaigns I DM</option>
+                    </select>
+                </div>
+
+                <div class="col-12">
+                    <span class="form-label d-block">Campaigns</span>
+                    @if (Model.EligibleCampaigns.Count == 0)
+                    {
+                        <div class="text-muted small">
+                            You do not currently DM any active campaigns.
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="row g-2">
+                            @foreach (var campaign in Model.EligibleCampaigns)
+                            {
+                                <div class="col-md-6 col-xl-4">
+                                    <div class="form-check">
+                                        <input class="form-check-input"
+                                               type="checkbox"
+                                               name="campaignIds"
+                                               value="@campaign.Id"
+                                               id="campaign-@campaign.Id" />
+                                        <label class="form-check-label" for="campaign-@campaign.Id">
+                                            @campaign.Name
+                                        </label>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                        <div class="form-text">
+                            One campaign requires exactly one selection. Selected campaigns requires one or more.
+                            All campaigns I DM ignores these selections and follows your DM memberships automatically.
+                        </div>
+                    }
+                </div>
+
+                <div class="col-12">
+                    <button class="btn btn-primary" type="submit">Add Discord Server</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <h2 class="h4 mb-3">Configured servers</h2>
+    @if (Model.Servers.Count == 0)
+    {
+        <div class="alert alert-secondary">
+            You have not configured any additional Discord servers.
+        </div>
+    }
+    else
+    {
+        <div class="row g-3">
+            @foreach (var server in Model.Servers)
+            {
+                <div class="col-xl-6">
+                    <div class="card h-100 shadow-sm">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start gap-3">
+                                <div>
+                                    <h3 class="h5 mb-1">@server.GuildName</h3>
+                                    <div class="small text-muted">Server ID @server.GuildId</div>
+                                </div>
+                                <span class="badge text-bg-secondary">
+                                    @(server.CampaignScope switch
+                                    {
+                                        DiscordServerCampaignScope.SingleCampaign => "One campaign",
+                                        DiscordServerCampaignScope.SelectedCampaigns => "Selected campaigns",
+                                        DiscordServerCampaignScope.AllDmCampaigns => "All DM campaigns",
+                                        _ => "Unknown scope"
+                                    })
+                                </span>
+                            </div>
+
+                            @if (server.CampaignScope == DiscordServerCampaignScope.AllDmCampaigns)
+                            {
+                                <p class="small mt-3 mb-0">
+                                    This server automatically follows every active campaign where you currently have the DM role.
+                                </p>
+                            }
+                            else
+                            {
+                                <div class="mt-3">
+                                    @foreach (var campaign in server.Campaigns)
+                                    {
+                                        <span class="badge text-bg-light border me-1">@campaign.Name</span>
+                                    }
+                                </div>
+                            }
+
+                            <hr />
+                            <form asp-controller="DiscordServers"
+                                  asp-action="Remove"
+                                  asp-route-bindingId="@server.Id"
+                                  method="post"
+                                  onsubmit="return confirm('Remove this Discord server from Dorks & Dice synchronization?');">
+                                @Html.AntiForgeryToken()
+                                <button class="btn btn-sm btn-outline-danger" type="submit">Remove Server</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>

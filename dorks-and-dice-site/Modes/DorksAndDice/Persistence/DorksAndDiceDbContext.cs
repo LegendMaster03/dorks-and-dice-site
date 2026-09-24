@@ -106,6 +106,9 @@ public sealed class DorksAndDiceDbContext(DbContextOptions<DorksAndDiceDbContext
             entity.Property(item => item.GuildId)
                 .HasMaxLength(DorksAndDiceDiscordServerBinding.GuildIdMaxLength)
                 .IsRequired();
+            entity.Property(item => item.GuildName)
+                .HasMaxLength(DorksAndDiceDiscordServerBinding.GuildNameMaxLength)
+                .IsRequired();
             entity.Property(item => item.CampaignScope)
                 .HasConversion<int>()
                 .IsRequired();

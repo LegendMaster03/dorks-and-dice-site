@@ -16,6 +16,6 @@ public static class DorksAndDiceMode
         ViewFolder: "DorksAndDice",
         AssetFolder: "dorks-and-dice")
     {
-        OwnedRoutePrefixes = ["/campaigns", "/characters"]
+        OwnedRoutePrefixes = ["/campaigns", "/characters", "/discord-servers"]
     };
 }
