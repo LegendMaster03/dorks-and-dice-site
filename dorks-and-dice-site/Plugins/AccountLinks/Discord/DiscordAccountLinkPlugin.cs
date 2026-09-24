@@ -1,4 +1,5 @@
 using dorks_and_dice_site.Framework.Plugins;
+using dorks_and_dice_site.Plugins.Discord;
 using dorks_and_dice_site.Services.Identity;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -8,8 +9,8 @@ namespace dorks_and_dice_site.Plugins.AccountLinks.Discord;
 
 public sealed class DiscordAccountLinkPlugin : ISitePlugin
 {
-    public const string ProviderId = "discord";
-    public const string ProviderDisplayName = "Discord";
+    public const string ProviderId = DiscordProvider.Id;
+    public const string ProviderDisplayName = DiscordProvider.DisplayName;
     public const string AuthenticationScheme =
         OpenIddictClientWebIntegrationConstants.Providers.Discord;
 

@@ -28,7 +28,7 @@ public sealed class SitePluginTests
         Assert.True(catalog.TryGetById("professional-portfolio", out var portfolioManifest));
         Assert.Equal("1.0.0", portfolioManifest.Version);
         Assert.True(catalog.TryGetById("discord-widget", out var discordManifest));
-        Assert.Equal("1.1.0", discordManifest.Version);
+        Assert.Equal("1.2.0", discordManifest.Version);
         Assert.True(catalog.TryGetById("minecraft-server-status", out var minecraftManifest));
         Assert.Equal("1.1.0", minecraftManifest.Version);
         Assert.Contains(presentations, presentation => presentation.Key == "professional-experience");
@@ -44,7 +44,7 @@ public sealed class SitePluginTests
     }
 
     [Fact]
-    public void DiscordWidgetRequiresServerIdAndRestrictsTheme()
+    public void DiscordWidgetAllowsModeResolvedServerAndRestrictsExplicitOverrides()
     {
         var services = new ServiceCollection();
         services.AddSitePlugins([new DiscordWidgetPlugin()]);
@@ -52,9 +52,7 @@ public sealed class SitePluginTests
         using var provider = services.BuildServiceProvider();
         var component = Assert.Single(provider.GetServices<IContentPageComponentDefinition>());
 
-        var missingId = Assert.Throws<InvalidOperationException>(() =>
-            component.Validate(new Dictionary<string, string>()));
-        Assert.Contains("server-id", missingId.Message, StringComparison.OrdinalIgnoreCase);
+        component.Validate(new Dictionary<string, string>());
 
         component.Validate(new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {

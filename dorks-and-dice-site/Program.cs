@@ -82,6 +82,10 @@ builder.Services.AddSingleton<SiteModeOptions>();
 builder.Services.AddSingleton<ISiteModeRegistrationSource, DeploymentSiteModeRegistrationSource>();
 builder.Services.AddSingleton<ISiteModeRegistry>(serviceProvider =>
     new SiteModeRegistry(serviceProvider.GetRequiredService<ISiteModeRegistrationSource>().GetDefinitions()));
+builder.Services.AddSingleton<IModeExternalConnectionRegistry>(serviceProvider =>
+    new ConfigurationModeExternalConnectionRegistry(
+        serviceProvider.GetRequiredService<IConfiguration>(),
+        serviceProvider.GetRequiredService<ISiteModeRegistry>()));
 builder.Services.AddSingleton<ISiteModePartialResolver, SiteModePartialResolver>();
 builder.Services.AddSingleton<ISiteModeStylesheetResolver, SiteModeStylesheetResolver>();
 builder.Services.AddSingleton<ISiteModePresentationService, SiteModePresentationService>();

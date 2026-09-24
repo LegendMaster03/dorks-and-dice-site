@@ -53,3 +53,37 @@ https://kylebarnett.com/account/links/callback/discord
 A local or preview deployment that performs real Discord linking must register its own exact callback URI as well.
 
 The initial Discord plugin requests OpenIddict's required Discord `identify` scope only. Discord role synchronization is intentionally outside this first account-linking layer.
+
+
+## Global identity versus mode communities
+
+External account identity and external community membership are deliberately separate layers.
+
+- `AccountLinks` is global. A Site user links a Discord identity once, and that identity remains the same regardless of which normal Site mode the user is visiting.
+- `ModeConnections` is mode-scoped. It identifies the external community/resource associated with a particular mode.
+- Provider infrastructure can be shared globally, but provider actions that touch an external community must first resolve the target through the mode connection.
+- The same external resource may be configured for multiple modes. This is supported but is not assumed to be the normal deployment shape.
+
+For Discord, the mode resource is a guild ID:
+
+```json
+{
+  "ModeConnections": {
+    "dorks-and-dice": {
+      "discord": {
+        "ResourceId": "1281714470799806545"
+      }
+    }
+  }
+}
+```
+
+This boundary is intended for other deep account integrations as well. For example, a globally linked GitHub identity could later interact with a GitHub organization/team selected by the active mode, without creating a second GitHub identity link for that mode.
+
+Future Discord guild role synchronization should therefore combine:
+
+1. the user's global Discord account link;
+2. the active/target mode's Discord guild connection;
+3. that mode's role-mapping policy.
+
+It must not infer a guild globally from the Discord account-link provider.

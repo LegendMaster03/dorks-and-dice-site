@@ -50,7 +50,9 @@ public sealed class PublishedContentWebApplicationFactory : WebApplicationFactor
         builder.UseSetting("IdentityStorage:ApplyMigrationsOnStartup", "false");
         builder.UseSetting("IdentityStorage:EnsureCreatedOnStartup", "true");
         builder.UseSetting("ToolHosting:RegistryPath", ToolRegistryPath);
-        builder.UseSetting("Discord:WidgetUrl", "https://discord.com/widget?id=123456789&theme=dark");
+        builder.UseSetting(
+            "ModeConnections:dorks-and-dice:discord:ResourceId",
+            "123456789");
         builder.ConfigureServices(services =>
         {
             services.AddAuthentication(options =>
