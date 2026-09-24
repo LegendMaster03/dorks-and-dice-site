@@ -13,6 +13,7 @@ public sealed class IdentityDbContext : IdentityDbContext<ApplicationUser, Ident
     {
     }
 
+    public DbSet<AccountLinkModeActivation> AccountLinkModeActivations => Set<AccountLinkModeActivation>();
     public DbSet<OperatorCredential> OperatorCredentials => Set<OperatorCredential>();
     public DbSet<OperatorBrowserBootstrap> OperatorBrowserBootstraps => Set<OperatorBrowserBootstrap>();
     public DbSet<OperatorAuditRecord> OperatorAuditRecords => Set<OperatorAuditRecord>();
@@ -37,6 +38,29 @@ public sealed class IdentityDbContext : IdentityDbContext<ApplicationUser, Ident
             user.HasIndex(value => value.NormalizedEmail)
                 .HasDatabaseName("EmailIndex")
                 .IsUnique();
+        });
+
+        builder.Entity<AccountLinkModeActivation>(activation =>
+        {
+            activation.ToTable("AccountLinkModeActivations");
+            activation.HasKey(value => new { value.UserId, value.ModeId, value.ProviderId });
+            activation.Property(value => value.ModeId)
+                .HasMaxLength(AccountLinkModeActivation.ModeIdMaxLength)
+                .IsRequired();
+            activation.Property(value => value.ProviderId)
+                .HasMaxLength(AccountLinkModeActivation.ProviderIdMaxLength)
+                .IsRequired();
+            activation.Property(value => value.ResourceId)
+                .HasMaxLength(AccountLinkModeActivation.ResourceIdMaxLength)
+                .IsRequired();
+            activation.Property(value => value.ActivatedAt)
+                .IsRequired();
+            activation.HasIndex(value => new { value.ModeId, value.ProviderId });
+            activation.HasIndex(value => new { value.UserId, value.ProviderId });
+            activation.HasOne<ApplicationUser>()
+                .WithMany()
+                .HasForeignKey(value => value.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         builder.Entity<OperatorCredential>(credential =>

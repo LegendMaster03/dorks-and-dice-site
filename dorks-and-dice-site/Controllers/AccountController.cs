@@ -23,6 +23,7 @@ public sealed class AccountController : Controller
     private readonly ISiteModePresentationService _siteModePresentationService;
     private readonly IAccountEmailSender _emailSender;
     private readonly IAccountLinkProviderCatalog _accountLinkProviders;
+    private readonly IModeExternalConnectionRegistry _modeExternalConnections;
     private readonly IdentityDbContext _identityDbContext;
     private readonly ILogger<AccountController> _logger;
 
@@ -34,6 +35,7 @@ public sealed class AccountController : Controller
         ISiteModePresentationService siteModePresentationService,
         IAccountEmailSender emailSender,
         IAccountLinkProviderCatalog accountLinkProviders,
+        IModeExternalConnectionRegistry modeExternalConnections,
         IdentityDbContext identityDbContext,
         ILogger<AccountController> logger)
     {
@@ -44,6 +46,7 @@ public sealed class AccountController : Controller
         _siteModePresentationService = siteModePresentationService;
         _emailSender = emailSender;
         _accountLinkProviders = accountLinkProviders;
+        _modeExternalConnections = modeExternalConnections;
         _identityDbContext = identityDbContext;
         _logger = logger;
     }
@@ -330,16 +333,24 @@ public sealed class AccountController : Controller
             return RedirectToAction(nameof(Login));
         }
 
-        if (!_accountLinkProviders.TryGet(providerId, out var provider))
+        if (!_accountLinkProviders.TryGet(providerId, out var provider)
+            || !TryGetActiveModeConnection(provider.Descriptor.Id, out var connection))
         {
             return NotFound();
         }
 
-        var existingLogins = await _userManager.GetLoginsAsync(user);
-        if (existingLogins.Any(login =>
-            string.Equals(login.LoginProvider, provider.Descriptor.Id, StringComparison.OrdinalIgnoreCase)))
+        var existingLogin = (await _userManager.GetLoginsAsync(user))
+            .FirstOrDefault(login =>
+                string.Equals(
+                    login.LoginProvider,
+                    provider.Descriptor.Id,
+                    StringComparison.OrdinalIgnoreCase));
+        if (existingLogin is not null)
         {
-            TempData["AccountError"] = $"{provider.Descriptor.DisplayName} is already connected.";
+            var changed = await EnsureModeActivationAsync(user.Id, connection!);
+            TempData["AccountMessage"] = changed
+                ? $"{provider.Descriptor.DisplayName} enabled for this site."
+                : $"{provider.Descriptor.DisplayName} is already enabled for this site.";
             return RedirectToAction(nameof(Index));
         }
 
@@ -362,6 +373,7 @@ public sealed class AccountController : Controller
             ?? $"/account/links/callback/{provider.Descriptor.Id}";
         var properties = provider.CreateChallengeProperties(user.Id, nonce, callbackPath);
         properties.Items[AccountLinkAuthenticationProperties.ProviderId] = provider.Descriptor.Id;
+        properties.Items[AccountLinkAuthenticationProperties.ModeId] = connection!.ModeId;
 
         return Challenge(properties, provider.Descriptor.AuthenticationScheme);
     }
@@ -394,6 +406,7 @@ public sealed class AccountController : Controller
                 return RedirectToAction(nameof(Index));
             }
 
+            var currentModeId = HttpContext.GetSiteModeContext().ActiveModeId;
             if (!external.Properties.Items.TryGetValue(
                     AccountLinkAuthenticationProperties.ProviderId,
                     out var protectedProviderId)
@@ -406,6 +419,18 @@ public sealed class AccountController : Controller
                     out var protectedUserId)
                 || !Guid.TryParse(protectedUserId, out var expectedUserId)
                 || expectedUserId != user.Id
+                || !external.Properties.Items.TryGetValue(
+                    AccountLinkAuthenticationProperties.ModeId,
+                    out var protectedModeId)
+                || string.IsNullOrWhiteSpace(protectedModeId)
+                || !string.Equals(
+                    currentModeId,
+                    protectedModeId,
+                    StringComparison.Ordinal)
+                || !_modeExternalConnections.TryGet(
+                    protectedModeId,
+                    provider.Descriptor.Id,
+                    out var modeConnection)
                 || !external.Properties.Items.TryGetValue(
                     AccountLinkAuthenticationProperties.Nonce,
                     out var returnedNonce)
@@ -436,15 +461,6 @@ public sealed class AccountController : Controller
                 return RedirectToAction(nameof(Index));
             }
 
-            var existingLogins = await _userManager.GetLoginsAsync(user);
-            if (existingLogins.Any(login =>
-                string.Equals(login.LoginProvider, provider.Descriptor.Id, StringComparison.OrdinalIgnoreCase)))
-            {
-                TempData["AccountError"] =
-                    $"{provider.Descriptor.DisplayName} is already connected.";
-                return RedirectToAction(nameof(Index));
-            }
-
             var otherUser = await _userManager.FindByLoginAsync(
                 provider.Descriptor.Id,
                 external.Identity.ProviderKey);
@@ -455,18 +471,44 @@ public sealed class AccountController : Controller
                 return RedirectToAction(nameof(Index));
             }
 
-            var addResult = await _userManager.AddLoginAsync(
-                user,
-                new UserLoginInfo(
-                    provider.Descriptor.Id,
-                    external.Identity.ProviderKey,
-                    provider.Descriptor.DisplayName));
-            if (!addResult.Succeeded)
+            await using var transaction = await _identityDbContext.Database.BeginTransactionAsync();
+
+            var existingProviderLogins = (await _userManager.GetLoginsAsync(user))
+                .Where(login =>
+                    string.Equals(
+                        login.LoginProvider,
+                        provider.Descriptor.Id,
+                        StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+            if (existingProviderLogins.Count > 0)
             {
-                TempData["AccountError"] = string.Join(
-                    " ",
-                    addResult.Errors.Select(error => error.Description));
-                return RedirectToAction(nameof(Index));
+                if (!existingProviderLogins.Any(login =>
+                    string.Equals(
+                        login.ProviderKey,
+                        external.Identity.ProviderKey,
+                        StringComparison.Ordinal)))
+                {
+                    TempData["AccountError"] =
+                        $"{provider.Descriptor.DisplayName} is already linked to a different external account.";
+                    return RedirectToAction(nameof(Index));
+                }
+            }
+            else
+            {
+                var addResult = await _userManager.AddLoginAsync(
+                    user,
+                    new UserLoginInfo(
+                        provider.Descriptor.Id,
+                        external.Identity.ProviderKey,
+                        provider.Descriptor.DisplayName));
+                if (!addResult.Succeeded)
+                {
+                    TempData["AccountError"] = string.Join(
+                        " ",
+                        addResult.Errors.Select(error => error.Description));
+                    return RedirectToAction(nameof(Index));
+                }
             }
 
             if (!string.IsNullOrWhiteSpace(external.Identity.DisplayName))
@@ -485,8 +527,11 @@ public sealed class AccountController : Controller
                 }
             }
 
+            await EnsureModeActivationAsync(user.Id, modeConnection!);
+            await transaction.CommitAsync();
+
             await _signInManager.RefreshSignInAsync(user);
-            TempData["AccountMessage"] = $"{provider.Descriptor.DisplayName} connected.";
+            TempData["AccountMessage"] = $"{provider.Descriptor.DisplayName} connected for this site.";
             return RedirectToAction(nameof(Index));
         }
         finally
@@ -507,7 +552,49 @@ public sealed class AccountController : Controller
             return RedirectToAction(nameof(Login));
         }
 
-        if (!_accountLinkProviders.TryGet(providerId, out var provider))
+        if (!_accountLinkProviders.TryGet(providerId, out var provider)
+            || !TryGetActiveModeConnection(provider.Descriptor.Id, out var connection))
+        {
+            return NotFound();
+        }
+
+        var activation = await _identityDbContext.AccountLinkModeActivations.FindAsync(
+            user.Id,
+            connection!.ModeId,
+            provider.Descriptor.Id);
+        if (activation is null
+            || !string.Equals(
+                activation.ResourceId,
+                connection.ResourceId,
+                StringComparison.Ordinal))
+        {
+            TempData["AccountError"] =
+                $"{provider.Descriptor.DisplayName} is not enabled for this site.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        _identityDbContext.AccountLinkModeActivations.Remove(activation);
+        await _identityDbContext.SaveChangesAsync();
+
+        TempData["AccountMessage"] =
+            $"{provider.Descriptor.DisplayName} disconnected from this site. The external account remains linked.";
+        return RedirectToAction(nameof(Index));
+    }
+
+    [Authorize]
+    [HttpPost("links/{providerId}/unlink")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> UnlinkAccountLink(string providerId)
+    {
+        var user = await _userManager.GetUserAsync(User);
+        if (user is null || user.DeletedAt is not null)
+        {
+            await _signInManager.SignOutAsync();
+            return RedirectToAction(nameof(Login));
+        }
+
+        if (!_accountLinkProviders.TryGet(providerId, out var provider)
+            || !TryGetActiveModeConnection(provider.Descriptor.Id, out _))
         {
             return NotFound();
         }
@@ -521,9 +608,11 @@ public sealed class AccountController : Controller
             .ToList();
         if (logins.Count == 0)
         {
-            TempData["AccountError"] = $"{provider.Descriptor.DisplayName} is not connected.";
+            TempData["AccountError"] = $"{provider.Descriptor.DisplayName} is not linked.";
             return RedirectToAction(nameof(Index));
         }
+
+        await using var transaction = await _identityDbContext.Database.BeginTransactionAsync();
 
         foreach (var login in logins)
         {
@@ -549,8 +638,18 @@ public sealed class AccountController : Controller
             AccountLinkTokenNames.LoginProvider,
             AccountLinkTokenNames.Nonce(provider.Descriptor.Id));
 
+        var activations = await _identityDbContext.AccountLinkModeActivations
+            .Where(activation =>
+                activation.UserId == user.Id
+                && activation.ProviderId == provider.Descriptor.Id)
+            .ToListAsync();
+        _identityDbContext.AccountLinkModeActivations.RemoveRange(activations);
+        await _identityDbContext.SaveChangesAsync();
+        await transaction.CommitAsync();
+
         await _signInManager.RefreshSignInAsync(user);
-        TempData["AccountMessage"] = $"{provider.Descriptor.DisplayName} disconnected.";
+        TempData["AccountMessage"] =
+            $"{provider.Descriptor.DisplayName} unlinked from your Site account.";
         return RedirectToAction(nameof(Index));
     }
 
@@ -666,6 +765,12 @@ public sealed class AccountController : Controller
                 AccountLinkTokenNames.Nonce(provider.Descriptor.Id));
         }
 
+        var accountLinkActivations = await _identityDbContext.AccountLinkModeActivations
+            .Where(activation => activation.UserId == user.Id)
+            .ToListAsync();
+        _identityDbContext.AccountLinkModeActivations.RemoveRange(accountLinkActivations);
+        await _identityDbContext.SaveChangesAsync();
+
         var deletedAt = DateTimeOffset.UtcNow;
         var tombstoneIdentity = $"deleted-{user.Id:N}@deleted.invalid";
         user.DeletedAt = deletedAt;
@@ -742,35 +847,116 @@ public sealed class AccountController : Controller
     private async Task<IReadOnlyList<AccountLinkViewModel>> BuildAccountLinksAsync(
         ApplicationUser user)
     {
+        var activeModeId = HttpContext.GetSiteModeContext().ActiveModeId;
+        if (string.IsNullOrWhiteSpace(activeModeId))
+        {
+            return [];
+        }
+
+        var configuredConnections = _modeExternalConnections
+            .GetForMode(activeModeId)
+            .ToDictionary(
+                connection => connection.ProviderId,
+                StringComparer.OrdinalIgnoreCase);
+        if (configuredConnections.Count == 0)
+        {
+            return [];
+        }
+
         var existingProviders = (await _userManager.GetLoginsAsync(user))
             .Select(login => login.LoginProvider)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
-        var links = new List<AccountLinkViewModel>(_accountLinkProviders.All.Count);
+        var activations = await _identityDbContext.AccountLinkModeActivations
+            .Where(activation =>
+                activation.UserId == user.Id
+                && activation.ModeId == activeModeId)
+            .ToListAsync();
+        var activationByProvider = activations.ToDictionary(
+            activation => activation.ProviderId,
+            StringComparer.OrdinalIgnoreCase);
 
+        var links = new List<AccountLinkViewModel>(_accountLinkProviders.All.Count);
         foreach (var provider in _accountLinkProviders.All)
         {
-            if (!existingProviders.Contains(provider.Descriptor.Id))
-            {
-                links.Add(new AccountLinkViewModel(
+            if (!configuredConnections.TryGetValue(
                     provider.Descriptor.Id,
-                    provider.Descriptor.DisplayName,
-                    IsLinked: false,
-                    ExternalDisplayName: null));
+                    out var connection))
+            {
                 continue;
             }
 
-            var externalDisplayName = await _userManager.GetAuthenticationTokenAsync(
-                user,
-                provider.Descriptor.Id,
-                AccountLinkTokenNames.ExternalDisplayName);
+            var globallyLinked = existingProviders.Contains(provider.Descriptor.Id);
+            var activeForMode = globallyLinked
+                && activationByProvider.TryGetValue(
+                    provider.Descriptor.Id,
+                    out var activation)
+                && string.Equals(
+                    activation.ResourceId,
+                    connection.ResourceId,
+                    StringComparison.Ordinal);
+            var externalDisplayName = globallyLinked
+                ? await _userManager.GetAuthenticationTokenAsync(
+                    user,
+                    provider.Descriptor.Id,
+                    AccountLinkTokenNames.ExternalDisplayName)
+                : null;
+
             links.Add(new AccountLinkViewModel(
                 provider.Descriptor.Id,
                 provider.Descriptor.DisplayName,
-                IsLinked: true,
-                ExternalDisplayName: externalDisplayName));
+                globallyLinked,
+                activeForMode,
+                externalDisplayName));
         }
 
         return links;
+    }
+
+    private bool TryGetActiveModeConnection(
+        string providerId,
+        out ModeExternalConnection? connection)
+    {
+        connection = null;
+        var activeModeId = HttpContext.GetSiteModeContext().ActiveModeId;
+        return !string.IsNullOrWhiteSpace(activeModeId)
+            && _modeExternalConnections.TryGet(activeModeId, providerId, out connection);
+    }
+
+    private async Task<bool> EnsureModeActivationAsync(
+        Guid userId,
+        ModeExternalConnection connection)
+    {
+        var activation = await _identityDbContext.AccountLinkModeActivations.FindAsync(
+            userId,
+            connection.ModeId,
+            connection.ProviderId);
+        if (activation is not null)
+        {
+            if (string.Equals(
+                    activation.ResourceId,
+                    connection.ResourceId,
+                    StringComparison.Ordinal))
+            {
+                return false;
+            }
+
+            activation.ResourceId = connection.ResourceId;
+            activation.ActivatedAt = DateTimeOffset.UtcNow;
+            await _identityDbContext.SaveChangesAsync();
+            return true;
+        }
+
+        _identityDbContext.AccountLinkModeActivations.Add(
+            new AccountLinkModeActivation
+            {
+                UserId = userId,
+                ModeId = connection.ModeId,
+                ProviderId = connection.ProviderId,
+                ResourceId = connection.ResourceId,
+                ActivatedAt = DateTimeOffset.UtcNow
+            });
+        await _identityDbContext.SaveChangesAsync();
+        return true;
     }
 
     private static bool SecureEquals(string? left, string? right)

@@ -21,5 +21,6 @@ public sealed class AccountViewModel
 public sealed record AccountLinkViewModel(
     string ProviderId,
     string DisplayName,
-    bool IsLinked,
+    bool IsGloballyLinked,
+    bool IsActiveForMode,
     string? ExternalDisplayName);
