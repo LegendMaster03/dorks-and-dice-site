@@ -21,6 +21,8 @@ public sealed class CampaignDetailsViewModel
     public Guid CurrentUserId { get; init; }
     public bool CanManage { get; init; }
     public IReadOnlyList<string> CurrentUserRoles { get; init; } = [];
+    public string? DedicatedDiscordGuildId { get; init; }
+    public string? DiscordBotInstallUrl { get; init; }
     public IReadOnlyList<CampaignMemberViewModel> Members { get; init; } = [];
     public IReadOnlyList<CampaignParticipantViewModel> Participants { get; init; } = [];
     public IReadOnlyList<CampaignInvitationListItemViewModel> Invitations { get; init; } = [];

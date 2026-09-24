@@ -1,5 +1,6 @@
 using dorks_and_dice_site.Modes.DorksAndDice.Campaigns;
 using dorks_and_dice_site.Modes.DorksAndDice.Characters;
+using dorks_and_dice_site.Modes.DorksAndDice.Discord;
 using dorks_and_dice_site.Modes.DorksAndDice.Lifecycle;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
@@ -15,6 +16,7 @@ public sealed class DorksAndDiceDbContext(DbContextOptions<DorksAndDiceDbContext
     public DbSet<CampaignInvitation> CampaignInvitations => Set<CampaignInvitation>();
     public DbSet<Character> Characters => Set<Character>();
     public DbSet<CampaignCharacterAssociation> CampaignCharacters => Set<CampaignCharacterAssociation>();
+    public DbSet<CampaignDiscordGuildBinding> CampaignDiscordGuildBindings => Set<CampaignDiscordGuildBinding>();
     public DbSet<ToolLifecycleOutboxEvent> ToolLifecycleOutboxEvents => Set<ToolLifecycleOutboxEvent>();
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
@@ -96,6 +98,22 @@ public sealed class DorksAndDiceDbContext(DbContextOptions<DorksAndDiceDbContext
             entity.HasOne(item => item.Campaign).WithMany(item => item.CharacterAssociations).HasForeignKey(item => item.CampaignId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne(item => item.Character).WithMany(item => item.CampaignAssociations).HasForeignKey(item => item.CharacterId).OnDelete(DeleteBehavior.Restrict);
         });
+        modelBuilder.Entity<CampaignDiscordGuildBinding>(entity =>
+        {
+            entity.ToTable("dd_campaign_discord_guild");
+            entity.HasKey(item => item.CampaignId);
+            entity.Property(item => item.GuildId)
+                .HasMaxLength(CampaignDiscordGuildBinding.GuildIdMaxLength)
+                .IsRequired();
+            entity.Property(item => item.ConfiguredAt).IsRequired();
+            entity.Property(item => item.UpdatedAt).IsRequired();
+            entity.HasIndex(item => item.GuildId).IsUnique();
+            entity.HasOne<Campaign>()
+                .WithOne()
+                .HasForeignKey<CampaignDiscordGuildBinding>(item => item.CampaignId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
         modelBuilder.Entity<ToolLifecycleOutboxEvent>(entity =>
         {
             entity.ToTable("dd_tool_lifecycle_outbox");

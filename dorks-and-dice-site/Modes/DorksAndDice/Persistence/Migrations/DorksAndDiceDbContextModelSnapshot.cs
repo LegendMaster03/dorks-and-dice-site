@@ -35,6 +35,15 @@ public sealed class DorksAndDiceDbContextModelSnapshot : ModelSnapshot
             b.ToTable("dd_campaign");
         });
 
+        modelBuilder.Entity("dorks_and_dice_site.Modes.DorksAndDice.Discord.CampaignDiscordGuildBinding", b =>
+        {
+            b.HasOne("dorks_and_dice_site.Modes.DorksAndDice.Campaigns.Campaign", null)
+                .WithOne()
+                .HasForeignKey("dorks_and_dice_site.Modes.DorksAndDice.Discord.CampaignDiscordGuildBinding", "CampaignId")
+                .OnDelete(DeleteBehavior.Cascade)
+                .IsRequired();
+        });
+
         modelBuilder.Entity("dorks_and_dice_site.Modes.DorksAndDice.Campaigns.CampaignInvitation", b =>
         {
             b.Property<Guid>("Id")
@@ -198,6 +207,25 @@ public sealed class DorksAndDiceDbContextModelSnapshot : ModelSnapshot
             b.HasIndex("Status");
 
             b.ToTable("dd_character");
+        });
+
+        modelBuilder.Entity("dorks_and_dice_site.Modes.DorksAndDice.Discord.CampaignDiscordGuildBinding", b =>
+        {
+            b.Property<Guid>("CampaignId");
+
+            b.Property<DateTimeOffset>("ConfiguredAt");
+            b.Property<Guid>("ConfiguredByUserId");
+            b.Property<string>("GuildId")
+                .IsRequired()
+                .HasMaxLength(32);
+            b.Property<DateTimeOffset>("UpdatedAt");
+
+            b.HasKey("CampaignId");
+
+            b.HasIndex("GuildId")
+                .IsUnique();
+
+            b.ToTable("dd_campaign_discord_guild");
         });
 
         modelBuilder.Entity("dorks_and_dice_site.Modes.DorksAndDice.Lifecycle.ToolLifecycleOutboxEvent", b =>

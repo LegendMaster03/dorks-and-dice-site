@@ -24,7 +24,7 @@ public sealed class DiscordBotPlugin(IConfiguration configuration) : ISitePlugin
 
         services.AddSingleton(options);
         services.AddSingleton<IDiscordBotInstallLinkProvider>(
-            new DiscordBotInstallLinkProvider(clientId));
+            new DiscordBotInstallLinkProvider(clientId, options.Enabled));
 
         if (!options.Enabled)
         {

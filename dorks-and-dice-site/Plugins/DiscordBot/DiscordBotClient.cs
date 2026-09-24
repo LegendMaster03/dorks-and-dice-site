@@ -209,13 +209,15 @@ public interface IDiscordBotInstallLinkProvider
     string? CreateInstallUrl(string? guildId = null);
 }
 
-public sealed class DiscordBotInstallLinkProvider(string? clientId) : IDiscordBotInstallLinkProvider
+public sealed class DiscordBotInstallLinkProvider(
+    string? clientId,
+    bool enabled) : IDiscordBotInstallLinkProvider
 {
     private const ulong ManageRolesPermission = 1UL << 28;
 
     public string? CreateInstallUrl(string? guildId = null)
     {
-        if (string.IsNullOrWhiteSpace(clientId))
+        if (!enabled || string.IsNullOrWhiteSpace(clientId))
         {
             return null;
         }

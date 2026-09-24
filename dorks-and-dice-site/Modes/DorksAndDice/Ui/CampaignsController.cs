@@ -1,5 +1,7 @@
 using System.Security.Claims;
 using dorks_and_dice_site.Modes.DorksAndDice.Campaigns;
+using dorks_and_dice_site.Modes.DorksAndDice.Discord;
+using dorks_and_dice_site.Plugins.DiscordBot;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -7,11 +9,18 @@ namespace dorks_and_dice_site.Modes.DorksAndDice.Ui;
 
 [Authorize]
 [Route("campaigns")]
-public sealed class CampaignsController(ICampaignService campaignService, ICampaignParticipantService participantService, ICampaignInvitationService invitationService) : Controller
+public sealed class CampaignsController(
+    ICampaignService campaignService,
+    ICampaignParticipantService participantService,
+    ICampaignInvitationService invitationService,
+    ICampaignDiscordGuildService campaignDiscordGuildService,
+    IDiscordBotInstallLinkProvider discordBotInstallLinkProvider) : Controller
 {
     private readonly ICampaignService _campaignService = campaignService;
     private readonly ICampaignParticipantService _participantService = participantService;
     private readonly ICampaignInvitationService _invitationService = invitationService;
+    private readonly ICampaignDiscordGuildService _campaignDiscordGuildService = campaignDiscordGuildService;
+    private readonly IDiscordBotInstallLinkProvider _discordBotInstallLinkProvider = discordBotInstallLinkProvider;
 
     [HttpGet("")]
     public async Task<IActionResult> Index(CancellationToken cancellationToken)
@@ -72,6 +81,58 @@ public sealed class CampaignsController(ICampaignService campaignService, ICampa
         if (!TryGetUserId(out var userId)) return Unauthorized();
         try { await _campaignService.RestoreAsync(userId, campaignId, cancellationToken); }
         catch (CampaignDomainException exception) { TempData["CampaignError"] = exception.Message; }
+        return RedirectToAction(nameof(Details), new { campaignId });
+    }
+
+    [HttpPost("{campaignId:guid}/discord")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ConfigureDiscord(
+        Guid campaignId,
+        string guildId,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetUserId(out var userId)) return Unauthorized();
+
+        try
+        {
+            await _campaignDiscordGuildService.SetAsync(
+                userId,
+                campaignId,
+                guildId,
+                cancellationToken);
+            TempData["CampaignMessage"] =
+                "Dedicated Discord server configured. Role synchronization will converge automatically.";
+        }
+        catch (CampaignDomainException exception)
+        {
+            TempData["CampaignError"] = exception.Message;
+        }
+
+        return RedirectToAction(nameof(Details), new { campaignId });
+    }
+
+    [HttpPost("{campaignId:guid}/discord/remove")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RemoveDiscord(
+        Guid campaignId,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetUserId(out var userId)) return Unauthorized();
+
+        try
+        {
+            await _campaignDiscordGuildService.ClearAsync(
+                userId,
+                campaignId,
+                cancellationToken);
+            TempData["CampaignMessage"] =
+                "Dedicated Discord server removed from this campaign.";
+        }
+        catch (CampaignDomainException exception)
+        {
+            TempData["CampaignError"] = exception.Message;
+        }
+
         return RedirectToAction(nameof(Details), new { campaignId });
     }
 
@@ -252,6 +313,9 @@ public sealed class CampaignsController(ICampaignService campaignService, ICampa
         var activeParticipants = campaign.Participants.Where(participant => participant.Status == CampaignParticipantStatus.Active).ToArray();
         IReadOnlyList<CampaignInvitation> invitations = canManage && campaign.Status == CampaignStatus.Active
             ? await _invitationService.GetPendingAsync(userId, campaignId, cancellationToken) : [];
+        var discordGuild = await _campaignDiscordGuildService.GetAsync(
+            campaignId,
+            cancellationToken);
 
         return new CampaignDetailsViewModel
         {
@@ -262,6 +326,10 @@ public sealed class CampaignsController(ICampaignService campaignService, ICampa
             CurrentUserId = userId,
             CanManage = canManage,
             CurrentUserRoles = currentRoles,
+            DedicatedDiscordGuildId = discordGuild?.GuildId,
+            DiscordBotInstallUrl = canManage
+                ? _discordBotInstallLinkProvider.CreateInstallUrl(discordGuild?.GuildId)
+                : null,
             Members = activeMemberships.OrderBy(membership => membership.JoinedAt).Select(membership => new CampaignMemberViewModel(
                 membership.UserId,
                 activeParticipants.FirstOrDefault(participant => participant.UserId == membership.UserId)?.DisplayName,
