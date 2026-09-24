@@ -262,3 +262,397 @@ body.dark-mode .footer {
 body.dark-mode code {
   color: #ddd6fe;
 }
+
+
+/* Campaign detail page. The layout intentionally keeps the roster and invitations
+   primary while moving administrative and destructive actions out of the main flow. */
+.campaign-page {
+  max-width: 1180px;
+}
+
+.campaign-breadcrumb {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-bottom: 1rem;
+  color: var(--bs-secondary-color);
+  font-size: 0.875rem;
+}
+
+.campaign-breadcrumb a {
+  text-decoration: none;
+}
+
+.campaign-hero {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding: 0.75rem 0 1.75rem;
+  border-bottom: 1px solid var(--bs-border-color);
+}
+
+.campaign-hero-copy {
+  min-width: 0;
+}
+
+.campaign-title {
+  max-width: 52rem;
+  font-size: clamp(2rem, 4vw, 3rem);
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 1.08;
+}
+
+.campaign-eyebrow {
+  color: var(--bs-primary);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.campaign-role-list,
+.campaign-person-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.campaign-role-badge,
+.campaign-you-badge,
+.campaign-count {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  line-height: 1;
+}
+
+.campaign-role-badge {
+  border: 1px solid color-mix(in srgb, var(--bs-primary) 38%, transparent);
+  background: color-mix(in srgb, var(--bs-primary) 11%, transparent);
+  color: var(--bs-primary);
+  padding: 0.38rem 0.55rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.campaign-role-badge-subtle {
+  border-color: var(--bs-border-color);
+  background: var(--bs-tertiary-bg);
+  color: inherit;
+}
+
+.campaign-you-badge {
+  background: var(--bs-tertiary-bg);
+  color: var(--bs-secondary-color);
+  padding: 0.3rem 0.5rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.campaign-count {
+  flex-shrink: 0;
+  background: var(--bs-tertiary-bg);
+  color: var(--bs-secondary-color);
+  padding: 0.42rem 0.6rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.campaign-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+.campaign-invite-created {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1rem;
+  border: 1px solid color-mix(in srgb, var(--bs-success) 45%, var(--bs-border-color));
+  border-radius: var(--bs-border-radius-lg);
+  background: color-mix(in srgb, var(--bs-success) 7%, var(--bs-body-bg));
+}
+
+.campaign-section-nav {
+  display: flex;
+  gap: 1.5rem;
+  margin: 1.5rem 0 2rem;
+  padding: 0.85rem 0;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--bs-border-color);
+  white-space: nowrap;
+}
+
+.campaign-section-nav a {
+  color: var(--bs-secondary-color);
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.campaign-section-nav a:hover,
+.campaign-section-nav a:focus-visible {
+  color: var(--bs-primary);
+}
+
+.campaign-section {
+  margin-bottom: 2.75rem;
+  scroll-margin-top: 1rem;
+}
+
+.campaign-section-heading {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.campaign-section-heading h2,
+.campaign-sidebar-card h2,
+.campaign-danger-zone h2 {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 700;
+}
+
+.campaign-roster-list {
+  border-top: 1px solid var(--bs-border-color);
+}
+
+.campaign-person-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.9rem;
+  align-items: center;
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--bs-border-color);
+}
+
+.campaign-person-row-muted {
+  opacity: 0.82;
+}
+
+.campaign-avatar {
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--bs-primary) 18%, var(--bs-tertiary-bg));
+  color: var(--bs-primary);
+  font-weight: 800;
+}
+
+.campaign-avatar-secondary {
+  background: var(--bs-tertiary-bg);
+  color: var(--bs-secondary-color);
+}
+
+.campaign-avatar-muted {
+  filter: saturate(0.5);
+}
+
+.campaign-person-main {
+  min-width: 0;
+}
+
+.campaign-person-name {
+  overflow-wrap: anywhere;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.campaign-manage-details {
+  grid-column: 1 / -1;
+}
+
+.campaign-manage-details > summary,
+.campaign-add-participant > summary,
+.campaign-former-list > summary {
+  width: fit-content;
+  cursor: pointer;
+  color: var(--bs-primary);
+  font-size: 0.875rem;
+  font-weight: 600;
+  list-style-position: inside;
+}
+
+.campaign-manage-menu {
+  margin-top: 0.75rem;
+  padding: 0.9rem;
+  border: 1px solid var(--bs-border-color);
+  border-radius: var(--bs-border-radius);
+  background: var(--bs-tertiary-bg);
+}
+
+.campaign-role-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.campaign-add-participant {
+  padding: 0.85rem 1rem;
+  border: 1px dashed var(--bs-border-color);
+  border-radius: var(--bs-border-radius);
+}
+
+.campaign-empty-state {
+  padding: 1rem 0;
+  border-top: 1px solid var(--bs-border-color);
+  color: var(--bs-secondary-color);
+}
+
+.campaign-sidebar-card {
+  margin-bottom: 1rem;
+  padding: 1.25rem;
+  border: 1px solid var(--bs-border-color);
+  border-radius: var(--bs-border-radius-lg);
+  background: var(--bs-body-bg);
+  scroll-margin-top: 1rem;
+}
+
+.campaign-invite-card {
+  border-top: 3px solid var(--bs-primary);
+}
+
+.campaign-pending-invites {
+  padding-top: 1rem;
+  border-top: 1px solid var(--bs-border-color);
+}
+
+.campaign-invite-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+  padding: 0.8rem 0;
+  border-top: 1px solid var(--bs-border-color);
+}
+
+.campaign-invite-row:first-of-type {
+  border-top: 0;
+}
+
+.campaign-sidebar-divider {
+  margin: 1rem 0;
+  border-top: 1px solid var(--bs-border-color);
+}
+
+.campaign-summary-list {
+  display: grid;
+  gap: 0;
+}
+
+.campaign-summary-list > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.7rem 0;
+  border-bottom: 1px solid var(--bs-border-color);
+}
+
+.campaign-summary-list > div:last-child {
+  border-bottom: 0;
+}
+
+.campaign-summary-list dt,
+.campaign-summary-list dd {
+  margin: 0;
+}
+
+.campaign-summary-list dt {
+  color: var(--bs-secondary-color);
+  font-weight: 500;
+}
+
+.campaign-summary-list dd {
+  font-weight: 700;
+  text-align: right;
+}
+
+.campaign-danger-zone {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  margin-top: 1rem;
+  padding: 1.25rem 0 0;
+  border-top: 1px solid color-mix(in srgb, var(--bs-danger) 55%, var(--bs-border-color));
+}
+
+.campaign-danger-zone .campaign-eyebrow {
+  color: var(--bs-danger);
+}
+
+@media (min-width: 576px) {
+  .campaign-invite-created {
+    grid-template-columns: minmax(12rem, 0.65fr) minmax(16rem, 1.35fr);
+    align-items: center;
+  }
+
+  .campaign-person-row {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+
+  .campaign-manage-details {
+    grid-column: auto;
+    position: relative;
+  }
+
+  .campaign-manage-menu {
+    min-width: 15rem;
+  }
+
+  .campaign-section-heading {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+}
+
+@media (min-width: 768px) {
+  .campaign-hero {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: flex-end;
+  }
+
+  .campaign-hero-actions {
+    justify-content: flex-end;
+  }
+
+  .campaign-danger-zone {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
+}
+
+body.dark-mode .campaign-role-badge-subtle,
+body.dark-mode .campaign-you-badge,
+body.dark-mode .campaign-count,
+body.dark-mode .campaign-avatar-secondary,
+body.dark-mode .campaign-manage-menu {
+  background: #202432;
+}
+
+body.dark-mode .campaign-sidebar-card,
+body.dark-mode .campaign-invite-created {
+  background: #151824;
+  border-color: #303449;
+}
+
+body.dark-mode .campaign-hero,
+body.dark-mode .campaign-section-nav,
+body.dark-mode .campaign-roster-list,
+body.dark-mode .campaign-person-row,
+body.dark-mode .campaign-pending-invites,
+body.dark-mode .campaign-invite-row,
+body.dark-mode .campaign-sidebar-divider,
+body.dark-mode .campaign-summary-list > div,
+body.dark-mode .campaign-empty-state,
+body.dark-mode .campaign-add-participant {
+  border-color: #303449;
+}
