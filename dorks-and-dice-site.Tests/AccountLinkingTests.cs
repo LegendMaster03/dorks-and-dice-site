@@ -68,6 +68,44 @@ public sealed class AccountLinkingTests
     }
 
     [Fact]
+    public async Task DiscordPluginCanReadClientSecretFromFile()
+    {
+        var connectionString = Environment.GetEnvironmentVariable("IDENTITY_TEST_POSTGRES");
+        if (string.IsNullOrWhiteSpace(connectionString)) return;
+
+        var secretFile = Path.GetTempFileName();
+        try
+        {
+            await File.WriteAllTextAsync(secretFile, "test-discord-secret-from-file\n");
+
+            using var factory = new IdentityWebApplicationFactory(connectionString)
+                .WithWebHostBuilder(builder =>
+                {
+                    builder.UseSetting("AccountLinks:Discord:Enabled", "true");
+                    builder.UseSetting("AccountLinks:Discord:ClientId", "test-discord-client");
+                    builder.UseSetting("AccountLinks:Discord:ClientSecretFile", secretFile);
+                });
+
+            using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+            {
+                AllowAutoRedirect = false,
+                BaseAddress = new Uri("https://dorks-and-dice.com")
+            });
+
+            var account = await client.GetAsync("/account");
+            Assert.Equal(HttpStatusCode.Redirect, account.StatusCode);
+
+            using var scope = factory.Services.CreateScope();
+            var catalog = scope.ServiceProvider.GetRequiredService<IAccountLinkProviderCatalog>();
+            Assert.True(catalog.TryGet("discord", out _));
+        }
+        finally
+        {
+            File.Delete(secretFile);
+        }
+    }
+
+    [Fact]
     public async Task AuthenticatedUserCanLinkAndDisconnectProvider()
     {
         var connectionString = Environment.GetEnvironmentVariable("IDENTITY_TEST_POSTGRES");

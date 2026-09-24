@@ -35,12 +35,12 @@ public sealed class DiscordAccountLinkPlugin : ISitePlugin
         }
 
         var clientId = section["ClientId"];
-        var clientSecret = section["ClientSecret"];
+        var clientSecret = ResolveClientSecret(section);
         if (string.IsNullOrWhiteSpace(clientId)
             || string.IsNullOrWhiteSpace(clientSecret))
         {
             throw new InvalidOperationException(
-                "AccountLinks:Discord requires ClientId and ClientSecret when enabled.");
+                "AccountLinks:Discord requires ClientId and either ClientSecret or ClientSecretFile when enabled.");
         }
 
         services.AddOpenIddict()
@@ -65,5 +65,28 @@ public sealed class DiscordAccountLinkPlugin : ISitePlugin
                 ProviderDisplayName,
                 AuthenticationScheme,
                 AccountLinkProtocol.OpenIddict));
+    }
+
+    private static string? ResolveClientSecret(IConfigurationSection section)
+    {
+        var clientSecret = section["ClientSecret"];
+        if (!string.IsNullOrWhiteSpace(clientSecret))
+        {
+            return clientSecret;
+        }
+
+        var clientSecretFile = section["ClientSecretFile"];
+        if (string.IsNullOrWhiteSpace(clientSecretFile))
+        {
+            return null;
+        }
+
+        if (!File.Exists(clientSecretFile))
+        {
+            throw new InvalidOperationException(
+                $"Discord account-link client secret file '{clientSecretFile}' does not exist.");
+        }
+
+        return File.ReadAllText(clientSecretFile).Trim();
     }
 }
