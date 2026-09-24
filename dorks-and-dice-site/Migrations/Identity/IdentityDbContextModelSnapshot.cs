@@ -266,6 +266,74 @@ namespace dorks_and_dice_site.Migrations.Identity
                     b.ToTable("AccountLinkModeActivations", (string)null);
                 });
 
+            modelBuilder.Entity("dorks_and_dice_site.Models.Identity.DiscordManagedRole", b =>
+                {
+                    b.Property<string>("SourceId")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("GuildId")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("RoleKey")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("DiscordRoleId")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("DisplayName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("SourceId", "GuildId", "RoleKey");
+
+                    b.HasIndex("GuildId", "DiscordRoleId")
+                        .IsUnique();
+
+                    b.ToTable("DiscordManagedRoles", (string)null);
+                });
+
+            modelBuilder.Entity("dorks_and_dice_site.Models.Identity.DiscordManagedRoleAssignment", b =>
+                {
+                    b.Property<string>("SourceId")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("GuildId")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("RoleKey")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("DiscordUserId")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("DiscordRoleId")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("SourceId", "GuildId", "RoleKey", "DiscordUserId");
+
+                    b.HasIndex("GuildId", "DiscordUserId");
+
+                    b.ToTable("DiscordManagedRoleAssignments", (string)null);
+                });
+
             modelBuilder.Entity("dorks_and_dice_site.Models.Operator.OperatorAuditRecord", b =>
                 {
                     b.Property<Guid>("Id")
