@@ -48,33 +48,57 @@
                         <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
                             <div>
                                 <div class="fw-semibold">@link.DisplayName</div>
-                                @if (link.IsLinked)
+                                @if (!link.IsGloballyLinked)
+                                {
+                                    <div class="small text-body-secondary">Not connected</div>
+                                }
+                                else if (link.IsActiveForMode)
                                 {
                                     <div class="small text-body-secondary">
-                                        Connected@(string.IsNullOrWhiteSpace(link.ExternalDisplayName) ? string.Empty : $" as {link.ExternalDisplayName}")
+                                        Connected for this site@(string.IsNullOrWhiteSpace(link.ExternalDisplayName) ? string.Empty : $" as {link.ExternalDisplayName}")
                                     </div>
                                 }
                                 else
                                 {
-                                    <div class="small text-body-secondary">Not connected</div>
+                                    <div class="small text-body-secondary">
+                                        Linked@(string.IsNullOrWhiteSpace(link.ExternalDisplayName) ? string.Empty : $" as {link.ExternalDisplayName}"), but not enabled for this site
+                                    </div>
                                 }
                             </div>
-                            @if (link.IsLinked)
-                            {
-                                <form asp-action="DisconnectAccountLink"
-                                      asp-route-providerId="@link.ProviderId"
-                                      method="post">
-                                    <button type="submit" class="btn btn-sm btn-outline-danger">Disconnect</button>
-                                </form>
-                            }
-                            else
-                            {
-                                <form asp-action="ConnectAccountLink"
-                                      asp-route-providerId="@link.ProviderId"
-                                      method="post">
-                                    <button type="submit" class="btn btn-sm btn-outline-primary">Connect</button>
-                                </form>
-                            }
+                            <div class="d-flex flex-wrap gap-2">
+                                @if (!link.IsGloballyLinked)
+                                {
+                                    <form asp-action="ConnectAccountLink"
+                                          asp-route-providerId="@link.ProviderId"
+                                          method="post">
+                                        <button type="submit" class="btn btn-sm btn-outline-primary">Connect</button>
+                                    </form>
+                                }
+                                else
+                                {
+                                    @if (link.IsActiveForMode)
+                                    {
+                                        <form asp-action="DisconnectAccountLink"
+                                              asp-route-providerId="@link.ProviderId"
+                                              method="post">
+                                            <button type="submit" class="btn btn-sm btn-outline-secondary">Disconnect from this mode</button>
+                                        </form>
+                                    }
+                                    else
+                                    {
+                                        <form asp-action="ConnectAccountLink"
+                                              asp-route-providerId="@link.ProviderId"
+                                              method="post">
+                                            <button type="submit" class="btn btn-sm btn-outline-primary">Use in this mode</button>
+                                        </form>
+                                    }
+                                    <form asp-action="UnlinkAccountLink"
+                                          asp-route-providerId="@link.ProviderId"
+                                          method="post">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">Unlink account</button>
+                                    </form>
+                                }
+                            </div>
                         </div>
                     }
                 </div>

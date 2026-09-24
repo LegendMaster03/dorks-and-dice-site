@@ -72,7 +72,10 @@ External account identity and external community membership are deliberately sep
 
 - `AccountLinks` is global. A Site user links a Discord identity once, and that identity remains the same regardless of which normal Site mode the user is visiting.
 - `ModeConnections` is mode-scoped. It identifies the external community/resource associated with a particular mode.
-- Account settings expose a provider only when the active normal mode has that provider in `ModeConnections`. Connect and Disconnect actions enforce the same boundary; the underlying external identity link remains global.
+- Account settings expose a provider only when the active normal mode has that provider in `ModeConnections`.
+- A global external identity is linked once, but each user explicitly activates that identity for each configured mode/resource. The activation records the resource ID, so moving a mode to a different external community requires a new per-mode activation.
+- If the identity is already globally linked, **Use in this mode** creates only the per-mode activation and does not repeat OAuth.
+- **Disconnect from this mode** removes only that activation. **Unlink account** removes the global identity link and all dependent mode activations.
 - Provider infrastructure can be shared globally, but provider actions that touch an external community must first resolve the target through the mode connection.
 - The same external resource may be configured for multiple modes. This is supported but is not assumed to be the normal deployment shape.
 
@@ -99,3 +102,16 @@ Future Discord guild role synchronization should therefore combine:
 3. that mode's role-mapping policy.
 
 It must not infer a guild globally from the Discord account-link provider.
+
+
+## Per-user mode activation
+
+Account linking has three separate layers:
+
+1. provider infrastructure, such as the shared Discord OAuth application credentials;
+2. the global user identity link stored in ASP.NET Identity;
+3. a per-user, per-mode provider activation stored in `AccountLinkModeActivations`.
+
+The first successful OAuth link creates layers 2 and 3 together for the mode that initiated the flow. If the same user later enables the provider in another configured mode, the Site reuses the global identity and creates only layer 3.
+
+Mode activations include the configured external resource ID. An activation is considered current only when its stored resource ID still matches `ModeConnections:{mode}:{provider}:ResourceId`. This prevents a configuration change from silently applying an existing user's consent to a different external community.

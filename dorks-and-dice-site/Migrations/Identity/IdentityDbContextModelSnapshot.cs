@@ -234,6 +234,38 @@ namespace dorks_and_dice_site.Migrations.Identity
                     b.ToTable("AspNetUsers", (string)null);
                 });
 
+            modelBuilder.Entity("dorks_and_dice_site.Models.Identity.AccountLinkModeActivation", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ModeId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("ProviderId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("ResourceId")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<DateTimeOffset>("ActivatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("UserId", "ModeId", "ProviderId");
+
+                    b.HasIndex("ModeId", "ProviderId");
+
+                    b.HasIndex("UserId", "ProviderId");
+
+                    b.ToTable("AccountLinkModeActivations", (string)null);
+                });
+
             modelBuilder.Entity("dorks_and_dice_site.Models.Operator.OperatorAuditRecord", b =>
                 {
                     b.Property<Guid>("Id")
@@ -416,6 +448,15 @@ namespace dorks_and_dice_site.Migrations.Identity
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<System.Guid>", b =>
+                {
+                    b.HasOne("dorks_and_dice_site.Models.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("dorks_and_dice_site.Models.Identity.AccountLinkModeActivation", b =>
                 {
                     b.HasOne("dorks_and_dice_site.Models.Identity.ApplicationUser", null)
                         .WithMany()

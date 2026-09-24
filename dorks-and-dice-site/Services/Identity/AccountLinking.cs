@@ -115,6 +115,7 @@ public static class AccountLinkAuthenticationProperties
 {
     public const string ProviderId = "dorks-and-dice.account-link.provider";
     public const string UserId = "dorks-and-dice.account-link.user";
+    public const string ModeId = "dorks-and-dice.account-link.mode";
     public const string Nonce = "dorks-and-dice.account-link.nonce";
 }
 

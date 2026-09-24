@@ -188,6 +188,7 @@ public sealed class AccountLinkingTests
             {
                 [AccountLinkAuthenticationProperties.ProviderId] = provider.Descriptor.Id,
                 [AccountLinkAuthenticationProperties.UserId] = userId.ToString("D"),
+                [AccountLinkAuthenticationProperties.ModeId] = "dorks-and-dice",
                 [AccountLinkAuthenticationProperties.Nonce] = nonce
             }));
 
@@ -225,12 +226,40 @@ public sealed class AccountLinkingTests
             disconnectForm);
         Assert.Equal(HttpStatusCode.Redirect, disconnect.StatusCode);
 
-        using var verificationScope = factory.Services.CreateScope();
-        var verificationUserManager =
-            verificationScope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
-        var verificationUser = await verificationUserManager.FindByIdAsync(userId.ToString());
-        Assert.NotNull(verificationUser);
-        Assert.Empty(await verificationUserManager.GetLoginsAsync(verificationUser));
+        using (var verificationScope = factory.Services.CreateScope())
+        {
+            var verificationUserManager =
+                verificationScope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+            var verificationUser = await verificationUserManager.FindByIdAsync(userId.ToString());
+            Assert.NotNull(verificationUser);
+            Assert.Single(await verificationUserManager.GetLoginsAsync(verificationUser));
+
+            var db = verificationScope.ServiceProvider.GetRequiredService<IdentityDbContext>();
+            Assert.Empty(db.AccountLinkModeActivations.Where(
+                activation =>
+                    activation.UserId == userId
+                    && activation.ProviderId == provider.Descriptor.Id));
+        }
+
+        var accountAfterDisconnect = await client.GetAsync("/account");
+        var accountAfterDisconnectHtml = await accountAfterDisconnect.Content.ReadAsStringAsync();
+        Assert.Contains("Use in this mode", accountAfterDisconnectHtml, StringComparison.Ordinal);
+        var unlinkToken = ExtractAntiforgeryToken(accountAfterDisconnectHtml);
+        using var unlinkForm = new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["__RequestVerificationToken"] = unlinkToken
+        });
+        var unlink = await client.PostAsync(
+            "/account/links/test-provider/unlink",
+            unlinkForm);
+        Assert.Equal(HttpStatusCode.Redirect, unlink.StatusCode);
+
+        using var finalScope = factory.Services.CreateScope();
+        var finalUserManager =
+            finalScope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+        var finalUser = await finalUserManager.FindByIdAsync(userId.ToString());
+        Assert.NotNull(finalUser);
+        Assert.Empty(await finalUserManager.GetLoginsAsync(finalUser));
     }
 
     [Fact]
@@ -342,6 +371,142 @@ public sealed class AccountLinkingTests
     }
 
     [Fact]
+    public async Task ExistingGlobalLinkCanBeEnabledForAnotherModeWithoutOAuth()
+    {
+        var connectionString = Environment.GetEnvironmentVariable("IDENTITY_TEST_POSTGRES");
+        if (string.IsNullOrWhiteSpace(connectionString)) return;
+
+        var provider = new FakeAccountLinkProvider();
+        using var factory = new IdentityWebApplicationFactory(connectionString)
+            .WithWebHostBuilder(builder =>
+            {
+                builder.UseSetting(
+                    "ModeConnections:dorks-and-dice:test-provider:ResourceId",
+                    "dorks-community");
+                builder.UseSetting(
+                    "ModeConnections:professional:test-provider:ResourceId",
+                    "professional-community");
+                builder.ConfigureServices(services =>
+                {
+                    services.AddSingleton<IAccountLinkProvider>(provider);
+                });
+            });
+
+        var email = $"account-link-multi-mode-{Guid.NewGuid():N}@example.test";
+        const string password = "correct horse battery staple";
+        Guid userId;
+        using (var scope = factory.Services.CreateScope())
+        {
+            var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+            var user = new ApplicationUser
+            {
+                Id = Guid.NewGuid(),
+                UserName = email,
+                Email = email,
+                DisplayName = "Multi Mode Link Test",
+                CreatedAt = DateTimeOffset.UtcNow
+            };
+            Assert.True((await userManager.CreateAsync(user, password)).Succeeded);
+            var token = await userManager.GenerateEmailConfirmationTokenAsync(user);
+            Assert.True((await userManager.ConfirmEmailAsync(user, token)).Succeeded);
+            userId = user.Id;
+        }
+
+        using var dorksClient = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+            HandleCookies = true,
+            BaseAddress = new Uri("https://dorks-and-dice.com")
+        });
+        await LoginAsync(dorksClient, email, password);
+
+        var dorksAccount = await dorksClient.GetAsync("/account");
+        var dorksHtml = await dorksAccount.Content.ReadAsStringAsync();
+        var dorksToken = ExtractAntiforgeryToken(dorksHtml);
+        using var initialConnectForm = new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["__RequestVerificationToken"] = dorksToken
+        });
+        var initialConnect = await dorksClient.PostAsync(
+            "/account/links/test-provider/connect",
+            initialConnectForm);
+        Assert.Equal(HttpStatusCode.Redirect, initialConnect.StatusCode);
+        Assert.Equal(1, provider.ChallengeCount);
+
+        var nonce = provider.LastChallengeProperties?.Items[AccountLinkAuthenticationProperties.Nonce];
+        Assert.False(string.IsNullOrWhiteSpace(nonce));
+        Assert.Equal(
+            "dorks-and-dice",
+            provider.LastChallengeProperties?.Items[AccountLinkAuthenticationProperties.ModeId]);
+
+        provider.CallbackResult = new AccountLinkAuthenticationResult(
+            new AccountLinkIdentity("external-multi-mode", "External Multi Mode"),
+            new AuthenticationProperties(new Dictionary<string, string?>
+            {
+                [AccountLinkAuthenticationProperties.ProviderId] = provider.Descriptor.Id,
+                [AccountLinkAuthenticationProperties.UserId] = userId.ToString("D"),
+                [AccountLinkAuthenticationProperties.ModeId] = "dorks-and-dice",
+                [AccountLinkAuthenticationProperties.Nonce] = nonce
+            }));
+        var callback = await dorksClient.GetAsync("/account/links/callback/test-provider");
+        Assert.Equal(HttpStatusCode.Redirect, callback.StatusCode);
+
+        using (var scope = factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<IdentityDbContext>();
+            var dorksActivation = await db.AccountLinkModeActivations.FindAsync(
+                userId,
+                "dorks-and-dice",
+                provider.Descriptor.Id);
+            Assert.NotNull(dorksActivation);
+            Assert.Equal("dorks-community", dorksActivation.ResourceId);
+        }
+
+        using var professionalClient = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+            HandleCookies = true,
+            BaseAddress = new Uri("https://kylebarnett.com")
+        });
+        await LoginAsync(professionalClient, email, password);
+
+        var professionalAccount = await professionalClient.GetAsync("/account");
+        Assert.Equal(HttpStatusCode.OK, professionalAccount.StatusCode);
+        var professionalHtml = await professionalAccount.Content.ReadAsStringAsync();
+        Assert.Contains("Linked as External Multi Mode, but not enabled for this site", professionalHtml, StringComparison.Ordinal);
+        Assert.Contains("Use in this mode", professionalHtml, StringComparison.Ordinal);
+
+        var professionalToken = ExtractAntiforgeryToken(professionalHtml);
+        using var reuseForm = new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["__RequestVerificationToken"] = professionalToken
+        });
+        var reuse = await professionalClient.PostAsync(
+            "/account/links/test-provider/connect",
+            reuseForm);
+        Assert.Equal(HttpStatusCode.Redirect, reuse.StatusCode);
+        Assert.Equal(1, provider.ChallengeCount);
+
+        using var verificationScope = factory.Services.CreateScope();
+        var verificationUserManager =
+            verificationScope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+        var verificationUser = await verificationUserManager.FindByIdAsync(userId.ToString());
+        Assert.NotNull(verificationUser);
+        Assert.Single(await verificationUserManager.GetLoginsAsync(verificationUser));
+
+        var verificationDb = verificationScope.ServiceProvider.GetRequiredService<IdentityDbContext>();
+        var activations = await verificationDb.AccountLinkModeActivations
+            .Where(activation =>
+                activation.UserId == userId
+                && activation.ProviderId == provider.Descriptor.Id)
+            .OrderBy(activation => activation.ModeId)
+            .ToListAsync();
+        Assert.Equal(2, activations.Count);
+        Assert.Equal("dorks-community", activations[0].ResourceId);
+        Assert.Equal("professional-community", activations[1].ResourceId);
+    }
+
+    [Fact]
     public async Task CallbackRejectsNonceThatDoesNotMatchPendingLink()
     {
         var connectionString = Environment.GetEnvironmentVariable("IDENTITY_TEST_POSTGRES");
@@ -396,6 +561,7 @@ public sealed class AccountLinkingTests
             {
                 [AccountLinkAuthenticationProperties.ProviderId] = provider.Descriptor.Id,
                 [AccountLinkAuthenticationProperties.UserId] = userId.ToString("D"),
+                [AccountLinkAuthenticationProperties.ModeId] = "dorks-and-dice",
                 [AccountLinkAuthenticationProperties.Nonce] = "replayed-or-wrong-nonce"
             }));
 
@@ -446,12 +612,14 @@ public sealed class AccountLinkingTests
 
         public AuthenticationProperties? LastChallengeProperties { get; private set; }
         public AccountLinkAuthenticationResult? CallbackResult { get; set; }
+        public int ChallengeCount { get; private set; }
 
         public AuthenticationProperties CreateChallengeProperties(
             Guid userId,
             string nonce,
             string callbackPath)
         {
+            ChallengeCount += 1;
             LastChallengeProperties = new AuthenticationProperties
             {
                 RedirectUri = callbackPath
