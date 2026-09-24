@@ -63,11 +63,14 @@ Its guild ID comes from:
 ModeConnections:dorks-and-dice:discord:ResourceId
 ```
 
-The campaign projection currently manages:
+The Dorks & Dice workspace currently manages:
 
+- `Linked Account` for Discord users whose Site account is linked and enabled for the Dorks & Dice mode;
 - `Player` for users who are Players in at least one active campaign;
 - `DM` for users who are DMs in at least one active campaign;
 - one `Campaign: <name>` role for each active campaign, assigned to all active members of that campaign.
+
+`Linked Account` is contributed by a separate Dorks & Dice-wide projection source rather than by campaign logic. It is independent of campaign membership and is removed when the user's Discord identity is no longer active for the Dorks & Dice mode.
 
 `Player` and `DM` are independent. A user who holds both kinds of campaign membership receives both roles. There is no combined Player/DM role.
 

@@ -71,6 +71,7 @@ public static class DorksAndDiceServiceCollectionExtensions
         services.AddScoped<ICharacterService, CharacterService>();
         services.AddScoped<IDorksAndDiceDiscordServerService, DorksAndDiceDiscordServerService>();
         services.AddScoped<dorks_and_dice_site.Plugins.DiscordBot.IDiscordWorkspaceProjectionSource, DorksAndDiceDiscordCampaignProjectionSource>();
+        services.AddScoped<dorks_and_dice_site.Plugins.DiscordBot.IDiscordWorkspaceProjectionSource, DorksAndDiceDiscordLinkedAccountProjectionSource>();
         services.AddScoped<IDorksAndDiceDeletionService, DorksAndDiceDeletionService>();
         services.AddScoped<IToolLifecycleOutboxDispatcher, ToolLifecycleOutboxDispatcher>();
         services.AddHostedService<DorksAndDiceStorageInitializer>();
