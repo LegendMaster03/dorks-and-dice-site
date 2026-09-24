@@ -44,11 +44,29 @@ Provides the `professional-experience` and `professional-projects` content-colle
 
 ### `discord-widget`
 
-Provides the `discord-widget` page component. The Discord server ID, theme, and accessibility/display title may be selected by authored content, but the component constructs the trusted Discord widget URL itself rather than granting arbitrary iframe capability. For example:
+Provides the `discord-widget` page component. By default, the widget resolves the active mode's Discord community through the deployment-owned `ModeConnections` registry. This keeps the community/guild association mode-scoped while the Discord account identity link remains global.
+
+```json
+{
+  "ModeConnections": {
+    "dorks-and-dice": {
+      "discord": {
+        "ResourceId": "1281714470799806545"
+      }
+    }
+  }
+}
+```
+
+The Discord `ResourceId` is the guild/server ID. Multiple modes may intentionally point at the same guild; the framework does not impose cross-mode uniqueness.
+
+Authored content normally needs only presentation parameters:
 
 ```markdown
-{{discord-widget server-id="1281714470799806545" theme="dark" title="Dorks & Dice Discord Server"}}
+{{discord-widget theme="dark" title="Dorks & Dice Discord Server"}}
 ```
+
+An explicit `server-id` remains supported as a backward-compatible/display-only override for embedding a different public Discord widget. It does not change the mode's deep Discord connection and must not be used by authorization or role synchronization. The component always constructs the trusted Discord widget URL itself rather than granting arbitrary iframe capability.
 
 ### `minecraft-server-status`
 

@@ -24,7 +24,7 @@ public sealed class HomepagePluginIntegrationTests
             """
             # Dorks & Dice Fixture
 
-            {{discord-widget server-id="123456789" theme="dark" title="Dorks & Dice Discord Server"}}
+            {{discord-widget theme="dark" title="Dorks & Dice Discord Server"}}
             """);
 
         using var request = new HttpRequestMessage(HttpMethod.Get, "https://dorks-and-dice.com/");

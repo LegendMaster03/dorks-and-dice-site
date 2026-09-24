@@ -4,6 +4,7 @@ using dorks_and_dice_site.Framework.Plugins;
 using dorks_and_dice_site.Models.Identity;
 using dorks_and_dice_site.Models.Site;
 using dorks_and_dice_site.Modes.DorksAndDice;
+using dorks_and_dice_site.Plugins.AccountLinks.Discord;
 using dorks_and_dice_site.Plugins.DiscordWidget;
 using dorks_and_dice_site.Plugins.MinecraftServerStatus;
 using dorks_and_dice_site.Plugins.ProfessionalPortfolio;
@@ -30,10 +31,12 @@ builder.Services
         options.ViewLocationExpanders.Add(new SiteModeViewLocationExpander());
     });
 builder.Services.AddContentStorage(builder.Configuration, builder.Environment.ContentRootPath);
+builder.Services.AddAccountLinking();
 builder.Services.AddSitePlugins(
 [
     new ProfessionalPortfolioPlugin(),
     new DiscordWidgetPlugin(),
+    new DiscordAccountLinkPlugin(builder.Configuration),
     new MinecraftServerStatusPlugin()
 ]);
 builder.Services.AddSingleton<IToolRegistry, DatabaseToolRegistry>();
@@ -79,6 +82,10 @@ builder.Services.AddSingleton<SiteModeOptions>();
 builder.Services.AddSingleton<ISiteModeRegistrationSource, DeploymentSiteModeRegistrationSource>();
 builder.Services.AddSingleton<ISiteModeRegistry>(serviceProvider =>
     new SiteModeRegistry(serviceProvider.GetRequiredService<ISiteModeRegistrationSource>().GetDefinitions()));
+builder.Services.AddSingleton<IModeExternalConnectionRegistry>(serviceProvider =>
+    new ConfigurationModeExternalConnectionRegistry(
+        serviceProvider.GetRequiredService<IConfiguration>(),
+        serviceProvider.GetRequiredService<ISiteModeRegistry>()));
 builder.Services.AddSingleton<ISiteModePartialResolver, SiteModePartialResolver>();
 builder.Services.AddSingleton<ISiteModeStylesheetResolver, SiteModeStylesheetResolver>();
 builder.Services.AddSingleton<ISiteModePresentationService, SiteModePresentationService>();
@@ -339,9 +346,9 @@ app.Use(async (context, next) =>
     await next();
 });
 app.UseHttpsRedirection();
-app.UseAuthentication();
 app.UseMiddleware<SiteModeMiddleware>();
 app.UseRouting();
+app.UseAuthentication();
 app.UseMiddleware<ToolProxyRequestBodyLimitMiddleware>();
 app.UseStatusCodePagesWithReExecute("/Home/NotFoundPage");
 app.UseRateLimiter();

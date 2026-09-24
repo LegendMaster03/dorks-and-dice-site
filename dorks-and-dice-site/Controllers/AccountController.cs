@@ -1,4 +1,5 @@
 using System.Net;
+using System.Security.Cryptography;
 using System.Text;
 using dorks_and_dice_site.Models.Identity;
 using dorks_and_dice_site.Services.Identity;
@@ -8,6 +9,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.EntityFrameworkCore;
 
 namespace dorks_and_dice_site.Controllers;
 
@@ -20,6 +22,8 @@ public sealed class AccountController : Controller
     private readonly SiteModeOptions _siteModeOptions;
     private readonly ISiteModePresentationService _siteModePresentationService;
     private readonly IAccountEmailSender _emailSender;
+    private readonly IAccountLinkProviderCatalog _accountLinkProviders;
+    private readonly IdentityDbContext _identityDbContext;
     private readonly ILogger<AccountController> _logger;
 
     public AccountController(
@@ -29,6 +33,8 @@ public sealed class AccountController : Controller
         SiteModeOptions siteModeOptions,
         ISiteModePresentationService siteModePresentationService,
         IAccountEmailSender emailSender,
+        IAccountLinkProviderCatalog accountLinkProviders,
+        IdentityDbContext identityDbContext,
         ILogger<AccountController> logger)
     {
         _userManager = userManager;
@@ -37,6 +43,8 @@ public sealed class AccountController : Controller
         _siteModeOptions = siteModeOptions;
         _siteModePresentationService = siteModePresentationService;
         _emailSender = emailSender;
+        _accountLinkProviders = accountLinkProviders;
+        _identityDbContext = identityDbContext;
         _logger = logger;
     }
 
@@ -308,6 +316,244 @@ public sealed class AccountController : Controller
         return RedirectToAction(nameof(Index));
     }
 
+
+    [Authorize]
+    [HttpPost("links/{providerId}/connect")]
+    [ValidateAntiForgeryToken]
+    [EnableRateLimiting("authentication")]
+    public async Task<IActionResult> ConnectAccountLink(string providerId)
+    {
+        var user = await _userManager.GetUserAsync(User);
+        if (user is null || user.DeletedAt is not null)
+        {
+            await _signInManager.SignOutAsync();
+            return RedirectToAction(nameof(Login));
+        }
+
+        if (!_accountLinkProviders.TryGet(providerId, out var provider))
+        {
+            return NotFound();
+        }
+
+        var existingLogins = await _userManager.GetLoginsAsync(user);
+        if (existingLogins.Any(login =>
+            string.Equals(login.LoginProvider, provider.Descriptor.Id, StringComparison.OrdinalIgnoreCase)))
+        {
+            TempData["AccountError"] = $"{provider.Descriptor.DisplayName} is already connected.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        var nonce = WebEncoders.Base64UrlEncode(RandomNumberGenerator.GetBytes(32));
+        var nonceResult = await _userManager.SetAuthenticationTokenAsync(
+            user,
+            AccountLinkTokenNames.LoginProvider,
+            AccountLinkTokenNames.Nonce(provider.Descriptor.Id),
+            nonce);
+        if (!nonceResult.Succeeded)
+        {
+            TempData["AccountError"] = "The account-link request could not be started.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        var callbackPath = Url.Action(
+            nameof(AccountLinkCallback),
+            "Account",
+            new { providerId = provider.Descriptor.Id })
+            ?? $"/account/links/callback/{provider.Descriptor.Id}";
+        var properties = provider.CreateChallengeProperties(user.Id, nonce, callbackPath);
+        properties.Items[AccountLinkAuthenticationProperties.ProviderId] = provider.Descriptor.Id;
+
+        return Challenge(properties, provider.Descriptor.AuthenticationScheme);
+    }
+
+    [Authorize]
+    [AcceptVerbs("GET", "POST")]
+    [Route("links/callback/{providerId}")]
+    [IgnoreAntiforgeryToken]
+    public async Task<IActionResult> AccountLinkCallback(string providerId)
+    {
+        if (!_accountLinkProviders.TryGet(providerId, out var provider))
+        {
+            return NotFound();
+        }
+
+        try
+        {
+            var user = await _userManager.GetUserAsync(User);
+            if (user is null || user.DeletedAt is not null)
+            {
+                await _signInManager.SignOutAsync();
+                return RedirectToAction(nameof(Login));
+            }
+
+            var external = await provider.AuthenticateAsync(HttpContext);
+            if (external is null)
+            {
+                TempData["AccountError"] =
+                    $"{provider.Descriptor.DisplayName} did not return a usable account identity.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            if (!external.Properties.Items.TryGetValue(
+                    AccountLinkAuthenticationProperties.ProviderId,
+                    out var protectedProviderId)
+                || !string.Equals(
+                    protectedProviderId,
+                    provider.Descriptor.Id,
+                    StringComparison.OrdinalIgnoreCase)
+                || !external.Properties.Items.TryGetValue(
+                    AccountLinkAuthenticationProperties.UserId,
+                    out var protectedUserId)
+                || !Guid.TryParse(protectedUserId, out var expectedUserId)
+                || expectedUserId != user.Id
+                || !external.Properties.Items.TryGetValue(
+                    AccountLinkAuthenticationProperties.Nonce,
+                    out var returnedNonce)
+                || string.IsNullOrWhiteSpace(returnedNonce))
+            {
+                TempData["AccountError"] = "The account-link response could not be verified.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            var nonceName = AccountLinkTokenNames.Nonce(provider.Descriptor.Id);
+            var pendingNonce = await _userManager.GetAuthenticationTokenAsync(
+                user,
+                AccountLinkTokenNames.LoginProvider,
+                nonceName);
+            if (!SecureEquals(pendingNonce, returnedNonce))
+            {
+                TempData["AccountError"] = "The account-link request is no longer valid.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            var consumeResult = await _userManager.RemoveAuthenticationTokenAsync(
+                user,
+                AccountLinkTokenNames.LoginProvider,
+                nonceName);
+            if (!consumeResult.Succeeded)
+            {
+                TempData["AccountError"] = "The account-link request could not be completed.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            var existingLogins = await _userManager.GetLoginsAsync(user);
+            if (existingLogins.Any(login =>
+                string.Equals(login.LoginProvider, provider.Descriptor.Id, StringComparison.OrdinalIgnoreCase)))
+            {
+                TempData["AccountError"] =
+                    $"{provider.Descriptor.DisplayName} is already connected.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            var otherUser = await _userManager.FindByLoginAsync(
+                provider.Descriptor.Id,
+                external.Identity.ProviderKey);
+            if (otherUser is not null && otherUser.Id != user.Id)
+            {
+                TempData["AccountError"] =
+                    $"That {provider.Descriptor.DisplayName} account is already connected to another account.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            var addResult = await _userManager.AddLoginAsync(
+                user,
+                new UserLoginInfo(
+                    provider.Descriptor.Id,
+                    external.Identity.ProviderKey,
+                    provider.Descriptor.DisplayName));
+            if (!addResult.Succeeded)
+            {
+                TempData["AccountError"] = string.Join(
+                    " ",
+                    addResult.Errors.Select(error => error.Description));
+                return RedirectToAction(nameof(Index));
+            }
+
+            if (!string.IsNullOrWhiteSpace(external.Identity.DisplayName))
+            {
+                var displayNameResult = await _userManager.SetAuthenticationTokenAsync(
+                    user,
+                    provider.Descriptor.Id,
+                    AccountLinkTokenNames.ExternalDisplayName,
+                    external.Identity.DisplayName);
+                if (!displayNameResult.Succeeded)
+                {
+                    _logger.LogWarning(
+                        "Linked provider {ProviderId} for user {UserId}, but could not persist its display name.",
+                        provider.Descriptor.Id,
+                        user.Id);
+                }
+            }
+
+            await _signInManager.RefreshSignInAsync(user);
+            TempData["AccountMessage"] = $"{provider.Descriptor.DisplayName} connected.";
+            return RedirectToAction(nameof(Index));
+        }
+        finally
+        {
+            await provider.CleanupAsync(HttpContext);
+        }
+    }
+
+    [Authorize]
+    [HttpPost("links/{providerId}/disconnect")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> DisconnectAccountLink(string providerId)
+    {
+        var user = await _userManager.GetUserAsync(User);
+        if (user is null || user.DeletedAt is not null)
+        {
+            await _signInManager.SignOutAsync();
+            return RedirectToAction(nameof(Login));
+        }
+
+        if (!_accountLinkProviders.TryGet(providerId, out var provider))
+        {
+            return NotFound();
+        }
+
+        var logins = (await _userManager.GetLoginsAsync(user))
+            .Where(candidate =>
+                string.Equals(
+                    candidate.LoginProvider,
+                    provider.Descriptor.Id,
+                    StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        if (logins.Count == 0)
+        {
+            TempData["AccountError"] = $"{provider.Descriptor.DisplayName} is not connected.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        foreach (var login in logins)
+        {
+            var removeResult = await _userManager.RemoveLoginAsync(
+                user,
+                login.LoginProvider,
+                login.ProviderKey);
+            if (!removeResult.Succeeded)
+            {
+                TempData["AccountError"] = string.Join(
+                    " ",
+                    removeResult.Errors.Select(error => error.Description));
+                return RedirectToAction(nameof(Index));
+            }
+        }
+
+        await _userManager.RemoveAuthenticationTokenAsync(
+            user,
+            provider.Descriptor.Id,
+            AccountLinkTokenNames.ExternalDisplayName);
+        await _userManager.RemoveAuthenticationTokenAsync(
+            user,
+            AccountLinkTokenNames.LoginProvider,
+            AccountLinkTokenNames.Nonce(provider.Descriptor.Id));
+
+        await _signInManager.RefreshSignInAsync(user);
+        TempData["AccountMessage"] = $"{provider.Descriptor.DisplayName} disconnected.";
+        return RedirectToAction(nameof(Index));
+    }
+
     [Authorize]
     [HttpGet("change-password")]
     public IActionResult ChangePassword() => View(new ChangePasswordViewModel());
@@ -390,6 +636,36 @@ public sealed class AccountController : Controller
             return View(model);
         }
 
+        await using var transaction = await _identityDbContext.Database.BeginTransactionAsync();
+
+        foreach (var login in await _userManager.GetLoginsAsync(user))
+        {
+            var removeLoginResult = await _userManager.RemoveLoginAsync(
+                user,
+                login.LoginProvider,
+                login.ProviderKey);
+            if (!removeLoginResult.Succeeded)
+            {
+                ModelState.AddModelError(
+                    string.Empty,
+                    "Linked accounts could not be removed. The account was not deleted.");
+                return View(model);
+            }
+
+            await _userManager.RemoveAuthenticationTokenAsync(
+                user,
+                login.LoginProvider,
+                AccountLinkTokenNames.ExternalDisplayName);
+        }
+
+        foreach (var provider in _accountLinkProviders.All)
+        {
+            await _userManager.RemoveAuthenticationTokenAsync(
+                user,
+                AccountLinkTokenNames.LoginProvider,
+                AccountLinkTokenNames.Nonce(provider.Descriptor.Id));
+        }
+
         var deletedAt = DateTimeOffset.UtcNow;
         var tombstoneIdentity = $"deleted-{user.Id:N}@deleted.invalid";
         user.DeletedAt = deletedAt;
@@ -417,6 +693,8 @@ public sealed class AccountController : Controller
 
             return View(model);
         }
+
+        await transaction.CommitAsync();
 
         await _signInManager.SignOutAsync();
         return RedirectToAction(nameof(Deleted));
@@ -447,6 +725,7 @@ public sealed class AccountController : Controller
         var isAdministrator = isOwner || await _userManager.IsInRoleAsync(user, AccountRoles.Admin);
         var isDeveloper = isOwner || await _userManager.IsInRoleAsync(user, AccountRoles.Dev);
         var hasTrustedAccess = TrustedAccessEvaluator.IsAuthorized(HttpContext, _siteModeOptions);
+        var accountLinks = await BuildAccountLinksAsync(user);
 
         return new AccountViewModel
         {
@@ -455,8 +734,56 @@ public sealed class AccountController : Controller
             DisplayName = displayName ?? user.DisplayName,
             IsAdministrator = isAdministrator,
             IsDeveloper = isDeveloper,
-            HasTrustedAccess = hasTrustedAccess
+            HasTrustedAccess = hasTrustedAccess,
+            AccountLinks = accountLinks
         };
+    }
+
+    private async Task<IReadOnlyList<AccountLinkViewModel>> BuildAccountLinksAsync(
+        ApplicationUser user)
+    {
+        var existingProviders = (await _userManager.GetLoginsAsync(user))
+            .Select(login => login.LoginProvider)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var links = new List<AccountLinkViewModel>(_accountLinkProviders.All.Count);
+
+        foreach (var provider in _accountLinkProviders.All)
+        {
+            if (!existingProviders.Contains(provider.Descriptor.Id))
+            {
+                links.Add(new AccountLinkViewModel(
+                    provider.Descriptor.Id,
+                    provider.Descriptor.DisplayName,
+                    IsLinked: false,
+                    ExternalDisplayName: null));
+                continue;
+            }
+
+            var externalDisplayName = await _userManager.GetAuthenticationTokenAsync(
+                user,
+                provider.Descriptor.Id,
+                AccountLinkTokenNames.ExternalDisplayName);
+            links.Add(new AccountLinkViewModel(
+                provider.Descriptor.Id,
+                provider.Descriptor.DisplayName,
+                IsLinked: true,
+                ExternalDisplayName: externalDisplayName));
+        }
+
+        return links;
+    }
+
+    private static bool SecureEquals(string? left, string? right)
+    {
+        if (string.IsNullOrEmpty(left) || string.IsNullOrEmpty(right))
+        {
+            return false;
+        }
+
+        var leftBytes = Encoding.UTF8.GetBytes(left);
+        var rightBytes = Encoding.UTF8.GetBytes(right);
+        return leftBytes.Length == rightBytes.Length
+            && CryptographicOperations.FixedTimeEquals(leftBytes, rightBytes);
     }
 
     private async Task<bool> IsLastActiveAdministratorAsync(ApplicationUser user)

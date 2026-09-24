@@ -1,6 +1,8 @@
 using dorks_and_dice_site.Framework.Plugins;
 using dorks_and_dice_site.Models.Content;
+using dorks_and_dice_site.Plugins.Discord;
 using dorks_and_dice_site.Services.Content;
+using dorks_and_dice_site.Services.Site;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -11,7 +13,7 @@ public sealed class DiscordWidgetPlugin : ISitePlugin
     public SitePluginManifest Manifest { get; } = new(
         Id: "discord-widget",
         DisplayName: "Discord Widget",
-        Version: "1.1.0");
+        Version: "1.2.0");
 
     public void RegisterServices(IServiceCollection services)
     {
@@ -36,11 +38,11 @@ public sealed class DiscordWidgetPlugin : ISitePlugin
                 }
             }
 
-            if (!parameters.TryGetValue("server-id", out var serverId)
-                || !IsValidServerId(serverId))
+            if (parameters.TryGetValue("server-id", out var serverId)
+                && !IsValidServerId(serverId))
             {
                 throw new InvalidOperationException(
-                    "The discord-widget page component requires a valid numeric server-id.");
+                    "The discord-widget server-id must be a valid numeric Discord guild ID.");
             }
 
             if (parameters.TryGetValue("theme", out var theme)
@@ -68,17 +70,37 @@ public sealed record DiscordWidgetViewModel(string WidgetUrl, string Title);
 
 public sealed class DiscordWidgetViewComponent : ViewComponent
 {
+    private readonly IModeExternalConnectionRegistry _modeConnections;
+
+    public DiscordWidgetViewComponent(IModeExternalConnectionRegistry modeConnections)
+    {
+        _modeConnections = modeConnections;
+    }
+
     public IViewComponentResult Invoke(ContentPageComponentInvocation request)
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        var serverId = request.GetOptionalParameter("server-id")
-            ?? throw new InvalidOperationException(
-                "The discord-widget page component requires a server-id.");
+        var serverId = request.GetOptionalParameter("server-id");
+        if (string.IsNullOrWhiteSpace(serverId))
+        {
+            var modeId = HttpContext.GetSiteModeContext().ActiveModeId;
+            if (modeId is null
+                || !_modeConnections.TryGet(
+                    modeId,
+                    DiscordProvider.Id,
+                    out var modeConnection))
+            {
+                return Content(string.Empty);
+            }
+
+            serverId = modeConnection!.ResourceId;
+        }
+
         if (!ulong.TryParse(serverId, out var parsedServerId) || parsedServerId == 0)
         {
             throw new InvalidOperationException(
-                "The discord-widget page component requires a valid numeric server-id.");
+                "The discord-widget page component requires a valid numeric Discord guild ID.");
         }
 
         var theme = request.GetOptionalParameter("theme");

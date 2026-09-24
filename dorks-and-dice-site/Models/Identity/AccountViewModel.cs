@@ -9,9 +9,17 @@ public sealed class AccountViewModel
     public bool IsAdministrator { get; init; }
     public bool IsDeveloper { get; init; }
     public bool HasTrustedAccess { get; init; }
+    public IReadOnlyList<AccountLinkViewModel> AccountLinks { get; init; } = [];
 
     [Required]
     [StringLength(ApplicationUser.DisplayNameMaxLength, MinimumLength = 1)]
     [Display(Name = "Display name")]
     public string DisplayName { get; set; } = string.Empty;
 }
+
+
+public sealed record AccountLinkViewModel(
+    string ProviderId,
+    string DisplayName,
+    bool IsLinked,
+    string? ExternalDisplayName);
