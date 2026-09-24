@@ -2,17 +2,16 @@ using dorks_and_dice_site.Modes.DorksAndDice.Campaigns;
 using dorks_and_dice_site.Modes.DorksAndDice.Discord;
 using dorks_and_dice_site.Modes.DorksAndDice.Persistence;
 using dorks_and_dice_site.Plugins.Discord;
-using dorks_and_dice_site.Plugins.DiscordBot;
 using dorks_and_dice_site.Services.Site;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 
 namespace dorks_and_dice_site.Tests;
 
-public sealed class DorksAndDiceDiscordRoleProjectionTests
+public sealed class DorksAndDiceDiscordProjectionTests
 {
     [Fact]
-    public async Task GeneralAndCampaignGuildsProjectIndependentPlayerAndDmRoles()
+    public async Task MainServerIsSpecialAndSingleCampaignServerDoesNotNeedCampaignRole()
     {
         await using var connection = new SqliteConnection("Data Source=:memory:");
         await connection.OpenAsync();
@@ -40,17 +39,28 @@ public sealed class DorksAndDiceDiscordRoleProjectionTests
             both,
             [CampaignRoles.Player, CampaignRoles.Dm]);
 
-        db.CampaignDiscordGuildBindings.Add(new CampaignDiscordGuildBinding
+        var bindingId = Guid.NewGuid();
+        db.DiscordServerBindings.Add(new DorksAndDiceDiscordServerBinding
         {
-            CampaignId = campaign.Id,
+            Id = bindingId,
             GuildId = "200",
-            ConfiguredByUserId = dmOnly,
-            ConfiguredAt = DateTimeOffset.UtcNow,
-            UpdatedAt = DateTimeOffset.UtcNow
+            GuildName = "Humblewood Server",
+            OwnerUserId = dmOnly,
+            CampaignScope = DiscordServerCampaignScope.SingleCampaign,
+            CreatedAt = DateTimeOffset.UtcNow,
+            UpdatedAt = DateTimeOffset.UtcNow,
+            Campaigns =
+            [
+                new DorksAndDiceDiscordServerCampaign
+                {
+                    BindingId = bindingId,
+                    CampaignId = campaign.Id
+                }
+            ]
         });
         await db.SaveChangesAsync();
 
-        var source = new DorksAndDiceDiscordRoleProjectionSource(
+        var source = new DorksAndDiceDiscordCampaignProjectionSource(
             db,
             new TestModeConnections("100"));
 
@@ -58,46 +68,34 @@ public sealed class DorksAndDiceDiscordRoleProjectionTests
 
         Assert.Equal(2, projections.Count);
 
-        var general = Assert.Single(projections, projection => projection.GuildId == "100");
-        Assert.Equal("100", general.ActivationResourceId);
-        var generalPlayer = Assert.Single(general.Roles, role => role.Key == "general:player");
+        var main = Assert.Single(projections, projection => projection.GuildId == "100");
+        var mainPlayer = Assert.Single(main.Roles, role => role.Key == "main:player");
         Assert.Equal(
             new[] { both, playerOnly }.Order(),
-            generalPlayer.UserIds.Order());
-        var generalDm = Assert.Single(general.Roles, role => role.Key == "general:dm");
+            mainPlayer.UserIds.Order());
+        var mainDm = Assert.Single(main.Roles, role => role.Key == "main:dm");
         Assert.Equal(
             new[] { both, dmOnly }.Order(),
-            generalDm.UserIds.Order());
-        var campaignRole = Assert.Single(
-            general.Roles,
-            role => role.Key == $"general:campaign:{campaign.Id:N}");
-        Assert.Equal("Campaign: Humblewood", campaignRole.DisplayName);
-        Assert.Equal(
-            new[] { both, dmOnly, playerOnly }.Order(),
-            campaignRole.UserIds.Order());
+            mainDm.UserIds.Order());
+        var mainCampaign = Assert.Single(
+            main.Roles,
+            role => role.Key == $"main:campaign:{campaign.Id:N}");
+        Assert.Equal("Campaign: Humblewood", mainCampaign.DisplayName);
 
         var dedicated = Assert.Single(projections, projection => projection.GuildId == "200");
         Assert.Equal(2, dedicated.Roles.Count);
-        var dedicatedPlayer = Assert.Single(
+        Assert.Contains(dedicated.Roles, role => role.DisplayName == "Player");
+        Assert.Contains(dedicated.Roles, role => role.DisplayName == "DM");
+        Assert.DoesNotContain(
             dedicated.Roles,
-            role => role.DisplayName == "Player");
-        Assert.Equal(
-            new[] { both, playerOnly }.Order(),
-            dedicatedPlayer.UserIds.Order());
-        var dedicatedDm = Assert.Single(
-            dedicated.Roles,
-            role => role.DisplayName == "DM");
-        Assert.Equal(
-            new[] { both, dmOnly }.Order(),
-            dedicatedDm.UserIds.Order());
-
+            role => role.DisplayName.StartsWith("Campaign:", StringComparison.Ordinal));
         Assert.DoesNotContain(
             projections.SelectMany(projection => projection.Roles),
             role => role.DisplayName.Contains('+', StringComparison.Ordinal));
     }
 
     [Fact]
-    public async Task ArchivedCampaignKeepsDedicatedGuildProjectionButNoActiveRoles()
+    public async Task AllDmCampaignsScopeFollowsCurrentDmMemberships()
     {
         await using var connection = new SqliteConnection("Data Source=:memory:");
         await connection.OpenAsync();
@@ -109,36 +107,50 @@ public sealed class DorksAndDiceDiscordRoleProjectionTests
 
         var access = new CampaignAccessService(db);
         var campaigns = new CampaignService(db, access, TimeProvider.System);
-        var dm = Guid.NewGuid();
-        var campaign = await campaigns.CreateAsync(dm, "Archived");
-        db.CampaignDiscordGuildBindings.Add(new CampaignDiscordGuildBinding
+        var owner = Guid.NewGuid();
+        var otherDm = Guid.NewGuid();
+
+        var first = await campaigns.CreateAsync(owner, "First");
+        var second = await campaigns.CreateAsync(owner, "Second");
+        var notOwned = await campaigns.CreateAsync(otherDm, "Other");
+        await campaigns.AddMemberAsync(
+            otherDm,
+            notOwned.Id,
+            owner,
+            [CampaignRoles.Player]);
+
+        db.DiscordServerBindings.Add(new DorksAndDiceDiscordServerBinding
         {
-            CampaignId = campaign.Id,
+            Id = Guid.NewGuid(),
             GuildId = "200",
-            ConfiguredByUserId = dm,
-            ConfiguredAt = DateTimeOffset.UtcNow,
+            GuildName = "All Games",
+            OwnerUserId = owner,
+            CampaignScope = DiscordServerCampaignScope.AllDmCampaigns,
+            CreatedAt = DateTimeOffset.UtcNow,
             UpdatedAt = DateTimeOffset.UtcNow
         });
         await db.SaveChangesAsync();
-        await campaigns.ArchiveAsync(dm, campaign.Id);
 
-        var source = new DorksAndDiceDiscordRoleProjectionSource(
+        var source = new DorksAndDiceDiscordCampaignProjectionSource(
             db,
             new TestModeConnections("100"));
 
         var projections = await source.BuildAsync();
+        var server = Assert.Single(projections, projection => projection.GuildId == "200");
 
-        var general = Assert.Single(projections, projection => projection.GuildId == "100");
+        Assert.Contains(
+            server.Roles,
+            role => role.Key.EndsWith($"campaign:{first.Id:N}", StringComparison.Ordinal));
+        Assert.Contains(
+            server.Roles,
+            role => role.Key.EndsWith($"campaign:{second.Id:N}", StringComparison.Ordinal));
         Assert.DoesNotContain(
-            general.Roles,
-            role => role.Key == $"general:campaign:{campaign.Id:N}");
-
-        var dedicated = Assert.Single(projections, projection => projection.GuildId == "200");
-        Assert.Empty(dedicated.Roles);
+            server.Roles,
+            role => role.Key.EndsWith($"campaign:{notOwned.Id:N}", StringComparison.Ordinal));
     }
 
     [Fact]
-    public async Task DedicatedGuildCanNotReuseGeneralGuildOrAnotherCampaignGuild()
+    public async Task SelectedCampaignsThatAreNoLongerDmOwnedDropOutOfProjection()
     {
         await using var connection = new SqliteConnection("Data Source=:memory:");
         await connection.OpenAsync();
@@ -150,25 +162,56 @@ public sealed class DorksAndDiceDiscordRoleProjectionTests
 
         var access = new CampaignAccessService(db);
         var campaigns = new CampaignService(db, access, TimeProvider.System);
-        var modeConnections = new TestModeConnections("100");
-        var service = new CampaignDiscordGuildService(
+        var owner = Guid.NewGuid();
+        var successor = Guid.NewGuid();
+        var campaign = await campaigns.CreateAsync(owner, "Transferred");
+        await campaigns.AddMemberAsync(
+            owner,
+            campaign.Id,
+            successor,
+            [CampaignRoles.Dm]);
+        await campaigns.SetMemberRolesAsync(
+            owner,
+            campaign.Id,
+            owner,
+            [CampaignRoles.Player]);
+
+        var bindingId = Guid.NewGuid();
+        db.DiscordServerBindings.Add(new DorksAndDiceDiscordServerBinding
+        {
+            Id = bindingId,
+            GuildId = "200",
+            GuildName = "Transferred Server",
+            OwnerUserId = owner,
+            CampaignScope = DiscordServerCampaignScope.SelectedCampaigns,
+            CreatedAt = DateTimeOffset.UtcNow,
+            UpdatedAt = DateTimeOffset.UtcNow,
+            Campaigns =
+            [
+                new DorksAndDiceDiscordServerCampaign
+                {
+                    BindingId = bindingId,
+                    CampaignId = campaign.Id
+                }
+            ]
+        });
+        await db.SaveChangesAsync();
+
+        var source = new DorksAndDiceDiscordCampaignProjectionSource(
             db,
-            access,
-            modeConnections,
-            TimeProvider.System);
+            new TestModeConnections("100"));
 
-        var firstDm = Guid.NewGuid();
-        var secondDm = Guid.NewGuid();
-        var first = await campaigns.CreateAsync(firstDm, "First");
-        var second = await campaigns.CreateAsync(secondDm, "Second");
+        var projection = Assert.Single(
+            await source.BuildAsync(),
+            item => item.GuildId == "200");
 
-        await Assert.ThrowsAsync<CampaignDomainException>(() =>
-            service.SetAsync(firstDm, first.Id, "100"));
-
-        await service.SetAsync(firstDm, first.Id, "200");
-
-        await Assert.ThrowsAsync<CampaignDomainException>(() =>
-            service.SetAsync(secondDm, second.Id, "200"));
+        Assert.Equal(2, projection.Roles.Count);
+        Assert.All(
+            projection.Roles,
+            role => Assert.Empty(role.UserIds));
+        Assert.DoesNotContain(
+            projection.Roles,
+            role => role.DisplayName.StartsWith("Campaign:", StringComparison.Ordinal));
     }
 
     private sealed class TestModeConnections(string generalGuildId)
