@@ -1,170 +1,430 @@
+@using dorks_and_dice_site.Modes.DorksAndDice.Campaigns
 @model dorks_and_dice_site.Modes.DorksAndDice.Ui.CampaignDetailsViewModel
 @{
     ViewData["Title"] = Model.Name;
+    var activeParticipants = Model.Participants.Where(participant => participant.IsActive).ToArray();
+    var formerParticipants = Model.Participants.Where(participant => !participant.IsActive).ToArray();
+    var showCampaignSettings = Model.CanManage || !Model.IsArchived;
 }
 
-<div class="container py-4">
-    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-start gap-3 mb-4">
-        <div>
-            <a class="small text-decoration-none" asp-controller="Campaigns" asp-action="Index">&larr; All campaigns</a>
-            <div class="d-flex align-items-center gap-2 mt-2">
-                <h1 class="h2 mb-0">@Model.Name</h1>
-                @if (Model.IsArchived) { <span class="badge text-bg-secondary">Archived</span> }
+<div class="campaign-page">
+    <nav class="campaign-breadcrumb" aria-label="Campaign breadcrumb">
+        <a asp-controller="Campaigns" asp-action="Index">Campaigns</a>
+        <span aria-hidden="true">/</span>
+        <span aria-current="page">@Model.Name</span>
+    </nav>
+
+    <header class="campaign-hero">
+        <div class="campaign-hero-copy">
+            <p class="campaign-eyebrow mb-2">Campaign</p>
+            <div class="d-flex flex-wrap align-items-center gap-2">
+                <h1 class="campaign-title mb-0">@Model.Name</h1>
+                @if (Model.IsArchived)
+                {
+                    <span class="badge text-bg-secondary">Archived</span>
+                }
             </div>
-            <div class="mt-2">@foreach (var role in Model.CurrentUserRoles) { <span class="badge text-bg-secondary me-1">@role.ToUpperInvariant()</span> }</div>
+            <div class="campaign-role-list mt-3" aria-label="Your campaign roles">
+                @foreach (var role in Model.CurrentUserRoles)
+                {
+                    <span class="campaign-role-badge">@role.ToUpperInvariant()</span>
+                }
+            </div>
         </div>
-        <div class="d-flex flex-wrap gap-2">
-            <a class="btn btn-outline-primary" asp-controller="Characters" asp-action="Index">My Characters</a>
-            @if (!Model.IsArchived)
+        <div class="campaign-hero-actions">
+            <a class="btn btn-primary" asp-controller="Characters" asp-action="Index">My Characters</a>
+            @if (Model.CanManage && !Model.IsArchived)
             {
-                <form asp-controller="Campaigns" asp-action="Leave" asp-route-campaignId="@Model.Id" method="post">
-                    @Html.AntiForgeryToken()<button class="btn btn-outline-danger" type="submit">Leave Campaign</button>
-                </form>
+                <a class="btn btn-outline-primary" href="#invite">Invite Player</a>
             }
         </div>
-    </div>
+    </header>
 
-    @if (TempData["CampaignError"] is string error) { <div class="alert alert-danger" role="alert">@error</div> }
+    @if (TempData["CampaignError"] is string error)
+    {
+        <div class="alert alert-danger mt-4" role="alert">@error</div>
+    }
+
     @if (TempData["CampaignInviteLink"] is string inviteLink)
     {
-        <div class="alert alert-success" role="status"><strong>Invite created.</strong><p class="mb-2">Share this one-time link with the intended participant:</p><input class="form-control" type="text" value="@inviteLink" readonly /></div>
+        <div class="campaign-invite-created mt-4" role="status">
+            <div>
+                <strong>Invite created.</strong>
+                <div class="small text-muted">Send this one-time link to the intended participant.</div>
+            </div>
+            <div class="input-group">
+                <input id="campaignInviteLink" class="form-control" type="text" value="@inviteLink" readonly aria-label="Campaign invite link" />
+                <button id="copyCampaignInviteLink" class="btn btn-outline-primary" type="button">Copy Link</button>
+            </div>
+        </div>
     }
+
     @if (Model.IsArchived)
     {
-        <div class="alert alert-secondary">This campaign is archived. Its roster and history are preserved, but live membership actions, invitations, participant changes, and character connections are paused.</div>
+        <div class="alert alert-secondary mt-4 mb-0">
+            This campaign is archived. Its roster and history are preserved, but membership changes, invitations, participant changes, and character connections are paused.
+        </div>
     }
+
+    <nav class="campaign-section-nav" aria-label="Campaign sections">
+        <a href="#roster">Roster</a>
+        <a href="#table-roster">Table roster</a>
+        @if (Model.CanManage && !Model.IsArchived)
+        {
+            <a href="#invite">Invite</a>
+        }
+        @if (showCampaignSettings)
+        {
+            <a href="#campaign-settings">Settings</a>
+        }
+    </nav>
+
+    <div class="row g-4 align-items-start">
+        <div class="col-xl-8">
+            <section id="roster" class="campaign-section">
+                <div class="campaign-section-heading">
+                    <div>
+                        <p class="campaign-eyebrow mb-1">People</p>
+                        <h2>Campaign roster</h2>
+                        <p class="text-muted mb-0">Members with access to this campaign and the roles they hold.</p>
+                    </div>
+                    <span class="campaign-count">@Model.Members.Count active</span>
+                </div>
+
+                <div class="campaign-roster-list">
+                    @foreach (var member in Model.Members)
+                    {
+                        var memberIsPlayer = member.Roles.Contains(CampaignRoles.Player, StringComparer.Ordinal);
+                        var memberIsDm = member.Roles.Contains(CampaignRoles.Dm, StringComparer.Ordinal);
+                        var memberDisplayName = member.ParticipantName ?? (member.IsCurrentUser ? "You" : "Campaign Member");
+                        var memberInitial = string.IsNullOrWhiteSpace(memberDisplayName)
+                            ? "?"
+                            : memberDisplayName.Trim()[0].ToString().ToUpperInvariant();
+
+                        <article class="campaign-person-row">
+                            <div class="campaign-avatar" aria-hidden="true">@memberInitial</div>
+                            <div class="campaign-person-main">
+                                <div class="d-flex flex-wrap align-items-center gap-2">
+                                    <h3 class="campaign-person-name mb-0">@memberDisplayName</h3>
+                                    @if (member.IsCurrentUser && member.ParticipantName is not null)
+                                    {
+                                        <span class="campaign-you-badge">You</span>
+                                    }
+                                </div>
+                                <div class="campaign-person-meta mt-2">
+                                    @foreach (var role in member.Roles)
+                                    {
+                                        <span class="campaign-role-badge campaign-role-badge-subtle">@role.ToUpperInvariant()</span>
+                                    }
+                                </div>
+                            </div>
+
+                            @if (Model.CanManage && !Model.IsArchived)
+                            {
+                                <details class="campaign-manage-details">
+                                    <summary>Manage</summary>
+                                    <div class="campaign-manage-menu">
+                                        <form asp-controller="Campaigns" asp-action="SetMemberRoles" asp-route-campaignId="@Model.Id" asp-route-memberUserId="@member.UserId" method="post" class="campaign-role-form">
+                                            @Html.AntiForgeryToken()
+                                            <span class="small fw-semibold">Campaign roles</span>
+                                            <div class="d-flex flex-wrap gap-3">
+                                                <div class="form-check mb-0">
+                                                    <input class="form-check-input" id="player-@member.UserId" type="checkbox" name="player" value="true" checked="@memberIsPlayer" />
+                                                    <label class="form-check-label" for="player-@member.UserId">Player</label>
+                                                </div>
+                                                <div class="form-check mb-0">
+                                                    <input class="form-check-input" id="dm-@member.UserId" type="checkbox" name="dm" value="true" checked="@memberIsDm" />
+                                                    <label class="form-check-label" for="dm-@member.UserId">DM</label>
+                                                </div>
+                                            </div>
+                                            <button class="btn btn-sm btn-primary" type="submit">Save Roles</button>
+                                        </form>
+                                        @if (!member.IsCurrentUser)
+                                        {
+                                            <form asp-controller="Campaigns" asp-action="RemoveMember" asp-route-campaignId="@Model.Id" asp-route-memberUserId="@member.UserId" method="post" class="mt-2">
+                                                @Html.AntiForgeryToken()
+                                                <button class="btn btn-sm btn-outline-danger" type="submit">Remove from Campaign</button>
+                                            </form>
+                                        }
+                                    </div>
+                                </details>
+                            }
+                        </article>
+                    }
+                </div>
+            </section>
+
+            <section id="table-roster" class="campaign-section">
+                <div class="campaign-section-heading">
+                    <div>
+                        <p class="campaign-eyebrow mb-1">At the table</p>
+                        <h2>Table roster</h2>
+                        <p class="text-muted mb-0">Campaign identities for players and guests. A Dorks &amp; Dice account is optional.</p>
+                    </div>
+                    <span class="campaign-count">@activeParticipants.Length active</span>
+                </div>
+
+                @if (Model.CanManage && !Model.IsArchived)
+                {
+                    <details class="campaign-add-participant mb-3">
+                        <summary>Add someone without an account</summary>
+                        <form asp-controller="Campaigns" asp-action="AddParticipant" asp-route-campaignId="@Model.Id" method="post" class="row g-2 mt-2">
+                            @Html.AntiForgeryToken()
+                            <div class="col-md-8">
+                                <label class="visually-hidden" for="participantName">Participant name</label>
+                                <input id="participantName" class="form-control" type="text" name="displayName" maxlength="120" placeholder="Participant name" required />
+                            </div>
+                            <div class="col-md-4">
+                                <button class="btn btn-outline-primary w-100" type="submit">Add to Roster</button>
+                            </div>
+                        </form>
+                    </details>
+                }
+
+                @if (activeParticipants.Length == 0)
+                {
+                    <div class="campaign-empty-state">No table participants have been added yet.</div>
+                }
+                else
+                {
+                    <div class="campaign-roster-list">
+                        @foreach (var participant in activeParticipants)
+                        {
+                            var participantInitial = string.IsNullOrWhiteSpace(participant.DisplayName)
+                                ? "?"
+                                : participant.DisplayName.Trim()[0].ToString().ToUpperInvariant();
+                            <article class="campaign-person-row">
+                                <div class="campaign-avatar campaign-avatar-secondary" aria-hidden="true">@participantInitial</div>
+                                <div class="campaign-person-main">
+                                    <h3 class="campaign-person-name mb-1">@participant.DisplayName</h3>
+                                    <div class="small text-muted">@(participant.UserId is null ? "No site account linked" : "Site account linked")</div>
+                                </div>
+
+                                @if (Model.CanManage && !Model.IsArchived)
+                                {
+                                    <details class="campaign-manage-details">
+                                        <summary>Manage</summary>
+                                        <div class="campaign-manage-menu">
+                                            <form asp-controller="Campaigns" asp-action="RenameParticipant" asp-route-campaignId="@Model.Id" asp-route-participantId="@participant.Id" method="post" class="d-flex flex-column gap-2">
+                                                @Html.AntiForgeryToken()
+                                                <label class="small fw-semibold" for="participant-@participant.Id">Display name</label>
+                                                <input id="participant-@participant.Id" class="form-control form-control-sm" type="text" name="displayName" value="@participant.DisplayName" maxlength="120" required />
+                                                <button class="btn btn-sm btn-primary" type="submit">Save Name</button>
+                                            </form>
+                                            <form asp-controller="Campaigns" asp-action="RetireParticipant" asp-route-campaignId="@Model.Id" asp-route-participantId="@participant.Id" method="post" class="mt-2">
+                                                @Html.AntiForgeryToken()
+                                                <button class="btn btn-sm btn-outline-secondary" type="submit">Mark Former</button>
+                                            </form>
+                                        </div>
+                                    </details>
+                                }
+                            </article>
+                        }
+                    </div>
+                }
+
+                @if (formerParticipants.Length > 0)
+                {
+                    <details class="campaign-former-list mt-3">
+                        <summary>Former participants (@formerParticipants.Length)</summary>
+                        <div class="campaign-roster-list mt-2">
+                            @foreach (var participant in formerParticipants)
+                            {
+                                var participantInitial = string.IsNullOrWhiteSpace(participant.DisplayName)
+                                    ? "?"
+                                    : participant.DisplayName.Trim()[0].ToString().ToUpperInvariant();
+                                <article class="campaign-person-row campaign-person-row-muted">
+                                    <div class="campaign-avatar campaign-avatar-muted" aria-hidden="true">@participantInitial</div>
+                                    <div class="campaign-person-main">
+                                        <div class="d-flex flex-wrap align-items-center gap-2">
+                                            <h3 class="campaign-person-name mb-0">@participant.DisplayName</h3>
+                                            <span class="badge text-bg-secondary">Former</span>
+                                        </div>
+                                        <div class="small text-muted mt-1">@(participant.UserId is null ? "No site account linked" : "Site account linked")</div>
+                                    </div>
+                                    @if (Model.CanManage && !Model.IsArchived && participant.UserId is null)
+                                    {
+                                        <form asp-controller="Campaigns" asp-action="RestoreParticipant" asp-route-campaignId="@Model.Id" asp-route-participantId="@participant.Id" method="post">
+                                            @Html.AntiForgeryToken()
+                                            <button class="btn btn-sm btn-outline-secondary" type="submit">Restore</button>
+                                        </form>
+                                    }
+                                </article>
+                            }
+                        </div>
+                    </details>
+                }
+            </section>
+        </div>
+
+        <div class="col-xl-4">
+            @if (Model.CanManage && !Model.IsArchived)
+            {
+                <section id="invite" class="campaign-sidebar-card campaign-invite-card">
+                    <p class="campaign-eyebrow mb-1">Share the table</p>
+                    <h2>Invite a player</h2>
+                    <p class="text-muted small">Create a one-time invite for a new player or reconnect someone already in the table roster.</p>
+
+                    <form asp-controller="Campaigns" asp-action="CreateInvitation" asp-route-campaignId="@Model.Id" method="post" class="d-flex flex-column gap-3">
+                        @Html.AntiForgeryToken()
+                        <div>
+                            <label class="form-label" for="inviteDisplayName">Player name</label>
+                            <input id="inviteDisplayName" class="form-control" type="text" name="displayName" maxlength="120" placeholder="New player name" />
+                        </div>
+                        <div>
+                            <label class="form-label" for="inviteParticipant">Or choose someone from the roster</label>
+                            <select id="inviteParticipant" class="form-select" name="participantId">
+                                <option value="">Create from player name</option>
+                                @foreach (var participant in Model.InviteableParticipants)
+                                {
+                                    <option value="@participant.Id">@(participant.IsFormer ? "Former: " : "")@participant.DisplayName</option>
+                                }
+                            </select>
+                        </div>
+                        <fieldset>
+                            <legend class="form-label">Campaign roles</legend>
+                            <div class="d-flex flex-wrap gap-3">
+                                <div class="form-check mb-0">
+                                    <input class="form-check-input" id="invitePlayer" type="checkbox" name="player" value="true" checked />
+                                    <label class="form-check-label" for="invitePlayer">Player</label>
+                                </div>
+                                <div class="form-check mb-0">
+                                    <input class="form-check-input" id="inviteDm" type="checkbox" name="dm" value="true" />
+                                    <label class="form-check-label" for="inviteDm">DM</label>
+                                </div>
+                            </div>
+                        </fieldset>
+                        <button class="btn btn-primary w-100" type="submit">Create Invite Link</button>
+                    </form>
+
+                    @if (Model.Invitations.Count > 0)
+                    {
+                        <div class="campaign-pending-invites mt-4">
+                            <div class="d-flex justify-content-between align-items-center gap-2 mb-2">
+                                <h3 class="h6 mb-0">Pending invites</h3>
+                                <span class="campaign-count">@Model.Invitations.Count</span>
+                            </div>
+                            @foreach (var invitation in Model.Invitations)
+                            {
+                                <div class="campaign-invite-row">
+                                    <div>
+                                        <div class="d-flex flex-wrap gap-1">
+                                            @foreach (var role in invitation.Roles)
+                                            {
+                                                <span class="campaign-role-badge campaign-role-badge-subtle">@role.ToUpperInvariant()</span>
+                                            }
+                                        </div>
+                                        @if (invitation.ParticipantName is not null)
+                                        {
+                                            <div class="small mt-1">@invitation.ParticipantName</div>
+                                        }
+                                        <div class="small text-muted">Expires @invitation.ExpiresAt.ToLocalTime().ToString("g")</div>
+                                    </div>
+                                    <form asp-controller="Campaigns" asp-action="RevokeInvitation" asp-route-campaignId="@Model.Id" asp-route-invitationId="@invitation.Id" method="post">
+                                        @Html.AntiForgeryToken()
+                                        <button class="btn btn-sm btn-outline-secondary" type="submit">Revoke</button>
+                                    </form>
+                                </div>
+                            }
+                        </div>
+                    }
+                </section>
+            }
+
+            @if (showCampaignSettings)
+            {
+                <section id="campaign-settings" class="campaign-sidebar-card">
+                    <p class="campaign-eyebrow mb-1">Campaign</p>
+                    <h2>Settings</h2>
+
+                    @if (Model.CanManage)
+                    {
+                        @if (!Model.IsArchived)
+                        {
+                            <form asp-controller="Campaigns" asp-action="Rename" asp-route-campaignId="@Model.Id" method="post" class="d-flex flex-column gap-2 mb-3">
+                                @Html.AntiForgeryToken()
+                                <label class="form-label mb-0" for="campaignRename">Campaign name</label>
+                                <input id="campaignRename" class="form-control" type="text" name="name" value="@Model.Name" maxlength="160" required />
+                                <button class="btn btn-outline-primary" type="submit">Save Name</button>
+                            </form>
+                        }
+
+                        @if (Model.IsArchived)
+                        {
+                            <form asp-controller="Campaigns" asp-action="Restore" asp-route-campaignId="@Model.Id" method="post">
+                                @Html.AntiForgeryToken()
+                                <button class="btn btn-primary w-100" type="submit">Restore Campaign</button>
+                            </form>
+                        }
+                        else
+                        {
+                            <form asp-controller="Campaigns" asp-action="Archive" asp-route-campaignId="@Model.Id" method="post">
+                                @Html.AntiForgeryToken()
+                                <button class="btn btn-outline-secondary w-100" type="submit">Archive Campaign</button>
+                            </form>
+                        }
+                    }
+
+                    @if (!Model.IsArchived)
+                    {
+                        <div class="campaign-sidebar-divider"></div>
+                        <form asp-controller="Campaigns" asp-action="Leave" asp-route-campaignId="@Model.Id" method="post" onsubmit="return confirm('Leave this campaign?');">
+                            @Html.AntiForgeryToken()
+                            <button class="btn btn-outline-secondary w-100" type="submit">Leave Campaign</button>
+                        </form>
+                    }
+                </section>
+
+            }
+
+            <section class="campaign-sidebar-card campaign-summary-card">
+                <p class="campaign-eyebrow mb-1">At a glance</p>
+                <dl class="campaign-summary-list mb-0">
+                    <div><dt>Members</dt><dd>@Model.Members.Count</dd></div>
+                    <div><dt>Table roster</dt><dd>@activeParticipants.Length</dd></div>
+                    <div><dt>Pending invites</dt><dd>@Model.Invitations.Count</dd></div>
+                    <div><dt>Status</dt><dd>@(Model.IsArchived ? "Archived" : "Active")</dd></div>
+                </dl>
+            </section>
+        </div>
+    </div>
 
     @if (Model.CanManage)
     {
-        <div class="card shadow-sm mb-4"><div class="card-body">
-            <h2 class="h5">Campaign settings</h2>
-            @if (!Model.IsArchived)
-            {
-                <form asp-controller="Campaigns" asp-action="Rename" asp-route-campaignId="@Model.Id" method="post" class="row g-2 align-items-end mb-3">
-                    @Html.AntiForgeryToken()
-                    <div class="col-md-8"><label class="form-label" for="campaignRename">Name</label><input id="campaignRename" class="form-control" type="text" name="name" value="@Model.Name" maxlength="160" required /></div>
-                    <div class="col-md-4"><button class="btn btn-outline-primary w-100" type="submit">Rename</button></div>
-                </form>
-            }
-            @if (Model.IsArchived)
-            {
-                <form asp-controller="Campaigns" asp-action="Restore" asp-route-campaignId="@Model.Id" method="post">@Html.AntiForgeryToken()<button class="btn btn-primary" type="submit">Restore Campaign</button></form>
-            }
-            else
-            {
-                <form asp-controller="Campaigns" asp-action="Archive" asp-route-campaignId="@Model.Id" method="post">@Html.AntiForgeryToken()<button class="btn btn-outline-secondary" type="submit">Archive Campaign</button></form>
-            }
-            <hr />
-            <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
-                <div><h3 class="h6 mb-1">Permanent deletion</h3><p class="small text-muted mb-0">Deletes this campaign, its memberships, participant records, invitations, and character connections. Player characters and accounts are not deleted.</p></div>
-                <form method="post" action="/campaigns/@Model.Id/delete" onsubmit="return confirm('Permanently delete this campaign and its campaign-only data? This can not be undone.');">@Html.AntiForgeryToken()<button class="btn btn-danger" type="submit">Delete Campaign Permanently</button></form>
+        <section class="campaign-danger-zone">
+            <div>
+                <p class="campaign-eyebrow mb-1">Danger zone</p>
+                <h2>Permanently delete campaign</h2>
+                <p class="text-muted mb-0">Deletes this campaign, its memberships, participant records, invitations, and character connections. Player characters and accounts are not deleted.</p>
             </div>
-        </div></div>
+            <form method="post" action="/campaigns/@Model.Id/delete" onsubmit="return confirm('Permanently delete this campaign and its campaign-only data? This can not be undone.');">
+                @Html.AntiForgeryToken()
+                <button class="btn btn-danger" type="submit">Delete Campaign Permanently</button>
+            </form>
+        </section>
     }
+</div>
 
-    <div class="row g-4">
-        <div class="col-lg-7">
-            <div class="card shadow-sm mb-4"><div class="card-body">
-                <div class="d-flex justify-content-between align-items-center mb-3"><h2 class="h5 mb-0">Members</h2><span class="text-muted small">@Model.Members.Count active</span></div>
-                <div class="list-group list-group-flush">
-                @foreach (var member in Model.Members)
-                {
-                    var memberIsPlayer = member.Roles.Contains(dorks_and_dice_site.Modes.DorksAndDice.Campaigns.CampaignRoles.Player, StringComparer.Ordinal);
-                    var memberIsDm = member.Roles.Contains(dorks_and_dice_site.Modes.DorksAndDice.Campaigns.CampaignRoles.Dm, StringComparer.Ordinal);
-                    <div class="list-group-item px-0"><div class="d-flex flex-column flex-lg-row justify-content-between gap-3">
-                        <div>
-                            <div class="fw-semibold">@(member.ParticipantName ?? (member.IsCurrentUser ? "You" : "Campaign Member")) @if (member.IsCurrentUser && member.ParticipantName is not null) { <span class="text-muted">(You)</span> }</div>
-                            <div class="mt-1">@foreach (var role in member.Roles) { <span class="badge text-bg-light border me-1">@role.ToUpperInvariant()</span> }</div>
-                        </div>
-                        @if (Model.CanManage && !Model.IsArchived)
-                        {
-                            <div class="d-flex flex-column align-items-lg-end gap-2">
-                                <form asp-controller="Campaigns" asp-action="SetMemberRoles" asp-route-campaignId="@Model.Id" asp-route-memberUserId="@member.UserId" method="post" class="d-flex flex-wrap gap-2 align-items-center">
-                                    @Html.AntiForgeryToken()
-                                    <div class="form-check form-check-inline mb-0"><input class="form-check-input" id="player-@member.UserId" type="checkbox" name="player" value="true" checked="@memberIsPlayer" /><label class="form-check-label" for="player-@member.UserId">Player</label></div>
-                                    <div class="form-check form-check-inline mb-0"><input class="form-check-input" id="dm-@member.UserId" type="checkbox" name="dm" value="true" checked="@memberIsDm" /><label class="form-check-label" for="dm-@member.UserId">DM</label></div>
-                                    <button class="btn btn-sm btn-outline-primary" type="submit">Update Roles</button>
-                                </form>
-                                @if (!member.IsCurrentUser)
-                                {
-                                    <form asp-controller="Campaigns" asp-action="RemoveMember" asp-route-campaignId="@Model.Id" asp-route-memberUserId="@member.UserId" method="post">@Html.AntiForgeryToken()<button class="btn btn-sm btn-outline-danger" type="submit">Remove Member</button></form>
-                                }
-                            </div>
-                        }
-                    </div></div>
-                }
-                </div>
-            </div></div>
 
-            @if (Model.CanManage && !Model.IsArchived)
-            {
-                <div class="card shadow-sm mb-4"><div class="card-body">
-                    <h2 class="h5">Invite Player</h2>
-                    <p class="text-muted small">For a new player, enter their name and create the invite. The campaign participant record is created automatically. If this person already exists in the roster, select that participant instead so their campaign identity and history are preserved.</p>
-                    <form asp-controller="Campaigns" asp-action="CreateInvitation" asp-route-campaignId="@Model.Id" method="post" class="row g-3">
-                        @Html.AntiForgeryToken()
-                        <div class="col-md-6">
-                            <label class="form-label" for="inviteDisplayName">Player name</label>
-                            <input id="inviteDisplayName" class="form-control" type="text" name="displayName" maxlength="120" placeholder="Player name" />
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label" for="inviteParticipant">Existing participant</label>
-                            <select id="inviteParticipant" class="form-select" name="participantId">
-                                <option value="">Create from player name</option>
-                                @foreach (var participant in Model.InviteableParticipants) { <option value="@participant.Id">@(participant.IsFormer ? "Former: " : "")@participant.DisplayName</option> }
-                            </select>
-                            <div class="form-text">Use this when the person is already listed below, including a former participant who is rejoining.</div>
-                        </div>
-                        <div class="col-12">
-                            <span class="form-label d-block">Campaign roles</span>
-                            <div class="form-check form-check-inline"><input class="form-check-input" id="invitePlayer" type="checkbox" name="player" value="true" checked /><label class="form-check-label" for="invitePlayer">Player</label></div>
-                            <div class="form-check form-check-inline"><input class="form-check-input" id="inviteDm" type="checkbox" name="dm" value="true" /><label class="form-check-label" for="inviteDm">DM</label></div>
-                        </div>
-                        <div class="col-12"><button class="btn btn-primary" type="submit">Create Invite Link</button></div>
-                    </form>
-                    @if (Model.Invitations.Count > 0)
-                    {
-                        <hr /><h3 class="h6">Pending invites</h3>
-                        <div class="list-group list-group-flush">@foreach (var invitation in Model.Invitations) { <div class="list-group-item px-0 d-flex justify-content-between gap-3"><div>@foreach (var role in invitation.Roles) { <span class="badge text-bg-light border me-1">@role.ToUpperInvariant()</span> } @if (invitation.ParticipantName is not null) { <span class="ms-1">for @invitation.ParticipantName</span> }<div class="small text-muted mt-1">Expires @invitation.ExpiresAt.ToLocalTime().ToString("g")</div></div><form asp-controller="Campaigns" asp-action="RevokeInvitation" asp-route-campaignId="@Model.Id" asp-route-invitationId="@invitation.Id" method="post">@Html.AntiForgeryToken()<button class="btn btn-sm btn-outline-secondary" type="submit">Revoke</button></form></div> }</div>
-                    }
-                </div></div>
+@section Scripts {
+    <script>
+        (() => {
+            const button = document.getElementById("copyCampaignInviteLink");
+            const field = document.getElementById("campaignInviteLink");
+            if (!button || !field) {
+                return;
             }
 
-            <div class="card shadow-sm"><div class="card-body">
-                <div class="d-flex justify-content-between align-items-center mb-3"><h2 class="h5 mb-0">Table Participants</h2><span class="text-muted small">Account optional</span></div>
-                @if (Model.CanManage && !Model.IsArchived)
-                {
-                    <h3 class="h6">Add Participant Without Account</h3>
-                    <p class="text-muted small">Use this only for someone who should appear in the campaign roster without joining through a Dorks &amp; Dice account.</p>
-                    <form asp-controller="Campaigns" asp-action="AddParticipant" asp-route-campaignId="@Model.Id" method="post" class="row g-2 mb-3">@Html.AntiForgeryToken()<div class="col-md-8"><label class="visually-hidden" for="participantName">Participant name</label><input id="participantName" class="form-control" type="text" name="displayName" maxlength="120" placeholder="Participant name" required /></div><div class="col-md-4"><button class="btn btn-outline-primary w-100" type="submit">Add Without Account</button></div></form>
+            button.addEventListener("click", async () => {
+                try {
+                    await navigator.clipboard.writeText(field.value);
+                } catch {
+                    field.select();
+                    document.execCommand("copy");
                 }
-                @if (Model.Participants.Count == 0) { <p class="text-muted mb-0">No table participants have been added yet.</p> }
-                else
-                {
-                    <div class="list-group list-group-flush">
-                    @foreach (var participant in Model.Participants)
-                    {
-                        <div class="list-group-item px-0"><div class="d-flex flex-column flex-lg-row justify-content-between gap-3">
-                            <div><div class="fw-semibold">@participant.DisplayName @if (!participant.IsActive) { <span class="badge text-bg-secondary ms-1">Former</span> }</div><div class="small text-muted">@(participant.UserId is null ? "No site account linked" : "Site account linked")</div></div>
-                            @if (Model.CanManage && !Model.IsArchived)
-                            {
-                                <div class="d-flex flex-wrap gap-2">
-                                    <form asp-controller="Campaigns" asp-action="RenameParticipant" asp-route-campaignId="@Model.Id" asp-route-participantId="@participant.Id" method="post" class="d-flex gap-2">@Html.AntiForgeryToken()<input class="form-control form-control-sm" type="text" name="displayName" value="@participant.DisplayName" maxlength="120" required /><button class="btn btn-sm btn-outline-primary" type="submit">Rename</button></form>
-                                    @if (participant.IsActive) { <form asp-controller="Campaigns" asp-action="RetireParticipant" asp-route-campaignId="@Model.Id" asp-route-participantId="@participant.Id" method="post">@Html.AntiForgeryToken()<button class="btn btn-sm btn-outline-secondary" type="submit">Mark Former</button></form> }
-                                    else if (participant.UserId is null) { <form asp-controller="Campaigns" asp-action="RestoreParticipant" asp-route-campaignId="@Model.Id" asp-route-participantId="@participant.Id" method="post">@Html.AntiForgeryToken()<button class="btn btn-sm btn-outline-secondary" type="submit">Restore</button></form> }
-                                </div>
-                            }
-                        </div></div>
-                    }
-                    </div>
-                }
-            </div></div>
-        </div>
 
-        <div class="col-lg-5"><div class="card shadow-sm"><div class="card-body">
-            <h2 class="h5">Campaign Context</h2>
-            <p class="text-muted mb-2">This campaign is the shared context for membership, participant identity, character associations, and campaign-scoped authority.</p>
-            @if (Model.IsArchived && Model.ArchivedAt is DateTimeOffset archivedAt) { <p class="small mb-0">Archived @archivedAt.ToLocalTime().ToString("g")</p> }
-        </div></div></div>
-    </div>
-</div>
+                button.textContent = "Copied";
+            });
+        })();
+    </script>
+}
