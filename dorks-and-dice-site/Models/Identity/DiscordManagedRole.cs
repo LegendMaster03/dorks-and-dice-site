@@ -27,3 +27,19 @@ public sealed class DiscordManagedRoleAssignment
     public string DiscordRoleId { get; set; } = string.Empty;
     public DateTimeOffset UpdatedAt { get; set; }
 }
+
+public sealed class DiscordManagedChannel
+{
+    public const int ChannelKeyMaxLength = 200;
+    public const int DiscordChannelIdMaxLength = 32;
+    public const int NameMaxLength = 100;
+
+    public string SourceId { get; set; } = string.Empty;
+    public string GuildId { get; set; } = string.Empty;
+    public string ChannelKey { get; set; } = string.Empty;
+    public string DiscordChannelId { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public int Kind { get; set; }
+    public string? ParentKey { get; set; }
+    public DateTimeOffset UpdatedAt { get; set; }
+}

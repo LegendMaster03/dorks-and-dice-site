@@ -334,6 +334,48 @@ namespace dorks_and_dice_site.Migrations.Identity
                     b.ToTable("DiscordManagedRoleAssignments", (string)null);
                 });
 
+            modelBuilder.Entity("dorks_and_dice_site.Models.Identity.DiscordManagedChannel", b =>
+                {
+                    b.Property<string>("SourceId")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("GuildId")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("ChannelKey")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("DiscordChannelId")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<int>("Kind")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ParentKey")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("SourceId", "GuildId", "ChannelKey");
+
+                    b.HasIndex("GuildId", "DiscordChannelId")
+                        .IsUnique();
+
+                    b.ToTable("DiscordManagedChannels", (string)null);
+                });
+
             modelBuilder.Entity("dorks_and_dice_site.Models.Operator.OperatorAuditRecord", b =>
                 {
                     b.Property<Guid>("Id")

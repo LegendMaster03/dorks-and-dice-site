@@ -5,10 +5,20 @@ using System.Text.Json;
 
 namespace dorks_and_dice_site.Plugins.DiscordBot;
 
+public sealed record DiscordGuild(string Id, string Name, string OwnerId);
 public sealed record DiscordGuildRole(string Id, string Name);
+public sealed record DiscordGuildChannel(
+    string Id,
+    string Name,
+    DiscordManagedChannelKind Kind,
+    string? ParentId);
 
 public interface IDiscordBotClient
 {
+    Task<DiscordGuild?> GetGuildAsync(
+        string guildId,
+        CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<DiscordGuildRole>> GetGuildRolesAsync(
         string guildId,
         CancellationToken cancellationToken = default);
@@ -40,11 +50,53 @@ public interface IDiscordBotClient
         string userId,
         string roleId,
         CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<DiscordGuildChannel>> GetGuildChannelsAsync(
+        string guildId,
+        CancellationToken cancellationToken = default);
+
+    Task<DiscordGuildChannel> CreateGuildChannelAsync(
+        string guildId,
+        string name,
+        DiscordManagedChannelKind kind,
+        string? parentId,
+        CancellationToken cancellationToken = default);
+
+    Task UpdateGuildChannelAsync(
+        string channelId,
+        string name,
+        string? parentId,
+        CancellationToken cancellationToken = default);
+
+    Task DeleteGuildChannelAsync(
+        string channelId,
+        CancellationToken cancellationToken = default);
 }
 
 public sealed class DiscordBotClient(HttpClient httpClient) : IDiscordBotClient
 {
     private readonly HttpClient _httpClient = httpClient;
+
+    public async Task<DiscordGuild?> GetGuildAsync(
+        string guildId,
+        CancellationToken cancellationToken = default)
+    {
+        using var response = await SendAsync(
+            () => new HttpRequestMessage(HttpMethod.Get, $"guilds/{guildId}"),
+            cancellationToken);
+        if (response.StatusCode == HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+
+        await EnsureSuccessAsync(response, cancellationToken);
+        await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+        using var document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
+        return new DiscordGuild(
+            document.RootElement.GetProperty("id").GetString() ?? guildId,
+            document.RootElement.GetProperty("name").GetString() ?? string.Empty,
+            document.RootElement.GetProperty("owner_id").GetString() ?? string.Empty);
+    }
 
     public async Task<IReadOnlyList<DiscordGuildRole>> GetGuildRolesAsync(
         string guildId,
@@ -155,6 +207,100 @@ public sealed class DiscordBotClient(HttpClient httpClient) : IDiscordBotClient
         await EnsureSuccessAsync(response, cancellationToken);
     }
 
+    public async Task<IReadOnlyList<DiscordGuildChannel>> GetGuildChannelsAsync(
+        string guildId,
+        CancellationToken cancellationToken = default)
+    {
+        using var response = await SendAsync(
+            () => new HttpRequestMessage(HttpMethod.Get, $"guilds/{guildId}/channels"),
+            cancellationToken);
+        await EnsureSuccessAsync(response, cancellationToken);
+
+        await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+        using var document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
+        return document.RootElement
+            .EnumerateArray()
+            .Where(channel =>
+                channel.TryGetProperty("type", out var type)
+                && Enum.IsDefined(typeof(DiscordManagedChannelKind), type.GetInt32()))
+            .Select(channel => new DiscordGuildChannel(
+                channel.GetProperty("id").GetString() ?? string.Empty,
+                channel.GetProperty("name").GetString() ?? string.Empty,
+                (DiscordManagedChannelKind)channel.GetProperty("type").GetInt32(),
+                channel.TryGetProperty("parent_id", out var parent)
+                    && parent.ValueKind == JsonValueKind.String
+                        ? parent.GetString()
+                        : null))
+            .Where(channel => channel.Id.Length > 0)
+            .ToArray();
+    }
+
+    public async Task<DiscordGuildChannel> CreateGuildChannelAsync(
+        string guildId,
+        string name,
+        DiscordManagedChannelKind kind,
+        string? parentId,
+        CancellationToken cancellationToken = default)
+    {
+        using var response = await SendAsync(
+            () => JsonRequest(
+                HttpMethod.Post,
+                $"guilds/{guildId}/channels",
+                new
+                {
+                    name,
+                    type = (int)kind,
+                    parent_id = parentId
+                }),
+            cancellationToken);
+        await EnsureSuccessAsync(response, cancellationToken);
+
+        await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+        using var document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
+        return new DiscordGuildChannel(
+            document.RootElement.GetProperty("id").GetString() ?? string.Empty,
+            document.RootElement.GetProperty("name").GetString() ?? name,
+            (DiscordManagedChannelKind)document.RootElement.GetProperty("type").GetInt32(),
+            document.RootElement.TryGetProperty("parent_id", out var parent)
+                && parent.ValueKind == JsonValueKind.String
+                    ? parent.GetString()
+                    : null);
+    }
+
+    public async Task UpdateGuildChannelAsync(
+        string channelId,
+        string name,
+        string? parentId,
+        CancellationToken cancellationToken = default)
+    {
+        using var response = await SendAsync(
+            () => JsonRequest(
+                HttpMethod.Patch,
+                $"channels/{channelId}",
+                new
+                {
+                    name,
+                    parent_id = parentId
+                }),
+            cancellationToken);
+        await EnsureSuccessAsync(response, cancellationToken);
+    }
+
+    public async Task DeleteGuildChannelAsync(
+        string channelId,
+        CancellationToken cancellationToken = default)
+    {
+        using var response = await SendAsync(
+            () => new HttpRequestMessage(HttpMethod.Delete, $"channels/{channelId}"),
+            cancellationToken);
+        if (response.StatusCode == HttpStatusCode.NotFound)
+        {
+            return;
+        }
+
+        await EnsureSuccessAsync(response, cancellationToken);
+    }
+
     private async Task<HttpResponseMessage> SendAsync(
         Func<HttpRequestMessage> requestFactory,
         CancellationToken cancellationToken)
@@ -213,7 +359,10 @@ public sealed class DiscordBotInstallLinkProvider(
     string? clientId,
     bool enabled) : IDiscordBotInstallLinkProvider
 {
+    private const ulong ManageChannelsPermission = 1UL << 4;
     private const ulong ManageRolesPermission = 1UL << 28;
+    private const ulong RequiredPermissions =
+        ManageChannelsPermission | ManageRolesPermission;
 
     public string? CreateInstallUrl(string? guildId = null)
     {
@@ -224,7 +373,7 @@ public sealed class DiscordBotInstallLinkProvider(
 
         var query = $"client_id={Uri.EscapeDataString(clientId)}"
             + $"&scope=bot"
-            + $"&permissions={ManageRolesPermission}";
+            + $"&permissions={RequiredPermissions}";
 
         if (!string.IsNullOrWhiteSpace(guildId))
         {

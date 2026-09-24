@@ -5,24 +5,24 @@ using Microsoft.EntityFrameworkCore;
 
 namespace dorks_and_dice_site.Plugins.DiscordBot;
 
-public interface IDiscordRoleSyncService
+public interface IDiscordWorkspaceSyncService
 {
     Task SynchronizeAsync(CancellationToken cancellationToken = default);
 }
 
-public sealed class DiscordRoleSyncService(
+public sealed class DiscordWorkspaceSyncService(
     IdentityDbContext identityDbContext,
-    IEnumerable<IDiscordRoleProjectionSource> projectionSources,
+    IEnumerable<IDiscordWorkspaceProjectionSource> projectionSources,
     IDiscordBotClient discord,
     TimeProvider timeProvider,
-    ILogger<DiscordRoleSyncService> logger) : IDiscordRoleSyncService
+    ILogger<DiscordWorkspaceSyncService> logger) : IDiscordWorkspaceSyncService
 {
     private readonly IdentityDbContext _identityDbContext = identityDbContext;
-    private readonly IReadOnlyList<IDiscordRoleProjectionSource> _projectionSources =
+    private readonly IReadOnlyList<IDiscordWorkspaceProjectionSource> _projectionSources =
         projectionSources.ToArray();
     private readonly IDiscordBotClient _discord = discord;
     private readonly TimeProvider _timeProvider = timeProvider;
-    private readonly ILogger<DiscordRoleSyncService> _logger = logger;
+    private readonly ILogger<DiscordWorkspaceSyncService> _logger = logger;
 
     public async Task SynchronizeAsync(CancellationToken cancellationToken = default)
     {
@@ -38,7 +38,7 @@ public sealed class DiscordRoleSyncService(
             {
                 _logger.LogError(
                     exception,
-                    "Discord role projection {SourceId} failed.",
+                    "Discord workspace projection {SourceId} failed.",
                     source.SourceId);
             }
         }
@@ -46,7 +46,16 @@ public sealed class DiscordRoleSyncService(
 
     private async Task ReconcileSourceAsync(
         string sourceId,
-        IReadOnlyCollection<DiscordGuildRoleProjection> projections,
+        IReadOnlyCollection<DiscordGuildWorkspaceProjection> projections,
+        CancellationToken cancellationToken)
+    {
+        await ReconcileRolesAsync(sourceId, projections, cancellationToken);
+        await ReconcileChannelsAsync(sourceId, projections, cancellationToken);
+    }
+
+    private async Task ReconcileRolesAsync(
+        string sourceId,
+        IReadOnlyCollection<DiscordGuildWorkspaceProjection> projections,
         CancellationToken cancellationToken)
     {
         var desired = projections
@@ -148,6 +157,151 @@ public sealed class DiscordRoleSyncService(
                 mapping,
                 cancellationToken);
         }
+    }
+
+    private async Task ReconcileChannelsAsync(
+        string sourceId,
+        IReadOnlyCollection<DiscordGuildWorkspaceProjection> projections,
+        CancellationToken cancellationToken)
+    {
+        var desired = projections
+            .SelectMany(projection => projection.Channels.Select(channel => new DesiredChannel(
+                projection.GuildId,
+                channel)))
+            .ToDictionary(
+                item => ChannelIdentity(item.GuildId, item.Channel.Key),
+                StringComparer.Ordinal);
+
+        var existingMappings = await _identityDbContext.DiscordManagedChannels
+            .Where(channel => channel.SourceId == sourceId)
+            .ToListAsync(cancellationToken);
+
+        foreach (var stale in existingMappings
+            .Where(mapping =>
+                !desired.ContainsKey(ChannelIdentity(mapping.GuildId, mapping.ChannelKey)))
+            .OrderBy(mapping =>
+                mapping.Kind == (int)DiscordManagedChannelKind.Category ? 1 : 0)
+            .ToArray())
+        {
+            if (!await RemoveManagedChannelAsync(stale, cancellationToken))
+            {
+                continue;
+            }
+
+            existingMappings.Remove(stale);
+        }
+
+        var guildChannels = new Dictionary<string, IReadOnlyDictionary<string, DiscordGuildChannel>>(
+            StringComparer.Ordinal);
+
+        foreach (var desiredChannel in desired.Values
+            .OrderBy(item =>
+                item.Channel.Kind == DiscordManagedChannelKind.Category ? 0 : 1)
+            .ThenBy(item => item.Channel.Name, StringComparer.OrdinalIgnoreCase))
+        {
+            if (!guildChannels.TryGetValue(desiredChannel.GuildId, out var channelsById))
+            {
+                var channels = await _discord.GetGuildChannelsAsync(
+                    desiredChannel.GuildId,
+                    cancellationToken);
+                channelsById = channels.ToDictionary(channel => channel.Id, StringComparer.Ordinal);
+                guildChannels[desiredChannel.GuildId] = channelsById;
+            }
+
+            var mapping = existingMappings.SingleOrDefault(candidate =>
+                candidate.GuildId == desiredChannel.GuildId
+                && candidate.ChannelKey == desiredChannel.Channel.Key);
+
+            if (mapping is not null
+                && (!channelsById.TryGetValue(mapping.DiscordChannelId, out var actual)
+                    || actual.Kind != desiredChannel.Channel.Kind))
+            {
+                if (channelsById.ContainsKey(mapping.DiscordChannelId))
+                {
+                    await _discord.DeleteGuildChannelAsync(
+                        mapping.DiscordChannelId,
+                        cancellationToken);
+                }
+
+                _identityDbContext.DiscordManagedChannels.Remove(mapping);
+                existingMappings.Remove(mapping);
+                await _identityDbContext.SaveChangesAsync(cancellationToken);
+                mapping = null;
+            }
+
+            var parentId = ResolveParentId(
+                sourceId,
+                desiredChannel,
+                existingMappings);
+
+            if (mapping is null)
+            {
+                var created = await _discord.CreateGuildChannelAsync(
+                    desiredChannel.GuildId,
+                    desiredChannel.Channel.Name,
+                    desiredChannel.Channel.Kind,
+                    parentId,
+                    cancellationToken);
+
+                mapping = new DiscordManagedChannel
+                {
+                    SourceId = sourceId,
+                    GuildId = desiredChannel.GuildId,
+                    ChannelKey = desiredChannel.Channel.Key,
+                    DiscordChannelId = created.Id,
+                    Name = desiredChannel.Channel.Name,
+                    Kind = (int)desiredChannel.Channel.Kind,
+                    ParentKey = desiredChannel.Channel.ParentKey,
+                    UpdatedAt = _timeProvider.GetUtcNow()
+                };
+                _identityDbContext.DiscordManagedChannels.Add(mapping);
+                existingMappings.Add(mapping);
+                await _identityDbContext.SaveChangesAsync(cancellationToken);
+                continue;
+            }
+
+            var current = channelsById[mapping.DiscordChannelId];
+            if (!string.Equals(
+                    current.Name,
+                    desiredChannel.Channel.Name,
+                    StringComparison.Ordinal)
+                || !string.Equals(current.ParentId, parentId, StringComparison.Ordinal))
+            {
+                await _discord.UpdateGuildChannelAsync(
+                    mapping.DiscordChannelId,
+                    desiredChannel.Channel.Name,
+                    parentId,
+                    cancellationToken);
+            }
+
+            mapping.Name = desiredChannel.Channel.Name;
+            mapping.ParentKey = desiredChannel.Channel.ParentKey;
+            mapping.UpdatedAt = _timeProvider.GetUtcNow();
+            await _identityDbContext.SaveChangesAsync(cancellationToken);
+        }
+    }
+
+    private string? ResolveParentId(
+        string sourceId,
+        DesiredChannel desired,
+        IReadOnlyCollection<DiscordManagedChannel> mappings)
+    {
+        if (string.IsNullOrWhiteSpace(desired.Channel.ParentKey))
+        {
+            return null;
+        }
+
+        var parent = mappings.SingleOrDefault(mapping =>
+            mapping.SourceId == sourceId
+            && mapping.GuildId == desired.GuildId
+            && mapping.ChannelKey == desired.Channel.ParentKey);
+        if (parent is null)
+        {
+            throw new InvalidOperationException(
+                $"Discord channel '{desired.Channel.Key}' references parent '{desired.Channel.ParentKey}' before it is available.");
+        }
+
+        return parent.DiscordChannelId;
     }
 
     private async Task ReconcileAssignmentsAsync(
@@ -275,12 +429,37 @@ public sealed class DiscordRoleSyncService(
         }
     }
 
+    private async Task<bool> RemoveManagedChannelAsync(
+        DiscordManagedChannel mapping,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await _discord.DeleteGuildChannelAsync(
+                mapping.DiscordChannelId,
+                cancellationToken);
+            _identityDbContext.DiscordManagedChannels.Remove(mapping);
+            await _identityDbContext.SaveChangesAsync(cancellationToken);
+            return true;
+        }
+        catch (Exception exception) when (!cancellationToken.IsCancellationRequested)
+        {
+            _logger.LogWarning(
+                exception,
+                "Could not remove managed Discord channel {ChannelKey} from guild {GuildId}.",
+                mapping.ChannelKey,
+                mapping.GuildId);
+            return false;
+        }
+    }
+
     private static void Validate(
         string sourceId,
-        IReadOnlyCollection<DiscordGuildRoleProjection> projections)
+        IReadOnlyCollection<DiscordGuildWorkspaceProjection> projections)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(sourceId);
-        var seen = new HashSet<string>(StringComparer.Ordinal);
+        var seenRoles = new HashSet<string>(StringComparer.Ordinal);
+        var seenChannels = new HashSet<string>(StringComparer.Ordinal);
 
         foreach (var projection in projections)
         {
@@ -293,7 +472,7 @@ public sealed class DiscordRoleSyncService(
                     || role.Key.Length > DiscordManagedRole.RoleKeyMaxLength)
                 {
                     throw new InvalidOperationException(
-                        $"Discord role projection '{sourceId}' contains an invalid role key.");
+                        $"Discord workspace projection '{sourceId}' contains an invalid role key.");
                 }
 
                 if (string.IsNullOrWhiteSpace(role.DisplayName)
@@ -303,10 +482,53 @@ public sealed class DiscordRoleSyncService(
                         $"Discord role '{role.Key}' has an invalid display name.");
                 }
 
-                if (!seen.Add(RoleIdentity(projection.GuildId, role.Key)))
+                if (!seenRoles.Add(RoleIdentity(projection.GuildId, role.Key)))
                 {
                     throw new InvalidOperationException(
-                        $"Discord role projection '{sourceId}' emitted duplicate role '{role.Key}' for guild '{projection.GuildId}'.");
+                        $"Discord workspace projection '{sourceId}' emitted duplicate role '{role.Key}' for guild '{projection.GuildId}'.");
+                }
+            }
+
+            var channelsByKey = projection.Channels.ToDictionary(
+                channel => channel.Key,
+                StringComparer.Ordinal);
+
+            foreach (var channel in projection.Channels)
+            {
+                if (string.IsNullOrWhiteSpace(channel.Key)
+                    || channel.Key.Length > DiscordManagedChannel.ChannelKeyMaxLength)
+                {
+                    throw new InvalidOperationException(
+                        $"Discord workspace projection '{sourceId}' contains an invalid channel key.");
+                }
+
+                if (string.IsNullOrWhiteSpace(channel.Name)
+                    || channel.Name.Length > DiscordManagedChannel.NameMaxLength)
+                {
+                    throw new InvalidOperationException(
+                        $"Discord channel '{channel.Key}' has an invalid name.");
+                }
+
+                if (!seenChannels.Add(ChannelIdentity(projection.GuildId, channel.Key)))
+                {
+                    throw new InvalidOperationException(
+                        $"Discord workspace projection '{sourceId}' emitted duplicate channel '{channel.Key}' for guild '{projection.GuildId}'.");
+                }
+
+                if (!string.IsNullOrWhiteSpace(channel.ParentKey))
+                {
+                    if (!channelsByKey.TryGetValue(channel.ParentKey, out var parent)
+                        || parent.Kind != DiscordManagedChannelKind.Category)
+                    {
+                        throw new InvalidOperationException(
+                            $"Discord channel '{channel.Key}' must reference a desired category in the same guild.");
+                    }
+
+                    if (channel.Kind == DiscordManagedChannelKind.Category)
+                    {
+                        throw new InvalidOperationException(
+                            $"Discord category '{channel.Key}' can not have a parent.");
+                    }
                 }
             }
         }
@@ -326,17 +548,24 @@ public sealed class DiscordRoleSyncService(
     private static string RoleIdentity(string guildId, string roleKey) =>
         $"{guildId}\u001f{roleKey}";
 
+    private static string ChannelIdentity(string guildId, string channelKey) =>
+        $"{guildId}\u001f{channelKey}";
+
     private sealed record DesiredRole(
         string ModeId,
         string ActivationResourceId,
         string GuildId,
         DiscordDesiredRole Role);
+
+    private sealed record DesiredChannel(
+        string GuildId,
+        DiscordDesiredChannel Channel);
 }
 
-public sealed class DiscordRoleSyncWorker(
+public sealed class DiscordWorkspaceSyncWorker(
     IServiceScopeFactory scopeFactory,
     DiscordBotOptions options,
-    ILogger<DiscordRoleSyncWorker> logger) : BackgroundService
+    ILogger<DiscordWorkspaceSyncWorker> logger) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -348,7 +577,7 @@ public sealed class DiscordRoleSyncWorker(
             {
                 using var scope = scopeFactory.CreateScope();
                 var synchronizer = scope.ServiceProvider
-                    .GetRequiredService<IDiscordRoleSyncService>();
+                    .GetRequiredService<IDiscordWorkspaceSyncService>();
                 await synchronizer.SynchronizeAsync(stoppingToken);
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
@@ -357,7 +586,7 @@ public sealed class DiscordRoleSyncWorker(
             }
             catch (Exception exception)
             {
-                logger.LogError(exception, "Discord role synchronization failed.");
+                logger.LogError(exception, "Discord workspace synchronization failed.");
             }
 
             await Task.Delay(interval, stoppingToken);

@@ -16,6 +16,7 @@ public sealed class IdentityDbContext : IdentityDbContext<ApplicationUser, Ident
     public DbSet<AccountLinkModeActivation> AccountLinkModeActivations => Set<AccountLinkModeActivation>();
     public DbSet<DiscordManagedRole> DiscordManagedRoles => Set<DiscordManagedRole>();
     public DbSet<DiscordManagedRoleAssignment> DiscordManagedRoleAssignments => Set<DiscordManagedRoleAssignment>();
+    public DbSet<DiscordManagedChannel> DiscordManagedChannels => Set<DiscordManagedChannel>();
     public DbSet<OperatorCredential> OperatorCredentials => Set<OperatorCredential>();
     public DbSet<OperatorBrowserBootstrap> OperatorBrowserBootstraps => Set<OperatorBrowserBootstrap>();
     public DbSet<OperatorAuditRecord> OperatorAuditRecords => Set<OperatorAuditRecord>();
@@ -121,6 +122,34 @@ public sealed class IdentityDbContext : IdentityDbContext<ApplicationUser, Ident
                 value.GuildId,
                 value.DiscordUserId
             });
+        });
+
+        builder.Entity<DiscordManagedChannel>(channel =>
+        {
+            channel.ToTable("DiscordManagedChannels");
+            channel.HasKey(value => new { value.SourceId, value.GuildId, value.ChannelKey });
+            channel.Property(value => value.SourceId)
+                .HasMaxLength(DiscordManagedRole.SourceIdMaxLength)
+                .IsRequired();
+            channel.Property(value => value.GuildId)
+                .HasMaxLength(DiscordManagedRole.GuildIdMaxLength)
+                .IsRequired();
+            channel.Property(value => value.ChannelKey)
+                .HasMaxLength(DiscordManagedChannel.ChannelKeyMaxLength)
+                .IsRequired();
+            channel.Property(value => value.DiscordChannelId)
+                .HasMaxLength(DiscordManagedChannel.DiscordChannelIdMaxLength)
+                .IsRequired();
+            channel.Property(value => value.Name)
+                .HasMaxLength(DiscordManagedChannel.NameMaxLength)
+                .IsRequired();
+            channel.Property(value => value.ParentKey)
+                .HasMaxLength(DiscordManagedChannel.ChannelKeyMaxLength);
+            channel.Property(value => value.Kind)
+                .IsRequired();
+            channel.Property(value => value.UpdatedAt)
+                .IsRequired();
+            channel.HasIndex(value => new { value.GuildId, value.DiscordChannelId }).IsUnique();
         });
 
         builder.Entity<OperatorCredential>(credential =>

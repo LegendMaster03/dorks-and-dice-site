@@ -28,6 +28,7 @@ public sealed class DiscordBotPlugin(IConfiguration configuration) : ISitePlugin
 
         if (!options.Enabled)
         {
+            services.AddSingleton<IDiscordGuildOwnershipVerifier, DiscordGuildOwnershipVerifierUnavailable>();
             return;
         }
 
@@ -49,8 +50,9 @@ public sealed class DiscordBotPlugin(IConfiguration configuration) : ISitePlugin
             client.DefaultRequestHeaders.UserAgent.ParseAdd(
                 "DorksAndDiceSite/1.0 (+https://dorks-and-dice.com)");
         });
-        services.AddScoped<IDiscordRoleSyncService, DiscordRoleSyncService>();
-        services.AddHostedService<DiscordRoleSyncWorker>();
+        services.AddScoped<IDiscordWorkspaceSyncService, DiscordWorkspaceSyncService>();
+        services.AddScoped<IDiscordGuildOwnershipVerifier, DiscordGuildOwnershipVerifier>();
+        services.AddHostedService<DiscordWorkspaceSyncWorker>();
     }
 
     private static string? ResolveToken(DiscordBotOptions options)
