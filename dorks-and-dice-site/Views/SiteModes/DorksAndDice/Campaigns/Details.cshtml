@@ -4,9 +4,10 @@
     ViewData["Title"] = Model.Name;
     var activeParticipants = Model.Participants.Where(participant => participant.IsActive).ToArray();
     var formerParticipants = Model.Participants.Where(participant => !participant.IsActive).ToArray();
+    var showCampaignSettings = Model.CanManage || !Model.IsArchived;
 }
 
-<div class="container py-4 campaign-page">
+<div class="campaign-page">
     <nav class="campaign-breadcrumb" aria-label="Campaign breadcrumb">
         <a asp-controller="Campaigns" asp-action="Index">Campaigns</a>
         <span aria-hidden="true">/</span>
@@ -51,7 +52,10 @@
                 <strong>Invite created.</strong>
                 <div class="small text-muted">Send this one-time link to the intended participant.</div>
             </div>
-            <input id="campaignInviteLink" class="form-control" type="text" value="@inviteLink" readonly aria-label="Campaign invite link" />
+            <div class="input-group">
+                <input id="campaignInviteLink" class="form-control" type="text" value="@inviteLink" readonly aria-label="Campaign invite link" />
+                <button id="copyCampaignInviteLink" class="btn btn-outline-primary" type="button">Copy Link</button>
+            </div>
         </div>
     }
 
@@ -69,7 +73,10 @@
         {
             <a href="#invite">Invite</a>
         }
-        <a href="#campaign-settings">Settings</a>
+        @if (showCampaignSettings)
+        {
+            <a href="#campaign-settings">Settings</a>
+        }
     </nav>
 
     <div class="row g-4 align-items-start">
@@ -324,47 +331,51 @@
                 </section>
             }
 
-            <section id="campaign-settings" class="campaign-sidebar-card">
-                <p class="campaign-eyebrow mb-1">Campaign</p>
-                <h2>Settings</h2>
+            @if (showCampaignSettings)
+            {
+                <section id="campaign-settings" class="campaign-sidebar-card">
+                    <p class="campaign-eyebrow mb-1">Campaign</p>
+                    <h2>Settings</h2>
 
-                @if (Model.CanManage)
-                {
+                    @if (Model.CanManage)
+                    {
+                        @if (!Model.IsArchived)
+                        {
+                            <form asp-controller="Campaigns" asp-action="Rename" asp-route-campaignId="@Model.Id" method="post" class="d-flex flex-column gap-2 mb-3">
+                                @Html.AntiForgeryToken()
+                                <label class="form-label mb-0" for="campaignRename">Campaign name</label>
+                                <input id="campaignRename" class="form-control" type="text" name="name" value="@Model.Name" maxlength="160" required />
+                                <button class="btn btn-outline-primary" type="submit">Save Name</button>
+                            </form>
+                        }
+
+                        @if (Model.IsArchived)
+                        {
+                            <form asp-controller="Campaigns" asp-action="Restore" asp-route-campaignId="@Model.Id" method="post">
+                                @Html.AntiForgeryToken()
+                                <button class="btn btn-primary w-100" type="submit">Restore Campaign</button>
+                            </form>
+                        }
+                        else
+                        {
+                            <form asp-controller="Campaigns" asp-action="Archive" asp-route-campaignId="@Model.Id" method="post">
+                                @Html.AntiForgeryToken()
+                                <button class="btn btn-outline-secondary w-100" type="submit">Archive Campaign</button>
+                            </form>
+                        }
+                    }
+
                     @if (!Model.IsArchived)
                     {
-                        <form asp-controller="Campaigns" asp-action="Rename" asp-route-campaignId="@Model.Id" method="post" class="d-flex flex-column gap-2 mb-3">
+                        <div class="campaign-sidebar-divider"></div>
+                        <form asp-controller="Campaigns" asp-action="Leave" asp-route-campaignId="@Model.Id" method="post" onsubmit="return confirm('Leave this campaign?');">
                             @Html.AntiForgeryToken()
-                            <label class="form-label mb-0" for="campaignRename">Campaign name</label>
-                            <input id="campaignRename" class="form-control" type="text" name="name" value="@Model.Name" maxlength="160" required />
-                            <button class="btn btn-outline-primary" type="submit">Save Name</button>
+                            <button class="btn btn-outline-secondary w-100" type="submit">Leave Campaign</button>
                         </form>
                     }
+                </section>
 
-                    @if (Model.IsArchived)
-                    {
-                        <form asp-controller="Campaigns" asp-action="Restore" asp-route-campaignId="@Model.Id" method="post">
-                            @Html.AntiForgeryToken()
-                            <button class="btn btn-primary w-100" type="submit">Restore Campaign</button>
-                        </form>
-                    }
-                    else
-                    {
-                        <form asp-controller="Campaigns" asp-action="Archive" asp-route-campaignId="@Model.Id" method="post">
-                            @Html.AntiForgeryToken()
-                            <button class="btn btn-outline-secondary w-100" type="submit">Archive Campaign</button>
-                        </form>
-                    }
-                }
-
-                @if (!Model.IsArchived)
-                {
-                    <div class="campaign-sidebar-divider"></div>
-                    <form asp-controller="Campaigns" asp-action="Leave" asp-route-campaignId="@Model.Id" method="post" onsubmit="return confirm('Leave this campaign?');">
-                        @Html.AntiForgeryToken()
-                        <button class="btn btn-outline-secondary w-100" type="submit">Leave Campaign</button>
-                    </form>
-                }
-            </section>
+            }
 
             <section class="campaign-sidebar-card campaign-summary-card">
                 <p class="campaign-eyebrow mb-1">At a glance</p>
@@ -393,3 +404,27 @@
         </section>
     }
 </div>
+
+
+@section Scripts {
+    <script>
+        (() => {
+            const button = document.getElementById("copyCampaignInviteLink");
+            const field = document.getElementById("campaignInviteLink");
+            if (!button || !field) {
+                return;
+            }
+
+            button.addEventListener("click", async () => {
+                try {
+                    await navigator.clipboard.writeText(field.value);
+                } catch {
+                    field.select();
+                    document.execCommand("copy");
+                }
+
+                button.textContent = "Copied";
+            });
+        })();
+    </script>
+}
