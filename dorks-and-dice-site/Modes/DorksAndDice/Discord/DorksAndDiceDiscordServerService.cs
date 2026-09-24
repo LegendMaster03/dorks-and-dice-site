@@ -44,13 +44,14 @@ public sealed class DorksAndDiceDiscordServerService(
     public async Task<IReadOnlyList<DorksAndDiceDiscordServerBinding>> GetForOwnerAsync(
         Guid ownerUserId,
         CancellationToken cancellationToken = default) =>
-        await dbContext.DiscordServerBindings
+        (await dbContext.DiscordServerBindings
             .AsNoTracking()
             .Where(binding => binding.OwnerUserId == ownerUserId)
             .Include(binding => binding.Campaigns)
                 .ThenInclude(selection => selection.Campaign)
+            .ToListAsync(cancellationToken))
             .OrderBy(binding => binding.CreatedAt)
-            .ToListAsync(cancellationToken);
+            .ToArray();
 
     public async Task<IReadOnlyList<Campaign>> GetEligibleCampaignsAsync(
         Guid ownerUserId,

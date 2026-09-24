@@ -47,11 +47,12 @@ public sealed class DorksAndDiceDiscordCampaignProjectionSource(
                 [])
         };
 
-        var bindings = await dbContext.DiscordServerBindings
+        var bindings = (await dbContext.DiscordServerBindings
             .AsNoTracking()
             .Include(binding => binding.Campaigns)
+            .ToListAsync(cancellationToken))
             .OrderBy(binding => binding.CreatedAt)
-            .ToListAsync(cancellationToken);
+            .ToArray();
 
         foreach (var binding in bindings)
         {

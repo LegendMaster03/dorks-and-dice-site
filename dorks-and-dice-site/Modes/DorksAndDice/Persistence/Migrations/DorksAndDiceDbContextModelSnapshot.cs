@@ -1,5 +1,6 @@
 using dorks_and_dice_site.Modes.DorksAndDice.Campaigns;
 using dorks_and_dice_site.Modes.DorksAndDice.Characters;
+using dorks_and_dice_site.Modes.DorksAndDice.Discord;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
@@ -205,7 +206,7 @@ public sealed class DorksAndDiceDbContextModelSnapshot : ModelSnapshot
             b.Property<Guid>("Id")
                 .ValueGeneratedOnAdd();
 
-            b.Property<int>("CampaignScope");
+            b.Property<DiscordServerCampaignScope>("CampaignScope");
             b.Property<DateTimeOffset>("CreatedAt");
             b.Property<string>("GuildId")
                 .IsRequired()
