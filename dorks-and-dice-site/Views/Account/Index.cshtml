@@ -38,14 +38,10 @@
             <button type="submit" class="btn btn-primary align-self-start">Save profile</button>
         </form>
 
-        <div class="card card-body shadow-sm mb-4">
-            <h2 class="h5">Linked accounts</h2>
-            @if (Model.AccountLinks.Count == 0)
-            {
-                <p class="mb-0 text-body-secondary">No account-link providers are currently configured.</p>
-            }
-            else
-            {
+        @if (Model.AccountLinks.Count > 0)
+        {
+            <div class="card card-body shadow-sm mb-4">
+                <h2 class="h5">Linked accounts</h2>
                 <div class="vstack gap-3">
                     @foreach (var link in Model.AccountLinks)
                     {
@@ -82,8 +78,8 @@
                         </div>
                     }
                 </div>
-            }
-        </div>
+            </div>
+        }
 
         @if (Model.IsAdministrator || Model.IsDeveloper)
         {

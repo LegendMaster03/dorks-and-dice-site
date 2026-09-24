@@ -115,6 +115,9 @@ public sealed class AccountLinkingTests
         using var factory = new IdentityWebApplicationFactory(connectionString)
             .WithWebHostBuilder(builder =>
             {
+                builder.UseSetting(
+                    "ModeConnections:dorks-and-dice:test-provider:ResourceId",
+                    "test-community");
                 builder.ConfigureServices(services =>
                 {
                     services.AddSingleton<IAccountLinkProvider>(provider);
@@ -228,6 +231,114 @@ public sealed class AccountLinkingTests
         var verificationUser = await verificationUserManager.FindByIdAsync(userId.ToString());
         Assert.NotNull(verificationUser);
         Assert.Empty(await verificationUserManager.GetLoginsAsync(verificationUser));
+    }
+
+    [Fact]
+    public async Task AccountLinkProviderIsHiddenAndActionsAreRejectedOutsideConfiguredMode()
+    {
+        var connectionString = Environment.GetEnvironmentVariable("IDENTITY_TEST_POSTGRES");
+        if (string.IsNullOrWhiteSpace(connectionString)) return;
+
+        var provider = new FakeAccountLinkProvider();
+        using var factory = new IdentityWebApplicationFactory(connectionString)
+            .WithWebHostBuilder(builder =>
+            {
+                builder.UseSetting(
+                    "ModeConnections:dorks-and-dice:test-provider:ResourceId",
+                    "test-community");
+                builder.ConfigureServices(services =>
+                {
+                    services.AddSingleton<IAccountLinkProvider>(provider);
+                });
+            });
+
+        var email = $"account-link-mode-{Guid.NewGuid():N}@example.test";
+        const string password = "correct horse battery staple";
+        Guid userId;
+        using (var scope = factory.Services.CreateScope())
+        {
+            var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+            var user = new ApplicationUser
+            {
+                Id = Guid.NewGuid(),
+                UserName = email,
+                Email = email,
+                DisplayName = "Mode Scoped Link Test",
+                CreatedAt = DateTimeOffset.UtcNow
+            };
+            Assert.True((await userManager.CreateAsync(user, password)).Succeeded);
+            var token = await userManager.GenerateEmailConfirmationTokenAsync(user);
+            Assert.True((await userManager.ConfirmEmailAsync(user, token)).Succeeded);
+            userId = user.Id;
+        }
+
+        using var dorksClient = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+            HandleCookies = true,
+            BaseAddress = new Uri("https://dorks-and-dice.com")
+        });
+        await LoginAsync(dorksClient, email, password);
+
+        var dorksAccount = await dorksClient.GetAsync("/account");
+        Assert.Equal(HttpStatusCode.OK, dorksAccount.StatusCode);
+        var dorksHtml = await dorksAccount.Content.ReadAsStringAsync();
+        Assert.Contains("Linked accounts", dorksHtml, StringComparison.Ordinal);
+        Assert.Contains("Test Provider", dorksHtml, StringComparison.Ordinal);
+
+        using var professionalClient = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+            HandleCookies = true,
+            BaseAddress = new Uri("https://kylebarnett.com")
+        });
+        await LoginAsync(professionalClient, email, password);
+
+        var professionalAccount = await professionalClient.GetAsync("/account");
+        Assert.Equal(HttpStatusCode.OK, professionalAccount.StatusCode);
+        var professionalHtml = await professionalAccount.Content.ReadAsStringAsync();
+        Assert.DoesNotContain("Linked accounts", professionalHtml, StringComparison.Ordinal);
+        Assert.DoesNotContain("Test Provider", professionalHtml, StringComparison.Ordinal);
+
+        var antiforgeryToken = ExtractAntiforgeryToken(professionalHtml);
+        using var connectForm = new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["__RequestVerificationToken"] = antiforgeryToken
+        });
+        var connect = await professionalClient.PostAsync(
+            "/account/links/test-provider/connect",
+            connectForm);
+        Assert.Equal(HttpStatusCode.NotFound, connect.StatusCode);
+        Assert.Null(provider.LastChallengeProperties);
+
+        using (var scope = factory.Services.CreateScope())
+        {
+            var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+            var user = await userManager.FindByIdAsync(userId.ToString());
+            Assert.NotNull(user);
+            Assert.True((await userManager.AddLoginAsync(
+                user,
+                new UserLoginInfo(
+                    provider.Descriptor.Id,
+                    "external-mode-test",
+                    provider.Descriptor.DisplayName))).Succeeded);
+        }
+
+        using var disconnectForm = new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["__RequestVerificationToken"] = antiforgeryToken
+        });
+        var disconnect = await professionalClient.PostAsync(
+            "/account/links/test-provider/disconnect",
+            disconnectForm);
+        Assert.Equal(HttpStatusCode.NotFound, disconnect.StatusCode);
+
+        using var verificationScope = factory.Services.CreateScope();
+        var verificationUserManager =
+            verificationScope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+        var verificationUser = await verificationUserManager.FindByIdAsync(userId.ToString());
+        Assert.NotNull(verificationUser);
+        Assert.Single(await verificationUserManager.GetLoginsAsync(verificationUser));
     }
 
     [Fact]

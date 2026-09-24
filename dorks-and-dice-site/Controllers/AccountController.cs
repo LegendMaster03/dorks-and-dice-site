@@ -23,6 +23,7 @@ public sealed class AccountController : Controller
     private readonly ISiteModePresentationService _siteModePresentationService;
     private readonly IAccountEmailSender _emailSender;
     private readonly IAccountLinkProviderCatalog _accountLinkProviders;
+    private readonly IModeExternalConnectionRegistry _modeExternalConnections;
     private readonly IdentityDbContext _identityDbContext;
     private readonly ILogger<AccountController> _logger;
 
@@ -34,6 +35,7 @@ public sealed class AccountController : Controller
         ISiteModePresentationService siteModePresentationService,
         IAccountEmailSender emailSender,
         IAccountLinkProviderCatalog accountLinkProviders,
+        IModeExternalConnectionRegistry modeExternalConnections,
         IdentityDbContext identityDbContext,
         ILogger<AccountController> logger)
     {
@@ -44,6 +46,7 @@ public sealed class AccountController : Controller
         _siteModePresentationService = siteModePresentationService;
         _emailSender = emailSender;
         _accountLinkProviders = accountLinkProviders;
+        _modeExternalConnections = modeExternalConnections;
         _identityDbContext = identityDbContext;
         _logger = logger;
     }
@@ -330,7 +333,8 @@ public sealed class AccountController : Controller
             return RedirectToAction(nameof(Login));
         }
 
-        if (!_accountLinkProviders.TryGet(providerId, out var provider))
+        if (!_accountLinkProviders.TryGet(providerId, out var provider)
+            || !IsAccountLinkProviderAvailableForActiveMode(provider.Descriptor.Id))
         {
             return NotFound();
         }
@@ -372,7 +376,8 @@ public sealed class AccountController : Controller
     [IgnoreAntiforgeryToken]
     public async Task<IActionResult> AccountLinkCallback(string providerId)
     {
-        if (!_accountLinkProviders.TryGet(providerId, out var provider))
+        if (!_accountLinkProviders.TryGet(providerId, out var provider)
+            || !IsAccountLinkProviderAvailableForActiveMode(provider.Descriptor.Id))
         {
             return NotFound();
         }
@@ -742,6 +747,12 @@ public sealed class AccountController : Controller
     private async Task<IReadOnlyList<AccountLinkViewModel>> BuildAccountLinksAsync(
         ApplicationUser user)
     {
+        var activeModeId = HttpContext.GetSiteModeContext().ActiveModeId;
+        if (string.IsNullOrWhiteSpace(activeModeId))
+        {
+            return [];
+        }
+
         var existingProviders = (await _userManager.GetLoginsAsync(user))
             .Select(login => login.LoginProvider)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
@@ -749,6 +760,13 @@ public sealed class AccountController : Controller
 
         foreach (var provider in _accountLinkProviders.All)
         {
+            if (!_modeExternalConnections.TryGet(
+                    activeModeId,
+                    provider.Descriptor.Id,
+                    out _))
+            {
+                continue;
+            }
             if (!existingProviders.Contains(provider.Descriptor.Id))
             {
                 links.Add(new AccountLinkViewModel(
@@ -771,6 +789,13 @@ public sealed class AccountController : Controller
         }
 
         return links;
+    }
+
+    private bool IsAccountLinkProviderAvailableForActiveMode(string providerId)
+    {
+        var activeModeId = HttpContext.GetSiteModeContext().ActiveModeId;
+        return !string.IsNullOrWhiteSpace(activeModeId)
+            && _modeExternalConnections.TryGet(activeModeId, providerId, out _);
     }
 
     private static bool SecureEquals(string? left, string? right)

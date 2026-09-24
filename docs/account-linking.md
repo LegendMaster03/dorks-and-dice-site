@@ -53,14 +53,15 @@ AccountLinks__Discord__ClientSecretFile=/run/secrets/discord_client_secret
 
 When both `ClientSecret` and `ClientSecretFile` are set, the direct `ClientSecret` value takes precedence.
 
-The provider redirect URI is host-relative so the linking flow returns to the same canonical Site host that started it. Configure the Discord OAuth application to allow each production host where account linking is available:
+The provider redirect URI is host-relative so the linking flow returns to the Site host that started it. Account-link controls are exposed only when the active normal mode has a matching `ModeConnections` entry for the provider. Configure the Discord OAuth application only for canonical production hosts whose modes expose Discord account linking.
+
+In the current deployment, Discord is connected only to the `dorks-and-dice` mode, so the production callback is:
 
 ```text
 https://dorks-and-dice.com/account/links/callback/discord
-https://kylebarnett.com/account/links/callback/discord
 ```
 
-A local or preview deployment that performs real Discord linking must register its own exact callback URI as well.
+If another mode later receives a Discord connection, register that mode's canonical callback URI at the same time. A local or preview deployment that performs real Discord linking must register its own exact callback URI as well.
 
 The initial Discord plugin requests OpenIddict's required Discord `identify` scope only. Discord role synchronization is intentionally outside this first account-linking layer.
 
@@ -71,6 +72,7 @@ External account identity and external community membership are deliberately sep
 
 - `AccountLinks` is global. A Site user links a Discord identity once, and that identity remains the same regardless of which normal Site mode the user is visiting.
 - `ModeConnections` is mode-scoped. It identifies the external community/resource associated with a particular mode.
+- Account settings expose a provider only when the active normal mode has that provider in `ModeConnections`. Connect and Disconnect actions enforce the same boundary; the underlying external identity link remains global.
 - Provider infrastructure can be shared globally, but provider actions that touch an external community must first resolve the target through the mode connection.
 - The same external resource may be configured for multiple modes. This is supported but is not assumed to be the normal deployment shape.
 
