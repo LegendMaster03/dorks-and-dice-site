@@ -6,6 +6,7 @@ using dorks_and_dice_site.Models.Site;
 using dorks_and_dice_site.Modes.DorksAndDice;
 using dorks_and_dice_site.Plugins.AccountLinks.Discord;
 using dorks_and_dice_site.Plugins.DiscordWidget;
+using dorks_and_dice_site.Plugins.DiscordBot;
 using dorks_and_dice_site.Plugins.MinecraftServerStatus;
 using dorks_and_dice_site.Plugins.ProfessionalPortfolio;
 using dorks_and_dice_site.Services.Content.Storage;
@@ -37,6 +38,7 @@ builder.Services.AddSitePlugins(
     new ProfessionalPortfolioPlugin(),
     new DiscordWidgetPlugin(),
     new DiscordAccountLinkPlugin(builder.Configuration),
+    new DiscordBotPlugin(builder.Configuration),
     new MinecraftServerStatusPlugin()
 ]);
 builder.Services.AddSingleton<IToolRegistry, DatabaseToolRegistry>();

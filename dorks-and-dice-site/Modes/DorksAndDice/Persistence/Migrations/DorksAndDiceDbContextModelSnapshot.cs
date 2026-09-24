@@ -1,5 +1,6 @@
 using dorks_and_dice_site.Modes.DorksAndDice.Campaigns;
 using dorks_and_dice_site.Modes.DorksAndDice.Characters;
+using dorks_and_dice_site.Modes.DorksAndDice.Discord;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
@@ -200,6 +201,44 @@ public sealed class DorksAndDiceDbContextModelSnapshot : ModelSnapshot
             b.ToTable("dd_character");
         });
 
+        modelBuilder.Entity("dorks_and_dice_site.Modes.DorksAndDice.Discord.DorksAndDiceDiscordServerBinding", b =>
+        {
+            b.Property<Guid>("Id")
+                .ValueGeneratedOnAdd();
+
+            b.Property<DiscordServerCampaignScope>("CampaignScope");
+            b.Property<DateTimeOffset>("CreatedAt");
+            b.Property<string>("GuildId")
+                .IsRequired()
+                .HasMaxLength(32);
+            b.Property<string>("GuildName")
+                .IsRequired()
+                .HasMaxLength(100);
+            b.Property<Guid>("OwnerUserId");
+            b.Property<DateTimeOffset>("UpdatedAt");
+
+            b.HasKey("Id");
+
+            b.HasIndex("GuildId")
+                .IsUnique();
+
+            b.HasIndex("OwnerUserId");
+
+            b.ToTable("dd_discord_server");
+        });
+
+        modelBuilder.Entity("dorks_and_dice_site.Modes.DorksAndDice.Discord.DorksAndDiceDiscordServerCampaign", b =>
+        {
+            b.Property<Guid>("BindingId");
+            b.Property<Guid>("CampaignId");
+
+            b.HasKey("BindingId", "CampaignId");
+
+            b.HasIndex("CampaignId");
+
+            b.ToTable("dd_discord_server_campaign");
+        });
+
         modelBuilder.Entity("dorks_and_dice_site.Modes.DorksAndDice.Lifecycle.ToolLifecycleOutboxEvent", b =>
         {
             b.Property<Guid>("EventId");
@@ -224,6 +263,24 @@ public sealed class DorksAndDiceDbContextModelSnapshot : ModelSnapshot
             b.HasIndex("TargetToolSlug");
 
             b.ToTable("dd_tool_lifecycle_outbox");
+        });
+
+        modelBuilder.Entity("dorks_and_dice_site.Modes.DorksAndDice.Discord.DorksAndDiceDiscordServerCampaign", b =>
+        {
+            b.HasOne("dorks_and_dice_site.Modes.DorksAndDice.Discord.DorksAndDiceDiscordServerBinding", "Binding")
+                .WithMany("Campaigns")
+                .HasForeignKey("BindingId")
+                .OnDelete(DeleteBehavior.Cascade)
+                .IsRequired();
+
+            b.HasOne("dorks_and_dice_site.Modes.DorksAndDice.Campaigns.Campaign", "Campaign")
+                .WithMany()
+                .HasForeignKey("CampaignId")
+                .OnDelete(DeleteBehavior.Cascade)
+                .IsRequired();
+
+            b.Navigation("Binding");
+            b.Navigation("Campaign");
         });
 
         modelBuilder.Entity("dorks_and_dice_site.Modes.DorksAndDice.Campaigns.CampaignInvitation", b =>
@@ -292,6 +349,11 @@ public sealed class DorksAndDiceDbContextModelSnapshot : ModelSnapshot
 
             b.Navigation("Campaign");
             b.Navigation("Character");
+        });
+
+        modelBuilder.Entity("dorks_and_dice_site.Modes.DorksAndDice.Discord.DorksAndDiceDiscordServerBinding", b =>
+        {
+            b.Navigation("Campaigns");
         });
 
         modelBuilder.Entity("dorks_and_dice_site.Modes.DorksAndDice.Campaigns.Campaign", b =>

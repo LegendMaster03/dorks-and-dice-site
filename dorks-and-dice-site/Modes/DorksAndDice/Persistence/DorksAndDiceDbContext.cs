@@ -1,5 +1,6 @@
 using dorks_and_dice_site.Modes.DorksAndDice.Campaigns;
 using dorks_and_dice_site.Modes.DorksAndDice.Characters;
+using dorks_and_dice_site.Modes.DorksAndDice.Discord;
 using dorks_and_dice_site.Modes.DorksAndDice.Lifecycle;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
@@ -15,6 +16,8 @@ public sealed class DorksAndDiceDbContext(DbContextOptions<DorksAndDiceDbContext
     public DbSet<CampaignInvitation> CampaignInvitations => Set<CampaignInvitation>();
     public DbSet<Character> Characters => Set<Character>();
     public DbSet<CampaignCharacterAssociation> CampaignCharacters => Set<CampaignCharacterAssociation>();
+    public DbSet<DorksAndDiceDiscordServerBinding> DiscordServerBindings => Set<DorksAndDiceDiscordServerBinding>();
+    public DbSet<DorksAndDiceDiscordServerCampaign> DiscordServerCampaigns => Set<DorksAndDiceDiscordServerCampaign>();
     public DbSet<ToolLifecycleOutboxEvent> ToolLifecycleOutboxEvents => Set<ToolLifecycleOutboxEvent>();
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
@@ -96,6 +99,40 @@ public sealed class DorksAndDiceDbContext(DbContextOptions<DorksAndDiceDbContext
             entity.HasOne(item => item.Campaign).WithMany(item => item.CharacterAssociations).HasForeignKey(item => item.CampaignId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne(item => item.Character).WithMany(item => item.CampaignAssociations).HasForeignKey(item => item.CharacterId).OnDelete(DeleteBehavior.Restrict);
         });
+        modelBuilder.Entity<DorksAndDiceDiscordServerBinding>(entity =>
+        {
+            entity.ToTable("dd_discord_server");
+            entity.HasKey(item => item.Id);
+            entity.Property(item => item.GuildId)
+                .HasMaxLength(DorksAndDiceDiscordServerBinding.GuildIdMaxLength)
+                .IsRequired();
+            entity.Property(item => item.GuildName)
+                .HasMaxLength(DorksAndDiceDiscordServerBinding.GuildNameMaxLength)
+                .IsRequired();
+            entity.Property(item => item.CampaignScope)
+                .HasConversion<int>()
+                .IsRequired();
+            entity.Property(item => item.CreatedAt).IsRequired();
+            entity.Property(item => item.UpdatedAt).IsRequired();
+            entity.HasIndex(item => item.GuildId).IsUnique();
+            entity.HasIndex(item => item.OwnerUserId);
+        });
+
+        modelBuilder.Entity<DorksAndDiceDiscordServerCampaign>(entity =>
+        {
+            entity.ToTable("dd_discord_server_campaign");
+            entity.HasKey(item => new { item.BindingId, item.CampaignId });
+            entity.HasIndex(item => item.CampaignId);
+            entity.HasOne(item => item.Binding)
+                .WithMany(item => item.Campaigns)
+                .HasForeignKey(item => item.BindingId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(item => item.Campaign)
+                .WithMany()
+                .HasForeignKey(item => item.CampaignId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
         modelBuilder.Entity<ToolLifecycleOutboxEvent>(entity =>
         {
             entity.ToTable("dd_tool_lifecycle_outbox");

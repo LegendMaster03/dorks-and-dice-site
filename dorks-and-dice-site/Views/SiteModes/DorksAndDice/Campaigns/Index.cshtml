@@ -10,7 +10,10 @@
             <h1 class="h2 mb-2">Campaigns</h1>
             <p class="text-muted mb-0">Campaign membership, DM authority, participants, and character connections live here.</p>
         </div>
-        <a class="btn btn-outline-primary" asp-controller="Characters" asp-action="Index">My Characters</a>
+        <div class="d-flex flex-wrap gap-2">
+            <a class="btn btn-outline-primary" asp-controller="DiscordServers" asp-action="Index">Discord Servers</a>
+            <a class="btn btn-outline-primary" asp-controller="Characters" asp-action="Index">My Characters</a>
+        </div>
     </div>
 
     <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
