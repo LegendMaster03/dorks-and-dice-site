@@ -35,13 +35,23 @@ Configuration:
 }
 ```
 
-Do not commit the Discord client secret. In deployment, prefer environment variables:
+Do not commit the Discord client secret. Direct configuration remains supported for development and deployments that use protected environment injection:
 
 ```text
 AccountLinks__Discord__Enabled=true
 AccountLinks__Discord__ClientId=...
 AccountLinks__Discord__ClientSecret=...
 ```
+
+For deployments that already use Docker/Kubernetes-style mounted secrets, prefer a secret file instead:
+
+```text
+AccountLinks__Discord__Enabled=true
+AccountLinks__Discord__ClientId=...
+AccountLinks__Discord__ClientSecretFile=/run/secrets/discord_client_secret
+```
+
+When both `ClientSecret` and `ClientSecretFile` are set, the direct `ClientSecret` value takes precedence.
 
 The provider redirect URI is host-relative so the linking flow returns to the same canonical Site host that started it. Configure the Discord OAuth application to allow each production host where account linking is available:
 
