@@ -168,9 +168,67 @@
 
                             <hr />
                             <form asp-controller="DiscordServers"
+                                  asp-action="Configure"
+                                  method="post"
+                                  class="row g-3">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="bindingId" value="@server.Id" />
+                                <input type="hidden" name="guildId" value="@server.GuildId" />
+
+                                <div class="col-12">
+                                    <label class="form-label" for="scope-@server.Id">Campaign scope</label>
+                                    <select id="scope-@server.Id"
+                                            class="form-select"
+                                            name="campaignScope">
+                                        <option value="@((int)DiscordServerCampaignScope.SingleCampaign)"
+                                                selected="@(server.CampaignScope == DiscordServerCampaignScope.SingleCampaign ? "selected" : null)">
+                                            One campaign
+                                        </option>
+                                        <option value="@((int)DiscordServerCampaignScope.SelectedCampaigns)"
+                                                selected="@(server.CampaignScope == DiscordServerCampaignScope.SelectedCampaigns ? "selected" : null)">
+                                            Selected campaigns
+                                        </option>
+                                        <option value="@((int)DiscordServerCampaignScope.AllDmCampaigns)"
+                                                selected="@(server.CampaignScope == DiscordServerCampaignScope.AllDmCampaigns ? "selected" : null)">
+                                            All campaigns I DM
+                                        </option>
+                                    </select>
+                                </div>
+
+                                <div class="col-12">
+                                    <span class="form-label d-block">Campaigns</span>
+                                    @foreach (var campaign in Model.EligibleCampaigns)
+                                    {
+                                        var selected = server.Campaigns.Any(
+                                            item => item.Id == campaign.Id);
+                                        <div class="form-check">
+                                            <input class="form-check-input"
+                                                   type="checkbox"
+                                                   name="campaignIds"
+                                                   value="@campaign.Id"
+                                                   id="server-@server.Id-campaign-@campaign.Id"
+                                                   checked="@selected" />
+                                            <label class="form-check-label"
+                                                   for="server-@server.Id-campaign-@campaign.Id">
+                                                @campaign.Name
+                                            </label>
+                                        </div>
+                                    }
+                                    <div class="form-text">
+                                        All campaigns I DM ignores manual selections and follows your current DM memberships automatically.
+                                    </div>
+                                </div>
+
+                                <div class="col-12 d-flex flex-wrap gap-2">
+                                    <button class="btn btn-sm btn-outline-primary" type="submit">Update Server</button>
+                                </div>
+                            </form>
+
+                            <form asp-controller="DiscordServers"
                                   asp-action="Remove"
                                   asp-route-bindingId="@server.Id"
                                   method="post"
+                                  class="mt-2"
                                   onsubmit="return confirm('Remove this Discord server from Dorks & Dice synchronization?');">
                                 @Html.AntiForgeryToken()
                                 <button class="btn btn-sm btn-outline-danger" type="submit">Remove Server</button>

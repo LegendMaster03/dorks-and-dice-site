@@ -1,14 +1,16 @@
 # Discord bot integration
 
-The Discord bot is a generic Site plugin. It owns Discord transport, bot credentials, managed-role persistence, reconciliation, and safe cleanup. Normal Site modes contribute desired Discord state through `IDiscordRoleProjectionSource`; the generic bot does not contain campaign or other mode-specific business rules.
+The Discord bot is a generic Site plugin. It owns Discord transport, bot credentials, managed Discord-object persistence, ownership verification, desired-state reconciliation, and cleanup. Site modes contribute desired guild workspaces through `IDiscordWorkspaceProjectionSource`; the generic bot does not contain campaign, event, or other mode-specific business rules.
 
 ## Operating model
 
-The bot uses Discord's REST API and does not require the Gateway for role synchronization. It intentionally does not request message content, presence, or guild-member event streams.
+The current integration is REST-driven and does not need the Discord Gateway for synchronization. It intentionally does not request message-content, presence, or guild-member event streams.
 
-The bot manages only roles whose Discord role IDs are recorded in the Site Identity database. It does not rename, assign, or remove unrelated server roles.
+A workspace projection can contain bot-managed roles and bot-managed channels. The generic reconciler records the Discord IDs of objects it created and only modifies or deletes objects it owns. It does not adopt unrelated roles or channels merely because they have the same name.
 
-Role synchronization is desired-state based. A failed request can be retried on the next pass without requiring a campaign event to be replayed.
+Synchronization is desired-state based. If a Discord request fails temporarily, a later pass can converge the guild without requiring the originating Site-domain event to be replayed.
+
+Managed channels currently support text channels, voice channels, categories, and parent-category placement. Mode capabilities can therefore add temporary or persistent channel structures without moving Discord-specific transport logic into the mode.
 
 ## Configuration
 
@@ -30,57 +32,82 @@ Role synchronization is desired-state based. A failed request can be retried on 
 
 The token may be supplied as `Token` for local development or, preferably in production, through `TokenFile`. The production deployment should mount the bot token as a Docker secret. The bot token is separate from the OAuth client secret used for account linking.
 
-The bot needs the Discord **Manage Roles** permission. Discord's role hierarchy still applies: the bot's own server role must be above every role it is expected to create or manage.
+The installation link requests only the Discord permissions the current integration needs:
 
-## Dorks & Dice behavior
+- **Manage Roles**, for bot-managed role creation and assignment;
+- **Manage Channels**, for bot-managed channel/category creation and cleanup.
 
-Dorks & Dice contributes two kinds of guild projection.
+Do not grant Administrator merely for this integration. Discord role hierarchy still applies, so the bot's server role must remain above the roles it manages.
 
-### General Dorks & Dice server
+## Identity boundary
 
-The general guild is the existing mode-level Discord resource from:
+Discord identity remains global. Assigning a bot-managed role to a Site user requires:
+
+1. a global Discord account link;
+2. an active Discord activation for the relevant Site mode;
+3. mode-owned state that includes that Site user in the projected role.
+
+If a user disconnects Discord from a mode or globally unlinks Discord, the next successful reconciliation removes assignments previously managed for that identity.
+
+## Dorks & Dice
+
+Dorks & Dice contributes campaign-derived Discord state today. Other Dorks & Dice capabilities can add independent workspace projection sources later. For example, a Dorks & Dice-wide event can contribute event roles, categories, text channels, or voice channels to the main server without changing the generic Discord plugin or campaign domain.
+
+### Main Dorks & Dice server
+
+The main server is a special, mode-owned integration. It is not a user-managed server binding.
+
+Its guild ID comes from:
 
 ```text
 ModeConnections:dorks-and-dice:discord:ResourceId
 ```
 
-The bot manages:
+The campaign projection currently manages:
 
-- `Player` when the linked Site user is a player in at least one active campaign;
-- `DM` when the linked Site user is a DM in at least one active campaign;
-- one `Campaign: <name>` role for each active campaign, assigned to every active Site member of that campaign.
+- `Player` for users who are Players in at least one active campaign;
+- `DM` for users who are DMs in at least one active campaign;
+- one `Campaign: <name>` role for each active campaign, assigned to all active members of that campaign.
 
-`Player` and `DM` are independent. A user who is both a player and a DM receives both roles; there is no combined role.
+`Player` and `DM` are independent. A user who holds both kinds of campaign membership receives both roles. There is no combined Player/DM role.
 
-### Dedicated campaign server
+Because the main server is a mode-owned workspace, future Dorks & Dice-wide features are not limited to campaigns. Separate mode capabilities can project their own bot-managed roles and channels into the same guild.
 
-A campaign DM may optionally bind one Discord guild to that campaign. The same Discord application/bot can be installed in many campaign guilds, but one dedicated guild can belong to only one Dorks & Dice campaign.
+### User-managed Discord servers
 
-A dedicated campaign guild receives only:
+An authenticated user may also configure additional Discord servers they own. These bindings are separate from the main server and are owned by that Site account.
 
-- `Player`, based on that campaign's Player membership;
-- `DM`, based on that campaign's DM membership.
+The setup flow is:
 
-It does not receive the general server's per-campaign role because the guild itself already represents the campaign.
+1. link and enable Discord for the Dorks & Dice mode;
+2. install the Dorks & Dice bot in a Discord server;
+3. enter the Discord server ID on the Dorks & Dice **Discord Servers** page;
+4. the Site verifies, through the installed bot, that the linked Discord account is the guild owner;
+5. choose the campaign scope for that server.
 
-Campaign guild bindings are stored in Dorks & Dice mode storage. Removing a binding or deleting its campaign makes the generic reconciler clean up roles that it previously owned in that guild. Archiving a campaign leaves the binding in place but removes the active campaign roles until the campaign is restored.
+A user-managed server can use one of three campaign scopes:
 
-## Identity boundary
+- **One campaign** — exactly one active campaign where the server owner is currently a DM;
+- **Selected campaigns** — one or more explicitly selected active campaigns where the owner is currently a DM;
+- **All campaigns I DM** — dynamic; the projected set follows all active campaigns where the owner currently has the DM role.
 
-Discord identity remains global. Role projection requires:
+The server owner can update the scope later or remove the binding entirely.
 
-1. a global Discord account link;
-2. an active Discord activation for the Dorks & Dice mode;
-3. current Dorks & Dice domain membership that requires the role.
+For a single-campaign server, the campaign projection manages only `Player` and `DM`; a redundant campaign-name role is not created.
 
-The dedicated campaign-guild projection uses the same Dorks & Dice mode activation as the general guild. If a user disconnects Discord from the Dorks & Dice mode or globally unlinks Discord, the next reconciliation removes bot-managed roles from that user's known assignments.
+For selected-campaign and all-DM-campaign servers, the projection manages `Player`, `DM`, and one `Campaign: <name>` role per included campaign so members can still be distinguished by campaign.
 
-## Campaign-server setup
+If the configuring user stops being a DM of a selected campaign, that campaign immediately drops out of the desired projection on the next synchronization pass. The saved selection is retained, but it is not authoritative while the owner lacks DM authority.
 
-On a campaign's settings page, a DM can:
+Removing a user-managed server binding causes the generic reconciler to remove only the roles and channels that it previously created for that projection source.
 
-1. install the bot in the intended campaign Discord server;
-2. enter that Discord server ID;
-3. update or remove the dedicated-server binding later.
+## Future mode capabilities
 
-The install link requests only the bot scope with Manage Roles permission. The Discord server ID is deployment/domain data, not a credential.
+The workspace contract intentionally does not encode campaigns or events. A mode capability can independently contribute desired roles/channels to any guild that mode legitimately owns or configures. This allows later Dorks & Dice features such as:
+
+- convention or community-event roles;
+- event categories and channels;
+- temporary staff or participant spaces;
+- other mode-wide Discord organization.
+
+Those features should remain mode-owned business logic. The generic Discord plugin remains responsible for translating desired workspace state into Discord API operations.
