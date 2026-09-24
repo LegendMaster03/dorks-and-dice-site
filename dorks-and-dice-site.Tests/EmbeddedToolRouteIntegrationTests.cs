@@ -37,6 +37,7 @@ public sealed class EmbeddedToolRouteIntegrationTests(PublishedContentWebApplica
             var rootHtml = await root.Content.ReadAsStringAsync();
             Assert.Equal(HttpStatusCode.OK, root.StatusCode);
             Assert.Contains($"data-tool-base-path=\"/tools/{tool.Slug}\"", rootHtml);
+            Assert.Contains("data-site-content-width=\"fluid\"", rootHtml);
             Assert.Contains("data-tool-route=\"/\"", rootHtml);
             Assert.Contains($"data-tool-context-url=\"/tool-host/{tool.Slug}/context\"", rootHtml);
 
@@ -44,6 +45,7 @@ public sealed class EmbeddedToolRouteIntegrationTests(PublishedContentWebApplica
             var nestedHtml = await nested.Content.ReadAsStringAsync();
             Assert.Equal(HttpStatusCode.OK, nested.StatusCode);
             Assert.Contains($"data-tool-base-path=\"/tools/{tool.Slug}\"", nestedHtml);
+            Assert.Contains("data-site-content-width=\"fluid\"", nestedHtml);
             Assert.Contains("data-tool-route=\"/monsters/ancient-red-dragon\"", nestedHtml);
             Assert.Contains(
                 $"data-tool-context-url=\"/tool-host/{tool.Slug}/context?toolRoute=%2Fmonsters%2Fancient-red-dragon\"",
