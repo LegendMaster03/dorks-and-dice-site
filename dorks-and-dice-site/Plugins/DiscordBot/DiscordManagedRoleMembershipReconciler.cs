@@ -65,13 +65,14 @@ public sealed class DiscordManagedRoleMembershipReconciler(
                         .Select(activation => activation.UserId)
                         .ToArrayAsync(cancellationToken);
 
-                    var desiredDiscordUsers = await _identityDbContext.UserLogins
+                    var desiredDiscordUserIds = await _identityDbContext.UserLogins
                         .Where(login =>
                             login.LoginProvider == DiscordProvider.Id
                             && activeUsers.Contains(login.UserId))
                         .Select(login => login.ProviderKey)
-                        .Where(providerKey => providerKey != null && providerKey != string.Empty)
-                        .ToHashSetAsync(StringComparer.Ordinal, cancellationToken);
+                        .Where(providerKey => providerKey != string.Empty)
+                        .ToArrayAsync(cancellationToken);
+                    var desiredDiscordUsers = desiredDiscordUserIds.ToHashSet(StringComparer.Ordinal);
 
                     var actualDiscordUsers = members
                         .Where(member => member.RoleIds.Contains(mapping.DiscordRoleId, StringComparer.Ordinal))
