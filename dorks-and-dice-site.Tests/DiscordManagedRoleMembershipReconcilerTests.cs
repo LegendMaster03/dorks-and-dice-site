@@ -1,4 +1,5 @@
 using dorks_and_dice_site.Models.Identity;
+using dorks_and_dice_site.Plugins.Discord;
 using dorks_and_dice_site.Plugins.DiscordBot;
 using dorks_and_dice_site.Services.Identity;
 using Microsoft.Data.Sqlite;
