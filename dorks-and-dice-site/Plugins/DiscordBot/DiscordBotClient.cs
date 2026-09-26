@@ -7,6 +7,7 @@ namespace dorks_and_dice_site.Plugins.DiscordBot;
 
 public sealed record DiscordGuild(string Id, string Name, string OwnerId);
 public sealed record DiscordGuildRole(string Id, string Name);
+public sealed record DiscordGuildMember(string UserId, IReadOnlyList<string> RoleIds);
 public sealed record DiscordGuildChannel(
     string Id,
     string Name,
@@ -22,6 +23,11 @@ public interface IDiscordBotClient
     Task<IReadOnlyList<DiscordGuildRole>> GetGuildRolesAsync(
         string guildId,
         CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<DiscordGuildMember>> GetGuildMembersAsync(
+        string guildId,
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<DiscordGuildMember>>([]);
 
     Task<DiscordGuildRole> CreateGuildRoleAsync(
         string guildId,
@@ -116,6 +122,58 @@ public sealed class DiscordBotClient(HttpClient httpClient) : IDiscordBotClient
                 role.GetProperty("name").GetString() ?? string.Empty))
             .Where(role => role.Id.Length > 0)
             .ToArray();
+    }
+
+    public async Task<IReadOnlyList<DiscordGuildMember>> GetGuildMembersAsync(
+        string guildId,
+        CancellationToken cancellationToken = default)
+    {
+        const int pageSize = 1000;
+        var members = new List<DiscordGuildMember>();
+        string? after = null;
+
+        while (true)
+        {
+            var requestUri = $"guilds/{guildId}/members?limit={pageSize}";
+            if (!string.IsNullOrWhiteSpace(after))
+            {
+                requestUri += $"&after={Uri.EscapeDataString(after)}";
+            }
+
+            using var response = await SendAsync(
+                () => new HttpRequestMessage(HttpMethod.Get, requestUri),
+                cancellationToken);
+            await EnsureSuccessAsync(response, cancellationToken);
+
+            await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+            using var document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
+            var page = document.RootElement.EnumerateArray()
+                .Select(member =>
+                {
+                    var user = member.GetProperty("user");
+                    var userId = user.GetProperty("id").GetString() ?? string.Empty;
+                    var roleIds = member.TryGetProperty("roles", out var roles)
+                        ? roles.EnumerateArray()
+                            .Select(role => role.GetString())
+                            .Where(role => !string.IsNullOrWhiteSpace(role))
+                            .Select(role => role!)
+                            .ToArray()
+                        : [];
+                    return new DiscordGuildMember(userId, roleIds);
+                })
+                .Where(member => member.UserId.Length > 0)
+                .ToArray();
+
+            members.AddRange(page);
+            if (page.Length < pageSize)
+            {
+                break;
+            }
+
+            after = page[^1].UserId;
+        }
+
+        return members;
     }
 
     public async Task<DiscordGuildRole> CreateGuildRoleAsync(

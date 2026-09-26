@@ -50,7 +50,9 @@ public sealed class DiscordBotPlugin(IConfiguration configuration) : ISitePlugin
             client.DefaultRequestHeaders.UserAgent.ParseAdd(
                 "DorksAndDiceSite/1.0 (+https://dorks-and-dice.com)");
         });
-        services.AddScoped<IDiscordWorkspaceSyncService, DiscordWorkspaceSyncService>();
+        services.AddScoped<DiscordWorkspaceSyncService>();
+        services.AddScoped<DiscordManagedRoleMembershipReconciler>();
+        services.AddScoped<IDiscordWorkspaceSyncService, AuthoritativeDiscordWorkspaceSyncService>();
         services.AddScoped<IDiscordGuildOwnershipVerifier, DiscordGuildOwnershipVerifier>();
         services.AddHostedService<DiscordWorkspaceSyncWorker>();
     }
