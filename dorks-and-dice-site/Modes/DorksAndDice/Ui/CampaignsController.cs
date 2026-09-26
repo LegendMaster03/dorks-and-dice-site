@@ -171,13 +171,8 @@ public sealed class CampaignsController(ICampaignService campaignService, ICampa
             }
 
             var resolvedParticipantId = participantId;
-            if (resolvedParticipantId is null)
+            if (resolvedParticipantId is null && !string.IsNullOrWhiteSpace(displayName))
             {
-                if (string.IsNullOrWhiteSpace(displayName))
-                {
-                    throw new CampaignDomainException("Enter the player's name or select an existing participant.");
-                }
-
                 var participant = await _participantService.AddGuestAsync(userId, campaignId, displayName, cancellationToken);
                 resolvedParticipantId = participant.Id;
             }
