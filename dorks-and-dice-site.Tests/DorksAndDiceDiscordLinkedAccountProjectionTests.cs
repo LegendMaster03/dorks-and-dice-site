@@ -53,7 +53,7 @@ public sealed class DorksAndDiceDiscordLinkedAccountProjectionTests
         var projection = Assert.Single(await source.BuildAsync());
         Assert.Equal("main-guild", projection.GuildId);
 
-        var role = Assert.Single(projection.Roles.Where(role => role.Key == "linked-account"));
+        var role = Assert.Single(projection.Roles, role => role.Key == "linked-account");
         Assert.Equal("Linked Account", role.DisplayName);
         Assert.Equal([linkedAndActive.Id], role.UserIds);
         Assert.All(
