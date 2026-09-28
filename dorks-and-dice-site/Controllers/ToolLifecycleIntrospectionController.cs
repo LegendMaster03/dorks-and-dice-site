@@ -6,10 +6,31 @@ namespace dorks_and_dice_site.Controllers;
 
 [ApiController]
 [AllowAnonymous]
-public sealed class ToolLifecycleIntrospectionController : ControllerBase
+public sealed class ToolLifecycleIntrospectionController(IToolRegistry toolRegistry) : ControllerBase
 {
     [HttpPost("/tool-host/{slug}/api/lifecycle/introspect")]
-    public IActionResult Introspect(string slug)
+    public async Task<IActionResult> IntrospectBySlug(
+        string slug,
+        CancellationToken cancellationToken)
+    {
+        var registration = await toolRegistry.GetBySlugAsync(slug, cancellationToken);
+        return registration is null
+            ? Unauthorized()
+            : IntrospectRegistration(registration.Key);
+    }
+
+    [HttpPost("/tool-host/registrations/{registrationKey}/api/lifecycle/introspect")]
+    public async Task<IActionResult> IntrospectByKey(
+        string registrationKey,
+        CancellationToken cancellationToken)
+    {
+        var registration = await toolRegistry.GetByKeyAsync(registrationKey, cancellationToken);
+        return registration is null
+            ? Unauthorized()
+            : IntrospectRegistration(registration.Key);
+    }
+
+    private IActionResult IntrospectRegistration(string registrationKey)
     {
         Response.Headers.CacheControl = "no-store";
 
@@ -21,7 +42,7 @@ public sealed class ToolLifecycleIntrospectionController : ControllerBase
         }
 
         var ticket = authorization[bearerPrefix.Length..].Trim();
-        if (!ToolLifecycleTickets.TryRedeem(slug, ticket, out var context)
+        if (!ToolLifecycleTickets.TryRedeem(registrationKey, ticket, out var context)
             || context is null)
         {
             return Unauthorized();

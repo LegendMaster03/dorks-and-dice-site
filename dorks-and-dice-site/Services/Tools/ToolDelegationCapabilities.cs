@@ -13,10 +13,10 @@ public static class ToolDelegationHeaders
 
 public interface IToolDelegationCapabilityService
 {
-    string Issue(string sourceToolSlug, ToolHostAuthenticationContext authenticationContext);
+    string Issue(string sourceToolKey, ToolHostAuthenticationContext authenticationContext);
 
     bool TryUse(
-        string sourceToolSlug,
+        string sourceToolKey,
         string capability,
         out ToolHostAuthenticationContext? authenticationContext);
 }
@@ -41,20 +41,20 @@ public sealed class ToolDelegationCapabilityService : IToolDelegationCapabilityS
     }
 
     public string Issue(
-        string sourceToolSlug,
+        string sourceToolKey,
         ToolHostAuthenticationContext authenticationContext)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(sourceToolSlug);
+        ArgumentException.ThrowIfNullOrWhiteSpace(sourceToolKey);
         ArgumentNullException.ThrowIfNull(authenticationContext);
 
         if (!string.Equals(
-                sourceToolSlug,
-                authenticationContext.ToolSlug,
+                sourceToolKey,
+                authenticationContext.RegistrationKey,
                 StringComparison.Ordinal))
         {
             throw new ArgumentException(
-                "The source Tool slug must match the authoritative authentication context.",
-                nameof(sourceToolSlug));
+                "The source Tool key must match the authoritative authentication context.",
+                nameof(sourceToolKey));
         }
 
         var now = _timeProvider.GetUtcNow();
@@ -66,7 +66,7 @@ public sealed class ToolDelegationCapabilityService : IToolDelegationCapabilityS
             if (_capabilities.TryAdd(
                     capability,
                     new CapabilityEntry(
-                        sourceToolSlug,
+                        sourceToolKey,
                         authenticationContext,
                         now.Add(Lifetime))))
             {
@@ -76,12 +76,12 @@ public sealed class ToolDelegationCapabilityService : IToolDelegationCapabilityS
     }
 
     public bool TryUse(
-        string sourceToolSlug,
+        string sourceToolKey,
         string capability,
         out ToolHostAuthenticationContext? authenticationContext)
     {
         authenticationContext = null;
-        if (string.IsNullOrWhiteSpace(sourceToolSlug)
+        if (string.IsNullOrWhiteSpace(sourceToolKey)
             || string.IsNullOrWhiteSpace(capability)
             || !_capabilities.TryGetValue(capability, out var entry))
         {
@@ -95,7 +95,7 @@ public sealed class ToolDelegationCapabilityService : IToolDelegationCapabilityS
             return false;
         }
 
-        if (!string.Equals(entry.SourceToolSlug, sourceToolSlug, StringComparison.Ordinal))
+        if (!string.Equals(entry.SourceToolKey, sourceToolKey, StringComparison.Ordinal))
         {
             return false;
         }
@@ -122,11 +122,11 @@ public sealed class ToolDelegationCapabilityService : IToolDelegationCapabilityS
     }
 
     private sealed class CapabilityEntry(
-        string sourceToolSlug,
+        string sourceToolKey,
         ToolHostAuthenticationContext authenticationContext,
         DateTimeOffset expiresAt)
     {
-        public string SourceToolSlug { get; } = sourceToolSlug;
+        public string SourceToolKey { get; } = sourceToolKey;
         public ToolHostAuthenticationContext AuthenticationContext { get; } = authenticationContext;
         public DateTimeOffset ExpiresAt { get; } = expiresAt;
         public int UseCount;

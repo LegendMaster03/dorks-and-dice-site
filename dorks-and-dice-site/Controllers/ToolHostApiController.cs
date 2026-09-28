@@ -50,7 +50,8 @@ public sealed class ToolHostApiController : ControllerBase
 
         return Ok(new ToolHostApiSession
         {
-            ToolSlug = access.Tool!.Slug,
+            ToolKey = access.Tool!.Key,
+            ToolSlug = access.Tool.Slug!,
             SiteMode = HttpContext.GetSiteModeContext().ActiveModeId!,
             User = BuildUserContext(access.UserId!),
             GlobalRoles = BuildEffectiveGlobalRoles()
@@ -205,8 +206,9 @@ public sealed class ToolHostApiController : ControllerBase
         {
             return Forbid();
         }
+
         var ticket = ToolAuthenticationTickets.Issue(authenticationContext);
-        var introspectionPath = $"/tool-host/{tool.Slug}/api/introspect";
+        var introspectionPath = AuthenticationIntrospectionPath(tool);
 
         await _toolProxyService.ProxyAuthenticatedAsync(
             HttpContext,
@@ -219,9 +221,10 @@ public sealed class ToolHostApiController : ControllerBase
     }
 
     /// <summary>
-    /// Redeems a one-time authentication ticket presented by the Tool backend. This endpoint does
-    /// not authenticate with the browser cookie; possession of the random server-injected ticket
-    /// is the short-lived capability. Tickets are scoped to the registered Tool slug.
+    /// Redeems a one-time authentication ticket presented by an application backend. This legacy
+    /// slug route is retained for existing application integrations. Tickets issued before stable
+    /// registration keys were added remain redeemable because their authoritative scope was the
+    /// application slug.
     /// </summary>
     [AllowAnonymous]
     [HttpPost("introspect")]
@@ -230,47 +233,114 @@ public sealed class ToolHostApiController : ControllerBase
         CancellationToken cancellationToken)
     {
         Response.Headers.CacheControl = "no-store";
+        var registration = await _toolRegistry.GetBySlugAsync(slug, cancellationToken);
+        return IntrospectRegistration(registration?.Key ?? slug, registration);
+    }
 
-        if (!TryReadBearerToken(out var ticket)
-            || !ToolAuthenticationTickets.TryRedeem(slug, ticket, out var context)
-            || context is null)
-        {
-            return Unauthorized();
-        }
-
-        var sourceTool = await _toolRegistry.GetBySlugAsync(slug, cancellationToken);
-        if (sourceTool is not null
-            && sourceTool.Enabled
-            && sourceTool.IntegrationType == ToolIntegrationType.EmbeddedModule
-            && ToolIntegrationContractPolicy.IsSupported(sourceTool)
-            && ToolVisibility.IsVisibleInMode(sourceTool, context.SiteMode)
-            && sourceTool.DelegationTargets.Count > 0)
-        {
-            var capability = _delegationCapabilities.Issue(sourceTool.Slug, context);
-            Response.Headers[ToolDelegationHeaders.Capability] = capability;
-            Response.Headers[ToolDelegationHeaders.Path] =
-                $"/tool-host/{sourceTool.Slug}/api/delegate/{{targetSlug}}/upstream";
-        }
-
-        return Ok(context);
+    /// <summary>
+    /// Stable-key introspection endpoint used by headless services. It deliberately has no public
+    /// /tools route counterpart.
+    /// </summary>
+    [AllowAnonymous]
+    [HttpPost("~/tool-host/registrations/{registrationKey}/api/introspect")]
+    public async Task<IActionResult> IntrospectRegistrationByKey(
+        string registrationKey,
+        CancellationToken cancellationToken)
+    {
+        Response.Headers.CacheControl = "no-store";
+        var registration = await _toolRegistry.GetByKeyAsync(registrationKey, cancellationToken);
+        return registration is null
+            ? Unauthorized()
+            : IntrospectRegistration(registration.Key, registration);
     }
 
     [AllowAnonymous]
     [DisableFormValueModelBinding]
     [AcceptVerbs("GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")]
-    [Route("delegate/{targetSlug}/upstream")]
-    [Route("delegate/{targetSlug}/upstream/{**proxyPath}")]
+    [Route("delegate/{targetKey}/upstream")]
+    [Route("delegate/{targetKey}/upstream/{**proxyPath}")]
     public async Task<IActionResult> DelegatedUpstream(
         [FromRoute] string slug,
-        [FromRoute] string targetSlug,
+        [FromRoute] string targetKey,
         [FromRoute] string? proxyPath,
+        CancellationToken cancellationToken)
+    {
+        Response.Headers.CacheControl = "no-store";
+        var sourceTool = await _toolRegistry.GetBySlugAsync(slug, cancellationToken);
+        if (sourceTool is null || sourceTool.Kind != ToolKind.Application)
+        {
+            return Unauthorized();
+        }
+
+        return await DelegatedUpstreamCoreAsync(
+            sourceTool,
+            targetKey,
+            proxyPath,
+            cancellationToken);
+    }
+
+    [AllowAnonymous]
+    [DisableFormValueModelBinding]
+    [AcceptVerbs("GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")]
+    [Route("~/tool-host/registrations/{sourceKey}/api/delegate/{targetKey}/upstream")]
+    [Route("~/tool-host/registrations/{sourceKey}/api/delegate/{targetKey}/upstream/{**proxyPath}")]
+    public async Task<IActionResult> DelegatedUpstreamByKey(
+        [FromRoute] string sourceKey,
+        [FromRoute] string targetKey,
+        [FromRoute] string? proxyPath,
+        CancellationToken cancellationToken)
+    {
+        Response.Headers.CacheControl = "no-store";
+        var sourceTool = await _toolRegistry.GetByKeyAsync(sourceKey, cancellationToken);
+        if (sourceTool is null)
+        {
+            return Unauthorized();
+        }
+
+        return await DelegatedUpstreamCoreAsync(
+            sourceTool,
+            targetKey,
+            proxyPath,
+            cancellationToken);
+    }
+
+    private IActionResult IntrospectRegistration(
+        string registrationKey,
+        ToolRegistration? registration)
+    {
+        Response.Headers.CacheControl = "no-store";
+
+        if (!TryReadBearerToken(out var ticket)
+            || !ToolAuthenticationTickets.TryRedeem(
+                registrationKey,
+                ticket,
+                out var context)
+            || context is null)
+        {
+            return Unauthorized();
+        }
+
+        if (registration is not null && CanIssueDelegationCapability(registration, context))
+        {
+            var capability = _delegationCapabilities.Issue(registration.Key, context);
+            Response.Headers[ToolDelegationHeaders.Capability] = capability;
+            Response.Headers[ToolDelegationHeaders.Path] = DelegationPathTemplate(registration);
+        }
+
+        return Ok(context);
+    }
+
+    private async Task<IActionResult> DelegatedUpstreamCoreAsync(
+        ToolRegistration sourceTool,
+        string targetKey,
+        string? proxyPath,
         CancellationToken cancellationToken)
     {
         Response.Headers.CacheControl = "no-store";
 
         if (!TryReadBearerToken(out var capability)
             || !_delegationCapabilities.TryUse(
-                slug,
+                sourceTool.Key,
                 capability,
                 out var sourceContext)
             || sourceContext is null)
@@ -278,24 +348,19 @@ public sealed class ToolHostApiController : ControllerBase
             return Unauthorized();
         }
 
-        var sourceTool = await _toolRegistry.GetBySlugAsync(slug, cancellationToken);
-        if (sourceTool is null
-            || !sourceTool.Enabled
-            || sourceTool.IntegrationType != ToolIntegrationType.EmbeddedModule
-            || !ToolIntegrationContractPolicy.IsSupported(sourceTool)
-            || !ToolVisibility.IsVisibleInMode(sourceTool, sourceContext.SiteMode))
+        if (!IsDelegationSourceAvailable(sourceTool, sourceContext.SiteMode))
         {
             return Unauthorized();
         }
 
         if (!sourceTool.DelegationTargets.Contains(
-                targetSlug,
+                targetKey,
                 StringComparer.OrdinalIgnoreCase))
         {
             return StatusCode(StatusCodes.Status403Forbidden);
         }
 
-        var targetTool = await _toolRegistry.GetBySlugAsync(targetSlug, cancellationToken);
+        var targetTool = await _toolRegistry.GetByKeyAsync(targetKey, cancellationToken);
         if (targetTool is null
             || !targetTool.Enabled
             || !ToolVisibility.IsVisibleInMode(targetTool, sourceContext.SiteMode))
@@ -303,15 +368,11 @@ public sealed class ToolHostApiController : ControllerBase
             return NotFound();
         }
 
-        var contractError = ToolIntegrationContractPolicy.GetUnsupportedReason(targetTool);
-        if (targetTool.IntegrationType != ToolIntegrationType.EmbeddedModule
-            || contractError is not null)
+        if (!IsDelegationTargetSupported(targetTool, out var contractError))
         {
             return Problem(
                 title: "Unsupported tool integration contract",
-                detail: targetTool.IntegrationType != ToolIntegrationType.EmbeddedModule
-                    ? "Delegated upstream targets must use the Embedded Module integration contract."
-                    : contractError,
+                detail: contractError,
                 statusCode: StatusCodes.Status503ServiceUnavailable);
         }
 
@@ -336,7 +397,7 @@ public sealed class ToolHostApiController : ControllerBase
         }
 
         var targetTicket = ToolAuthenticationTickets.Issue(targetContext);
-        var introspectionPath = $"/tool-host/{targetTool.Slug}/api/introspect";
+        var introspectionPath = AuthenticationIntrospectionPath(targetTool);
 
         await _toolProxyService.ProxyAuthenticatedAsync(
             HttpContext,
@@ -347,6 +408,56 @@ public sealed class ToolHostApiController : ControllerBase
             cancellationToken);
         return new EmptyResult();
     }
+
+    private static bool CanIssueDelegationCapability(
+        ToolRegistration sourceTool,
+        ToolHostAuthenticationContext context) =>
+        sourceTool.Enabled
+        && sourceTool.DelegationTargets.Count > 0
+        && ToolVisibility.IsVisibleInMode(sourceTool, context.SiteMode)
+        && IsDelegationSourceSupported(sourceTool);
+
+    private static bool IsDelegationSourceAvailable(ToolRegistration sourceTool, string siteMode) =>
+        sourceTool.Enabled
+        && ToolVisibility.IsVisibleInMode(sourceTool, siteMode)
+        && IsDelegationSourceSupported(sourceTool);
+
+    private static bool IsDelegationSourceSupported(ToolRegistration sourceTool) =>
+        sourceTool.Kind == ToolKind.Service
+        || (sourceTool.Kind == ToolKind.Application
+            && sourceTool.IntegrationType == ToolIntegrationType.EmbeddedModule
+            && ToolIntegrationContractPolicy.IsSupported(sourceTool));
+
+    private static bool IsDelegationTargetSupported(
+        ToolRegistration targetTool,
+        out string? error)
+    {
+        error = null;
+        if (targetTool.Kind == ToolKind.Service)
+        {
+            return true;
+        }
+
+        if (targetTool.Kind != ToolKind.Application
+            || targetTool.IntegrationType != ToolIntegrationType.EmbeddedModule)
+        {
+            error = "Delegated application targets must use the Embedded Module integration contract.";
+            return false;
+        }
+
+        error = ToolIntegrationContractPolicy.GetUnsupportedReason(targetTool);
+        return error is null;
+    }
+
+    private static string AuthenticationIntrospectionPath(ToolRegistration tool) =>
+        tool.Kind == ToolKind.Application && !string.IsNullOrWhiteSpace(tool.Slug)
+            ? $"/tool-host/{tool.Slug}/api/introspect"
+            : $"/tool-host/registrations/{tool.Key}/api/introspect";
+
+    private static string DelegationPathTemplate(ToolRegistration sourceTool) =>
+        sourceTool.Kind == ToolKind.Application && !string.IsNullOrWhiteSpace(sourceTool.Slug)
+            ? $"/tool-host/{sourceTool.Slug}/api/delegate/{{targetSlug}}/upstream"
+            : $"/tool-host/registrations/{sourceTool.Key}/api/delegate/{{targetKey}}/upstream";
 
     private bool TryReadBearerToken(out string token)
     {
@@ -418,6 +529,8 @@ public sealed class ToolHostApiController : ControllerBase
         var tool = await _toolRegistry.GetBySlugAsync(slug, cancellationToken);
         var modeId = HttpContext.GetSiteModeContext().ActiveModeId;
         return tool is not null
+            && tool.Kind == ToolKind.Application
+            && !string.IsNullOrWhiteSpace(tool.Slug)
             && tool.Enabled
             && ToolVisibility.IsVisibleInMode(tool, modeId)
             ? tool

@@ -37,7 +37,9 @@ public static class ToolVisibility
         ToolRegistration tool,
         string? modeId,
         bool isAuthenticated) =>
-        tool.Enabled
+        tool.Kind == ToolKind.Application
+        && !string.IsNullOrWhiteSpace(tool.Slug)
+        && tool.Enabled
         && IsVisibleInMode(tool, modeId)
         && (tool.AllowAnonymous || isAuthenticated);
 

@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Security.Cryptography;
+using System.Text.Json.Serialization;
 
 namespace dorks_and_dice_site.Services.Tools;
 
@@ -12,11 +13,20 @@ public static class ToolLifecycleHeaders
 
 public sealed record ToolLifecycleContext(
     int ContractVersion,
-    string ToolSlug,
+    string? ToolSlug,
     Guid EventId,
     string EventType,
     Guid SubjectId,
-    DateTimeOffset OccurredAt);
+    DateTimeOffset OccurredAt)
+{
+    public string ToolKey { get; init; } = ToolSlug ?? string.Empty;
+
+    [JsonIgnore]
+    public string RegistrationKey =>
+        !string.IsNullOrWhiteSpace(ToolKey)
+            ? ToolKey
+            : ToolSlug ?? string.Empty;
+}
 
 /// <summary>
 /// Process-local, one-time capability tickets for Site-to-Tool lifecycle delivery. These tickets
@@ -32,6 +42,12 @@ public static class ToolLifecycleTickets
     public static string Issue(ToolLifecycleContext context)
     {
         ArgumentNullException.ThrowIfNull(context);
+        if (string.IsNullOrWhiteSpace(context.RegistrationKey))
+        {
+            throw new ArgumentException(
+                "Lifecycle contexts must identify a registered Tool capability.",
+                nameof(context));
+        }
 
         var now = DateTimeOffset.UtcNow;
         RemoveExpired(now);
@@ -47,19 +63,19 @@ public static class ToolLifecycleTickets
     }
 
     public static bool TryRedeem(
-        string toolSlug,
+        string registrationKey,
         string ticket,
         out ToolLifecycleContext? context)
     {
         context = null;
-        if (string.IsNullOrWhiteSpace(toolSlug) || string.IsNullOrWhiteSpace(ticket))
+        if (string.IsNullOrWhiteSpace(registrationKey) || string.IsNullOrWhiteSpace(ticket))
         {
             return false;
         }
 
         if (!Tickets.TryRemove(ticket, out var entry)
             || entry.ExpiresAt <= DateTimeOffset.UtcNow
-            || !string.Equals(entry.Context.ToolSlug, toolSlug, StringComparison.Ordinal))
+            || !string.Equals(entry.Context.RegistrationKey, registrationKey, StringComparison.Ordinal))
         {
             return false;
         }

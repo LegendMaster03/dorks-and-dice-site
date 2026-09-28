@@ -47,6 +47,8 @@ public sealed class ToolLifecycleDeliveryTests
         var ticket = captured.Headers.GetValues(ToolLifecycleHeaders.Ticket).Single();
         Assert.True(ToolLifecycleTickets.TryRedeem("character-sheet", ticket, out var context));
         Assert.NotNull(context);
+        Assert.Equal("character-sheet", context.ToolKey);
+        Assert.Equal("character-sheet", context.ToolSlug);
         Assert.Equal(1, context.ContractVersion);
         Assert.Equal(lifecycleEvent.EventId, context.EventId);
         Assert.Equal(lifecycleEvent.EventType, context.EventType);
@@ -117,6 +119,7 @@ public sealed class ToolLifecycleDeliveryTests
         var tool = new ToolRegistration
         {
             Id = Guid.NewGuid(),
+            Key = ToolLifecycleTargets.CharacterSheet,
             Slug = ToolLifecycleTargets.CharacterSheet,
             DisplayName = "Character Sheet",
             UpstreamBaseUrl = "http://character-sheet:8080",
@@ -151,6 +154,10 @@ public sealed class ToolLifecycleDeliveryTests
 
         public Task<ToolRegistration?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
             Task.FromResult<ToolRegistration?>(tool.Id == id ? tool : null);
+
+        public Task<ToolRegistration?> GetByKeyAsync(string key, CancellationToken cancellationToken = default) =>
+            Task.FromResult<ToolRegistration?>(
+                string.Equals(tool.Key, key, StringComparison.OrdinalIgnoreCase) ? tool : null);
 
         public Task<ToolRegistration?> GetBySlugAsync(string slug, CancellationToken cancellationToken = default) =>
             Task.FromResult<ToolRegistration?>(

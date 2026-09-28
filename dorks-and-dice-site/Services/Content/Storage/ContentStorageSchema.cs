@@ -36,54 +36,80 @@ internal static class ContentStorageSchema
         await context.Database.ExecuteSqlRawAsync(
             context.Database.IsSqlite() ? SqliteCreateRedirectSchema : PostgresCreateRedirectSchema,
             cancellationToken);
+
+        var toolRegistryExists = context.Database.IsSqlite()
+            ? await HasTableAsync(context, "tool_registration", cancellationToken)
+            : await HasPostgresColumnAsync(context, "tool_registration", "tool_id", cancellationToken);
+        var addedDelegationTargets = false;
+
+        if (toolRegistryExists)
+        {
+            var hasStableKey = context.Database.IsSqlite()
+                ? await HasSqliteColumnAsync(context, "tool_registration", "tool_key", cancellationToken)
+                : await HasPostgresColumnAsync(context, "tool_registration", "tool_key", cancellationToken);
+
+            if (!hasStableKey)
+            {
+                if (context.Database.IsSqlite())
+                {
+                    if (!await HasSqliteColumnAsync(
+                            context,
+                            "tool_registration",
+                            "tool_integration_contract_version",
+                            cancellationToken))
+                    {
+                        await context.Database.ExecuteSqlRawAsync(
+                            SqliteAddToolIntegrationContractVersion,
+                            cancellationToken);
+                    }
+
+                    if (!await HasSqliteColumnAsync(
+                            context,
+                            "tool_registration",
+                            "tool_delegation_targets",
+                            cancellationToken))
+                    {
+                        await context.Database.ExecuteSqlRawAsync(
+                            SqliteAddToolDelegationTargets,
+                            cancellationToken);
+                        addedDelegationTargets = true;
+                    }
+
+                    await context.Database.ExecuteSqlRawAsync(
+                        SqliteMigrateLegacyToolRegistry,
+                        cancellationToken);
+                }
+                else if (context.Database.IsNpgsql())
+                {
+                    await context.Database.ExecuteSqlRawAsync(
+                        PostgresEnsureToolIntegrationContractVersion,
+                        cancellationToken);
+
+                    if (!await HasPostgresColumnAsync(
+                            context,
+                            "tool_registration",
+                            "tool_delegation_targets",
+                            cancellationToken))
+                    {
+                        await context.Database.ExecuteSqlRawAsync(
+                            PostgresEnsureToolDelegationTargets,
+                            cancellationToken);
+                        addedDelegationTargets = true;
+                    }
+
+                    await context.Database.ExecuteSqlRawAsync(
+                        PostgresMigrateLegacyToolRegistry,
+                        cancellationToken);
+                }
+            }
+        }
+
+        // Only create or re-assert the current schema after any legacy table has been migrated.
+        // The current indexes reference tool_key and therefore can not be created against the old
+        // slug-only table shape.
         await context.Database.ExecuteSqlRawAsync(
             context.Database.IsSqlite() ? SqliteCreateToolRegistrySchema : PostgresCreateToolRegistrySchema,
             cancellationToken);
-
-        var addedDelegationTargets = false;
-        if (context.Database.IsSqlite())
-        {
-            if (!await HasSqliteColumnAsync(
-                    context,
-                    "tool_registration",
-                    "tool_integration_contract_version",
-                    cancellationToken))
-            {
-                await context.Database.ExecuteSqlRawAsync(
-                    SqliteAddToolIntegrationContractVersion,
-                    cancellationToken);
-            }
-
-            if (!await HasSqliteColumnAsync(
-                    context,
-                    "tool_registration",
-                    "tool_delegation_targets",
-                    cancellationToken))
-            {
-                await context.Database.ExecuteSqlRawAsync(
-                    SqliteAddToolDelegationTargets,
-                    cancellationToken);
-                addedDelegationTargets = true;
-            }
-        }
-        else if (context.Database.IsNpgsql())
-        {
-            await context.Database.ExecuteSqlRawAsync(
-                PostgresEnsureToolIntegrationContractVersion,
-                cancellationToken);
-
-            if (!await HasPostgresColumnAsync(
-                    context,
-                    "tool_registration",
-                    "tool_delegation_targets",
-                    cancellationToken))
-            {
-                await context.Database.ExecuteSqlRawAsync(
-                    PostgresEnsureToolDelegationTargets,
-                    cancellationToken);
-                addedDelegationTargets = true;
-            }
-        }
 
         await context.Database.ExecuteSqlRawAsync(
             MigrateKnownEmbeddedModuleContracts,
@@ -274,10 +300,12 @@ internal static class ContentStorageSchema
     private const string SqliteCreateToolRegistrySchema = """
         CREATE TABLE IF NOT EXISTS tool_registration (
             tool_id TEXT NOT NULL PRIMARY KEY,
-            tool_slug TEXT NOT NULL,
+            tool_key TEXT NOT NULL,
+            tool_kind INTEGER NOT NULL DEFAULT 0,
+            tool_slug TEXT NULL,
             tool_display_name TEXT NOT NULL,
             tool_description TEXT NULL,
-            tool_integration_type INTEGER NOT NULL DEFAULT 0,
+            tool_integration_type INTEGER NULL,
             tool_integration_contract_version INTEGER NULL,
             tool_upstream_base_url TEXT NULL,
             tool_frontend_entry_point TEXT NULL,
@@ -288,23 +316,32 @@ internal static class ContentStorageSchema
             tool_enabled INTEGER NOT NULL DEFAULT 0,
             tool_created_at TEXT NOT NULL,
             tool_updated_at TEXT NOT NULL,
+            CONSTRAINT ck_tool_registration_kind CHECK (tool_kind IN (0, 1)),
             CONSTRAINT ck_tool_registration_integration_type
-                CHECK (tool_integration_type IN (0, 1)),
-            CONSTRAINT ck_tool_registration_slug_not_empty
-                CHECK (length(trim(tool_slug)) > 0),
+                CHECK (tool_integration_type IS NULL OR tool_integration_type IN (0, 1)),
+            CONSTRAINT ck_tool_registration_key_not_empty
+                CHECK (length(trim(tool_key)) > 0),
+            CONSTRAINT ck_tool_registration_application_shape
+                CHECK ((tool_kind = 0 AND tool_slug IS NOT NULL AND length(trim(tool_slug)) > 0 AND tool_integration_type IS NOT NULL)
+                    OR (tool_kind = 1 AND tool_slug IS NULL AND tool_integration_type IS NULL
+                        AND tool_integration_contract_version IS NULL AND tool_frontend_entry_point IS NULL)),
             CONSTRAINT ck_tool_registration_display_name_not_empty
                 CHECK (length(trim(tool_display_name)) > 0));
+        CREATE UNIQUE INDEX IF NOT EXISTS ux_tool_registration_key_ci
+            ON tool_registration(lower(tool_key));
         CREATE UNIQUE INDEX IF NOT EXISTS ux_tool_registration_slug_ci
-            ON tool_registration(lower(tool_slug));
+            ON tool_registration(lower(tool_slug)) WHERE tool_slug IS NOT NULL;
         """;
 
     private const string PostgresCreateToolRegistrySchema = """
         CREATE TABLE IF NOT EXISTS tool_registration (
             tool_id uuid NOT NULL,
-            tool_slug text NOT NULL,
+            tool_key text NOT NULL,
+            tool_kind smallint NOT NULL DEFAULT 0,
+            tool_slug text NULL,
             tool_display_name text NOT NULL,
             tool_description text NULL,
-            tool_integration_type smallint NOT NULL DEFAULT 0,
+            tool_integration_type smallint NULL,
             tool_integration_contract_version integer NULL,
             tool_upstream_base_url text NULL,
             tool_frontend_entry_point text NULL,
@@ -316,14 +353,21 @@ internal static class ContentStorageSchema
             tool_created_at timestamp with time zone NOT NULL,
             tool_updated_at timestamp with time zone NOT NULL,
             CONSTRAINT pk_tool_registration PRIMARY KEY (tool_id),
+            CONSTRAINT ck_tool_registration_kind CHECK (tool_kind IN (0, 1)),
             CONSTRAINT ck_tool_registration_integration_type
-                CHECK (tool_integration_type IN (0, 1)),
-            CONSTRAINT ck_tool_registration_slug_not_empty
-                CHECK (length(btrim(tool_slug)) > 0),
+                CHECK (tool_integration_type IS NULL OR tool_integration_type IN (0, 1)),
+            CONSTRAINT ck_tool_registration_key_not_empty
+                CHECK (length(btrim(tool_key)) > 0),
+            CONSTRAINT ck_tool_registration_application_shape
+                CHECK ((tool_kind = 0 AND tool_slug IS NOT NULL AND length(btrim(tool_slug)) > 0 AND tool_integration_type IS NOT NULL)
+                    OR (tool_kind = 1 AND tool_slug IS NULL AND tool_integration_type IS NULL
+                        AND tool_integration_contract_version IS NULL AND tool_frontend_entry_point IS NULL)),
             CONSTRAINT ck_tool_registration_display_name_not_empty
                 CHECK (length(btrim(tool_display_name)) > 0));
+        CREATE UNIQUE INDEX IF NOT EXISTS ux_tool_registration_key_ci
+            ON tool_registration(lower(tool_key));
         CREATE UNIQUE INDEX IF NOT EXISTS ux_tool_registration_slug_ci
-            ON tool_registration(lower(tool_slug));
+            ON tool_registration(lower(tool_slug)) WHERE tool_slug IS NOT NULL;
         """;
 
     private const string SqliteAddToolIntegrationContractVersion = """
@@ -346,23 +390,94 @@ internal static class ContentStorageSchema
         ADD COLUMN IF NOT EXISTS tool_delegation_targets text[] NOT NULL DEFAULT ARRAY[]::text[];
         """;
 
+    private const string SqliteMigrateLegacyToolRegistry = """
+        ALTER TABLE tool_registration RENAME TO tool_registration_legacy_headless;
+        DROP INDEX IF EXISTS ux_tool_registration_slug_ci;
+        CREATE TABLE tool_registration (
+            tool_id TEXT NOT NULL PRIMARY KEY,
+            tool_key TEXT NOT NULL,
+            tool_kind INTEGER NOT NULL DEFAULT 0,
+            tool_slug TEXT NULL,
+            tool_display_name TEXT NOT NULL,
+            tool_description TEXT NULL,
+            tool_integration_type INTEGER NULL,
+            tool_integration_contract_version INTEGER NULL,
+            tool_upstream_base_url TEXT NULL,
+            tool_frontend_entry_point TEXT NULL,
+            tool_health_path TEXT NULL,
+            tool_modes TEXT NOT NULL DEFAULT '[]',
+            tool_delegation_targets TEXT NOT NULL DEFAULT '[]',
+            tool_allow_anonymous INTEGER NOT NULL DEFAULT 1,
+            tool_enabled INTEGER NOT NULL DEFAULT 0,
+            tool_created_at TEXT NOT NULL,
+            tool_updated_at TEXT NOT NULL,
+            CONSTRAINT ck_tool_registration_kind CHECK (tool_kind IN (0, 1)),
+            CONSTRAINT ck_tool_registration_integration_type
+                CHECK (tool_integration_type IS NULL OR tool_integration_type IN (0, 1)),
+            CONSTRAINT ck_tool_registration_key_not_empty CHECK (length(trim(tool_key)) > 0),
+            CONSTRAINT ck_tool_registration_application_shape
+                CHECK ((tool_kind = 0 AND tool_slug IS NOT NULL AND length(trim(tool_slug)) > 0 AND tool_integration_type IS NOT NULL)
+                    OR (tool_kind = 1 AND tool_slug IS NULL AND tool_integration_type IS NULL
+                        AND tool_integration_contract_version IS NULL AND tool_frontend_entry_point IS NULL)),
+            CONSTRAINT ck_tool_registration_display_name_not_empty CHECK (length(trim(tool_display_name)) > 0));
+        INSERT INTO tool_registration (
+            tool_id, tool_key, tool_kind, tool_slug, tool_display_name, tool_description,
+            tool_integration_type, tool_integration_contract_version, tool_upstream_base_url,
+            tool_frontend_entry_point, tool_health_path, tool_modes, tool_delegation_targets,
+            tool_allow_anonymous, tool_enabled, tool_created_at, tool_updated_at)
+        SELECT
+            tool_id, lower(trim(tool_slug)), 0, tool_slug, tool_display_name, tool_description,
+            tool_integration_type, tool_integration_contract_version, tool_upstream_base_url,
+            tool_frontend_entry_point, tool_health_path, tool_modes, tool_delegation_targets,
+            tool_allow_anonymous, tool_enabled, tool_created_at, tool_updated_at
+        FROM tool_registration_legacy_headless;
+        DROP TABLE tool_registration_legacy_headless;
+        CREATE UNIQUE INDEX ux_tool_registration_key_ci ON tool_registration(lower(tool_key));
+        CREATE UNIQUE INDEX ux_tool_registration_slug_ci
+            ON tool_registration(lower(tool_slug)) WHERE tool_slug IS NOT NULL;
+        """;
+
+    private const string PostgresMigrateLegacyToolRegistry = """
+        DROP INDEX IF EXISTS ux_tool_registration_slug_ci;
+        ALTER TABLE tool_registration RENAME COLUMN tool_slug TO tool_key;
+        ALTER TABLE tool_registration ADD COLUMN tool_kind smallint NOT NULL DEFAULT 0;
+        ALTER TABLE tool_registration ADD COLUMN tool_slug text NULL;
+        UPDATE tool_registration SET tool_key = lower(btrim(tool_key)), tool_slug = tool_key;
+        ALTER TABLE tool_registration ALTER COLUMN tool_integration_type DROP NOT NULL;
+        ALTER TABLE tool_registration DROP CONSTRAINT IF EXISTS ck_tool_registration_integration_type;
+        ALTER TABLE tool_registration DROP CONSTRAINT IF EXISTS ck_tool_registration_slug_not_empty;
+        ALTER TABLE tool_registration ADD CONSTRAINT ck_tool_registration_kind CHECK (tool_kind IN (0, 1));
+        ALTER TABLE tool_registration ADD CONSTRAINT ck_tool_registration_integration_type
+            CHECK (tool_integration_type IS NULL OR tool_integration_type IN (0, 1));
+        ALTER TABLE tool_registration ADD CONSTRAINT ck_tool_registration_key_not_empty
+            CHECK (length(btrim(tool_key)) > 0);
+        ALTER TABLE tool_registration ADD CONSTRAINT ck_tool_registration_application_shape
+            CHECK ((tool_kind = 0 AND tool_slug IS NOT NULL AND length(btrim(tool_slug)) > 0 AND tool_integration_type IS NOT NULL)
+                OR (tool_kind = 1 AND tool_slug IS NULL AND tool_integration_type IS NULL
+                    AND tool_integration_contract_version IS NULL AND tool_frontend_entry_point IS NULL));
+        CREATE UNIQUE INDEX ux_tool_registration_key_ci ON tool_registration(lower(tool_key));
+        CREATE UNIQUE INDEX ux_tool_registration_slug_ci
+            ON tool_registration(lower(tool_slug)) WHERE tool_slug IS NOT NULL;
+        """;
+
     private const string SqliteConfigureKnownDelegationTargets = """
         UPDATE tool_registration
         SET tool_delegation_targets = '["rules-core"]'
-        WHERE lower(tool_slug) = 'character-sheet';
+        WHERE lower(tool_key) = 'character-sheet';
         """;
 
     private const string PostgresConfigureKnownDelegationTargets = """
         UPDATE tool_registration
         SET tool_delegation_targets = ARRAY['rules-core']::text[]
-        WHERE lower(tool_slug) = 'character-sheet';
+        WHERE lower(tool_key) = 'character-sheet';
         """;
 
     private const string MigrateKnownEmbeddedModuleContracts = """
         UPDATE tool_registration
         SET tool_integration_contract_version = 2
-        WHERE tool_integration_type = 0
+        WHERE tool_kind = 0
+          AND tool_integration_type = 0
           AND tool_integration_contract_version IS NULL
-          AND lower(tool_slug) IN ('block-initiative', 'rules-core');
+          AND lower(tool_key) IN ('block-initiative', 'rules-core');
         """;
 }

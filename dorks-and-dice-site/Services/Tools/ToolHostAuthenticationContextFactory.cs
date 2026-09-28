@@ -41,12 +41,13 @@ public sealed class ToolHostAuthenticationContextFactory(
             userId,
             cancellationToken);
         var characters = await BuildCharacterAccessProjectionAsync(
-            tool.Slug,
+            tool.Key,
             userId,
             cancellationToken);
 
         return new ToolHostAuthenticationContext
         {
+            ToolKey = tool.Key,
             ToolSlug = tool.Slug,
             SiteMode = siteMode,
             User = new ToolHostUserContext
@@ -88,12 +89,13 @@ public sealed class ToolHostAuthenticationContextFactory(
         }
 
         var characters = await BuildCharacterAccessProjectionAsync(
-            targetTool.Slug,
+            targetTool.Key,
             userId,
             cancellationToken);
 
         return new ToolHostAuthenticationContext
         {
+            ToolKey = targetTool.Key,
             ToolSlug = targetTool.Slug,
             SiteMode = sourceContext.SiteMode,
             User = new ToolHostUserContext
@@ -115,11 +117,11 @@ public sealed class ToolHostAuthenticationContextFactory(
     }
 
     private async Task<IReadOnlyList<ToolHostCharacterAccessSummary>?> BuildCharacterAccessProjectionAsync(
-        string toolSlug,
+        string toolKey,
         Guid userId,
         CancellationToken cancellationToken)
     {
-        if (!string.Equals(toolSlug, CharacterToolContract.Slug, StringComparison.Ordinal))
+        if (!string.Equals(toolKey, CharacterToolContract.Slug, StringComparison.Ordinal))
         {
             return null;
         }

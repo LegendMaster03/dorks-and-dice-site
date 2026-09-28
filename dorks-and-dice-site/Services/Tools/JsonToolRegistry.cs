@@ -7,6 +7,7 @@ public interface IToolRegistry
 {
     Task<IReadOnlyList<ToolRegistration>> GetAllAsync(CancellationToken cancellationToken = default);
     Task<ToolRegistration?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
+    Task<ToolRegistration?> GetByKeyAsync(string key, CancellationToken cancellationToken = default);
     Task<ToolRegistration?> GetBySlugAsync(string slug, CancellationToken cancellationToken = default);
     Task SaveAsync(ToolRegistration registration, CancellationToken cancellationToken = default);
     Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default);
@@ -65,13 +66,28 @@ public sealed class JsonToolRegistry : IToolRegistry
         }
     }
 
+    public async Task<ToolRegistration?> GetByKeyAsync(string key, CancellationToken cancellationToken = default)
+    {
+        await Gate.WaitAsync(cancellationToken);
+        try
+        {
+            return (await ReadUnsafeAsync(cancellationToken)).FirstOrDefault(tool =>
+                string.Equals(tool.Key, key, StringComparison.OrdinalIgnoreCase));
+        }
+        finally
+        {
+            Gate.Release();
+        }
+    }
+
     public async Task<ToolRegistration?> GetBySlugAsync(string slug, CancellationToken cancellationToken = default)
     {
         await Gate.WaitAsync(cancellationToken);
         try
         {
             return (await ReadUnsafeAsync(cancellationToken)).FirstOrDefault(tool =>
-                string.Equals(tool.Slug, slug, StringComparison.OrdinalIgnoreCase));
+                tool.Kind == ToolKind.Application
+                && string.Equals(tool.Slug, slug, StringComparison.OrdinalIgnoreCase));
         }
         finally
         {
@@ -82,20 +98,42 @@ public sealed class JsonToolRegistry : IToolRegistry
     public async Task SaveAsync(ToolRegistration registration, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(registration);
+        NormalizeRegistration(registration);
+        if (string.IsNullOrWhiteSpace(registration.Key))
+        {
+            throw new InvalidOperationException("A Tool registration key is required.");
+        }
 
         await Gate.WaitAsync(cancellationToken);
         try
         {
             var tools = await ReadUnsafeAsync(cancellationToken);
-            var duplicate = tools.FirstOrDefault(tool =>
-                tool.Id != registration.Id
-                && string.Equals(tool.Slug, registration.Slug, StringComparison.OrdinalIgnoreCase));
-            if (duplicate is not null)
+            var index = tools.FindIndex(tool => tool.Id == registration.Id);
+            if (index >= 0
+                && !string.Equals(tools[index].Key, registration.Key, StringComparison.Ordinal))
             {
-                throw new InvalidOperationException($"A tool with slug '{registration.Slug}' already exists.");
+                throw StableKeyChanged(registration.Id, tools[index].Key, registration.Key);
             }
 
-            var index = tools.FindIndex(tool => tool.Id == registration.Id);
+            var duplicateKey = tools.FirstOrDefault(tool =>
+                tool.Id != registration.Id
+                && string.Equals(tool.Key, registration.Key, StringComparison.OrdinalIgnoreCase));
+            if (duplicateKey is not null)
+            {
+                throw new InvalidOperationException($"A Tool with key '{registration.Key}' already exists.");
+            }
+
+            if (!string.IsNullOrWhiteSpace(registration.Slug))
+            {
+                var duplicateSlug = tools.FirstOrDefault(tool =>
+                    tool.Id != registration.Id
+                    && string.Equals(tool.Slug, registration.Slug, StringComparison.OrdinalIgnoreCase));
+                if (duplicateSlug is not null)
+                {
+                    throw new InvalidOperationException($"A Tool with slug '{registration.Slug}' already exists.");
+                }
+            }
+
             if (index >= 0)
             {
                 tools[index] = registration;
@@ -141,8 +179,14 @@ public sealed class JsonToolRegistry : IToolRegistry
         }
 
         await using var stream = File.OpenRead(_registryPath);
-        return await JsonSerializer.DeserializeAsync<List<ToolRegistration>>(stream, JsonOptions, cancellationToken)
+        var tools = await JsonSerializer.DeserializeAsync<List<ToolRegistration>>(stream, JsonOptions, cancellationToken)
             ?? [];
+        foreach (var tool in tools)
+        {
+            NormalizeRegistration(tool);
+        }
+
+        return tools;
     }
 
     private async Task WriteUnsafeAsync(List<ToolRegistration> tools, CancellationToken cancellationToken)
@@ -171,4 +215,38 @@ public sealed class JsonToolRegistry : IToolRegistry
             }
         }
     }
+
+    private static void NormalizeRegistration(ToolRegistration registration)
+    {
+        registration.Slug = NullIfWhiteSpace(registration.Slug)?.ToLowerInvariant();
+        registration.Key = NormalizeStableKey(registration.Key, registration.Slug);
+        registration.DelegationTargets = (registration.DelegationTargets ?? [])
+            .Where(target => !string.IsNullOrWhiteSpace(target))
+            .Select(target => target.Trim().ToLowerInvariant())
+            .Distinct(StringComparer.Ordinal)
+            .OrderBy(target => target, StringComparer.Ordinal)
+            .ToList();
+
+        if (registration.Kind == ToolKind.Service)
+        {
+            registration.Slug = null;
+            registration.IntegrationType = null;
+            registration.IntegrationContractVersion = null;
+            registration.FrontendEntryPoint = null;
+        }
+    }
+
+    private static string NormalizeStableKey(string? key, string? slug) =>
+        NullIfWhiteSpace(key)?.ToLowerInvariant()
+        ?? NullIfWhiteSpace(slug)?.ToLowerInvariant()
+        ?? string.Empty;
+
+    private static string? NullIfWhiteSpace(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    private static InvalidOperationException StableKeyChanged(
+        Guid id,
+        string existingKey,
+        string incomingKey) =>
+        new($"The stable Tool registration key for '{id:D}' can not be changed from '{existingKey}' to '{incomingKey}'.");
 }

@@ -57,6 +57,8 @@ public sealed partial class DevelopmentToolsController : Controller
         return View(PopulateModeOptions(new ToolRegistrationEditViewModel
         {
             Id = tool.Id,
+            Key = tool.Key,
+            Kind = tool.Kind,
             Slug = tool.Slug,
             DisplayName = tool.DisplayName,
             Description = tool.Description,
@@ -95,11 +97,28 @@ public sealed partial class DevelopmentToolsController : Controller
             return NotFound();
         }
 
-        var duplicate = await _toolRegistry.GetBySlugAsync(model.Slug, cancellationToken);
-        if (duplicate is not null && duplicate.Id != model.Id)
+        if (existing is not null
+            && !string.Equals(existing.Key, model.Key, StringComparison.Ordinal))
         {
-            ModelState.AddModelError(nameof(model.Slug), "That tool slug is already registered.");
+            ModelState.AddModelError(nameof(model.Key), "The stable registration key can not be changed after creation.");
             return View("Edit", model);
+        }
+
+        var duplicateKey = await _toolRegistry.GetByKeyAsync(model.Key, cancellationToken);
+        if (duplicateKey is not null && duplicateKey.Id != model.Id)
+        {
+            ModelState.AddModelError(nameof(model.Key), "That registration key is already registered.");
+            return View("Edit", model);
+        }
+
+        if (model.Kind == ToolKind.Application && !string.IsNullOrWhiteSpace(model.Slug))
+        {
+            var duplicateSlug = await _toolRegistry.GetBySlugAsync(model.Slug, cancellationToken);
+            if (duplicateSlug is not null && duplicateSlug.Id != model.Id)
+            {
+                ModelState.AddModelError(nameof(model.Slug), "That public Tool slug is already registered.");
+                return View("Edit", model);
+            }
         }
 
         var selectedModes = model.Modes.ToHashSet(StringComparer.Ordinal);
@@ -112,26 +131,31 @@ public sealed partial class DevelopmentToolsController : Controller
         var registration = new ToolRegistration
         {
             Id = existing?.Id ?? Guid.NewGuid(),
-            Slug = model.Slug,
+            Key = model.Key,
+            Kind = model.Kind,
+            Slug = model.Kind == ToolKind.Application ? model.Slug : null,
             DisplayName = model.DisplayName,
             Description = model.Description,
-            IntegrationType = model.IntegrationType,
-            IntegrationContractVersion = model.IntegrationType == ToolIntegrationType.EmbeddedModule
-                ? model.IntegrationContractVersion
-                : null,
+            IntegrationType = model.Kind == ToolKind.Application ? model.IntegrationType : null,
+            IntegrationContractVersion = model.Kind == ToolKind.Application
+                && model.IntegrationType == ToolIntegrationType.EmbeddedModule
+                    ? model.IntegrationContractVersion
+                    : null,
             UpstreamBaseUrl = model.UpstreamBaseUrl,
-            FrontendEntryPoint = model.FrontendEntryPoint,
+            FrontendEntryPoint = model.Kind == ToolKind.Application ? model.FrontendEntryPoint : null,
             HealthPath = model.HealthPath,
             Modes = modes,
             DelegationTargets = model.DelegationTargets.ToList(),
-            AllowAnonymous = model.AllowAnonymous,
+            AllowAnonymous = model.Kind == ToolKind.Application && model.AllowAnonymous,
             Enabled = model.Enabled,
             CreatedAt = existing?.CreatedAt ?? now,
             UpdatedAt = now
         };
 
         await _toolRegistry.SaveAsync(registration, cancellationToken);
-        TempData["DevelopmentToolMessage"] = existing is null ? "Tool registered." : "Tool registration updated.";
+        TempData["DevelopmentToolMessage"] = existing is null
+            ? "Tool registration created."
+            : "Tool registration updated.";
         return RedirectToAction(nameof(Index));
     }
 
@@ -163,22 +187,35 @@ public sealed partial class DevelopmentToolsController : Controller
             ModelState.AddModelError(nameof(model.DisplayName), "Display name is required.");
         }
 
-        if (string.IsNullOrWhiteSpace(model.Slug) || !ToolSlugRegex().IsMatch(model.Slug))
+        if (string.IsNullOrWhiteSpace(model.Key) || !ToolKeyRegex().IsMatch(model.Key))
         {
-            ModelState.AddModelError(nameof(model.Slug), "Slug must contain only lowercase letters, numbers, and hyphens.");
+            ModelState.AddModelError(nameof(model.Key), "Registration key must contain only lowercase letters, numbers, and hyphens.");
         }
 
-        var contractError = ToolIntegrationContractPolicy.GetUnsupportedReason(
-            model.IntegrationType,
-            model.IntegrationContractVersion);
-        if (contractError is not null)
+        if (model.Kind == ToolKind.Application)
         {
-            ModelState.AddModelError(nameof(model.IntegrationContractVersion), contractError);
+            if (string.IsNullOrWhiteSpace(model.Slug) || !ToolKeyRegex().IsMatch(model.Slug))
+            {
+                ModelState.AddModelError(nameof(model.Slug), "Public slug must contain only lowercase letters, numbers, and hyphens.");
+            }
+
+            var contractError = ToolIntegrationContractPolicy.GetUnsupportedReason(
+                model.Kind,
+                model.IntegrationType,
+                model.IntegrationContractVersion);
+            if (contractError is not null)
+            {
+                ModelState.AddModelError(nameof(model.IntegrationContractVersion), contractError);
+            }
+        }
+        else if (string.IsNullOrWhiteSpace(model.UpstreamBaseUrl))
+        {
+            ModelState.AddModelError(nameof(model.UpstreamBaseUrl), "Headless services require an upstream base URL.");
         }
 
         if (model.Modes.Count == 0)
         {
-            ModelState.AddModelError(nameof(model.Modes), "Select at least one site mode for this tool.");
+            ModelState.AddModelError(nameof(model.Modes), "Select at least one site mode for this registration.");
         }
         else
         {
@@ -192,15 +229,15 @@ public sealed partial class DevelopmentToolsController : Controller
         }
 
         var invalidDelegationTarget = model.DelegationTargets
-            .FirstOrDefault(target => !ToolSlugRegex().IsMatch(target));
+            .FirstOrDefault(target => !ToolKeyRegex().IsMatch(target));
         if (invalidDelegationTarget is not null)
         {
             ModelState.AddModelError(
                 nameof(model.DelegationTargetsText),
-                "Delegation targets must be valid lowercase Tool slugs.");
+                "Delegation targets must be valid lowercase registration keys.");
         }
 
-        if (model.DelegationTargets.Contains(model.Slug, StringComparer.Ordinal))
+        if (model.DelegationTargets.Contains(model.Key, StringComparer.Ordinal))
         {
             ModelState.AddModelError(
                 nameof(model.DelegationTargetsText),
@@ -214,7 +251,8 @@ public sealed partial class DevelopmentToolsController : Controller
                 upstreamReason ?? "Upstream base URL is not allowed.");
         }
 
-        if (!string.IsNullOrWhiteSpace(model.FrontendEntryPoint)
+        if (model.Kind == ToolKind.Application
+            && !string.IsNullOrWhiteSpace(model.FrontendEntryPoint)
             && !model.FrontendEntryPoint.StartsWith("/", StringComparison.Ordinal))
         {
             ModelState.AddModelError(nameof(model.FrontendEntryPoint), "Frontend entry point must be an absolute path beginning with '/'.");
@@ -229,7 +267,15 @@ public sealed partial class DevelopmentToolsController : Controller
 
     private static void Normalize(ToolRegistrationEditViewModel model)
     {
-        model.Slug = (model.Slug ?? string.Empty).Trim().ToLowerInvariant();
+        model.Key = (model.Key ?? string.Empty).Trim().ToLowerInvariant();
+        model.Slug = NullIfWhiteSpace(model.Slug)?.ToLowerInvariant();
+        if (model.Kind == ToolKind.Application
+            && string.IsNullOrWhiteSpace(model.Key)
+            && !string.IsNullOrWhiteSpace(model.Slug))
+        {
+            model.Key = model.Slug;
+        }
+
         model.DisplayName = (model.DisplayName ?? string.Empty).Trim();
         model.Description = NullIfWhiteSpace(model.Description);
         model.UpstreamBaseUrl = NullIfWhiteSpace(model.UpstreamBaseUrl)?.TrimEnd('/');
@@ -252,7 +298,15 @@ public sealed partial class DevelopmentToolsController : Controller
             Environment.NewLine,
             model.DelegationTargets);
 
-        if (model.IntegrationType != ToolIntegrationType.EmbeddedModule)
+        if (model.Kind == ToolKind.Service)
+        {
+            model.Slug = null;
+            model.IntegrationType = null;
+            model.IntegrationContractVersion = null;
+            model.FrontendEntryPoint = null;
+            model.AllowAnonymous = false;
+        }
+        else if (model.IntegrationType != ToolIntegrationType.EmbeddedModule)
         {
             model.IntegrationContractVersion = null;
         }
@@ -262,5 +316,5 @@ public sealed partial class DevelopmentToolsController : Controller
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
     [GeneratedRegex("^[a-z0-9]+(?:-[a-z0-9]+)*$", RegexOptions.CultureInvariant)]
-    private static partial Regex ToolSlugRegex();
+    private static partial Regex ToolKeyRegex();
 }
