@@ -1,3 +1,4 @@
+using dorks_and_dice_site.Models.Tools;
 using dorks_and_dice_site.Modes.DorksAndDice.Persistence;
 using dorks_and_dice_site.Services.Tools;
 using Microsoft.EntityFrameworkCore;
@@ -68,7 +69,9 @@ public sealed class ToolLifecycleOutboxDispatcher(
     {
         try
         {
-            var tool = await toolRegistry.GetBySlugAsync(lifecycleEvent.TargetToolSlug, cancellationToken);
+            // TargetToolSlug is the persisted legacy column/property name. Its value is now treated
+            // as the stable registration key so lifecycle delivery can target headless services too.
+            var tool = await toolRegistry.GetByKeyAsync(lifecycleEvent.TargetToolSlug, cancellationToken);
             if (tool is null)
             {
                 return $"Tool '{lifecycleEvent.TargetToolSlug}' is not registered.";
@@ -96,9 +99,12 @@ public sealed class ToolLifecycleOutboxDispatcher(
                 lifecycleEvent.EventId,
                 lifecycleEvent.EventType,
                 lifecycleEvent.SubjectId,
-                lifecycleEvent.OccurredAt);
+                lifecycleEvent.OccurredAt)
+            {
+                ToolKey = tool.Key
+            };
             var ticket = ToolLifecycleTickets.Issue(context);
-            var introspectionPath = $"/tool-host/{tool.Slug}/api/lifecycle/introspect";
+            var introspectionPath = LifecycleIntrospectionPath(tool);
 
             using var request = new HttpRequestMessage(HttpMethod.Post, deliveryUri);
             request.Headers.TryAddWithoutValidation(ToolLifecycleHeaders.Ticket, ticket);
@@ -129,6 +135,11 @@ public sealed class ToolLifecycleOutboxDispatcher(
             return exception.Message;
         }
     }
+
+    private static string LifecycleIntrospectionPath(ToolRegistration tool) =>
+        tool.Kind == ToolKind.Application && !string.IsNullOrWhiteSpace(tool.Slug)
+            ? $"/tool-host/{tool.Slug}/api/lifecycle/introspect"
+            : $"/tool-host/registrations/{tool.Key}/api/lifecycle/introspect";
 
     private static TimeSpan RetryDelay(int attemptCount)
     {

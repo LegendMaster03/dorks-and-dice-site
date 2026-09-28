@@ -14,6 +14,8 @@ public sealed class DatabaseToolRegistry : IToolRegistry
     private const string SelectColumns = """
         SELECT
             tool_id,
+            tool_key,
+            tool_kind,
             tool_slug,
             tool_display_name,
             tool_description,
@@ -69,11 +71,19 @@ public sealed class DatabaseToolRegistry : IToolRegistry
             (command, provider) => AddIdParameter(command, "@tool_id", id, provider),
             cancellationToken);
 
+    public Task<ToolRegistration?> GetByKeyAsync(
+        string key,
+        CancellationToken cancellationToken = default) =>
+        GetSingleAsync(
+            "lower(tool_key) = lower(@tool_key)",
+            (command, _) => AddParameter(command, "@tool_key", key),
+            cancellationToken);
+
     public Task<ToolRegistration?> GetBySlugAsync(
         string slug,
         CancellationToken cancellationToken = default) =>
         GetSingleAsync(
-            "lower(tool_slug) = lower(@tool_slug)",
+            "tool_kind = 0 AND lower(tool_slug) = lower(@tool_slug)",
             (command, _) => AddParameter(command, "@tool_slug", slug),
             cancellationToken);
 
@@ -82,16 +92,28 @@ public sealed class DatabaseToolRegistry : IToolRegistry
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(registration);
-
-        var existingById = await GetByIdAsync(registration.Id, cancellationToken);
-        var duplicate = await GetBySlugAsync(registration.Slug, cancellationToken);
-        if (duplicate is not null && duplicate.Id != registration.Id)
+        NormalizeRegistration(registration);
+        if (string.IsNullOrWhiteSpace(registration.Key))
         {
-            throw DuplicateSlug(registration.Slug);
+            throw new InvalidOperationException("A Tool registration key is required.");
         }
 
-        registration.DelegationTargets = NormalizeDelegationTargets(
-            registration.DelegationTargets);
+        var existingById = await GetByIdAsync(registration.Id, cancellationToken);
+        var duplicateKey = await GetByKeyAsync(registration.Key, cancellationToken);
+        if (duplicateKey is not null && duplicateKey.Id != registration.Id)
+        {
+            throw DuplicateKey(registration.Key);
+        }
+
+        if (!string.IsNullOrWhiteSpace(registration.Slug))
+        {
+            var duplicateSlug = await GetBySlugAsync(registration.Slug, cancellationToken);
+            if (duplicateSlug is not null && duplicateSlug.Id != registration.Id)
+            {
+                throw DuplicateSlug(registration.Slug);
+            }
+        }
+
         if (existingById is null)
         {
             ApplyInitialDelegationDefaults(registration);
@@ -106,6 +128,8 @@ public sealed class DatabaseToolRegistry : IToolRegistry
                 INSERT INTO tool_registration
                 (
                     tool_id,
+                    tool_key,
+                    tool_kind,
                     tool_slug,
                     tool_display_name,
                     tool_description,
@@ -124,6 +148,8 @@ public sealed class DatabaseToolRegistry : IToolRegistry
                 VALUES
                 (
                     @tool_id,
+                    @tool_key,
+                    @tool_kind,
                     @tool_slug,
                     @tool_display_name,
                     @tool_description,
@@ -140,6 +166,8 @@ public sealed class DatabaseToolRegistry : IToolRegistry
                     @tool_updated_at
                 )
                 ON CONFLICT(tool_id) DO UPDATE SET
+                    tool_key = excluded.tool_key,
+                    tool_kind = excluded.tool_kind,
                     tool_slug = excluded.tool_slug,
                     tool_display_name = excluded.tool_display_name,
                     tool_description = excluded.tool_description,
@@ -157,10 +185,15 @@ public sealed class DatabaseToolRegistry : IToolRegistry
                 """;
 
             AddIdParameter(command, "@tool_id", registration.Id, provider);
+            AddParameter(command, "@tool_key", registration.Key);
+            AddParameter(command, "@tool_kind", (short)registration.Kind);
             AddParameter(command, "@tool_slug", registration.Slug);
             AddParameter(command, "@tool_display_name", registration.DisplayName);
             AddParameter(command, "@tool_description", registration.Description);
-            AddParameter(command, "@tool_integration_type", (short)registration.IntegrationType);
+            AddParameter(
+                command,
+                "@tool_integration_type",
+                registration.IntegrationType.HasValue ? (short)registration.IntegrationType.Value : null);
             AddParameter(command, "@tool_integration_contract_version", registration.IntegrationContractVersion);
             AddParameter(command, "@tool_upstream_base_url", registration.UpstreamBaseUrl);
             AddParameter(command, "@tool_frontend_entry_point", registration.FrontendEntryPoint);
@@ -180,15 +213,29 @@ public sealed class DatabaseToolRegistry : IToolRegistry
             {
                 await command.ExecuteNonQueryAsync(cancellationToken);
             }
-            catch (PostgresException ex) when (
-                ex.SqlState == PostgresErrorCodes.UniqueViolation
-                && string.Equals(ex.ConstraintName, "ux_tool_registration_slug_ci", StringComparison.Ordinal))
+            catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UniqueViolation)
             {
-                throw DuplicateSlug(registration.Slug, ex);
+                if (string.Equals(ex.ConstraintName, "ux_tool_registration_key_ci", StringComparison.Ordinal))
+                {
+                    throw DuplicateKey(registration.Key, ex);
+                }
+
+                if (string.Equals(ex.ConstraintName, "ux_tool_registration_slug_ci", StringComparison.Ordinal))
+                {
+                    throw DuplicateSlug(registration.Slug ?? string.Empty, ex);
+                }
+
+                throw;
             }
             catch (SqliteException ex) when (ex.SqliteExtendedErrorCode == 2067)
             {
-                throw DuplicateSlug(registration.Slug, ex);
+                var duplicate = await GetByKeyAsync(registration.Key, cancellationToken);
+                if (duplicate is not null && duplicate.Id != registration.Id)
+                {
+                    throw DuplicateKey(registration.Key, ex);
+                }
+
+                throw DuplicateSlug(registration.Slug ?? string.Empty, ex);
             }
         }
     }
@@ -245,22 +292,39 @@ public sealed class DatabaseToolRegistry : IToolRegistry
 
     private static void ApplyInitialDelegationDefaults(ToolRegistration registration)
     {
-        const string characterSheetSlug = "character-sheet";
-        const string rulesCoreSlug = "rules-core";
+        const string characterSheetKey = "character-sheet";
+        const string rulesCoreKey = "rules-core";
 
         if (!string.Equals(
-                registration.Slug,
-                characterSheetSlug,
+                registration.Key,
+                characterSheetKey,
                 StringComparison.OrdinalIgnoreCase)
             || registration.DelegationTargets.Contains(
-                rulesCoreSlug,
+                rulesCoreKey,
                 StringComparer.Ordinal))
         {
             return;
         }
 
-        registration.DelegationTargets.Add(rulesCoreSlug);
+        registration.DelegationTargets.Add(rulesCoreKey);
         registration.DelegationTargets.Sort(StringComparer.Ordinal);
+    }
+
+    private static void NormalizeRegistration(ToolRegistration registration)
+    {
+        registration.Slug = NullIfWhiteSpace(registration.Slug)?.ToLowerInvariant();
+        registration.Key = NullIfWhiteSpace(registration.Key)?.ToLowerInvariant()
+            ?? registration.Slug
+            ?? string.Empty;
+        registration.DelegationTargets = NormalizeDelegationTargets(registration.DelegationTargets);
+
+        if (registration.Kind == ToolKind.Service)
+        {
+            registration.Slug = null;
+            registration.IntegrationType = null;
+            registration.IntegrationContractVersion = null;
+            registration.FrontendEntryPoint = null;
+        }
     }
 
     private static List<string> NormalizeDelegationTargets(
@@ -275,22 +339,26 @@ public sealed class DatabaseToolRegistry : IToolRegistry
     private static ToolRegistration ReadRegistration(DbDataReader reader, RegistryProvider provider) => new()
     {
         Id = ReadGuid(reader.GetValue(0)),
-        Slug = reader.GetString(1),
-        DisplayName = reader.GetString(2),
-        Description = ReadNullableString(reader, 3),
-        IntegrationType = (ToolIntegrationType)Convert.ToInt32(reader.GetValue(4), CultureInfo.InvariantCulture),
-        IntegrationContractVersion = reader.IsDBNull(5)
+        Key = reader.GetString(1),
+        Kind = (ToolKind)Convert.ToInt32(reader.GetValue(2), CultureInfo.InvariantCulture),
+        Slug = ReadNullableString(reader, 3),
+        DisplayName = reader.GetString(4),
+        Description = ReadNullableString(reader, 5),
+        IntegrationType = reader.IsDBNull(6)
             ? null
-            : Convert.ToInt32(reader.GetValue(5), CultureInfo.InvariantCulture),
-        UpstreamBaseUrl = ReadNullableString(reader, 6),
-        FrontendEntryPoint = ReadNullableString(reader, 7),
-        HealthPath = ReadNullableString(reader, 8),
-        Modes = ReadStringList(reader.GetValue(9), provider),
-        DelegationTargets = ReadStringList(reader.GetValue(10), provider),
-        AllowAnonymous = Convert.ToBoolean(reader.GetValue(11), CultureInfo.InvariantCulture),
-        Enabled = Convert.ToBoolean(reader.GetValue(12), CultureInfo.InvariantCulture),
-        CreatedAt = ReadTimestamp(reader.GetValue(13)),
-        UpdatedAt = ReadTimestamp(reader.GetValue(14))
+            : (ToolIntegrationType)Convert.ToInt32(reader.GetValue(6), CultureInfo.InvariantCulture),
+        IntegrationContractVersion = reader.IsDBNull(7)
+            ? null
+            : Convert.ToInt32(reader.GetValue(7), CultureInfo.InvariantCulture),
+        UpstreamBaseUrl = ReadNullableString(reader, 8),
+        FrontendEntryPoint = ReadNullableString(reader, 9),
+        HealthPath = ReadNullableString(reader, 10),
+        Modes = ReadStringList(reader.GetValue(11), provider),
+        DelegationTargets = ReadStringList(reader.GetValue(12), provider),
+        AllowAnonymous = Convert.ToBoolean(reader.GetValue(13), CultureInfo.InvariantCulture),
+        Enabled = Convert.ToBoolean(reader.GetValue(14), CultureInfo.InvariantCulture),
+        CreatedAt = ReadTimestamp(reader.GetValue(15)),
+        UpdatedAt = ReadTimestamp(reader.GetValue(16))
     };
 
     private static Guid ReadGuid(object value) => value switch
@@ -312,7 +380,7 @@ public sealed class DatabaseToolRegistry : IToolRegistry
             {
                 string[] values => values.ToList(),
                 IEnumerable<string> values => values.ToList(),
-                _ => throw new InvalidOperationException("Tool registration modes are not a PostgreSQL text array.")
+                _ => throw new InvalidOperationException("Tool registration string list is not a PostgreSQL text array.")
             };
         }
 
@@ -342,14 +410,14 @@ public sealed class DatabaseToolRegistry : IToolRegistry
     private static void AddStringListParameter(
         DbCommand command,
         string name,
-        IReadOnlyCollection<string> modes,
+        IReadOnlyCollection<string> values,
         RegistryProvider provider)
     {
         var parameter = command.CreateParameter();
         parameter.ParameterName = name;
         if (provider == RegistryProvider.PostgreSql)
         {
-            parameter.Value = modes.ToArray();
+            parameter.Value = values.ToArray();
             if (parameter is NpgsqlParameter npgsqlParameter)
             {
                 npgsqlParameter.NpgsqlDbType = NpgsqlDbType.Array | NpgsqlDbType.Text;
@@ -357,7 +425,7 @@ public sealed class DatabaseToolRegistry : IToolRegistry
         }
         else
         {
-            parameter.Value = JsonSerializer.Serialize(modes);
+            parameter.Value = JsonSerializer.Serialize(values);
         }
 
         command.Parameters.Add(parameter);
@@ -383,8 +451,14 @@ public sealed class DatabaseToolRegistry : IToolRegistry
         command.Parameters.Add(parameter);
     }
 
+    private static string? NullIfWhiteSpace(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    private static InvalidOperationException DuplicateKey(string key, Exception? innerException = null) =>
+        new($"A Tool with key '{key}' already exists.", innerException);
+
     private static InvalidOperationException DuplicateSlug(string slug, Exception? innerException = null) =>
-        new($"A tool with slug '{slug}' already exists.", innerException);
+        new($"A Tool with slug '{slug}' already exists.", innerException);
 
     private enum RegistryProvider
     {

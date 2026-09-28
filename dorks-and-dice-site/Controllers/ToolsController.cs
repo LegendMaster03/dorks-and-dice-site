@@ -134,6 +134,8 @@ public sealed class ToolsController : Controller
         var tool = await _toolRegistry.GetBySlugAsync(slug, cancellationToken);
         var modeId = HttpContext.GetSiteModeContext().ActiveModeId;
         return tool is not null
+            && tool.Kind == ToolKind.Application
+            && !string.IsNullOrWhiteSpace(tool.Slug)
             && tool.Enabled
             && ToolVisibility.IsVisibleInMode(tool, modeId)
             ? tool

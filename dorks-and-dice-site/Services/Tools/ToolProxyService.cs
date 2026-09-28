@@ -1,16 +1,18 @@
+using dorks_and_dice_site.Models.Tools;
+
 namespace dorks_and_dice_site.Services.Tools;
 
 public interface IToolProxyService
 {
     Task ProxyAsync(
         HttpContext context,
-        Models.Tools.ToolRegistration tool,
+        ToolRegistration tool,
         string path,
         CancellationToken cancellationToken = default);
 
     Task ProxyAuthenticatedAsync(
         HttpContext context,
-        Models.Tools.ToolRegistration tool,
+        ToolRegistration tool,
         string path,
         string authenticationTicket,
         string introspectionPath,
@@ -60,14 +62,14 @@ public sealed class ToolProxyService : IToolProxyService
 
     public Task ProxyAsync(
         HttpContext context,
-        Models.Tools.ToolRegistration tool,
+        ToolRegistration tool,
         string path,
         CancellationToken cancellationToken = default) =>
         ProxyCoreAsync(context, tool, path, trustedRequestHeaders: null, cancellationToken);
 
     public Task ProxyAuthenticatedAsync(
         HttpContext context,
-        Models.Tools.ToolRegistration tool,
+        ToolRegistration tool,
         string path,
         string authenticationTicket,
         string introspectionPath,
@@ -87,7 +89,7 @@ public sealed class ToolProxyService : IToolProxyService
 
     private async Task ProxyCoreAsync(
         HttpContext context,
-        Models.Tools.ToolRegistration tool,
+        ToolRegistration tool,
         string path,
         IReadOnlyDictionary<string, string>? trustedRequestHeaders,
         CancellationToken cancellationToken)
@@ -107,7 +109,7 @@ public sealed class ToolProxyService : IToolProxyService
                 upstreamRequest.Content = new StreamContent(context.Request.Body);
             }
 
-            CopyRequestHeaders(context, upstreamRequest, tool.Slug);
+            CopyRequestHeaders(context, upstreamRequest, tool);
             if (trustedRequestHeaders is not null)
             {
                 foreach (var header in trustedRequestHeaders)
@@ -170,7 +172,7 @@ public sealed class ToolProxyService : IToolProxyService
     private static void CopyRequestHeaders(
         HttpContext context,
         HttpRequestMessage upstreamRequest,
-        string toolSlug)
+        ToolRegistration tool)
     {
         var connectionHeaders = ConnectionHeaderNames(context.Request.Headers.Connection.Select(value => value ?? string.Empty));
         foreach (var header in context.Request.Headers)
@@ -190,8 +192,11 @@ public sealed class ToolProxyService : IToolProxyService
 
         upstreamRequest.Headers.TryAddWithoutValidation("X-Forwarded-Host", context.Request.Host.Value);
         upstreamRequest.Headers.TryAddWithoutValidation("X-Forwarded-Proto", context.Request.Scheme);
-        upstreamRequest.Headers.TryAddWithoutValidation("X-Forwarded-Prefix", $"/tools/{toolSlug}");
-        upstreamRequest.Headers.TryAddWithoutValidation("X-Dorks-Tool-Context-Url", $"/tool-host/{toolSlug}/context");
+        if (tool.Kind == ToolKind.Application && !string.IsNullOrWhiteSpace(tool.Slug))
+        {
+            upstreamRequest.Headers.TryAddWithoutValidation("X-Forwarded-Prefix", $"/tools/{tool.Slug}");
+            upstreamRequest.Headers.TryAddWithoutValidation("X-Dorks-Tool-Context-Url", $"/tool-host/{tool.Slug}/context");
+        }
     }
 
     private static bool IsBlockedRequestHeader(string headerName) =>

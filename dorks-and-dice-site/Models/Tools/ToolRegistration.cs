@@ -1,5 +1,11 @@
 namespace dorks_and_dice_site.Models.Tools;
 
+public enum ToolKind
+{
+    Application,
+    Service
+}
+
 public enum ToolIntegrationType
 {
     EmbeddedModule,
@@ -27,10 +33,12 @@ public sealed record ToolHealthResult(
 public sealed class ToolRegistration
 {
     public Guid Id { get; set; }
-    public string Slug { get; set; } = string.Empty;
+    public string Key { get; set; } = string.Empty;
+    public ToolKind Kind { get; set; } = ToolKind.Application;
+    public string? Slug { get; set; }
     public string DisplayName { get; set; } = string.Empty;
     public string? Description { get; set; }
-    public ToolIntegrationType IntegrationType { get; set; } = ToolIntegrationType.EmbeddedModule;
+    public ToolIntegrationType? IntegrationType { get; set; } = ToolIntegrationType.EmbeddedModule;
     public int? IntegrationContractVersion { get; set; } = ToolIntegrationContractVersions.EmbeddedModuleCurrent;
     public string? UpstreamBaseUrl { get; set; }
     public string? FrontendEntryPoint { get; set; }
@@ -46,10 +54,12 @@ public sealed class ToolRegistration
 public sealed class ToolRegistrationEditViewModel
 {
     public Guid? Id { get; set; }
-    public string Slug { get; set; } = string.Empty;
+    public string Key { get; set; } = string.Empty;
+    public ToolKind Kind { get; set; } = ToolKind.Application;
+    public string? Slug { get; set; }
     public string DisplayName { get; set; } = string.Empty;
     public string? Description { get; set; }
-    public ToolIntegrationType IntegrationType { get; set; } = ToolIntegrationType.EmbeddedModule;
+    public ToolIntegrationType? IntegrationType { get; set; } = ToolIntegrationType.EmbeddedModule;
     public int? IntegrationContractVersion { get; set; } = ToolIntegrationContractVersions.EmbeddedModuleCurrent;
     public string? UpstreamBaseUrl { get; set; }
     public string? FrontendEntryPoint { get; set; }

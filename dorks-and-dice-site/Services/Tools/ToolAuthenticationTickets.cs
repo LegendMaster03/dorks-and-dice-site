@@ -26,6 +26,12 @@ public static class ToolAuthenticationTickets
     public static string Issue(ToolHostAuthenticationContext context)
     {
         ArgumentNullException.ThrowIfNull(context);
+        if (string.IsNullOrWhiteSpace(context.RegistrationKey))
+        {
+            throw new ArgumentException(
+                "Authentication contexts must identify a registered Tool capability.",
+                nameof(context));
+        }
 
         var now = DateTimeOffset.UtcNow;
         RemoveExpired(now);
@@ -41,19 +47,19 @@ public static class ToolAuthenticationTickets
     }
 
     public static bool TryRedeem(
-        string toolSlug,
+        string registrationKey,
         string ticket,
         out ToolHostAuthenticationContext? context)
     {
         context = null;
-        if (string.IsNullOrWhiteSpace(toolSlug) || string.IsNullOrWhiteSpace(ticket))
+        if (string.IsNullOrWhiteSpace(registrationKey) || string.IsNullOrWhiteSpace(ticket))
         {
             return false;
         }
 
         if (!Tickets.TryRemove(ticket, out var entry)
             || entry.ExpiresAt <= DateTimeOffset.UtcNow
-            || !string.Equals(entry.Context.ToolSlug, toolSlug, StringComparison.Ordinal))
+            || !string.Equals(entry.Context.RegistrationKey, registrationKey, StringComparison.Ordinal))
         {
             return false;
         }

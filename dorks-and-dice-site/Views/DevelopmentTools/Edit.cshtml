@@ -1,15 +1,15 @@
 @model dorks_and_dice_site.Models.Tools.ToolRegistrationEditViewModel
 @using dorks_and_dice_site.Models.Tools
 @{
-    ViewData["Title"] = Model.Id.HasValue ? "Edit Tool" : "Register Tool";
+    ViewData["Title"] = Model.Id.HasValue ? "Edit Tool Registration" : "Register Tool";
     ViewData["Robots"] = "noindex,nofollow";
     var selectedModes = Model.Modes.ToHashSet(StringComparer.Ordinal);
 }
 
 <div class="mb-4">
     <p class="text-uppercase text-muted small mb-1">Development tools</p>
-    <h1 class="h2 mb-2">@(Model.Id.HasValue ? "Edit tool" : "Register tool")</h1>
-    <p class="text-body-secondary mb-0">This configures how the host presents an already available tool. Container deployment is intentionally separate.</p>
+    <h1 class="h2 mb-2">@(Model.Id.HasValue ? "Edit registration" : "Register capability")</h1>
+    <p class="text-body-secondary mb-0">Register a user-facing application or a headless backend service. Container deployment is intentionally separate.</p>
 </div>
 
 <form method="post" action="/development/tools/save" class="card card-body shadow-sm">
@@ -20,71 +20,87 @@
 
     <div class="row g-3">
         <div class="col-md-6">
-            <label asp-for="DisplayName" class="form-label">Display name</label>
+            <label asp-for="DisplayName" class="form-label">Display/admin name</label>
             <input asp-for="DisplayName" class="form-control" />
-            <div class="form-text">Human-readable name shown in tool listings and page headings.</div>
+            <div class="form-text">Human-readable name used in administration and, for applications, public listings.</div>
             <span asp-validation-for="DisplayName" class="text-danger"></span>
         </div>
         <div class="col-md-6">
-            <label asp-for="Slug" class="form-label">Slug</label>
+            <label asp-for="Kind" class="form-label">Registration kind</label>
+            <select asp-for="Kind" asp-items="Html.GetEnumSelectList<ToolKind>()" class="form-select" id="tool-kind"></select>
+            <div class="form-text"><strong>Application</strong> has a public Tool route. <strong>Service</strong> is backend-only and is addressed internally by its registration key.</div>
+        </div>
+        <div class="col-md-6">
+            <label asp-for="Key" class="form-label">Stable registration key</label>
+            <input asp-for="Key" class="form-control" readonly="@(Model.Id.HasValue ? "readonly" : null)" placeholder="rules-core" />
+            <div class="form-text">Internal identity used for authentication and Tool-to-Tool delegation. It is immutable after creation and is not inherently a URL slug.</div>
+            <span asp-validation-for="Key" class="text-danger"></span>
+        </div>
+        <div class="col-md-6 application-field">
+            <label asp-for="Slug" class="form-label">Public slug</label>
             <div class="input-group">
                 <span class="input-group-text">/tools/</span>
                 <input asp-for="Slug" class="form-control" />
             </div>
-            <div class="form-text">Stable URL segment used by the host, for example <code>initiative</code>.</div>
+            <div class="form-text">Required only for applications. Existing application slugs remain their public route identities.</div>
             <span asp-validation-for="Slug" class="text-danger"></span>
         </div>
         <div class="col-12">
             <label asp-for="Description" class="form-label">Description</label>
             <textarea asp-for="Description" class="form-control" rows="3"></textarea>
-            <div class="form-text">Optional user-facing summary of what the tool does.</div>
+            <div class="form-text">Optional summary. For services this is administrative metadata only.</div>
         </div>
-        <div class="col-md-6">
-            <label asp-for="IntegrationType" class="form-label">Integration type</label>
+        <div class="col-md-6 application-field">
+            <label asp-for="IntegrationType" class="form-label">Application hosting type</label>
             <select asp-for="IntegrationType" asp-items="Html.GetEnumSelectList<ToolIntegrationType>()" class="form-select"></select>
-            <div class="form-text"><strong>Embedded Module</strong> mounts the tool UI inside the site's normal page shell. <strong>Proxied Application</strong> gives the tool control of <code>/tools/{slug}</code> and its subroutes.</div>
+            <div class="form-text"><strong>Embedded Module</strong> mounts the UI inside the site shell. <strong>Proxied Application</strong> owns <code>/tools/{slug}</code> and its subroutes. Services do not use a UI hosting type.</div>
         </div>
-        <div class="col-md-6">
+        <div class="col-md-6 application-field">
             <label asp-for="IntegrationContractVersion" class="form-label">Integration contract version</label>
             <input asp-for="IntegrationContractVersion" class="form-control" type="number" min="1" />
-            <div class="form-text">Embedded Modules must use the currently supported contract version <strong>@ToolIntegrationContractVersions.EmbeddedModuleCurrent</strong>. New registrations default to that version. Proxied applications do not use this field.</div>
+            <div class="form-text">Embedded Modules must use supported contract version <strong>@ToolIntegrationContractVersions.EmbeddedModuleCurrent</strong>. Proxied applications and services do not use this field.</div>
             <span asp-validation-for="IntegrationContractVersion" class="text-danger"></span>
         </div>
         <div class="col-md-6">
             <label asp-for="UpstreamBaseUrl" class="form-label">Upstream base URL</label>
-            <input asp-for="UpstreamBaseUrl" class="form-control" placeholder="http://initiative:8080" />
-            <div class="form-text">Internal HTTP address where the running tool can be reached. <code>localhost</code> and single-label service names such as <code>initiative</code> are allowed by default; FQDNs and literal non-loopback IPs must be explicitly allowlisted in <code>ToolHosting:AllowedUpstreamHosts</code>.</div>
+            <input asp-for="UpstreamBaseUrl" class="form-control" placeholder="http://rules-core:8080" />
+            <div class="form-text">Internal HTTP address where the deployed capability can be reached. It is required for services. <code>localhost</code> and single-label service names are allowed by default; FQDNs and literal non-loopback IPs must be explicitly allowlisted.</div>
             <span asp-validation-for="UpstreamBaseUrl" class="text-danger"></span>
         </div>
-        <div class="col-md-6">
+        <div class="col-md-6 application-field">
             <label asp-for="FrontendEntryPoint" class="form-label">Frontend entry point</label>
             <input asp-for="FrontendEntryPoint" class="form-control" placeholder="/app.js" />
-            <div class="form-text">Used only by <strong>Embedded Module</strong>. For proxied applications, leave this blank.</div>
+            <div class="form-text">Used only by Embedded Module applications. Services never have a frontend entry point.</div>
             <span asp-validation-for="FrontendEntryPoint" class="text-danger"></span>
         </div>
         <div class="col-md-6">
             <label asp-for="HealthPath" class="form-label">Health path</label>
             <input asp-for="HealthPath" class="form-control" placeholder="/health" />
-            <div class="form-text">Optional lightweight endpoint the host can call to verify that the tool service is running and responsive. It is combined with the upstream base URL.</div>
+            <div class="form-text">Optional lightweight endpoint combined with the upstream base URL for Development health checks.</div>
             <span asp-validation-for="HealthPath" class="text-danger"></span>
         </div>
         <div class="col-12">
-            <label asp-for="DelegationTargetsText" class="form-label">Delegation targets</label>
+            <label asp-for="DelegationTargetsText" class="form-label">Delegation targets (registration keys)</label>
             <textarea asp-for="DelegationTargetsText"
                       class="form-control"
                       rows="3"
                       placeholder="rules-core"></textarea>
-            <div class="form-text">Optional server-to-server Tool slugs this Tool may call through the Site delegation gateway. Use one slug per line or separate entries with commas. No delegation targets are permitted by default.</div>
+            <div class="form-text">Stable registration keys this capability may call through the server-side delegation gateway. Use one key per line or separate entries with commas. No targets are permitted by default.</div>
             <span asp-validation-for="DelegationTargetsText" class="text-danger"></span>
         </div>
-        <div class="col-12">
+        <div class="col-12 application-field">
             <div class="alert alert-secondary mb-0" role="note">
                 Embedded Module contract v@ToolIntegrationContractVersions.EmbeddedModuleCurrent requires an explicit application render lifecycle. Application-owned DOM must not use <code>MutationObserver</code> as the normal rendering mechanism; post-render enhancement must be idempotent, and observers are reserved for guarded external boundaries. Existing Tool Host context, routing, authorization, upstream API, and <code>#tool-root</code> contracts still apply.
             </div>
         </div>
-        <div class="col-12">
+        <div class="col-12 application-field">
             <div class="alert alert-secondary mb-0" role="note">
-                Proxied applications should serve correctly behind the public prefix <code>/tools/{slug}</code>. The host sends <code>X-Forwarded-Prefix</code>, <code>X-Forwarded-Host</code>, and <code>X-Forwarded-Proto</code>. Site cookies and authorization headers are not forwarded upstream, and upstream redirects are currently rejected rather than exposed to the browser.
+                Proxied applications should serve correctly behind the public prefix <code>/tools/{slug}</code>. The host sends public forwarding metadata only for applications. Site cookies and authorization headers are not forwarded upstream, and upstream redirects are rejected rather than exposed to the browser.
+            </div>
+        </div>
+        <div class="col-12 service-field d-none">
+            <div class="alert alert-secondary mb-0" role="note">
+                Headless services have no <code>/tools/{slug}</code> page or browser frontend. Authentication tickets, introspection, and delegation are scoped to the stable registration key. Browser-facing Tool tickets are not delegation credentials.
             </div>
         </div>
         <div class="col-12">
@@ -104,25 +120,45 @@
                     </div>
                 }
                 <span asp-validation-for="Modes" class="text-danger"></span>
-                <div class="form-text">A tool can be available in any registered site mode. The same <code>/tools/{slug}</code> route resolves according to the active mode.</div>
+                <div class="form-text">Applications use modes for public availability. Services use them to constrain backend delegation availability.</div>
             </fieldset>
         </div>
         <div class="col-12">
-            <div class="form-check">
+            <div class="form-check application-field">
                 <input asp-for="AllowAnonymous" class="form-check-input" />
-                <label asp-for="AllowAnonymous" class="form-check-label">Allow anonymous use</label>
-                <div class="form-text">When enabled, visitors do not need an account to open the tool. Signed-in users can access their session and campaign membership through the host API.</div>
+                <label asp-for="AllowAnonymous" class="form-check-label">Allow anonymous application use</label>
+                <div class="form-text">When enabled, visitors do not need an account to open the application. This setting is not used for headless services.</div>
             </div>
             <div class="form-check mt-3">
                 <input asp-for="Enabled" class="form-check-input" />
-                <label asp-for="Enabled" class="form-check-label">Enable public route</label>
-                <div class="form-text">Controls whether the registration is currently exposed at all. A disabled tool remains configured but returns as unavailable publicly.</div>
+                <label asp-for="Enabled" class="form-check-label">Enable registration</label>
+                <div class="form-text">Disabled registrations remain configured but are unavailable for public application routing and Tool-to-Tool delegation.</div>
             </div>
         </div>
     </div>
 
     <div class="d-flex flex-wrap gap-2 mt-4">
-        <button class="btn btn-primary" type="submit">Save tool</button>
+        <button class="btn btn-primary" type="submit">Save registration</button>
         <a class="btn btn-outline-secondary" href="/development/tools">Cancel</a>
     </div>
 </form>
+
+<script>
+(() => {
+    const kind = document.getElementById('tool-kind');
+    if (!kind) return;
+
+    const update = () => {
+        const isService = kind.value === '@((int)ToolKind.Service)';
+        document.querySelectorAll('.application-field').forEach(element => {
+            element.classList.toggle('d-none', isService);
+        });
+        document.querySelectorAll('.service-field').forEach(element => {
+            element.classList.toggle('d-none', !isService);
+        });
+    };
+
+    kind.addEventListener('change', update);
+    update();
+})();
+</script>

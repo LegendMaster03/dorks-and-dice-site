@@ -138,23 +138,18 @@ public static class SiteRouteOwnership
 
     private static bool IsToolHostIntrospectionPath(string path)
     {
-        const string prefix = "/tool-host/";
-        const string suffix = "/api/introspect";
-
-        if (!path.StartsWith(prefix, StringComparison.Ordinal)
-            || !path.EndsWith(suffix, StringComparison.Ordinal))
-        {
-            return false;
-        }
-
-        var slugLength = path.Length - prefix.Length - suffix.Length;
-        if (slugLength <= 0)
-        {
-            return false;
-        }
-
-        var slug = path.AsSpan(prefix.Length, slugLength);
-        return !slug.Contains('/');
+        var segments = path.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        return segments.Length == 4
+            && string.Equals(segments[0], "tool-host", StringComparison.Ordinal)
+            && !string.IsNullOrWhiteSpace(segments[1])
+            && string.Equals(segments[2], "api", StringComparison.Ordinal)
+            && string.Equals(segments[3], "introspect", StringComparison.Ordinal)
+            || segments.Length == 5
+            && string.Equals(segments[0], "tool-host", StringComparison.Ordinal)
+            && string.Equals(segments[1], "registrations", StringComparison.Ordinal)
+            && !string.IsNullOrWhiteSpace(segments[2])
+            && string.Equals(segments[3], "api", StringComparison.Ordinal)
+            && string.Equals(segments[4], "introspect", StringComparison.Ordinal);
     }
 
     private static bool IsToolHostDelegatedUpstreamPath(string path)
@@ -166,7 +161,15 @@ public static class SiteRouteOwnership
             && string.Equals(segments[2], "api", StringComparison.Ordinal)
             && string.Equals(segments[3], "delegate", StringComparison.Ordinal)
             && !string.IsNullOrWhiteSpace(segments[4])
-            && string.Equals(segments[5], "upstream", StringComparison.Ordinal);
+            && string.Equals(segments[5], "upstream", StringComparison.Ordinal)
+            || segments.Length >= 7
+            && string.Equals(segments[0], "tool-host", StringComparison.Ordinal)
+            && string.Equals(segments[1], "registrations", StringComparison.Ordinal)
+            && !string.IsNullOrWhiteSpace(segments[2])
+            && string.Equals(segments[3], "api", StringComparison.Ordinal)
+            && string.Equals(segments[4], "delegate", StringComparison.Ordinal)
+            && !string.IsNullOrWhiteSpace(segments[5])
+            && string.Equals(segments[6], "upstream", StringComparison.Ordinal);
     }
 
     private static bool IsContentMediaPath(string path)

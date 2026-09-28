@@ -5,6 +5,7 @@ namespace dorks_and_dice_site.Models.Tools;
 public sealed class ToolHostApiSession
 {
     public int ContractVersion { get; init; } = 1;
+    public string ToolKey { get; init; } = string.Empty;
     public required string ToolSlug { get; init; }
     public required string SiteMode { get; init; }
     public required ToolHostUserContext User { get; init; }
@@ -44,7 +45,11 @@ public sealed class ToolHostCharacterAccessSummary
 public sealed class ToolHostAuthenticationContext
 {
     public int ContractVersion { get; init; } = 1;
-    public required string ToolSlug { get; init; }
+    public string ToolKey { get; init; } = string.Empty;
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? ToolSlug { get; init; }
+
     public required string SiteMode { get; init; }
     public required ToolHostUserContext User { get; init; }
     public IReadOnlyList<string> GlobalRoles { get; init; } = [];
@@ -53,8 +58,14 @@ public sealed class ToolHostAuthenticationContext
     /// <summary>
     /// Optional Tool-specific Character ownership projection. It is populated for Character Sheet
     /// and omitted for Tools that do not need Character ownership so their version-1 payload stays
-    /// unchanged.
+    /// unchanged apart from the additive stable registration key.
     /// </summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public IReadOnlyList<ToolHostCharacterAccessSummary>? Characters { get; init; }
+
+    [JsonIgnore]
+    public string RegistrationKey =>
+        !string.IsNullOrWhiteSpace(ToolKey)
+            ? ToolKey
+            : ToolSlug ?? string.Empty;
 }

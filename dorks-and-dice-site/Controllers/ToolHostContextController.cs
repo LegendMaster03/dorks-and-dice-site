@@ -28,6 +28,8 @@ public sealed class ToolHostContextController : ControllerBase
         var tool = await _toolRegistry.GetBySlugAsync(slug, cancellationToken);
         var modeId = HttpContext.GetSiteModeContext().ActiveModeId;
         if (tool is null
+            || tool.Kind != ToolKind.Application
+            || string.IsNullOrWhiteSpace(tool.Slug)
             || !tool.Enabled
             || !ToolVisibility.IsVisibleInMode(tool, modeId))
         {
