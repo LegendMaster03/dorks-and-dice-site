@@ -7,7 +7,7 @@ public sealed class CampaignsIndexViewModel
     public IReadOnlyList<CampaignListItemViewModel> ArchivedCampaigns { get; init; } = [];
 }
 
-public sealed record CampaignMemberViewModel(Guid UserId, string? ParticipantName, IReadOnlyList<string> Roles, bool IsCurrentUser);
+public sealed record CampaignMemberViewModel(Guid UserId, string DisplayName, IReadOnlyList<string> Roles, bool IsCurrentUser);
 public sealed record CampaignParticipantViewModel(Guid Id, string DisplayName, Guid? UserId, bool IsActive);
 public sealed record CampaignInvitationListItemViewModel(Guid Id, IReadOnlyList<string> Roles, string? ParticipantName, DateTimeOffset ExpiresAt);
 public sealed record ParticipantOptionViewModel(Guid Id, string DisplayName, bool IsFormer);

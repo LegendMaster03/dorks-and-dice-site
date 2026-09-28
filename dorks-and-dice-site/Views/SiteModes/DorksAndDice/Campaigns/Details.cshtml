@@ -36,7 +36,7 @@
             @if (Model.CanManage && !Model.IsArchived)
             {
                 <a class="btn btn-outline-primary" asp-controller="DiscordServers" asp-action="Index">Connect Discord Server</a>
-                <a class="btn btn-outline-primary" href="#invite">Invite Player</a>
+                <a class="btn btn-outline-primary" href="#invite">Invite Member</a>
             }
         </div>
     </header>
@@ -51,7 +51,7 @@
         <div class="campaign-invite-created mt-4" role="status">
             <div>
                 <strong>Invite created.</strong>
-                <div class="small text-muted">Send this one-time link to the intended participant.</div>
+                <div class="small text-muted">Send this one-time link to the intended account.</div>
             </div>
             <div class="input-group">
                 <input id="campaignInviteLink" class="form-control" type="text" value="@inviteLink" readonly aria-label="Campaign invite link" />
@@ -97,17 +97,16 @@
                     {
                         var memberIsPlayer = member.Roles.Contains(CampaignRoles.Player, StringComparer.Ordinal);
                         var memberIsDm = member.Roles.Contains(CampaignRoles.Dm, StringComparer.Ordinal);
-                        var memberDisplayName = member.ParticipantName ?? (member.IsCurrentUser ? "You" : "Campaign Member");
-                        var memberInitial = string.IsNullOrWhiteSpace(memberDisplayName)
+                        var memberInitial = string.IsNullOrWhiteSpace(member.DisplayName)
                             ? "?"
-                            : memberDisplayName.Trim()[0].ToString().ToUpperInvariant();
+                            : member.DisplayName.Trim()[0].ToString().ToUpperInvariant();
 
                         <article class="campaign-person-row">
                             <div class="campaign-avatar" aria-hidden="true">@memberInitial</div>
                             <div class="campaign-person-main">
                                 <div class="d-flex flex-wrap align-items-center gap-2">
-                                    <h3 class="campaign-person-name mb-0">@memberDisplayName</h3>
-                                    @if (member.IsCurrentUser && member.ParticipantName is not null)
+                                    <h3 class="campaign-person-name mb-0">@member.DisplayName</h3>
+                                    @if (member.IsCurrentUser)
                                     {
                                         <span class="campaign-you-badge">You</span>
                                     }
@@ -263,25 +262,25 @@
             {
                 <section id="invite" class="campaign-sidebar-card campaign-invite-card">
                     <p class="campaign-eyebrow mb-1">Share the table</p>
-                    <h2>Invite a player</h2>
-                    <p class="text-muted small">Create a one-time invite for a new player or reconnect someone already in the table roster.</p>
+                    <h2>Invite a member</h2>
+                    <p class="text-muted small">Create a one-time invite. After it is accepted, the campaign roster uses the account display name automatically.</p>
 
                     <form asp-controller="Campaigns" asp-action="CreateInvitation" asp-route-campaignId="@Model.Id" method="post" class="d-flex flex-column gap-3">
                         @Html.AntiForgeryToken()
-                        <div>
-                            <label class="form-label" for="inviteDisplayName">Player name</label>
-                            <input id="inviteDisplayName" class="form-control" type="text" name="displayName" maxlength="120" placeholder="New player name" />
-                        </div>
-                        <div>
-                            <label class="form-label" for="inviteParticipant">Or choose someone from the roster</label>
-                            <select id="inviteParticipant" class="form-select" name="participantId">
-                                <option value="">Create from player name</option>
-                                @foreach (var participant in Model.InviteableParticipants)
-                                {
-                                    <option value="@participant.Id">@(participant.IsFormer ? "Former: " : "")@participant.DisplayName</option>
-                                }
-                            </select>
-                        </div>
+                        @if (Model.InviteableParticipants.Count > 0)
+                        {
+                            <div>
+                                <label class="form-label" for="inviteParticipant">Link an existing table participant <span class="text-muted">(optional)</span></label>
+                                <select id="inviteParticipant" class="form-select" name="participantId">
+                                    <option value="">Do not link a table participant</option>
+                                    @foreach (var participant in Model.InviteableParticipants)
+                                    {
+                                        <option value="@participant.Id">@(participant.IsFormer ? "Former: " : "")@participant.DisplayName</option>
+                                    }
+                                </select>
+                                <div class="form-text">Use this only when the invited account belongs to someone already represented in the table roster.</div>
+                            </div>
+                        }
                         <fieldset>
                             <legend class="form-label">Campaign roles</legend>
                             <div class="d-flex flex-wrap gap-3">
@@ -317,7 +316,7 @@
                                         </div>
                                         @if (invitation.ParticipantName is not null)
                                         {
-                                            <div class="small mt-1">@invitation.ParticipantName</div>
+                                            <div class="small mt-1">Links table participant: @invitation.ParticipantName</div>
                                         }
                                         <div class="small text-muted">Expires @invitation.ExpiresAt.ToLocalTime().ToString("g")</div>
                                     </div>
