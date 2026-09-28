@@ -72,6 +72,7 @@ public sealed partial class DevelopmentToolsController : Controller
             DelegationTargetsText = string.Join(
                 Environment.NewLine,
                 tool.DelegationTargets ?? []),
+            ReleaseAudience = tool.ReleaseAudience,
             AllowAnonymous = tool.AllowAnonymous,
             Enabled = tool.Enabled
         }));
@@ -146,7 +147,12 @@ public sealed partial class DevelopmentToolsController : Controller
             HealthPath = model.HealthPath,
             Modes = modes,
             DelegationTargets = model.DelegationTargets.ToList(),
-            AllowAnonymous = model.Kind == ToolKind.Application && model.AllowAnonymous,
+            ReleaseAudience = model.Kind == ToolKind.Application
+                ? model.ReleaseAudience
+                : ToolReleaseAudience.Public,
+            AllowAnonymous = model.Kind == ToolKind.Application
+                && model.ReleaseAudience == ToolReleaseAudience.Public
+                && model.AllowAnonymous,
             Enabled = model.Enabled,
             CreatedAt = existing?.CreatedAt ?? now,
             UpdatedAt = now
@@ -197,6 +203,11 @@ public sealed partial class DevelopmentToolsController : Controller
             if (string.IsNullOrWhiteSpace(model.Slug) || !ToolKeyRegex().IsMatch(model.Slug))
             {
                 ModelState.AddModelError(nameof(model.Slug), "Public slug must contain only lowercase letters, numbers, and hyphens.");
+            }
+
+            if (!Enum.IsDefined(model.ReleaseAudience))
+            {
+                ModelState.AddModelError(nameof(model.ReleaseAudience), "Release audience is invalid.");
             }
 
             var contractError = ToolIntegrationContractPolicy.GetUnsupportedReason(
@@ -304,11 +315,20 @@ public sealed partial class DevelopmentToolsController : Controller
             model.IntegrationType = null;
             model.IntegrationContractVersion = null;
             model.FrontendEntryPoint = null;
+            model.ReleaseAudience = ToolReleaseAudience.Public;
             model.AllowAnonymous = false;
         }
-        else if (model.IntegrationType != ToolIntegrationType.EmbeddedModule)
+        else
         {
-            model.IntegrationContractVersion = null;
+            if (model.ReleaseAudience != ToolReleaseAudience.Public)
+            {
+                model.AllowAnonymous = false;
+            }
+
+            if (model.IntegrationType != ToolIntegrationType.EmbeddedModule)
+            {
+                model.IntegrationContractVersion = null;
+            }
         }
     }
 

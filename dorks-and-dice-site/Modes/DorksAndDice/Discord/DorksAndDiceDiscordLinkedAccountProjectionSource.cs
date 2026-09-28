@@ -1,3 +1,5 @@
+using System.Security.Claims;
+using dorks_and_dice_site.Models.Identity;
 using dorks_and_dice_site.Plugins.Discord;
 using dorks_and_dice_site.Plugins.DiscordBot;
 using dorks_and_dice_site.Services.Identity;
@@ -39,19 +41,90 @@ public sealed class DorksAndDiceDiscordLinkedAccountProjectionSource(
             .Distinct()
             .ToArrayAsync(cancellationToken);
 
+        var directGlobalRoles = await (
+            from userRole in identityDbContext.UserRoles.AsNoTracking()
+            join role in identityDbContext.Roles.AsNoTracking()
+                on userRole.RoleId equals role.Id
+            where userIds.Contains(userRole.UserId) && role.Name != null
+            select new { userRole.UserId, Role = role.Name! })
+            .ToArrayAsync(cancellationToken);
+
+        var directScopedRoles = await identityDbContext.UserClaims
+            .AsNoTracking()
+            .Where(claim => userIds.Contains(claim.UserId)
+                && claim.ClaimType == AccountClaimTypes.ScopedRole
+                && claim.ClaimValue != null)
+            .Select(claim => new { claim.UserId, Role = claim.ClaimValue! })
+            .ToArrayAsync(cancellationToken);
+
+        var globalRolesByUser = directGlobalRoles.ToLookup(row => row.UserId, row => row.Role);
+        var scopedRolesByUser = directScopedRoles.ToLookup(row => row.UserId, row => row.Role);
+        var principals = userIds.ToDictionary(
+            userId => userId,
+            userId => BuildPrincipal(
+                userId,
+                globalRolesByUser[userId],
+                scopedRolesByUser[userId]));
+
+        var desiredRoles = new List<DiscordDesiredRole>
+        {
+            new(
+                "linked-account",
+                "Linked Account",
+                userIds)
+        };
+
+        foreach (var globalRole in AccountRoleHierarchy.GlobalRoleNames
+                     .OrderBy(role => role, StringComparer.Ordinal))
+        {
+            desiredRoles.Add(new DiscordDesiredRole(
+                $"site-global-{NormalizeRoleKey(globalRole)}",
+                globalRole,
+                userIds
+                    .Where(userId => AccountRoleHierarchy.PrincipalHasGlobalRole(
+                        principals[userId],
+                        globalRole))
+                    .ToArray()));
+        }
+
+        foreach (var scopedRole in ScopedAccountRoles.All.OrderBy(role => role, StringComparer.Ordinal))
+        {
+            desiredRoles.Add(new DiscordDesiredRole(
+                $"site-scoped-{NormalizeRoleKey(scopedRole)}",
+                $"{BuiltInSiteModes.DorksAndDice.DisplayName} {scopedRole}",
+                userIds
+                    .Where(userId => AccountRoleHierarchy.PrincipalHasScopedRole(
+                        principals[userId],
+                        ModeId,
+                        scopedRole))
+                    .ToArray()));
+        }
+
         return
         [
             new DiscordGuildWorkspaceProjection(
                 ModeId,
                 modeConnection.ResourceId,
                 modeConnection.ResourceId,
-                [
-                    new DiscordDesiredRole(
-                        "linked-account",
-                        "Linked Account",
-                        userIds)
-                ],
+                desiredRoles,
                 [])
         ];
     }
+
+    private static ClaimsPrincipal BuildPrincipal(
+        Guid userId,
+        IEnumerable<string> globalRoles,
+        IEnumerable<string> scopedRoles)
+    {
+        var claims = new List<Claim>
+        {
+            new(ClaimTypes.NameIdentifier, userId.ToString("D"))
+        };
+        claims.AddRange(globalRoles.Select(role => new Claim(ClaimTypes.Role, role)));
+        claims.AddRange(scopedRoles.Select(role => new Claim(AccountClaimTypes.ScopedRole, role)));
+        return new ClaimsPrincipal(new ClaimsIdentity(claims, authenticationType: "discord-role-projection"));
+    }
+
+    private static string NormalizeRoleKey(string role) =>
+        role.Trim().ToLowerInvariant().Replace(' ', '-');
 }

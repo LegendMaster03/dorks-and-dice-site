@@ -9,9 +9,8 @@ public sealed class ToolNavigationViewComponent(IToolRegistry toolRegistry) : Vi
     public async Task<IViewComponentResult> InvokeAsync()
     {
         var modeId = HttpContext.GetSiteModeContext().ActiveModeId;
-        var isAuthenticated = HttpContext.User.Identity?.IsAuthenticated == true;
         var tools = (await toolRegistry.GetAllAsync(HttpContext.RequestAborted))
-            .Where(tool => ToolVisibility.IsVisibleToUser(tool, modeId, isAuthenticated))
+            .Where(tool => ToolVisibility.IsVisibleToUser(tool, modeId, HttpContext.User))
             .OrderBy(tool => tool.DisplayName, StringComparer.OrdinalIgnoreCase)
             .ToArray();
 

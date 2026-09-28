@@ -120,14 +120,25 @@
                     </div>
                 }
                 <span asp-validation-for="Modes" class="text-danger"></span>
-                <div class="form-text">Applications use modes for public availability. Services use them to constrain backend delegation availability.</div>
+                <div class="form-text">Applications use modes for availability. Services use them to constrain backend delegation availability.</div>
             </fieldset>
+        </div>
+        <div class="col-md-6 application-field">
+            <label asp-for="ReleaseAudience" class="form-label">Release audience</label>
+            <select asp-for="ReleaseAudience"
+                    asp-items="Html.GetEnumSelectList<ToolReleaseAudience>()"
+                    class="form-select"
+                    id="tool-release-audience"></select>
+            <div class="form-text">
+                <strong>Development</strong> requires Dev. <strong>Testing</strong> requires Tester for the active mode; Dev inherits Tester. <strong>Public</strong> uses the anonymous/account setting below.
+            </div>
+            <span asp-validation-for="ReleaseAudience" class="text-danger"></span>
         </div>
         <div class="col-12">
             <div class="form-check application-field">
-                <input asp-for="AllowAnonymous" class="form-check-input" />
+                <input asp-for="AllowAnonymous" class="form-check-input" id="tool-allow-anonymous" />
                 <label asp-for="AllowAnonymous" class="form-check-label">Allow anonymous application use</label>
-                <div class="form-text">When enabled, visitors do not need an account to open the application. This setting is not used for headless services.</div>
+                <div class="form-text">Available only for Public applications. Development and Testing always require an account.</div>
             </div>
             <div class="form-check mt-3">
                 <input asp-for="Enabled" class="form-check-input" />
@@ -146,6 +157,8 @@
 <script>
 (() => {
     const kind = document.getElementById('tool-kind');
+    const releaseAudience = document.getElementById('tool-release-audience');
+    const allowAnonymous = document.getElementById('tool-allow-anonymous');
     if (!kind) return;
 
     const update = () => {
@@ -156,9 +169,17 @@
         document.querySelectorAll('.service-field').forEach(element => {
             element.classList.toggle('d-none', !isService);
         });
+
+        if (allowAnonymous) {
+            const isPublicApplication = !isService
+                && releaseAudience?.value === '@((int)ToolReleaseAudience.Public)';
+            allowAnonymous.disabled = !isPublicApplication;
+            if (!isPublicApplication) allowAnonymous.checked = false;
+        }
     };
 
     kind.addEventListener('change', update);
+    releaseAudience?.addEventListener('change', update);
     update();
 })();
 </script>

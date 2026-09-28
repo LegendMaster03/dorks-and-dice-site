@@ -13,8 +13,10 @@
         .Where(role => Model.GlobalRoles.Contains(role, StringComparer.Ordinal))
         .ToArray();
     var directlyAssignedScopedRoles = Model.AvailableScopedEditorRoles
-        .Where(editorRole => Model.ScopedRoles.TryGetValue(editorRole.Scope, out var roles)
-            && roles.Contains(ScopedAccountRoles.Editor, StringComparer.Ordinal))
+        .SelectMany(modeRole => ScopedAccountRoles.All
+            .Where(scopedRole => Model.ScopedRoles.TryGetValue(modeRole.Scope, out var roles)
+                && roles.Contains(scopedRole, StringComparer.Ordinal))
+            .Select(scopedRole => new { Mode = modeRole, Role = scopedRole }))
         .ToArray();
     var canOpenRoleManager = !isDeleted;
 }
@@ -133,17 +135,17 @@
         }
         else
         {
-            @foreach (var editorRole in directlyAssignedScopedRoles)
+            @foreach (var scopedAssignment in directlyAssignedScopedRoles)
             {
                 var inheritedFrom = AccountRoleHierarchy.GetScopedInheritanceSources(
                     Model.GlobalRoles,
-                    editorRole.Scope,
-                    ScopedAccountRoles.Editor);
+                    scopedAssignment.Mode.Scope,
+                    scopedAssignment.Role);
 
                 <div class="border-top py-2">
-                    <div class="small text-body-secondary mb-1">@editorRole.DisplayName</div>
+                    <div class="small text-body-secondary mb-1">@scopedAssignment.Mode.DisplayName</div>
                     <div>
-                        <strong>@ScopedAccountRoles.Editor</strong>
+                        <strong>@scopedAssignment.Role</strong>
                         <div class="small text-body-secondary">
                             @if (inheritedFrom.Count > 0)
                             {
@@ -226,51 +228,54 @@
                         }
                     </div>
 
-                    @foreach (var editorRole in Model.AvailableScopedEditorRoles)
+                    @foreach (var modeRole in Model.AvailableScopedEditorRoles)
                     {
-                        var assigned = Model.ScopedRoles.TryGetValue(editorRole.Scope, out var roles)
-                            && roles.Contains(ScopedAccountRoles.Editor, StringComparer.Ordinal);
-                        var inheritedFrom = AccountRoleHierarchy.GetScopedInheritanceSources(
-                            Model.GlobalRoles,
-                            editorRole.Scope,
-                            ScopedAccountRoles.Editor);
                         var canManage = !targetIsOwner || currentUserIsOwner;
-
                         <div class="role-search-category mt-3" data-role-category>
-                            <h3 class="h6">@editorRole.DisplayName</h3>
-                            <div class="d-flex align-items-center justify-content-between gap-2 border-top py-2" data-role-option data-role-search="@editorRole.DisplayName @editorRole.Scope @ScopedAccountRoles.Editor">
-                                <div>
-                                    <strong>@ScopedAccountRoles.Editor</strong>
-                                    @if (assigned)
+                            <h3 class="h6">@modeRole.DisplayName</h3>
+                            @foreach (var scopedRole in ScopedAccountRoles.All)
+                            {
+                                var assigned = Model.ScopedRoles.TryGetValue(modeRole.Scope, out var roles)
+                                    && roles.Contains(scopedRole, StringComparer.Ordinal);
+                                var inheritedFrom = AccountRoleHierarchy.GetScopedInheritanceSources(
+                                    Model.GlobalRoles,
+                                    modeRole.Scope,
+                                    scopedRole);
+
+                                <div class="d-flex align-items-center justify-content-between gap-2 border-top py-2" data-role-option data-role-search="@modeRole.DisplayName @modeRole.Scope @scopedRole">
+                                    <div>
+                                        <strong>@scopedRole</strong>
+                                        @if (assigned)
+                                        {
+                                            <div class="small text-body-secondary">Assigned directly</div>
+                                        }
+                                        else if (inheritedFrom.Count > 0)
+                                        {
+                                            <div class="small text-body-secondary">Inherited through @string.Join(", ", inheritedFrom)</div>
+                                        }
+                                        else
+                                        {
+                                            <div class="small text-body-secondary">@modeRole.DisplayName</div>
+                                        }
+                                    </div>
+
+                                    @if (!canManage)
                                     {
-                                        <div class="small text-body-secondary">Assigned directly</div>
-                                    }
-                                    else if (inheritedFrom.Count > 0)
-                                    {
-                                        <div class="small text-body-secondary">Inherited through @string.Join(", ", inheritedFrom)</div>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" disabled>Not permitted</button>
                                     }
                                     else
                                     {
-                                        <div class="small text-body-secondary">@editorRole.DisplayName</div>
+                                        <form asp-action="SetScopedRole" asp-route-userId="@Model.UserId" method="post">
+                                            <input type="hidden" name="scope" value="@modeRole.Scope" />
+                                            <input type="hidden" name="role" value="@scopedRole" />
+                                            <input type="hidden" name="enabled" value="@(assigned ? "false" : "true")" />
+                                            <button type="submit" class="btn btn-sm @(assigned ? "btn-outline-danger" : "btn-outline-primary")">
+                                                @(assigned ? "Remove" : "Add")
+                                            </button>
+                                        </form>
                                     }
                                 </div>
-
-                                @if (!canManage)
-                                {
-                                    <button type="button" class="btn btn-sm btn-outline-secondary" disabled>Not permitted</button>
-                                }
-                                else
-                                {
-                                    <form asp-action="SetScopedRole" asp-route-userId="@Model.UserId" method="post">
-                                        <input type="hidden" name="scope" value="@editorRole.Scope" />
-                                        <input type="hidden" name="role" value="@ScopedAccountRoles.Editor" />
-                                        <input type="hidden" name="enabled" value="@(assigned ? "false" : "true")" />
-                                        <button type="submit" class="btn btn-sm @(assigned ? "btn-outline-danger" : "btn-outline-primary")">
-                                            @(assigned ? "Remove" : "Add")
-                                        </button>
-                                    </form>
-                                }
-                            </div>
+                            }
                         </div>
                     }
 

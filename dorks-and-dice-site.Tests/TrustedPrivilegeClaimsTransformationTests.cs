@@ -1,5 +1,6 @@
 using System.Net;
 using System.Security.Claims;
+using dorks_and_dice_site.Models.Identity;
 using dorks_and_dice_site.Services.Identity;
 using dorks_and_dice_site.Services.Site;
 using Microsoft.AspNetCore.Http;
@@ -22,6 +23,18 @@ public sealed class TrustedPrivilegeClaimsTransformationTests
         Assert.False(transformed.IsInRole(AccountRoles.Dev));
         Assert.True(transformed.IsInRole(AccountRoles.GlobalEditor));
         Assert.True(transformed.IsInRole("Member"));
+        Assert.True(AccountRoleHierarchy.PrincipalHasScopedRole(
+            transformed,
+            BuiltInSiteModes.DorksAndDice.Id,
+            ScopedAccountRoles.Tester));
+        Assert.True(AccountRoleHierarchy.PrincipalHasScopedRole(
+            transformed,
+            BuiltInSiteModes.Professional.Id,
+            ScopedAccountRoles.Tester));
+        Assert.Contains(
+            transformed.Claims,
+            claim => claim.Type == AccountClaimTypes.ScopedRole
+                && claim.Value == $"{BuiltInSiteModes.DorksAndDice.Id}:{ScopedAccountRoles.Tester}");
     }
 
     [Fact]
@@ -36,12 +49,19 @@ public sealed class TrustedPrivilegeClaimsTransformationTests
         Assert.True(transformed.IsInRole(AccountRoles.Admin));
         Assert.True(transformed.IsInRole(AccountRoles.Dev));
         Assert.True(transformed.IsInRole("Member"));
+        Assert.True(AccountRoleHierarchy.PrincipalHasScopedRole(
+            transformed,
+            BuiltInSiteModes.DorksAndDice.Id,
+            ScopedAccountRoles.Tester));
     }
 
     private static TrustedPrivilegeClaimsTransformation CreateTransformation(HttpContext context)
     {
         var accessor = new HttpContextAccessor { HttpContext = context };
-        return new TrustedPrivilegeClaimsTransformation(accessor, new SiteModeOptions());
+        return new TrustedPrivilegeClaimsTransformation(
+            accessor,
+            new SiteModeOptions(),
+            new SiteModeRegistry(BuiltInSiteModes.All));
     }
 
     private static ClaimsPrincipal CreatePrincipal()

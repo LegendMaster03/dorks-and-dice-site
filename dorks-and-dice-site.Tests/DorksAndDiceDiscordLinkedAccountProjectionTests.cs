@@ -53,10 +53,68 @@ public sealed class DorksAndDiceDiscordLinkedAccountProjectionTests
         var projection = Assert.Single(await source.BuildAsync());
         Assert.Equal("main-guild", projection.GuildId);
 
-        var role = Assert.Single(projection.Roles);
-        Assert.Equal("linked-account", role.Key);
+        var role = Assert.Single(projection.Roles, role => role.Key == "linked-account");
         Assert.Equal("Linked Account", role.DisplayName);
         Assert.Equal([linkedAndActive.Id], role.UserIds);
+        Assert.All(
+            projection.Roles.Where(role => role.Key != "linked-account"),
+            role => Assert.Empty(role.UserIds));
+    }
+
+    [Fact]
+    public async Task MainServerProjectionIncludesEffectiveGlobalAndModeRoles()
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+
+        var db = new IdentityDbContext(
+            new DbContextOptionsBuilder<IdentityDbContext>()
+                .UseSqlite(connection)
+                .Options);
+        await db.Database.EnsureCreatedAsync();
+
+        var user = CreateUser("developer-editor");
+        var devRole = new IdentityRole<Guid>
+        {
+            Id = Guid.NewGuid(),
+            Name = AccountRoles.Dev,
+            NormalizedName = AccountRoles.Dev.ToUpperInvariant()
+        };
+
+        db.Users.Add(user);
+        db.Roles.Add(devRole);
+        db.UserRoles.Add(new IdentityUserRole<Guid>
+        {
+            UserId = user.Id,
+            RoleId = devRole.Id
+        });
+        db.UserClaims.Add(new IdentityUserClaim<Guid>
+        {
+            UserId = user.Id,
+            ClaimType = AccountClaimTypes.ScopedRole,
+            ClaimValue = $"{SiteModeValues.DorksAndDiceModeValue}:{ScopedAccountRoles.Editor}"
+        });
+        db.UserLogins.Add(DiscordLogin(user.Id, "2001"));
+        db.AccountLinkModeActivations.Add(Activation(user.Id, "main-guild"));
+        await db.SaveChangesAsync();
+
+        var source = new DorksAndDiceDiscordLinkedAccountProjectionSource(
+            db,
+            new TestModeConnections("main-guild"));
+
+        var projection = Assert.Single(await source.BuildAsync());
+
+        Assert.Equal(
+            [user.Id],
+            projection.Roles.Single(role => role.DisplayName == AccountRoles.Dev).UserIds);
+        Assert.Equal(
+            [user.Id],
+            projection.Roles.Single(role => role.DisplayName == "Dorks & Dice Tester").UserIds);
+        Assert.Equal(
+            [user.Id],
+            projection.Roles.Single(role => role.DisplayName == "Dorks & Dice Editor").UserIds);
+        Assert.Empty(
+            projection.Roles.Single(role => role.DisplayName == AccountRoles.Admin).UserIds);
     }
 
     [Fact]

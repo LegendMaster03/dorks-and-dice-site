@@ -100,11 +100,17 @@ public static class AccountRoleHierarchy
             return true;
         }
 
-        // Global Editor is semantic authority over every mode's Editor capability, including modes
-        // registered after startup/persisted in the future. Do not make authorization depend on a
-        // static enumeration of known mode scopes. Admin and Owner inherit Global Editor normally.
+        // Global roles can provide semantic authority across every registered mode, including
+        // modes that do not have a compile-time enum value. Keep these rules here so consumers do
+        // not need to special-case inherited scoped roles themselves.
         if (string.Equals(role, ScopedAccountRoles.Editor, StringComparison.Ordinal)
             && PrincipalHasGlobalRole(principal, AccountRoles.GlobalEditor))
+        {
+            return true;
+        }
+
+        if (string.Equals(role, ScopedAccountRoles.Tester, StringComparison.Ordinal)
+            && PrincipalHasGlobalRole(principal, AccountRoles.Dev))
         {
             return true;
         }
@@ -132,7 +138,10 @@ public static class AccountRoleHierarchy
                 InheritsScopedRole(sourceRole, scope, scopedRole)
                 || string.Equals(scopedRole, ScopedAccountRoles.Editor, StringComparison.Ordinal)
                     && (string.Equals(sourceRole, AccountRoles.GlobalEditor, StringComparison.Ordinal)
-                        || InheritsGlobalRole(sourceRole, AccountRoles.GlobalEditor)))
+                        || InheritsGlobalRole(sourceRole, AccountRoles.GlobalEditor))
+                || string.Equals(scopedRole, ScopedAccountRoles.Tester, StringComparison.Ordinal)
+                    && (string.Equals(sourceRole, AccountRoles.Dev, StringComparison.Ordinal)
+                        || InheritsGlobalRole(sourceRole, AccountRoles.Dev)))
             .Distinct(StringComparer.Ordinal)
             .ToArray();
 
@@ -144,11 +153,22 @@ public static class AccountRoleHierarchy
         var editorChildren = SiteModeEditorRoles.All
             .Select(editorRole => new AccountRoleInheritanceNode(
                 $"scoped:{editorRole.Scope}:{ScopedAccountRoles.Editor}",
-                editorRole.RoleName,
+                editorRole.GetRoleName(ScopedAccountRoles.Editor),
                 AccountRoleInheritanceNodeKind.ScopedRole,
                 null,
                 editorRole.Scope,
                 ScopedAccountRoles.Editor,
+                []))
+            .ToArray();
+
+        var testerChildren = SiteModeEditorRoles.All
+            .Select(modeRole => new AccountRoleInheritanceNode(
+                $"scoped:{modeRole.Scope}:{ScopedAccountRoles.Tester}",
+                modeRole.GetRoleName(ScopedAccountRoles.Tester),
+                AccountRoleInheritanceNodeKind.ScopedRole,
+                null,
+                modeRole.Scope,
+                ScopedAccountRoles.Tester,
                 []))
             .ToArray();
 
@@ -177,7 +197,7 @@ public static class AccountRoleHierarchy
             AccountRoles.Dev,
             null,
             null,
-            []);
+            testerChildren);
 
         var rulesLawyer = new AccountRoleInheritanceNode(
             $"global:{AccountRoles.RulesLawyer}",

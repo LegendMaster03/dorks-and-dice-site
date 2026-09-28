@@ -250,7 +250,10 @@ public sealed class ModeScopedRoleAuthorizationTests
         var dev = owner.Children.Single(child => child.GlobalRole == AccountRoles.Dev);
         var globalEditor = admin.Children.Single(child => child.GlobalRole == AccountRoles.GlobalEditor);
 
-        Assert.Empty(dev.Children);
+        Assert.Equal(
+            SiteModeEditorRoles.All.Select(role => role.GetRoleName(ScopedAccountRoles.Tester)),
+            dev.Children.Select(child => child.DisplayName));
+        Assert.All(dev.Children, child => Assert.Equal(ScopedAccountRoles.Tester, child.ScopedRole));
         Assert.Equal(
             SiteModeEditorRoles.All.Select(role => role.RoleName),
             globalEditor.Children.Select(child => child.DisplayName));
