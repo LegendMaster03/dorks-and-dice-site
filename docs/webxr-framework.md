@@ -37,6 +37,10 @@ XR operation must not depend on recognizing a headset or controller model. Stand
 
 `XrDeviceProfileRegistry` is a secondary optimization layer. Consumers may register resolvers that identify known hardware from standards-visible information such as `XRInputSource.profiles` or from other browser/runtime hints. Resolver failure is non-fatal and unresolved hardware is represented as unknown.
 
+WebXR input profile strings describe compatible input configurations. They are useful hints, but they are not guaranteed to identify one physical device uniquely. A device resolver must therefore assign an appropriate confidence level and must not turn a profile match into a core compatibility requirement. For example, a runtime may intentionally expose one controller as compatible with another controller profile.
+
+No vendor-specific resolver ships with the framework initially. Steam Frame-, Rift-, or other hardware-specific resolvers should be added only when the available standards-visible signals are reliable enough to justify the distinction.
+
 This permits later hardware-specific tuning without making Steam Frame, Oculus Rift, Meta hardware, or any other vendor an architectural prerequisite.
 
 ## Modules
@@ -60,6 +64,8 @@ Nothing is imported by the shared page layout. Ordinary non-XR page loads theref
 The module is loaded lazily only after an immersive session has been granted. The runtime constructor accepts `threeModuleUrl`, so the exact same framework can use a self-hosted module later without changing experience code.
 
 The WebXR session request occurs before the dynamic Three.js import. This ordering is intentional because immersive `requestSession()` calls must remain in the browser's transient user-activation path.
+
+A caller that wants to remove the first-session module-fetch delay may call `runtime.preloadRenderer()` before the user starts XR. Preloading does not request an XR session and remains optional; the shared Site does not do it automatically.
 
 No Meta SDK, Horizon SDK, IWSDK, A-Frame, or headset-vendor package is part of the framework.
 
@@ -103,6 +109,8 @@ To end the active session:
 ```javascript
 await xr.stop();
 ```
+
+The runtime rejects overlapping starts, tracks a session that is still initializing, and performs cleanup if experience initialization or frame processing fails.
 
 ## Input contract
 

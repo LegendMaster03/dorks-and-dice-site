@@ -19,7 +19,8 @@ const DEFAULT_REFERENCE_SPACES = Object.freeze([
 ]);
 
 function uniqueStrings(values) {
-    return Array.from(new Set(values.filter(value => typeof value === "string" && value.length > 0)));
+    const source = Array.isArray(values) ? values : [];
+    return Array.from(new Set(source.filter(value => typeof value === "string" && value.length > 0)));
 }
 
 async function requestPreferredReferenceSpace(session, preferredTypes) {
@@ -58,6 +59,7 @@ export class XrRuntime extends EventTarget {
         deviceProfiles = createDefaultXrDeviceProfileRegistry(),
         navigatorLike = globalThis.navigator,
         documentLike = globalThis.document,
+        secureContext = globalThis.isSecureContext === true,
         logger = globalThis.console
     } = {}) {
         super();
@@ -65,9 +67,12 @@ export class XrRuntime extends EventTarget {
         this.deviceProfiles = deviceProfiles;
         this.navigatorLike = navigatorLike;
         this.documentLike = documentLike;
+        this.secureContext = secureContext;
         this.logger = logger;
         this._experiences = new Map();
         this._active = null;
+        this._starting = false;
+        this._pendingSession = null;
         this._threePromise = null;
     }
 
@@ -79,12 +84,20 @@ export class XrRuntime extends EventTarget {
         return Boolean(this._active);
     }
 
+    get isStarting() {
+        return this._starting;
+    }
+
     async detectCapabilities() {
         return detectXrCapabilities({
             navigatorLike: this.navigatorLike,
             documentLike: this.documentLike,
-            secureContext: globalThis.isSecureContext === true
+            secureContext: this.secureContext
         });
+    }
+
+    preloadRenderer() {
+        return this._loadThree();
     }
 
     registerExperience(experience) {
@@ -113,8 +126,8 @@ export class XrRuntime extends EventTarget {
         optionalFeatures = DEFAULT_OPTIONAL_FEATURES,
         referenceSpaces = DEFAULT_REFERENCE_SPACES
     } = {}) {
-        if (this._active) {
-            throw new Error("An XR session is already active.");
+        if (this._active || this._starting) {
+            throw new Error("An XR session is already active or starting.");
         }
 
         const experience = this._experiences.get(experienceId);
@@ -126,14 +139,12 @@ export class XrRuntime extends EventTarget {
         if (!xrSystem?.requestSession) {
             throw new Error("WebXR is not available in this browser context.");
         }
+        if (!this.documentLike?.createElement) {
+            throw new Error("The XR runtime requires a browser document to create its WebGL canvas.");
+        }
 
-        // requestSession must remain directly in the user-activation path. Do not add
-        // asynchronous capability probes before this call.
-        const session = await xrSystem.requestSession(mode, {
-            requiredFeatures: uniqueStrings(requiredFeatures),
-            optionalFeatures: uniqueStrings(optionalFeatures)
-        });
-
+        this._starting = true;
+        let session = null;
         let renderer = null;
         let inputs = null;
         let canvas = null;
@@ -141,6 +152,14 @@ export class XrRuntime extends EventTarget {
         let referenceSpace = null;
 
         try {
+            // requestSession must remain directly in the user-activation path. Do not add
+            // asynchronous capability probes or renderer loading before this call.
+            session = await xrSystem.requestSession(mode, {
+                requiredFeatures: uniqueStrings(requiredFeatures),
+                optionalFeatures: uniqueStrings(optionalFeatures)
+            });
+            this._pendingSession = session;
+
             const THREE = await this._loadThree();
             canvas = this.documentLike.createElement("canvas");
             canvas.setAttribute("aria-hidden", "true");
@@ -159,9 +178,12 @@ export class XrRuntime extends EventTarget {
             renderer.xr.setReferenceSpaceType("viewer");
             await renderer.xr.setSession(session);
 
+            const preferredReferenceSpaces = uniqueStrings(referenceSpaces);
             const requestedReferenceSpace = await requestPreferredReferenceSpace(
                 session,
-                uniqueStrings(referenceSpaces.length ? referenceSpaces : DEFAULT_REFERENCE_SPACES)
+                preferredReferenceSpaces.length > 0
+                    ? preferredReferenceSpaces
+                    : DEFAULT_REFERENCE_SPACES
             );
             referenceSpace = requestedReferenceSpace.space;
             renderer.xr.setReferenceSpace(referenceSpace);
@@ -204,6 +226,7 @@ export class XrRuntime extends EventTarget {
                 cleanupPromise: null
             };
             this._active = active;
+            this._pendingSession = null;
 
             session.addEventListener("end", () => {
                 void this._cleanup(active, "session-ended");
@@ -243,22 +266,51 @@ export class XrRuntime extends EventTarget {
             this.dispatchEvent(createRuntimeEvent("started", context));
             return context;
         } catch (error) {
+            if (context) {
+                try {
+                    await experience.dispose?.(context);
+                } catch (disposeError) {
+                    this.logger?.error?.(
+                        `XR experience '${experience.id}' failed while cleaning up an initialization error.`,
+                        disposeError);
+                }
+            }
+
             inputs?.dispose?.();
             renderer?.setAnimationLoop?.(null);
             renderer?.dispose?.();
             canvas?.remove?.();
-            try {
-                await session.end();
-            } catch {
-                // The session may already have ended while initialization was failing.
+            if (session) {
+                try {
+                    await session.end();
+                } catch {
+                    // The session may already have ended while initialization was failing.
+                }
             }
             throw error;
+        } finally {
+            this._starting = false;
+            if (!this._active) {
+                this._pendingSession = null;
+            }
         }
     }
 
     async stop() {
         const active = this._active;
         if (!active) {
+            const pendingSession = this._pendingSession;
+            if (pendingSession) {
+                try {
+                    await pendingSession.end();
+                } catch {
+                    // A pending session may already have ended during initialization.
+                } finally {
+                    if (this._pendingSession === pendingSession) {
+                        this._pendingSession = null;
+                    }
+                }
+            }
             return;
         }
 
