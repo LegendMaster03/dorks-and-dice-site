@@ -6,8 +6,9 @@ namespace dorks_and_dice_site.Services.Identity;
 public static class ScopedAccountRoles
 {
     public const string Editor = "Editor";
+    public const string Tester = "Tester";
 
-    public static IReadOnlyList<string> All { get; } = [Editor];
+    public static IReadOnlyList<string> All { get; } = [Editor, Tester];
 }
 
 public sealed record ScopedEditorRoleDefinition(
@@ -15,7 +16,9 @@ public sealed record ScopedEditorRoleDefinition(
     string DisplayName,
     SiteMode? LegacySiteMode)
 {
-    public string RoleName => $"{DisplayName} {ScopedAccountRoles.Editor}";
+    public string RoleName => GetRoleName(ScopedAccountRoles.Editor);
+
+    public string GetRoleName(string scopedRole) => $"{DisplayName} {scopedRole}";
 
     // Compatibility bridge for consumers that still operate on the legacy SiteMode enum.
     // New registry-driven consumers should use Scope instead.
