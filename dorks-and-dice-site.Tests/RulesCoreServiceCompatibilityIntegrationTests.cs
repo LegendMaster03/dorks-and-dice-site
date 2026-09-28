@@ -33,21 +33,7 @@ public sealed class RulesCoreServiceCompatibilityIntegrationTests(PublishedConte
         {
             var registry = scope.ServiceProvider.GetRequiredService<IToolRegistry>();
             previous = await registry.GetByKeyAsync("rules-core");
-            service = new ToolRegistration
-            {
-                Id = previous?.Id ?? Guid.NewGuid(),
-                Key = "rules-core",
-                Kind = ToolKind.Service,
-                Slug = null,
-                DisplayName = "Rules Core",
-                UpstreamBaseUrl = "http://localhost:8124",
-                HealthPath = "/ready",
-                Modes = [SiteModeValues.DorksAndDiceModeValue],
-                AllowAnonymous = false,
-                Enabled = true,
-                CreatedAt = previous?.CreatedAt ?? DateTimeOffset.UtcNow,
-                UpdatedAt = DateTimeOffset.UtcNow
-            };
+            service = RulesCoreService(previous);
             await registry.SaveAsync(service);
         }
 
@@ -86,16 +72,98 @@ public sealed class RulesCoreServiceCompatibilityIntegrationTests(PublishedConte
         }
         finally
         {
-            using var scope = testFactory.Services.CreateScope();
+            await RestoreAsync(testFactory.Services, previous, service);
+        }
+    }
+
+    [Fact]
+    public async Task LegacyRulesCoreBrowserDeepLinkRedirectsToRulesWikiAfterServiceConversion()
+    {
+        using var testFactory = factory.WithWebHostBuilder(_ => { });
+        ToolRegistration? previousCore;
+        ToolRegistration? previousWiki;
+        ToolRegistration coreService;
+        ToolRegistration rulesWiki;
+
+        using (var scope = testFactory.Services.CreateScope())
+        {
             var registry = scope.ServiceProvider.GetRequiredService<IToolRegistry>();
-            if (previous is null)
-            {
-                await registry.DeleteAsync(service.Id);
-            }
-            else
-            {
-                await registry.SaveAsync(previous);
-            }
+            previousCore = await registry.GetByKeyAsync("rules-core");
+            previousWiki = await registry.GetByKeyAsync("rules-wiki");
+            coreService = RulesCoreService(previousCore);
+            rulesWiki = RulesWikiApplication(previousWiki);
+            await registry.SaveAsync(coreService);
+            await registry.SaveAsync(rulesWiki);
+        }
+
+        try
+        {
+            using var client = Client(testFactory);
+            using var response = await client.GetAsync(
+                "/tools/rules-core/monsters/ancient-red-dragon?scope=campaign%3A123");
+
+            Assert.Equal(HttpStatusCode.PermanentRedirect, response.StatusCode);
+            Assert.Equal(
+                "/tools/rules-wiki/monsters/ancient-red-dragon?scope=campaign%3A123",
+                response.Headers.Location?.OriginalString);
+        }
+        finally
+        {
+            await RestoreAsync(testFactory.Services, previousWiki, rulesWiki);
+            await RestoreAsync(testFactory.Services, previousCore, coreService);
+        }
+    }
+
+    private static ToolRegistration RulesCoreService(ToolRegistration? previous) => new()
+    {
+        Id = previous?.Id ?? Guid.NewGuid(),
+        Key = "rules-core",
+        Kind = ToolKind.Service,
+        Slug = null,
+        DisplayName = "Rules Core",
+        UpstreamBaseUrl = "http://localhost:8124",
+        HealthPath = "/ready",
+        Modes = [SiteModeValues.DorksAndDiceModeValue],
+        AllowAnonymous = false,
+        Enabled = true,
+        CreatedAt = previous?.CreatedAt ?? DateTimeOffset.UtcNow,
+        UpdatedAt = DateTimeOffset.UtcNow
+    };
+
+    private static ToolRegistration RulesWikiApplication(ToolRegistration? previous) => new()
+    {
+        Id = previous?.Id ?? Guid.NewGuid(),
+        Key = "rules-wiki",
+        Kind = ToolKind.Application,
+        Slug = "rules-wiki",
+        DisplayName = "Rules Wiki",
+        IntegrationType = ToolIntegrationType.EmbeddedModule,
+        IntegrationContractVersion = ToolIntegrationContractVersions.EmbeddedModuleCurrent,
+        UpstreamBaseUrl = "http://localhost:8126",
+        FrontendEntryPoint = "/app.js",
+        HealthPath = "/ready",
+        Modes = [SiteModeValues.DorksAndDiceModeValue],
+        DelegationTargets = ["rules-core"],
+        AllowAnonymous = true,
+        Enabled = true,
+        CreatedAt = previous?.CreatedAt ?? DateTimeOffset.UtcNow,
+        UpdatedAt = DateTimeOffset.UtcNow
+    };
+
+    private static async Task RestoreAsync(
+        IServiceProvider services,
+        ToolRegistration? previous,
+        ToolRegistration replacement)
+    {
+        using var scope = services.CreateScope();
+        var registry = scope.ServiceProvider.GetRequiredService<IToolRegistry>();
+        if (previous is null)
+        {
+            await registry.DeleteAsync(replacement.Id);
+        }
+        else
+        {
+            await registry.SaveAsync(previous);
         }
     }
 
