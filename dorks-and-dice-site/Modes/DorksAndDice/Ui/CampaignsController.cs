@@ -1,17 +1,25 @@
 using System.Security.Claims;
+using dorks_and_dice_site.Models.Identity;
 using dorks_and_dice_site.Modes.DorksAndDice.Campaigns;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace dorks_and_dice_site.Modes.DorksAndDice.Ui;
 
 [Authorize]
 [Route("campaigns")]
-public sealed class CampaignsController(ICampaignService campaignService, ICampaignParticipantService participantService, ICampaignInvitationService invitationService) : Controller
+public sealed class CampaignsController(
+    ICampaignService campaignService,
+    ICampaignParticipantService participantService,
+    ICampaignInvitationService invitationService,
+    UserManager<ApplicationUser> userManager) : Controller
 {
     private readonly ICampaignService _campaignService = campaignService;
     private readonly ICampaignParticipantService _participantService = participantService;
     private readonly ICampaignInvitationService _invitationService = invitationService;
+    private readonly UserManager<ApplicationUser> _userManager = userManager;
 
     [HttpGet("")]
     public async Task<IActionResult> Index(CancellationToken cancellationToken)
@@ -157,7 +165,7 @@ public sealed class CampaignsController(ICampaignService campaignService, ICampa
 
     [HttpPost("{campaignId:guid}/invitations")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> CreateInvitation(Guid campaignId, bool player, bool dm, Guid? participantId, string? displayName, CancellationToken cancellationToken)
+    public async Task<IActionResult> CreateInvitation(Guid campaignId, bool player, bool dm, Guid? participantId, CancellationToken cancellationToken)
     {
         if (!TryGetUserId(out var userId)) return Unauthorized();
         var roles = new List<string>();
@@ -170,14 +178,7 @@ public sealed class CampaignsController(ICampaignService campaignService, ICampa
                 throw new CampaignDomainException("Select at least one campaign role for the invitation.");
             }
 
-            var resolvedParticipantId = participantId;
-            if (resolvedParticipantId is null && !string.IsNullOrWhiteSpace(displayName))
-            {
-                var participant = await _participantService.AddGuestAsync(userId, campaignId, displayName, cancellationToken);
-                resolvedParticipantId = participant.Id;
-            }
-
-            var grant = await _invitationService.CreateAsync(userId, campaignId, roles, resolvedParticipantId, cancellationToken);
+            var grant = await _invitationService.CreateAsync(userId, campaignId, roles, participantId, cancellationToken);
             TempData["CampaignInviteLink"] = Url.Action(nameof(Invitation), "Campaigns", new { token = grant.Token }, Request.Scheme) ?? $"/campaigns/invitations/{grant.Token}";
         }
         catch (CampaignDomainException exception) { TempData["CampaignError"] = exception.Message; }
@@ -244,7 +245,10 @@ public sealed class CampaignsController(ICampaignService campaignService, ICampa
         var currentMembership = activeMemberships.Single(membership => membership.UserId == userId);
         var currentRoles = currentMembership.Roles.Select(role => role.Role).OrderBy(role => role).ToArray();
         var canManage = currentRoles.Contains(CampaignRoles.Dm, StringComparer.Ordinal);
-        var activeParticipants = campaign.Participants.Where(participant => participant.Status == CampaignParticipantStatus.Active).ToArray();
+        var memberUserIds = activeMemberships.Select(membership => membership.UserId).ToArray();
+        var memberDisplayNames = await _userManager.Users
+            .Where(account => memberUserIds.Contains(account.Id))
+            .ToDictionaryAsync(account => account.Id, account => account.DisplayName, cancellationToken);
         IReadOnlyList<CampaignInvitation> invitations = canManage && campaign.Status == CampaignStatus.Active
             ? await _invitationService.GetPendingAsync(userId, campaignId, cancellationToken) : [];
 
@@ -259,7 +263,9 @@ public sealed class CampaignsController(ICampaignService campaignService, ICampa
             CurrentUserRoles = currentRoles,
             Members = activeMemberships.OrderBy(membership => membership.JoinedAt).Select(membership => new CampaignMemberViewModel(
                 membership.UserId,
-                activeParticipants.FirstOrDefault(participant => participant.UserId == membership.UserId)?.DisplayName,
+                memberDisplayNames.TryGetValue(membership.UserId, out var displayName) && !string.IsNullOrWhiteSpace(displayName)
+                    ? displayName
+                    : "Unknown account",
                 membership.Roles.Select(role => role.Role).OrderBy(role => role).ToArray(),
                 membership.UserId == userId)).ToArray(),
             Participants = campaign.Participants.OrderBy(participant => participant.Status).ThenBy(participant => participant.DisplayName)
