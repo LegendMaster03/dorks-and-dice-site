@@ -108,6 +108,13 @@ public sealed class JsonToolRegistry : IToolRegistry
         try
         {
             var tools = await ReadUnsafeAsync(cancellationToken);
+            var index = tools.FindIndex(tool => tool.Id == registration.Id);
+            if (index >= 0
+                && !string.Equals(tools[index].Key, registration.Key, StringComparison.Ordinal))
+            {
+                throw StableKeyChanged(registration.Id, tools[index].Key, registration.Key);
+            }
+
             var duplicateKey = tools.FirstOrDefault(tool =>
                 tool.Id != registration.Id
                 && string.Equals(tool.Key, registration.Key, StringComparison.OrdinalIgnoreCase));
@@ -127,7 +134,6 @@ public sealed class JsonToolRegistry : IToolRegistry
                 }
             }
 
-            var index = tools.FindIndex(tool => tool.Id == registration.Id);
             if (index >= 0)
             {
                 tools[index] = registration;
@@ -213,9 +219,7 @@ public sealed class JsonToolRegistry : IToolRegistry
     private static void NormalizeRegistration(ToolRegistration registration)
     {
         registration.Slug = NullIfWhiteSpace(registration.Slug)?.ToLowerInvariant();
-        registration.Key = NullIfWhiteSpace(registration.Key)?.ToLowerInvariant()
-            ?? registration.Slug
-            ?? string.Empty;
+        registration.Key = NormalizeStableKey(registration.Key, registration.Slug);
         registration.DelegationTargets = (registration.DelegationTargets ?? [])
             .Where(target => !string.IsNullOrWhiteSpace(target))
             .Select(target => target.Trim().ToLowerInvariant())
@@ -232,6 +236,17 @@ public sealed class JsonToolRegistry : IToolRegistry
         }
     }
 
+    private static string NormalizeStableKey(string? key, string? slug) =>
+        NullIfWhiteSpace(key)?.ToLowerInvariant()
+        ?? NullIfWhiteSpace(slug)?.ToLowerInvariant()
+        ?? string.Empty;
+
     private static string? NullIfWhiteSpace(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    private static InvalidOperationException StableKeyChanged(
+        Guid id,
+        string existingKey,
+        string incomingKey) =>
+        new($"The stable Tool registration key for '{id:D}' can not be changed from '{existingKey}' to '{incomingKey}'.");
 }

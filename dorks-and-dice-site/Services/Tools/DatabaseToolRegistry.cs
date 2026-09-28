@@ -99,6 +99,15 @@ public sealed class DatabaseToolRegistry : IToolRegistry
         }
 
         var existingById = await GetByIdAsync(registration.Id, cancellationToken);
+        if (existingById is not null)
+        {
+            var existingKey = NormalizeStableKey(existingById.Key, existingById.Slug);
+            if (!string.Equals(existingKey, registration.Key, StringComparison.Ordinal))
+            {
+                throw StableKeyChanged(registration.Id, existingKey, registration.Key);
+            }
+        }
+
         var duplicateKey = await GetByKeyAsync(registration.Key, cancellationToken);
         if (duplicateKey is not null && duplicateKey.Id != registration.Id)
         {
@@ -313,9 +322,7 @@ public sealed class DatabaseToolRegistry : IToolRegistry
     private static void NormalizeRegistration(ToolRegistration registration)
     {
         registration.Slug = NullIfWhiteSpace(registration.Slug)?.ToLowerInvariant();
-        registration.Key = NullIfWhiteSpace(registration.Key)?.ToLowerInvariant()
-            ?? registration.Slug
-            ?? string.Empty;
+        registration.Key = NormalizeStableKey(registration.Key, registration.Slug);
         registration.DelegationTargets = NormalizeDelegationTargets(registration.DelegationTargets);
 
         if (registration.Kind == ToolKind.Service)
@@ -326,6 +333,11 @@ public sealed class DatabaseToolRegistry : IToolRegistry
             registration.FrontendEntryPoint = null;
         }
     }
+
+    private static string NormalizeStableKey(string? key, string? slug) =>
+        NullIfWhiteSpace(key)?.ToLowerInvariant()
+        ?? NullIfWhiteSpace(slug)?.ToLowerInvariant()
+        ?? string.Empty;
 
     private static List<string> NormalizeDelegationTargets(
         IEnumerable<string>? targets) =>
@@ -453,6 +465,12 @@ public sealed class DatabaseToolRegistry : IToolRegistry
 
     private static string? NullIfWhiteSpace(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    private static InvalidOperationException StableKeyChanged(
+        Guid id,
+        string existingKey,
+        string incomingKey) =>
+        new($"The stable Tool registration key for '{id:D}' can not be changed from '{existingKey}' to '{incomingKey}'.");
 
     private static InvalidOperationException DuplicateKey(string key, Exception? innerException = null) =>
         new($"A Tool with key '{key}' already exists.", innerException);
