@@ -9,6 +9,9 @@ namespace dorks_and_dice_site.Controllers;
 [Route("tools")]
 public sealed class ToolsController : Controller
 {
+    private const string RulesCoreKey = "rules-core";
+    private const string RulesWikiSlug = "rules-wiki";
+
     private readonly IToolRegistry _toolRegistry;
     private readonly IToolProxyService _toolProxyService;
 
@@ -68,7 +71,11 @@ public sealed class ToolsController : Controller
         var tool = await ResolveAvailableToolAsync(slug, cancellationToken);
         if (tool is null)
         {
-            return NotFound();
+            var compatibilityRedirect = await TryRedirectLegacyRulesCoreRouteAsync(
+                slug,
+                path,
+                cancellationToken);
+            return compatibilityRedirect ?? NotFound();
         }
 
         if (ToolIntegrationContractPolicy.GetUnsupportedReason(tool) is { } contractError)
@@ -110,6 +117,38 @@ public sealed class ToolsController : Controller
 
         await _toolProxyService.ProxyAsync(HttpContext, tool, path, cancellationToken);
         return new EmptyResult();
+    }
+
+    private async Task<IActionResult?> TryRedirectLegacyRulesCoreRouteAsync(
+        string requestedSlug,
+        string path,
+        CancellationToken cancellationToken)
+    {
+        if ((!HttpMethods.IsGet(Request.Method) && !HttpMethods.IsHead(Request.Method))
+            || !string.Equals(requestedSlug, RulesCoreKey, StringComparison.Ordinal))
+        {
+            return null;
+        }
+
+        var modeId = HttpContext.GetSiteModeContext().ActiveModeId;
+        var rulesCore = await _toolRegistry.GetByKeyAsync(RulesCoreKey, cancellationToken);
+        if (rulesCore is null
+            || rulesCore.Kind != ToolKind.Service
+            || !rulesCore.Enabled
+            || !ToolVisibility.IsVisibleInMode(rulesCore, modeId))
+        {
+            return null;
+        }
+
+        var rulesWiki = await ResolveAvailableToolAsync(RulesWikiSlug, cancellationToken);
+        if (rulesWiki is null)
+        {
+            return null;
+        }
+
+        var suffix = string.Equals(path, "/", StringComparison.Ordinal) ? string.Empty : path;
+        return RedirectPermanentPreserveMethod(
+            $"/tools/{rulesWiki.Slug}{suffix}{Request.QueryString}");
     }
 
     private IActionResult RenderEmbeddedTool(ToolRegistration tool, string toolRoute)
