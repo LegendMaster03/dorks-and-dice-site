@@ -9,6 +9,9 @@ namespace dorks_and_dice_site.Controllers;
 [Route("tools")]
 public sealed class ToolsController : Controller
 {
+    private const string LegacyRulesCoreSlug = "rules-core";
+    private const string RulesWikiSlug = "rules-wiki";
+
     private readonly IToolRegistry _toolRegistry;
     private readonly IToolProxyService _toolProxyService;
 
@@ -68,7 +71,11 @@ public sealed class ToolsController : Controller
         var tool = await ResolveAvailableToolAsync(slug, cancellationToken);
         if (tool is null)
         {
-            return NotFound();
+            var compatibilityRedirect = await TryRedirectLegacyRulesCoreBrowserRouteAsync(
+                slug,
+                path,
+                cancellationToken);
+            return compatibilityRedirect ?? NotFound();
         }
 
         if (ToolIntegrationContractPolicy.GetUnsupportedReason(tool) is { } contractError)
@@ -110,6 +117,32 @@ public sealed class ToolsController : Controller
 
         await _toolProxyService.ProxyAsync(HttpContext, tool, path, cancellationToken);
         return new EmptyResult();
+    }
+
+    private async Task<IActionResult?> TryRedirectLegacyRulesCoreBrowserRouteAsync(
+        string requestedSlug,
+        string path,
+        CancellationToken cancellationToken)
+    {
+        if ((!HttpMethods.IsGet(Request.Method) && !HttpMethods.IsHead(Request.Method))
+            || !string.Equals(requestedSlug, LegacyRulesCoreSlug, StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        var rulesWiki = await ResolveAvailableToolAsync(RulesWikiSlug, cancellationToken);
+        if (rulesWiki is null)
+        {
+            return null;
+        }
+
+        var suffix = string.Equals(path, "/", StringComparison.Ordinal)
+            ? string.Empty
+            : path.StartsWith("/", StringComparison.Ordinal)
+                ? path
+                : $"/{path}";
+
+        return RedirectPreserveMethod($"/tools/{rulesWiki.Slug}{suffix}{Request.QueryString}");
     }
 
     private IActionResult RenderEmbeddedTool(ToolRegistration tool, string toolRoute)
