@@ -137,6 +137,38 @@
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     @await Html.PartialAsync("_ModeStylesheets")
     <link rel="stylesheet" href="~/dorks-and-dice-site.styles.css" asp-append-version="true" />
+    <script>
+        window.dorksAndDiceToolHost = Object.freeze({
+            setContentLayout(layout) {
+                if (layout !== "default" && layout !== "full-bleed") {
+                    throw new Error(`Unsupported Tool Host content layout '${layout}'.`);
+                }
+
+                const contentShell = document.getElementById("site-content-shell");
+                const footer = document.getElementById("site-footer");
+                const fullBleed = layout === "full-bleed";
+
+                if (contentShell) {
+                    if (fullBleed) {
+                        contentShell.style.setProperty("padding", "0", "important");
+                    } else {
+                        contentShell.style.removeProperty("padding");
+                    }
+                    contentShell.dataset.siteContentLayout = layout;
+                }
+
+                if (footer) {
+                    if (fullBleed) {
+                        footer.style.setProperty("margin-top", "0", "important");
+                    } else {
+                        footer.style.removeProperty("margin-top");
+                    }
+                }
+
+                return contentShell !== null;
+            }
+        });
+    </script>
 </head>
 <body>
     <header>
@@ -146,14 +178,16 @@
             @await Html.PartialAsync(developmentToolsPartialPath, developmentTools)
         }
     </header>
-    <div class="@contentContainerClass"
-         data-site-content-width="@(fullWidthContent ? "fluid" : "standard")">
+    <div id="site-content-shell"
+         class="@contentContainerClass"
+         data-site-content-width="@(fullWidthContent ? "fluid" : "standard")"
+         data-site-content-layout="default">
         <main role="main">
             @RenderBody()
         </main>
     </div>
 
-    <footer class="border-top footer text-muted py-3 mt-4">
+    <footer id="site-footer" class="border-top footer text-muted py-3 mt-4">
         @await Html.PartialAsync(brandingFooterPartialPath)
     </footer>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
