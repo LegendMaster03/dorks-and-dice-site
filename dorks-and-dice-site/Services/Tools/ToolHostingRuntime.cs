@@ -1,6 +1,8 @@
 using System.Diagnostics;
+using System.Security.Claims;
 using dorks_and_dice_site.Models.Site;
 using dorks_and_dice_site.Models.Tools;
+using dorks_and_dice_site.Services.Identity;
 using dorks_and_dice_site.Services.Site;
 
 namespace dorks_and_dice_site.Services.Tools;
@@ -36,12 +38,44 @@ public static class ToolVisibility
     public static bool IsVisibleToUser(
         ToolRegistration tool,
         string? modeId,
-        bool isAuthenticated) =>
+        ClaimsPrincipal principal) =>
         tool.Kind == ToolKind.Application
         && !string.IsNullOrWhiteSpace(tool.Slug)
         && tool.Enabled
         && IsVisibleInMode(tool, modeId)
-        && (tool.AllowAnonymous || isAuthenticated);
+        && CanUseReleaseAudience(tool, modeId, principal)
+        && (tool.ReleaseAudience != ToolReleaseAudience.Public
+            || tool.AllowAnonymous
+            || principal.Identity?.IsAuthenticated == true);
+
+    public static bool CanUseReleaseAudience(
+        ToolRegistration tool,
+        string? modeId,
+        ClaimsPrincipal principal)
+    {
+        ArgumentNullException.ThrowIfNull(tool);
+        ArgumentNullException.ThrowIfNull(principal);
+
+        if (tool.Kind != ToolKind.Application || string.IsNullOrWhiteSpace(modeId))
+        {
+            return false;
+        }
+
+        return tool.ReleaseAudience switch
+        {
+            ToolReleaseAudience.Development =>
+                principal.Identity?.IsAuthenticated == true
+                && AccountRoleHierarchy.PrincipalHasGlobalRole(principal, AccountRoles.Dev),
+            ToolReleaseAudience.Testing =>
+                principal.Identity?.IsAuthenticated == true
+                && AccountRoleHierarchy.PrincipalHasScopedRole(
+                    principal,
+                    modeId,
+                    ScopedAccountRoles.Tester),
+            ToolReleaseAudience.Public => true,
+            _ => false
+        };
+    }
 
     public static IReadOnlyList<string> GetEffectiveModeIds(ToolRegistration tool)
     {

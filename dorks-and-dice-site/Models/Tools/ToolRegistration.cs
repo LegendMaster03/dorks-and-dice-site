@@ -12,6 +12,13 @@ public enum ToolIntegrationType
     ProxiedApplication
 }
 
+public enum ToolReleaseAudience
+{
+    Development = 0,
+    Testing = 1,
+    Public = 2
+}
+
 public static class ToolIntegrationContractVersions
 {
     public const int EmbeddedModuleCurrent = 2;
@@ -45,6 +52,7 @@ public sealed class ToolRegistration
     public string? HealthPath { get; set; }
     public List<string> Modes { get; set; } = [];
     public List<string> DelegationTargets { get; set; } = [];
+    public ToolReleaseAudience ReleaseAudience { get; set; } = ToolReleaseAudience.Public;
     public bool AllowAnonymous { get; set; } = true;
     public bool Enabled { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
@@ -68,6 +76,7 @@ public sealed class ToolRegistrationEditViewModel
     public List<ToolModeOptionViewModel> ModeOptions { get; set; } = [];
     public List<string> DelegationTargets { get; set; } = [];
     public string? DelegationTargetsText { get; set; }
+    public ToolReleaseAudience ReleaseAudience { get; set; } = ToolReleaseAudience.Public;
     public bool AllowAnonymous { get; set; } = true;
     public bool Enabled { get; set; }
 }

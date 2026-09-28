@@ -29,7 +29,7 @@ public sealed class ToolsController : Controller
             .Where(tool => ToolVisibility.IsVisibleToUser(
                 tool,
                 modeId,
-                User.Identity?.IsAuthenticated == true))
+                User))
             .ToArray();
         return View(tools);
     }

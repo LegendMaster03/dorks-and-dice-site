@@ -92,8 +92,10 @@ else
                             <dd class="col-sm-8">@string.Join(", ", modes)</dd>
                             @if (tool.Kind == ToolKind.Application)
                             {
+                                <dt class="col-sm-4">Release</dt>
+                                <dd class="col-sm-8">@tool.ReleaseAudience</dd>
                                 <dt class="col-sm-4">Anonymous</dt>
-                                <dd class="col-sm-8">@(tool.AllowAnonymous ? "Allowed" : "Account required")</dd>
+                                <dd class="col-sm-8">@(tool.ReleaseAudience == ToolReleaseAudience.Public && tool.AllowAnonymous ? "Allowed" : "Account required")</dd>
                             }
                             <dt class="col-sm-4">Upstream</dt>
                             <dd class="col-sm-8 text-break">@(tool.UpstreamBaseUrl ?? "Not configured")</dd>

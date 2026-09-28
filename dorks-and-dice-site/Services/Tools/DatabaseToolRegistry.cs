@@ -26,6 +26,7 @@ public sealed class DatabaseToolRegistry : IToolRegistry
             tool_health_path,
             tool_modes,
             tool_delegation_targets,
+            tool_release_audience,
             tool_allow_anonymous,
             tool_enabled,
             tool_created_at,
@@ -34,6 +35,8 @@ public sealed class DatabaseToolRegistry : IToolRegistry
         """;
 
     private readonly IContentSourceRegistry _sourceRegistry;
+    private readonly SemaphoreSlim _releaseAudienceSchemaGate = new(1, 1);
+    private volatile bool _releaseAudienceSchemaEnsured;
 
     public DatabaseToolRegistry(IContentSourceRegistry sourceRegistry)
     {
@@ -47,6 +50,7 @@ public sealed class DatabaseToolRegistry : IToolRegistry
         await using (connection)
         {
             await connection.OpenAsync(cancellationToken);
+            await EnsureReleaseAudienceSchemaAsync(connection, provider, cancellationToken);
             await using var command = connection.CreateCommand();
             command.CommandText = SelectColumns;
 
@@ -132,6 +136,7 @@ public sealed class DatabaseToolRegistry : IToolRegistry
         await using (connection)
         {
             await connection.OpenAsync(cancellationToken);
+            await EnsureReleaseAudienceSchemaAsync(connection, provider, cancellationToken);
             await using var command = connection.CreateCommand();
             command.CommandText = """
                 INSERT INTO tool_registration
@@ -149,6 +154,7 @@ public sealed class DatabaseToolRegistry : IToolRegistry
                     tool_health_path,
                     tool_modes,
                     tool_delegation_targets,
+                    tool_release_audience,
                     tool_allow_anonymous,
                     tool_enabled,
                     tool_created_at,
@@ -169,6 +175,7 @@ public sealed class DatabaseToolRegistry : IToolRegistry
                     @tool_health_path,
                     @tool_modes,
                     @tool_delegation_targets,
+                    @tool_release_audience,
                     @tool_allow_anonymous,
                     @tool_enabled,
                     @tool_created_at,
@@ -187,6 +194,7 @@ public sealed class DatabaseToolRegistry : IToolRegistry
                     tool_health_path = excluded.tool_health_path,
                     tool_modes = excluded.tool_modes,
                     tool_delegation_targets = excluded.tool_delegation_targets,
+                    tool_release_audience = excluded.tool_release_audience,
                     tool_allow_anonymous = excluded.tool_allow_anonymous,
                     tool_enabled = excluded.tool_enabled,
                     tool_created_at = excluded.tool_created_at,
@@ -213,6 +221,7 @@ public sealed class DatabaseToolRegistry : IToolRegistry
                 "@tool_delegation_targets",
                 registration.DelegationTargets,
                 provider);
+            AddParameter(command, "@tool_release_audience", (short)registration.ReleaseAudience);
             AddParameter(command, "@tool_allow_anonymous", registration.AllowAnonymous);
             AddParameter(command, "@tool_enabled", registration.Enabled);
             AddTimestampParameter(command, "@tool_created_at", registration.CreatedAt, provider);
@@ -273,6 +282,7 @@ public sealed class DatabaseToolRegistry : IToolRegistry
         await using (connection)
         {
             await connection.OpenAsync(cancellationToken);
+            await EnsureReleaseAudienceSchemaAsync(connection, provider, cancellationToken);
             await using var command = connection.CreateCommand();
             command.CommandText = $"{SelectColumns} WHERE {predicate}";
             addParameter(command, provider);
@@ -284,6 +294,60 @@ public sealed class DatabaseToolRegistry : IToolRegistry
             }
 
             return ReadRegistration(reader, provider);
+        }
+    }
+
+    private async Task EnsureReleaseAudienceSchemaAsync(
+        DbConnection connection,
+        RegistryProvider provider,
+        CancellationToken cancellationToken)
+    {
+        if (_releaseAudienceSchemaEnsured)
+        {
+            return;
+        }
+
+        await _releaseAudienceSchemaGate.WaitAsync(cancellationToken);
+        try
+        {
+            if (_releaseAudienceSchemaEnsured)
+            {
+                return;
+            }
+
+            if (provider == RegistryProvider.Sqlite)
+            {
+                await using var checkCommand = connection.CreateCommand();
+                checkCommand.CommandText =
+                    "SELECT COUNT(*) FROM pragma_table_info('tool_registration') WHERE name = 'tool_release_audience'";
+                var exists = Convert.ToInt32(
+                    await checkCommand.ExecuteScalarAsync(cancellationToken),
+                    CultureInfo.InvariantCulture) > 0;
+                if (!exists)
+                {
+                    await using var alterCommand = connection.CreateCommand();
+                    alterCommand.CommandText = """
+                        ALTER TABLE tool_registration
+                        ADD COLUMN tool_release_audience INTEGER NOT NULL DEFAULT 2;
+                        """;
+                    await alterCommand.ExecuteNonQueryAsync(cancellationToken);
+                }
+            }
+            else
+            {
+                await using var command = connection.CreateCommand();
+                command.CommandText = """
+                    ALTER TABLE tool_registration
+                    ADD COLUMN IF NOT EXISTS tool_release_audience smallint NOT NULL DEFAULT 2;
+                    """;
+                await command.ExecuteNonQueryAsync(cancellationToken);
+            }
+
+            _releaseAudienceSchemaEnsured = true;
+        }
+        finally
+        {
+            _releaseAudienceSchemaGate.Release();
         }
     }
 
@@ -324,6 +388,10 @@ public sealed class DatabaseToolRegistry : IToolRegistry
         registration.Slug = NullIfWhiteSpace(registration.Slug)?.ToLowerInvariant();
         registration.Key = NormalizeStableKey(registration.Key, registration.Slug);
         registration.DelegationTargets = NormalizeDelegationTargets(registration.DelegationTargets);
+        if (!Enum.IsDefined(registration.ReleaseAudience))
+        {
+            throw new InvalidOperationException("Tool release audience is invalid.");
+        }
 
         if (registration.Kind == ToolKind.Service)
         {
@@ -331,6 +399,12 @@ public sealed class DatabaseToolRegistry : IToolRegistry
             registration.IntegrationType = null;
             registration.IntegrationContractVersion = null;
             registration.FrontendEntryPoint = null;
+            registration.ReleaseAudience = ToolReleaseAudience.Public;
+            registration.AllowAnonymous = false;
+        }
+        else if (registration.ReleaseAudience != ToolReleaseAudience.Public)
+        {
+            registration.AllowAnonymous = false;
         }
     }
 
@@ -367,11 +441,23 @@ public sealed class DatabaseToolRegistry : IToolRegistry
         HealthPath = ReadNullableString(reader, 10),
         Modes = ReadStringList(reader.GetValue(11), provider),
         DelegationTargets = ReadStringList(reader.GetValue(12), provider),
-        AllowAnonymous = Convert.ToBoolean(reader.GetValue(13), CultureInfo.InvariantCulture),
-        Enabled = Convert.ToBoolean(reader.GetValue(14), CultureInfo.InvariantCulture),
-        CreatedAt = ReadTimestamp(reader.GetValue(15)),
-        UpdatedAt = ReadTimestamp(reader.GetValue(16))
+        ReleaseAudience = ReadReleaseAudience(reader.GetValue(13)),
+        AllowAnonymous = Convert.ToBoolean(reader.GetValue(14), CultureInfo.InvariantCulture),
+        Enabled = Convert.ToBoolean(reader.GetValue(15), CultureInfo.InvariantCulture),
+        CreatedAt = ReadTimestamp(reader.GetValue(16)),
+        UpdatedAt = ReadTimestamp(reader.GetValue(17))
     };
+
+    private static ToolReleaseAudience ReadReleaseAudience(object value)
+    {
+        var raw = Convert.ToInt32(value, CultureInfo.InvariantCulture);
+        if (!Enum.IsDefined(typeof(ToolReleaseAudience), raw))
+        {
+            throw new InvalidOperationException($"Tool registration release audience '{raw}' is invalid.");
+        }
+
+        return (ToolReleaseAudience)raw;
+    }
 
     private static Guid ReadGuid(object value) => value switch
     {
