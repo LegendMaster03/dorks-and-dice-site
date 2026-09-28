@@ -95,7 +95,7 @@ public sealed class ToolReleaseAudienceIntegrationTests
     }
 
     [Fact]
-    public async Task TestingToolChallengesAnonymousAndAllowsTesterOrDev()
+    public async Task TestingToolChallengesAnonymousAndAllowsTesterOrInheritedDevAuthority()
     {
         var tool = await RegisterAsync(ToolReleaseAudience.Testing);
         try
@@ -116,7 +116,7 @@ public sealed class ToolReleaseAudienceIntegrationTests
     }
 
     [Fact]
-    public async Task DevelopmentToolRejectsTesterAndAllowsDev()
+    public async Task DevelopmentToolRequiresTrustedDevAuthority()
     {
         var tool = await RegisterAsync(ToolReleaseAudience.Development);
         try
@@ -126,7 +126,10 @@ public sealed class ToolReleaseAudienceIntegrationTests
                 (await SendAsync(
                     tool,
                     scopedRoles: $"{BuiltInSiteModes.DorksAndDice.Id}:{ScopedAccountRoles.Tester}")).StatusCode);
-            Assert.Equal(HttpStatusCode.OK, (await SendAsync(tool, roles: AccountRoles.Dev)).StatusCode);
+            Assert.Equal(HttpStatusCode.NotFound, (await SendAsync(tool, roles: AccountRoles.Dev)).StatusCode);
+            Assert.Equal(
+                HttpStatusCode.OK,
+                (await SendAsync(tool, roles: AccountRoles.Dev, trustedPreview: true)).StatusCode);
         }
         finally
         {
@@ -167,12 +170,14 @@ public sealed class ToolReleaseAudienceIntegrationTests
     private async Task<HttpResponseMessage> SendAsync(
         ToolRegistration tool,
         string? roles = null,
-        string? scopedRoles = null)
+        string? scopedRoles = null,
+        bool trustedPreview = false)
     {
+        var host = trustedPreview ? "localhost" : "dorks-and-dice.com";
         using var request = new HttpRequestMessage(
             HttpMethod.Get,
-            $"http://dorks-and-dice.com/tools/{tool.Slug}");
-        request.Headers.Host = "dorks-and-dice.com";
+            $"http://{host}/tools/{tool.Slug}");
+        request.Headers.Host = host;
         if (roles is not null)
         {
             request.Headers.Add(TestRoleAuthenticationHandler.RolesHeader, roles);
@@ -180,6 +185,12 @@ public sealed class ToolReleaseAudienceIntegrationTests
         if (scopedRoles is not null)
         {
             request.Headers.Add(TestRoleAuthenticationHandler.ScopedRolesHeader, scopedRoles);
+        }
+        if (trustedPreview)
+        {
+            request.Headers.Add(
+                "Cookie",
+                $"{SiteModeValues.DevelopmentSiteModeCookie}={BuiltInSiteModes.DorksAndDice.Id}");
         }
 
         using var client = _factory.CreateClient(new WebApplicationFactoryClientOptions

@@ -10,12 +10,12 @@ public sealed class ToolProxyRequestBodyLimitMiddleware
 {
     private readonly RequestDelegate _next;
     private readonly ToolProxyOptions _options;
-    private readonly IToolRegistry _toolRegistry;
+    private readonly IToolRegistry? _toolRegistry;
 
     public ToolProxyRequestBodyLimitMiddleware(
         RequestDelegate next,
         IOptions<ToolProxyOptions> options,
-        IToolRegistry toolRegistry)
+        IToolRegistry? toolRegistry = null)
     {
         _next = next;
         _options = options.Value;
@@ -63,7 +63,11 @@ public sealed class ToolProxyRequestBodyLimitMiddleware
 
     private async Task<bool> EnforceReleaseAudienceAsync(HttpContext context)
     {
-        if (!TryGetUserFacingApplicationSlug(context.Request.Path, out var slug))
+        // The body-limit middleware is also used by isolated Kestrel tests and can be reused
+        // independently of Tool registration. Release gating is available when the application
+        // composes the Tool registry, while the original request-size behavior remains standalone.
+        if (_toolRegistry is null
+            || !TryGetUserFacingApplicationSlug(context.Request.Path, out var slug))
         {
             return true;
         }
