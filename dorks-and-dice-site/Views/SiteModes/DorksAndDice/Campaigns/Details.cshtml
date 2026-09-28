@@ -35,6 +35,7 @@
             <a class="btn btn-primary" asp-controller="Characters" asp-action="Index">My Characters</a>
             @if (Model.CanManage && !Model.IsArchived)
             {
+                <a class="btn btn-outline-primary" asp-controller="DiscordServers" asp-action="Index">Connect Discord Server</a>
                 <a class="btn btn-outline-primary" href="#invite">Invite Player</a>
             }
         </div>
