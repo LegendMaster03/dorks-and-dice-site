@@ -77,7 +77,7 @@ public sealed class TrustedPrivilegeClaimsTransformation : IClaimsTransformation
         {
             foreach (var mode in _siteModeRegistry.All)
             {
-                foreach (var scopedRole in ScopedAccountRoles.All)
+                foreach (var scopedRole in ScopedAccountRoles.ForScope(mode.Id))
                 {
                     if (AccountRoleHierarchy.PrincipalHasScopedRole(principal, mode.Id, scopedRole)
                         && !AccountRoleHierarchy.PrincipalHasScopedRole(transformed, mode.Id, scopedRole))

@@ -15,7 +15,7 @@ The campaign context projection is the intended first-party Tool boundary for ro
 
 This data is suitable for rendering UI controls, but UI visibility is not the enforcement boundary.
 
-For Rules Core, global mutation authority is represented by the Dorks-mode `Rules Lawyer` global role. Campaign mutation authority is represented separately by campaign membership/role. The Tool must enforce the appropriate rule again on its backend.
+For Rules Core, canonical Dorks & Dice mutation authority is represented by the Dorks & Dice mode-scoped `Rules Lawyer` role. It is not a cross-mode global role. Campaign mutation authority is represented separately by campaign membership/role. The Tool must enforce the appropriate rule again on its backend.
 
 ## Authenticated backend gateway
 
@@ -49,12 +49,13 @@ A successful introspection returns the authoritative `ToolHostAuthenticationCont
 - active site mode;
 - stable user ID and display name;
 - effective global roles;
+- effective account roles scoped to the active site mode;
 - active campaign memberships and campaign roles;
 - optional Tool-specific authorization projections supplied by the Site.
 
 Authentication contract version 1 represents one campaign role per campaign entry. Native campaign memberships may contain both `DM` and `Player`; in that case the host emits one authentication-context entry per role so existing Tool backends can continue authorizing by `(campaignId, role)` without losing either grant.
 
-Version 1 also permits backward-compatible additive Tool-specific projections. Existing Tools that do not need a projection continue receiving their prior payload shape.
+Version 1 also permits backward-compatible additive projections. Current Site versions add `scopedRoles`, containing only roles effective for the active `siteMode`. Older Site versions omit this field. A Tool that consumes mode-scoped authority may retain a narrow legacy fallback when `scopedRoles` is absent so Site and Tool deployments can roll independently, but once the field is present it is authoritative for scoped roles.
 
 ### Character Sheet owner authorization projection
 
@@ -116,7 +117,7 @@ Delegation is explicitly allowlisted on the source Tool registration through `De
 
 For a delegated request, the Site validates the source registration, the source-to-target allowlist, the target registration, target enabled state, the target's visibility in the **captured source Site mode**, the supported integration contract, and the normal upstream URL policy. The internal server-to-server request's Host does not determine the Site mode.
 
-The Site then reconstructs a target-specific `ToolHostAuthenticationContext`. It preserves the authoritative source snapshot for stable Site user ID, display name, Site mode, effective global roles, and campaign memberships/roles, but it rebuilds Tool-specific projections for the target. For example, Character Sheet's `characters` projection is not copied into a Rules Core context.
+The Site then reconstructs a target-specific `ToolHostAuthenticationContext`. It preserves the authoritative source snapshot for stable Site user ID, display name, Site mode, effective global roles, effective roles scoped to that Site mode, and campaign memberships/roles, but it rebuilds Tool-specific projections for the target. For example, Character Sheet's `characters` projection is not copied into a Rules Core context.
 
 Finally, the Site issues a fresh normal target Tool authentication ticket and proxies the request through the existing authenticated Tool proxy. The target receives the same normal headers it would receive from a browser-originated authenticated gateway request:
 
@@ -133,10 +134,10 @@ The delegated route reuses normal proxy streaming, redirect rejection, timeout b
 
 Rules Core intentionally keeps two authorization questions independent:
 
-1. **May the authenticated user change this Rules Layer?** The site-supplied context answers global and campaign authority. Global Dorks & Dice changes require `Rules Lawyer`; campaign changes require the appropriate campaign authority.
+1. **May the authenticated user change this Rules Layer?** The site-supplied context answers canonical Dorks & Dice and campaign authority. Canonical Dorks & Dice changes require the Dorks & Dice mode-scoped `Rules Lawyer` role; campaign changes require the appropriate campaign authority.
 2. **May the authenticated user access this source content?** Rules Core owns this decision through its own per-user source grants keyed by the stable Dorks & Dice user ID.
 
-A Rules Lawyer does not automatically gain access to restricted source content. A user who has a source grant does not automatically gain global or campaign editing authority.
+A Rules Lawyer does not automatically gain access to restricted source content. A user who has a source grant does not automatically gain canonical or campaign editing authority.
 
 Storage deduplication also never broadens authorization: identical source payloads may share storage while grants remain per user.
 

@@ -13,7 +13,7 @@
         .Where(role => Model.GlobalRoles.Contains(role, StringComparer.Ordinal))
         .ToArray();
     var directlyAssignedScopedRoles = Model.AvailableScopedEditorRoles
-        .SelectMany(modeRole => ScopedAccountRoles.All
+        .SelectMany(modeRole => ScopedAccountRoles.ForScope(modeRole.Scope)
             .Where(scopedRole => Model.ScopedRoles.TryGetValue(modeRole.Scope, out var roles)
                 && roles.Contains(scopedRole, StringComparer.Ordinal))
             .Select(scopedRole => new { Mode = modeRole, Role = scopedRole }))
@@ -233,7 +233,7 @@
                         var canManage = !targetIsOwner || currentUserIsOwner;
                         <div class="role-search-category mt-3" data-role-category>
                             <h3 class="h6">@modeRole.DisplayName</h3>
-                            @foreach (var scopedRole in ScopedAccountRoles.All)
+                            @foreach (var scopedRole in ScopedAccountRoles.ForScope(modeRole.Scope))
                             {
                                 var assigned = Model.ScopedRoles.TryGetValue(modeRole.Scope, out var roles)
                                     && roles.Contains(scopedRole, StringComparer.Ordinal);

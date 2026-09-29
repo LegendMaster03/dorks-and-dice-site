@@ -34,14 +34,14 @@ public sealed class ScopedRoleService : IScopedRoleService
             .Where(claim => claim.Type == AccountClaimTypes.ScopedRole
                 && claim.Value.StartsWith(prefix, StringComparison.Ordinal))
             .Select(claim => claim.Value[prefix.Length..])
-            .Where(ScopedAccountRoles.All.Contains)
+            .Where(role => ScopedAccountRoles.IsAllowed(scope, role))
             .ToHashSet(StringComparer.Ordinal);
     }
 
     public async Task<bool> HasRoleAsync(ApplicationUser user, string scope, string role)
     {
         ValidateScope(scope);
-        ValidateRole(role);
+        ValidateRole(scope, role);
         var claimValue = BuildClaimValue(scope, role);
         var claims = await _userManager.GetClaimsAsync(user);
         return claims.Any(claim => claim.Type == AccountClaimTypes.ScopedRole
@@ -55,7 +55,14 @@ public sealed class ScopedRoleService : IScopedRoleService
         bool enabled)
     {
         ValidateScope(scope);
-        ValidateRole(role);
+        if (!ScopedAccountRoles.IsAllowed(scope, role))
+        {
+            return IdentityResult.Failed(new IdentityError
+            {
+                Code = "InvalidScopedRole",
+                Description = $"The {role} role is not available for scope '{scope}'."
+            });
+        }
 
         var claim = new Claim(AccountClaimTypes.ScopedRole, BuildClaimValue(scope, role));
         var currentlyEnabled = await HasRoleAsync(user, scope, role);
@@ -85,9 +92,9 @@ public sealed class ScopedRoleService : IScopedRoleService
         }
     }
 
-    private static void ValidateRole(string role)
+    private static void ValidateRole(string scope, string role)
     {
-        if (!ScopedAccountRoles.All.Contains(role, StringComparer.Ordinal))
+        if (!ScopedAccountRoles.IsAllowed(scope, role))
         {
             throw new ArgumentOutOfRangeException(nameof(role), role, "Unknown scoped account role.");
         }

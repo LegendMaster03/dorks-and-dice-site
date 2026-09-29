@@ -25,7 +25,7 @@ public sealed class AdminAgentCreateViewModel
     [StringLength(ApplicationUser.DisplayNameMaxLength)]
     public string DisplayName { get; set; } = string.Empty;
 
-    public List<string> Roles { get; set; } = [AccountRoles.GlobalEditor, AccountRoles.RulesLawyer];
+    public List<string> Roles { get; set; } = [AccountRoles.GlobalEditor];
 
     [Required]
     [StringLength(OperatorCredential.NameMaxLength)]

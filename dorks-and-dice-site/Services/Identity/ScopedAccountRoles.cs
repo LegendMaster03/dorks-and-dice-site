@@ -7,8 +7,18 @@ public static class ScopedAccountRoles
 {
     public const string Editor = "Editor";
     public const string Tester = "Tester";
+    public const string RulesLawyer = "Rules Lawyer";
 
-    public static IReadOnlyList<string> All { get; } = [Editor, Tester];
+    private static IReadOnlyList<string> Standard { get; } = [Editor, Tester];
+    public static IReadOnlyList<string> All { get; } = [Editor, Tester, RulesLawyer];
+
+    public static IReadOnlyList<string> ForScope(string scope) =>
+        string.Equals(scope, AccountRoleScopes.DorksAndDice, StringComparison.Ordinal)
+            ? All
+            : Standard;
+
+    public static bool IsAllowed(string scope, string role) =>
+        ForScope(scope).Contains(role, StringComparer.Ordinal);
 }
 
 public sealed record ScopedEditorRoleDefinition(

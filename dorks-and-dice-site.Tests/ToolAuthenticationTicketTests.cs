@@ -22,14 +22,15 @@ public sealed class ToolAuthenticationTicketTests
     }
 
     [Fact]
-    public void TicketCarriesSeparateGlobalAndCampaignAuthorizationContext()
+    public void TicketCarriesSeparateGlobalScopedAndCampaignAuthorizationContext()
     {
         var context = Context("rules-core");
         var ticket = ToolAuthenticationTickets.Issue(context);
 
         Assert.True(ToolAuthenticationTickets.TryRedeem("rules-core", ticket, out var redeemed));
         Assert.NotNull(redeemed);
-        Assert.Contains(AccountRoles.RulesLawyer, redeemed.GlobalRoles);
+        Assert.DoesNotContain(AccountRoles.RulesLawyer, redeemed.GlobalRoles);
+        Assert.Contains(ScopedAccountRoles.RulesLawyer, redeemed.ScopedRoles);
         var campaign = Assert.Single(redeemed.Campaigns);
         Assert.Equal("DM", campaign.Role);
         Assert.Equal("user-123", redeemed.User.Id);
@@ -38,13 +39,14 @@ public sealed class ToolAuthenticationTicketTests
     private static ToolHostAuthenticationContext Context(string slug) => new()
     {
         ToolSlug = slug,
-        SiteMode = "dorks-and-dice",
+        SiteMode = AccountRoleScopes.DorksAndDice,
         User = new ToolHostUserContext
         {
             Id = "user-123",
             DisplayName = "Rules Lawyer"
         },
-        GlobalRoles = [AccountRoles.RulesLawyer],
+        GlobalRoles = [],
+        ScopedRoles = [ScopedAccountRoles.RulesLawyer],
         Campaigns =
         [
             new ToolHostCampaignAccessSummary

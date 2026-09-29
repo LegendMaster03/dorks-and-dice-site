@@ -45,7 +45,6 @@ public sealed class OperatorAdminIntegrationTests(PublishedContentWebApplication
         [
             new("DisplayName", displayName),
             new("Roles", AccountRoles.GlobalEditor),
-            new("Roles", AccountRoles.RulesLawyer),
             new("CredentialName", "initial"),
             new("__RequestVerificationToken", createToken)
         ]);
@@ -66,7 +65,6 @@ public sealed class OperatorAdminIntegrationTests(PublishedContentWebApplication
             Assert.Equal(AccountKind.ServicePrincipal, agent.AccountKind);
             Assert.Null(agent.PasswordHash);
             Assert.True(await userManager.IsInRoleAsync(agent, AccountRoles.GlobalEditor));
-            Assert.True(await userManager.IsInRoleAsync(agent, AccountRoles.RulesLawyer));
             Assert.False(await userManager.IsInRoleAsync(agent, AccountRoles.Owner));
 
             var credentials = scope.ServiceProvider.GetRequiredService<IOperatorCredentialService>();
