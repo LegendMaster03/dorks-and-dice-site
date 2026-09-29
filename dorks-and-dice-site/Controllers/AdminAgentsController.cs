@@ -30,7 +30,7 @@ public sealed class AdminAgentsController(
         var agents = new List<AdminAgentListItemViewModel>(users.Length);
         foreach (var user in users)
         {
-            var roles = await userManager.GetRolesAsync(user);
+            var roles = EffectiveGlobalRoles(await userManager.GetRolesAsync(user));
             var userCredentials = await credentials.GetForUserAsync(user.Id, cancellationToken);
             agents.Add(new AdminAgentListItemViewModel
             {
@@ -38,7 +38,7 @@ public sealed class AdminAgentsController(
                 DisplayName = user.DisplayName,
                 CreatedAt = user.CreatedAt,
                 DeletedAt = user.DeletedAt,
-                GlobalRoles = roles.OrderBy(role => role, StringComparer.Ordinal).ToArray(),
+                GlobalRoles = roles,
                 ActiveCredentialCount = userCredentials.Count(credential =>
                     credential.RevokedAt is null
                     && (!credential.ExpiresAt.HasValue || credential.ExpiresAt > now))
@@ -196,7 +196,7 @@ public sealed class AdminAgentsController(
         CancellationToken cancellationToken,
         AdminAgentCredentialCreateViewModel? newCredential = null)
     {
-        var roles = await userManager.GetRolesAsync(user);
+        var roles = EffectiveGlobalRoles(await userManager.GetRolesAsync(user));
         var userCredentials = await credentials.GetForUserAsync(user.Id, cancellationToken);
         return new AdminAgentDetailViewModel
         {
@@ -204,7 +204,7 @@ public sealed class AdminAgentsController(
             DisplayName = user.DisplayName,
             CreatedAt = user.CreatedAt,
             DeletedAt = user.DeletedAt,
-            GlobalRoles = roles.OrderBy(role => role, StringComparer.Ordinal).ToArray(),
+            GlobalRoles = roles,
             Credentials = userCredentials.Select(credential => new AdminAgentCredentialViewModel
             {
                 CredentialId = credential.Id,
@@ -217,6 +217,12 @@ public sealed class AdminAgentsController(
             NewCredential = newCredential ?? new AdminAgentCredentialCreateViewModel()
         };
     }
+
+    private static IReadOnlyList<string> EffectiveGlobalRoles(IEnumerable<string> roles) =>
+        roles
+            .Where(role => AccountRoleHierarchy.GlobalRoleNames.Contains(role, StringComparer.Ordinal))
+            .OrderBy(role => role, StringComparer.Ordinal)
+            .ToArray();
 
     private static AdminAgentCredentialCreatedViewModel ToCreatedViewModel(
         ApplicationUser user,

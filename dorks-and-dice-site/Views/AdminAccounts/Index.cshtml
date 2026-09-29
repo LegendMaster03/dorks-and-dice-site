@@ -1,4 +1,5 @@
 @using dorks_and_dice_site.Models.Identity
+@using dorks_and_dice_site.Services.Identity
 @model AdminAccountListViewModel
 @{
     ViewData["Title"] = "Account administration";
@@ -29,13 +30,16 @@
         @foreach (var account in Model.Accounts)
         {
             var isDisabled = account.LockoutEnd is not null && account.LockoutEnd > DateTimeOffset.UtcNow;
+            var effectiveGlobalRoles = account.GlobalRoles
+                .Where(role => AccountRoleHierarchy.GlobalRoleNames.Contains(role, StringComparer.Ordinal))
+                .ToArray();
             <tr>
                 <td>
                     <div>@account.DisplayName</div>
                     <div class="small font-monospace text-body-secondary">@account.UserId</div>
                 </td>
                 <td>@account.Email</td>
-                <td>@(account.GlobalRoles.Count == 0 ? "—" : string.Join(", ", account.GlobalRoles))</td>
+                <td>@(effectiveGlobalRoles.Length == 0 ? "—" : string.Join(", ", effectiveGlobalRoles))</td>
                 <td>
                     @if (account.DeletedAt is not null)
                     {
