@@ -7,24 +7,19 @@ public sealed record CreateCampaignRequest(string Name);
 public sealed record RenameCampaignRequest(string Name);
 public sealed record AddCampaignMemberRequest(Guid UserId, IReadOnlyCollection<string> Roles);
 public sealed record SetCampaignMemberRolesRequest(IReadOnlyCollection<string> Roles);
-public sealed record AddCampaignParticipantRequest(string DisplayName);
-public sealed record RenameCampaignParticipantRequest(string DisplayName);
-public sealed record LinkCampaignParticipantRequest(Guid UserId);
 public sealed record CreateCharacterRequest(string Name);
 public sealed record RenameCharacterRequest(string Name);
 public sealed record ConnectCharacterRequest(Guid CampaignId);
 
 public sealed record CampaignSummaryResponse(Guid Id, string Name, string Status, IReadOnlyCollection<string> Roles);
 public sealed record CampaignMemberResponse(Guid UserId, IReadOnlyCollection<string> Roles);
-public sealed record CampaignParticipantResponse(Guid Id, string DisplayName, Guid? UserId, string Status);
 public sealed record CampaignDetailsResponse(
     Guid Id,
     string Name,
     string Status,
     DateTimeOffset? ArchivedAt,
     IReadOnlyCollection<string> CurrentUserRoles,
-    IReadOnlyCollection<CampaignMemberResponse> Members,
-    IReadOnlyCollection<CampaignParticipantResponse> Participants);
+    IReadOnlyCollection<CampaignMemberResponse> Members);
 public sealed record CharacterCampaignResponse(Guid CampaignId, string CampaignName);
 public sealed record CharacterSummaryResponse(
     Guid Id,
@@ -48,12 +43,8 @@ public static class DorksAndDiceApiMapper
             .SelectMany(membership => membership.Roles).Select(role => role.Role).Distinct(StringComparer.Ordinal).OrderBy(role => role, StringComparer.Ordinal).ToArray();
         var members = campaign.Memberships.Where(membership => membership.Status == CampaignMembershipStatus.Active).OrderBy(membership => membership.JoinedAt)
             .Select(membership => new CampaignMemberResponse(membership.UserId, membership.Roles.Select(role => role.Role).OrderBy(role => role, StringComparer.Ordinal).ToArray())).ToArray();
-        var participants = campaign.Participants.OrderBy(participant => participant.Status).ThenBy(participant => participant.DisplayName).Select(ToParticipant).ToArray();
-        return new CampaignDetailsResponse(campaign.Id, campaign.Name, campaign.Status.ToString(), campaign.ArchivedAt, currentRoles, members, participants);
+        return new CampaignDetailsResponse(campaign.Id, campaign.Name, campaign.Status.ToString(), campaign.ArchivedAt, currentRoles, members);
     }
-
-    public static CampaignParticipantResponse ToParticipant(CampaignParticipant participant) =>
-        new(participant.Id, participant.DisplayName, participant.UserId, participant.Status.ToString());
 
     public static CharacterSummaryResponse ToSummary(Character character)
     {

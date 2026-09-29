@@ -4,7 +4,6 @@ namespace dorks_and_dice_site.Modes.DorksAndDice.Campaigns;
 
 public enum CampaignStatus { Active = 0, Archived = 1 }
 public enum CampaignMembershipStatus { Active = 0, Left = 1, Removed = 2 }
-public enum CampaignParticipantStatus { Active = 0, Former = 1 }
 
 public static class CampaignRoles
 {
@@ -40,7 +39,6 @@ public sealed class Campaign
     public DateTimeOffset? ArchivedAt { get; set; }
     public Guid? ArchivedByUserId { get; set; }
     public ICollection<CampaignMembership> Memberships { get; set; } = new List<CampaignMembership>();
-    public ICollection<CampaignParticipant> Participants { get; set; } = new List<CampaignParticipant>();
     public ICollection<CampaignCharacterAssociation> CharacterAssociations { get; set; } = new List<CampaignCharacterAssociation>();
 }
 
@@ -66,20 +64,6 @@ public sealed class CampaignMembershipRole
     public DateTimeOffset GrantedAt { get; set; }
     public Guid GrantedByUserId { get; set; }
     public CampaignMembership CampaignMembership { get; set; } = null!;
-}
-
-public sealed class CampaignParticipant
-{
-    public Guid Id { get; set; }
-    public Guid CampaignId { get; set; }
-    public Guid? UserId { get; set; }
-    public string DisplayName { get; set; } = string.Empty;
-    public CampaignParticipantStatus Status { get; set; } = CampaignParticipantStatus.Active;
-    public DateTimeOffset CreatedAt { get; set; }
-    public DateTimeOffset? EndedAt { get; set; }
-    public Guid? EndedByUserId { get; set; }
-    public string? EndReason { get; set; }
-    public Campaign Campaign { get; set; } = null!;
 }
 
 public sealed class CampaignDomainException : InvalidOperationException

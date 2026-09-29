@@ -9,7 +9,7 @@ namespace dorks_and_dice_site.Tests;
 public sealed class DorksAndDiceMigrationTests
 {
     [Fact]
-    public async Task InitialMigrationCreatesUsableCampaignSchema()
+    public async Task MigrationsCreateUsableCampaignSchema()
     {
         await using var connection = new SqliteConnection("Data Source=:memory:");
         await connection.OpenAsync();
@@ -20,12 +20,14 @@ public sealed class DorksAndDiceMigrationTests
 
         var applied = await db.Database.GetAppliedMigrationsAsync();
         Assert.Contains("20260914223500_InitialDorksAndDice", applied);
+        Assert.Contains("20260929014000_RemoveCampaignParticipants", applied);
         Assert.False(await db.Campaigns.AnyAsync());
+        Assert.False(await db.CampaignInvitations.AnyAsync());
         Assert.False(await db.Characters.AnyAsync());
     }
 
     [Fact]
-    public async Task InitialMigrationCreatesUsableCampaignSchemaOnPostgreSql()
+    public async Task MigrationsCreateUsableCampaignSchemaOnPostgreSql()
     {
         var connectionString = Environment.GetEnvironmentVariable("CONTENT_TEST_POSTGRES");
         if (string.IsNullOrWhiteSpace(connectionString))
@@ -58,6 +60,7 @@ public sealed class DorksAndDiceMigrationTests
 
             var applied = await db.Database.GetAppliedMigrationsAsync();
             Assert.Contains("20260914223500_InitialDorksAndDice", applied);
+            Assert.Contains("20260929014000_RemoveCampaignParticipants", applied);
             Assert.False(await db.Campaigns.AnyAsync());
             Assert.False(await db.CampaignInvitations.AnyAsync());
             Assert.False(await db.Characters.AnyAsync());

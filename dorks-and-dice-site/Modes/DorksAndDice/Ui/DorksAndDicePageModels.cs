@@ -8,9 +8,7 @@ public sealed class CampaignsIndexViewModel
 }
 
 public sealed record CampaignMemberViewModel(Guid UserId, string DisplayName, IReadOnlyList<string> Roles, bool IsCurrentUser);
-public sealed record CampaignParticipantViewModel(Guid Id, string DisplayName, Guid? UserId, bool IsActive);
-public sealed record CampaignInvitationListItemViewModel(Guid Id, IReadOnlyList<string> Roles, string? ParticipantName, DateTimeOffset ExpiresAt);
-public sealed record ParticipantOptionViewModel(Guid Id, string DisplayName, bool IsFormer);
+public sealed record CampaignInvitationListItemViewModel(Guid Id, IReadOnlyList<string> Roles, bool IsReusable, DateTimeOffset ExpiresAt);
 
 public sealed class CampaignDetailsViewModel
 {
@@ -22,9 +20,7 @@ public sealed class CampaignDetailsViewModel
     public bool CanManage { get; init; }
     public IReadOnlyList<string> CurrentUserRoles { get; init; } = [];
     public IReadOnlyList<CampaignMemberViewModel> Members { get; init; } = [];
-    public IReadOnlyList<CampaignParticipantViewModel> Participants { get; init; } = [];
     public IReadOnlyList<CampaignInvitationListItemViewModel> Invitations { get; init; } = [];
-    public IReadOnlyList<ParticipantOptionViewModel> InviteableParticipants { get; init; } = [];
 }
 
 public sealed class CampaignInvitationPageViewModel
@@ -33,7 +29,7 @@ public sealed class CampaignInvitationPageViewModel
     public Guid CampaignId { get; init; }
     public string CampaignName { get; init; } = string.Empty;
     public IReadOnlyList<string> Roles { get; init; } = [];
-    public string? ParticipantName { get; init; }
+    public bool IsReusable { get; init; }
     public DateTimeOffset ExpiresAt { get; init; }
     public string? Error { get; init; }
 }

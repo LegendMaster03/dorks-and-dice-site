@@ -8,7 +8,7 @@ namespace dorks_and_dice_site.Modes.DorksAndDice.Campaigns;
 
 public interface ICampaignInvitationService
 {
-    Task<CampaignInvitationGrant> CreateAsync(Guid actorUserId, Guid campaignId, IEnumerable<string> roles, Guid? participantId = null, CancellationToken cancellationToken = default);
+    Task<CampaignInvitationGrant> CreateAsync(Guid actorUserId, Guid campaignId, IEnumerable<string> roles, bool isReusable = false, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<CampaignInvitation>> GetPendingAsync(Guid actorUserId, Guid campaignId, CancellationToken cancellationToken = default);
     Task<CampaignInvitationPreview?> GetPreviewAsync(string token, CancellationToken cancellationToken = default);
     Task<CampaignMembership> AcceptAsync(Guid userId, string token, CancellationToken cancellationToken = default);
@@ -22,42 +22,21 @@ public sealed class CampaignInvitationService(DorksAndDiceDbContext dbContext, I
     private readonly ICampaignAccessService _campaignAccess = campaignAccess;
     private readonly TimeProvider _timeProvider = timeProvider;
 
-    public async Task<CampaignInvitationGrant> CreateAsync(Guid actorUserId, Guid campaignId, IEnumerable<string> roles, Guid? participantId = null, CancellationToken cancellationToken = default)
+    public async Task<CampaignInvitationGrant> CreateAsync(Guid actorUserId, Guid campaignId, IEnumerable<string> roles, bool isReusable = false, CancellationToken cancellationToken = default)
     {
         await _campaignAccess.RequireRoleAsync(actorUserId, campaignId, CampaignRoles.Dm, cancellationToken);
         var now = _timeProvider.GetUtcNow();
         await ExpireStalePendingInvitationsAsync(campaignId, now, cancellationToken);
 
         var normalizedRoles = CampaignRoles.NormalizeMany(roles).OrderBy(role => role).ToArray();
-        CampaignParticipant? participant = null;
-        if (participantId is Guid requestedParticipantId)
-        {
-            participant = await _dbContext.CampaignParticipants.SingleOrDefaultAsync(
-                item => item.Id == requestedParticipantId && item.CampaignId == campaignId,
-                cancellationToken)
-                ?? throw new CampaignDomainException("Campaign participant does not exist.");
-
-            if (participant.Status == CampaignParticipantStatus.Active && participant.UserId is not null)
-            {
-                throw new CampaignDomainException("The selected participant is already linked to an active account participant.");
-            }
-
-            if (await _dbContext.CampaignInvitations.AnyAsync(
-                    item => item.ParticipantId == participant.Id && item.Status == CampaignInvitationStatus.Pending,
-                    cancellationToken))
-            {
-                throw new CampaignDomainException("The selected participant already has a pending invitation.");
-            }
-        }
-
         var token = WebEncoders.Base64UrlEncode(RandomNumberGenerator.GetBytes(32));
         var invitation = new CampaignInvitation
         {
             Id = Guid.NewGuid(),
             CampaignId = campaignId,
-            ParticipantId = participant?.Id,
             TokenHash = HashToken(token),
             Roles = SerializeRoles(normalizedRoles),
+            IsReusable = isReusable,
             Status = CampaignInvitationStatus.Pending,
             CreatedByUserId = actorUserId,
             CreatedAt = now,
@@ -74,22 +53,17 @@ public sealed class CampaignInvitationService(DorksAndDiceDbContext dbContext, I
         await _campaignAccess.RequireRoleAsync(actorUserId, campaignId, CampaignRoles.Dm, cancellationToken);
         await ExpireStalePendingInvitationsAsync(campaignId, _timeProvider.GetUtcNow(), cancellationToken);
 
-        var pendingInvitations = await _dbContext.CampaignInvitations
+        return await _dbContext.CampaignInvitations
             .AsNoTracking()
-            .Include(invitation => invitation.Participant)
             .Where(invitation => invitation.CampaignId == campaignId && invitation.Status == CampaignInvitationStatus.Pending)
-            .ToListAsync(cancellationToken);
-
-        return pendingInvitations
             .OrderBy(invitation => invitation.ExpiresAt)
-            .ToArray();
+            .ToListAsync(cancellationToken);
     }
 
     public async Task<CampaignInvitationPreview?> GetPreviewAsync(string token, CancellationToken cancellationToken = default)
     {
         var invitation = await _dbContext.CampaignInvitations
             .Include(item => item.Campaign)
-            .Include(item => item.Participant)
             .SingleOrDefaultAsync(item => item.TokenHash == HashToken(token), cancellationToken);
 
         if (invitation is null || invitation.Status != CampaignInvitationStatus.Pending)
@@ -115,7 +89,7 @@ public sealed class CampaignInvitationService(DorksAndDiceDbContext dbContext, I
             invitation.CampaignId,
             invitation.Campaign.Name,
             DeserializeRoles(invitation.Roles),
-            invitation.Participant?.DisplayName,
+            invitation.IsReusable,
             invitation.ExpiresAt);
     }
 
@@ -124,7 +98,6 @@ public sealed class CampaignInvitationService(DorksAndDiceDbContext dbContext, I
         var now = _timeProvider.GetUtcNow();
         var invitation = await _dbContext.CampaignInvitations
             .Include(item => item.Campaign)
-            .Include(item => item.Participant)
             .SingleOrDefaultAsync(item => item.TokenHash == HashToken(token), cancellationToken)
             ?? throw new CampaignDomainException("Campaign invitation is invalid.");
 
@@ -149,33 +122,6 @@ public sealed class CampaignInvitationService(DorksAndDiceDbContext dbContext, I
             throw new CampaignDomainException("This account is already an active member of the campaign.");
         }
 
-        if (invitation.Participant is not null)
-        {
-            var participant = invitation.Participant;
-            if (participant.Status == CampaignParticipantStatus.Active && participant.UserId is not null)
-            {
-                throw new CampaignDomainException("The participant attached to this invitation is no longer available.");
-            }
-
-            if (participant.Status == CampaignParticipantStatus.Former
-                && participant.UserId is Guid previousUserId
-                && previousUserId != userId)
-            {
-                throw new CampaignDomainException("This invitation is associated with a different account.");
-            }
-
-            var anotherLinkExists = await _dbContext.CampaignParticipants.AnyAsync(
-                item => item.CampaignId == invitation.CampaignId
-                    && item.Id != participant.Id
-                    && item.UserId == userId
-                    && item.Status == CampaignParticipantStatus.Active,
-                cancellationToken);
-            if (anotherLinkExists)
-            {
-                throw new CampaignDomainException("This account is already linked to another active participant in the campaign.");
-            }
-        }
-
         var membership = new CampaignMembership
         {
             Id = Guid.NewGuid(),
@@ -197,18 +143,19 @@ public sealed class CampaignInvitationService(DorksAndDiceDbContext dbContext, I
             });
         }
 
-        if (invitation.Participant is not null)
+        if (invitation.IsReusable)
         {
-            invitation.Participant.UserId ??= userId;
-            invitation.Participant.Status = CampaignParticipantStatus.Active;
-            invitation.Participant.EndedAt = null;
-            invitation.Participant.EndedByUserId = null;
-            invitation.Participant.EndReason = null;
+            // Force an update against the Status concurrency token without consuming the link.
+            // A concurrent revoke or expiration therefore causes this redemption to fail cleanly.
+            _dbContext.Entry(invitation).Property(item => item.Status).IsModified = true;
+        }
+        else
+        {
+            invitation.Status = CampaignInvitationStatus.Accepted;
+            invitation.AcceptedAt = now;
+            invitation.AcceptedByUserId = userId;
         }
 
-        invitation.Status = CampaignInvitationStatus.Accepted;
-        invitation.AcceptedAt = now;
-        invitation.AcceptedByUserId = userId;
         invitation.Campaign.UpdatedAt = now;
         _dbContext.CampaignMemberships.Add(membership);
 
@@ -254,15 +201,12 @@ public sealed class CampaignInvitationService(DorksAndDiceDbContext dbContext, I
 
     private async Task ExpireStalePendingInvitationsAsync(Guid campaignId, DateTimeOffset now, CancellationToken cancellationToken)
     {
-        var pending = await _dbContext.CampaignInvitations
+        var stale = await _dbContext.CampaignInvitations
             .Where(invitation => invitation.CampaignId == campaignId
-                && invitation.Status == CampaignInvitationStatus.Pending)
+                && invitation.Status == CampaignInvitationStatus.Pending
+                && invitation.ExpiresAt <= now)
             .ToListAsync(cancellationToken);
-
-        var stale = pending
-            .Where(invitation => invitation.ExpiresAt <= now)
-            .ToArray();
-        if (stale.Length == 0)
+        if (stale.Count == 0)
         {
             return;
         }

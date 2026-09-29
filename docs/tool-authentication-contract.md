@@ -9,7 +9,7 @@ An authenticated Embedded Module can query the existing host API beneath its con
 - `GET /tool-host/{slug}/api/session` returns the stable user summary, active site mode, and the user's effective global roles.
 - `GET /tool-host/{slug}/api/campaigns` returns active native Dorks & Dice campaigns in which the current user has an explicit membership. The response retains the original Tool Host `id`, `name`, and single `role` compatibility shape; when a native membership has both roles, `DM` is the compatibility role.
 - `GET /tool-host/{slug}/api/campaigns/{campaignId}` verifies membership without accepting a browser-supplied user ID and returns the compatibility campaign summary.
-- `GET /tool-host/{slug}/api/campaigns/{campaignId}/context` returns the stable native campaign projection for an authorized member: the campaign ID/name, all roles held by the requesting account, active table participants, and active campaign-linked characters. It does not expose persistence entities.
+- `GET /tool-host/{slug}/api/campaigns/{campaignId}/context` returns the stable native campaign projection for an authorized member: the campaign ID/name, all roles held by the requesting account, active campaign members with their scoped roles, and active campaign-linked characters. It does not expose persistence entities.
 
 The campaign context projection is the intended first-party Tool boundary for roster-aware integrations such as Block Initiative. Tools must not read the Dorks & Dice campaign database directly.
 

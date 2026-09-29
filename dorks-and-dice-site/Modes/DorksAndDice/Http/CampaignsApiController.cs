@@ -8,10 +8,9 @@ namespace dorks_and_dice_site.Modes.DorksAndDice.Http;
 [ApiController]
 [Authorize]
 [Route("campaigns/api")]
-public sealed class CampaignsApiController(ICampaignService campaignService, ICampaignParticipantService participantService) : ControllerBase
+public sealed class CampaignsApiController(ICampaignService campaignService) : ControllerBase
 {
     private readonly ICampaignService _campaignService = campaignService;
-    private readonly ICampaignParticipantService _participantService = participantService;
 
     [HttpGet]
     public async Task<ActionResult<IReadOnlyList<CampaignSummaryResponse>>> GetCampaigns([FromQuery] bool includeArchived, CancellationToken cancellationToken)
@@ -96,62 +95,6 @@ public sealed class CampaignsApiController(ICampaignService campaignService, ICa
     {
         if (!TryGetUserId(out var userId)) return Unauthorized();
         try { await _campaignService.RemoveMemberAsync(userId, campaignId, memberUserId, cancellationToken); return NoContent(); }
-        catch (CampaignDomainException exception) { return BadRequest(new { error = exception.Message }); }
-    }
-
-    [HttpGet("{campaignId:guid}/participants")]
-    public async Task<ActionResult<IReadOnlyList<CampaignParticipantResponse>>> GetParticipants(Guid campaignId, CancellationToken cancellationToken)
-    {
-        if (!TryGetUserId(out var userId)) return Unauthorized();
-        try
-        {
-            var participants = await _participantService.GetForCampaignAsync(userId, campaignId, cancellationToken);
-            return Ok(participants.Select(DorksAndDiceApiMapper.ToParticipant).ToArray());
-        }
-        catch (CampaignDomainException exception) { return BadRequest(new { error = exception.Message }); }
-    }
-
-    [HttpPost("{campaignId:guid}/participants")]
-    public async Task<ActionResult<CampaignParticipantResponse>> AddParticipant(Guid campaignId, [FromBody] AddCampaignParticipantRequest request, CancellationToken cancellationToken)
-    {
-        if (!TryGetUserId(out var userId)) return Unauthorized();
-        try
-        {
-            var participant = await _participantService.AddGuestAsync(userId, campaignId, request.DisplayName, cancellationToken);
-            return Created($"/campaigns/api/{campaignId}/participants/{participant.Id}", DorksAndDiceApiMapper.ToParticipant(participant));
-        }
-        catch (CampaignDomainException exception) { return BadRequest(new { error = exception.Message }); }
-    }
-
-    [HttpPut("{campaignId:guid}/participants/{participantId:guid}/name")]
-    public async Task<IActionResult> RenameParticipant(Guid campaignId, Guid participantId, [FromBody] RenameCampaignParticipantRequest request, CancellationToken cancellationToken)
-    {
-        if (!TryGetUserId(out var userId)) return Unauthorized();
-        try { await _participantService.RenameAsync(userId, campaignId, participantId, request.DisplayName, cancellationToken); return NoContent(); }
-        catch (CampaignDomainException exception) { return BadRequest(new { error = exception.Message }); }
-    }
-
-    [HttpPost("{campaignId:guid}/participants/{participantId:guid}/link")]
-    public async Task<IActionResult> LinkParticipant(Guid campaignId, Guid participantId, [FromBody] LinkCampaignParticipantRequest request, CancellationToken cancellationToken)
-    {
-        if (!TryGetUserId(out var userId)) return Unauthorized();
-        try { await _participantService.LinkToUserAsync(userId, campaignId, participantId, request.UserId, cancellationToken); return NoContent(); }
-        catch (CampaignDomainException exception) { return BadRequest(new { error = exception.Message }); }
-    }
-
-    [HttpPost("{campaignId:guid}/participants/{participantId:guid}/restore")]
-    public async Task<IActionResult> RestoreParticipant(Guid campaignId, Guid participantId, CancellationToken cancellationToken)
-    {
-        if (!TryGetUserId(out var userId)) return Unauthorized();
-        try { await _participantService.RestoreAsync(userId, campaignId, participantId, cancellationToken); return NoContent(); }
-        catch (CampaignDomainException exception) { return BadRequest(new { error = exception.Message }); }
-    }
-
-    [HttpDelete("{campaignId:guid}/participants/{participantId:guid}")]
-    public async Task<IActionResult> RetireParticipant(Guid campaignId, Guid participantId, CancellationToken cancellationToken)
-    {
-        if (!TryGetUserId(out var userId)) return Unauthorized();
-        try { await _participantService.RetireAsync(userId, campaignId, participantId, cancellationToken); return NoContent(); }
         catch (CampaignDomainException exception) { return BadRequest(new { error = exception.Message }); }
     }
 

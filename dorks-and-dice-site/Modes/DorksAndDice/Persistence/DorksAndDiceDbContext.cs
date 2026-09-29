@@ -12,7 +12,6 @@ public sealed class DorksAndDiceDbContext(DbContextOptions<DorksAndDiceDbContext
     public DbSet<Campaign> Campaigns => Set<Campaign>();
     public DbSet<CampaignMembership> CampaignMemberships => Set<CampaignMembership>();
     public DbSet<CampaignMembershipRole> CampaignMembershipRoles => Set<CampaignMembershipRole>();
-    public DbSet<CampaignParticipant> CampaignParticipants => Set<CampaignParticipant>();
     public DbSet<CampaignInvitation> CampaignInvitations => Set<CampaignInvitation>();
     public DbSet<Character> Characters => Set<Character>();
     public DbSet<CampaignCharacterAssociation> CampaignCharacters => Set<CampaignCharacterAssociation>();
@@ -23,8 +22,7 @@ public sealed class DorksAndDiceDbContext(DbContextOptions<DorksAndDiceDbContext
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
         base.OnConfiguring(optionsBuilder);
-        optionsBuilder.ConfigureWarnings(warnings =>
-            warnings.Ignore(RelationalEventId.PendingModelChangesWarning));
+        optionsBuilder.ConfigureWarnings(warnings => warnings.Ignore(RelationalEventId.PendingModelChangesWarning));
     }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -56,29 +54,17 @@ public sealed class DorksAndDiceDbContext(DbContextOptions<DorksAndDiceDbContext
             entity.HasIndex(item => new { item.CampaignMembershipId, item.Role }).IsUnique();
             entity.HasOne(item => item.CampaignMembership).WithMany(item => item.Roles).HasForeignKey(item => item.CampaignMembershipId).OnDelete(DeleteBehavior.Cascade);
         });
-        modelBuilder.Entity<CampaignParticipant>(entity =>
-        {
-            entity.ToTable("dd_campaign_participant");
-            entity.HasKey(item => item.Id);
-            entity.Property(item => item.DisplayName).HasMaxLength(120).IsRequired();
-            entity.Property(item => item.EndReason).HasMaxLength(300);
-            entity.HasIndex(item => item.CampaignId);
-            entity.HasIndex(item => item.UserId);
-            entity.HasIndex(item => new { item.CampaignId, item.UserId }).HasDatabaseName("IX_dd_campaign_participant_active_user").HasFilter("\"Status\" = 0 AND \"UserId\" IS NOT NULL").IsUnique();
-            entity.HasOne(item => item.Campaign).WithMany(item => item.Participants).HasForeignKey(item => item.CampaignId).OnDelete(DeleteBehavior.Cascade);
-        });
         modelBuilder.Entity<CampaignInvitation>(entity =>
         {
             entity.ToTable("dd_campaign_invitation");
             entity.HasKey(item => item.Id);
             entity.Property(item => item.TokenHash).HasMaxLength(64).IsRequired();
             entity.Property(item => item.Roles).HasMaxLength(100).IsRequired();
+            entity.Property(item => item.IsReusable).IsRequired();
             entity.Property(item => item.Status).IsConcurrencyToken();
             entity.HasIndex(item => item.TokenHash).IsUnique();
             entity.HasIndex(item => new { item.CampaignId, item.Status });
-            entity.HasIndex(item => item.ParticipantId).HasDatabaseName("IX_dd_campaign_invitation_pending_participant").HasFilter("\"Status\" = 0 AND \"ParticipantId\" IS NOT NULL").IsUnique();
             entity.HasOne(item => item.Campaign).WithMany().HasForeignKey(item => item.CampaignId).OnDelete(DeleteBehavior.Cascade);
-            entity.HasOne(item => item.Participant).WithMany().HasForeignKey(item => item.ParticipantId).OnDelete(DeleteBehavior.Restrict);
         });
         modelBuilder.Entity<Character>(entity =>
         {
@@ -103,36 +89,22 @@ public sealed class DorksAndDiceDbContext(DbContextOptions<DorksAndDiceDbContext
         {
             entity.ToTable("dd_discord_server");
             entity.HasKey(item => item.Id);
-            entity.Property(item => item.GuildId)
-                .HasMaxLength(DorksAndDiceDiscordServerBinding.GuildIdMaxLength)
-                .IsRequired();
-            entity.Property(item => item.GuildName)
-                .HasMaxLength(DorksAndDiceDiscordServerBinding.GuildNameMaxLength)
-                .IsRequired();
-            entity.Property(item => item.CampaignScope)
-                .HasConversion<int>()
-                .IsRequired();
+            entity.Property(item => item.GuildId).HasMaxLength(DorksAndDiceDiscordServerBinding.GuildIdMaxLength).IsRequired();
+            entity.Property(item => item.GuildName).HasMaxLength(DorksAndDiceDiscordServerBinding.GuildNameMaxLength).IsRequired();
+            entity.Property(item => item.CampaignScope).HasConversion<int>().IsRequired();
             entity.Property(item => item.CreatedAt).IsRequired();
             entity.Property(item => item.UpdatedAt).IsRequired();
             entity.HasIndex(item => item.GuildId).IsUnique();
             entity.HasIndex(item => item.OwnerUserId);
         });
-
         modelBuilder.Entity<DorksAndDiceDiscordServerCampaign>(entity =>
         {
             entity.ToTable("dd_discord_server_campaign");
             entity.HasKey(item => new { item.BindingId, item.CampaignId });
             entity.HasIndex(item => item.CampaignId);
-            entity.HasOne(item => item.Binding)
-                .WithMany(item => item.Campaigns)
-                .HasForeignKey(item => item.BindingId)
-                .OnDelete(DeleteBehavior.Cascade);
-            entity.HasOne(item => item.Campaign)
-                .WithMany()
-                .HasForeignKey(item => item.CampaignId)
-                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(item => item.Binding).WithMany(item => item.Campaigns).HasForeignKey(item => item.BindingId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(item => item.Campaign).WithMany().HasForeignKey(item => item.CampaignId).OnDelete(DeleteBehavior.Cascade);
         });
-
         modelBuilder.Entity<ToolLifecycleOutboxEvent>(entity =>
         {
             entity.ToTable("dd_tool_lifecycle_outbox");
