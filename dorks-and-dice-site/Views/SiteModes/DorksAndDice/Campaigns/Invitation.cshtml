@@ -22,14 +22,14 @@
                 }
             </div>
 
-            @if (!string.IsNullOrWhiteSpace(Model.ParticipantName))
+            @if (Model.IsReusable)
             {
                 <div class="alert alert-info">
-                    This invite is attached to the existing table participant <strong>@Model.ParticipantName</strong>. Accepting it will link that participant's campaign history to your account.
+                    This is a reusable invitation link. Other accounts can use the same link until it expires or a DM revokes it.
                 </div>
             }
 
-            <p class="small text-muted">This one-time invitation expires @Model.ExpiresAt.ToLocalTime().ToString("g").</p>
+            <p class="small text-muted">This invitation expires @Model.ExpiresAt.ToLocalTime().ToString("g").</p>
 
             <form asp-controller="Campaigns" asp-action="AcceptInvitation" asp-route-token="@Model.Token" method="post">
                 @Html.AntiForgeryToken()

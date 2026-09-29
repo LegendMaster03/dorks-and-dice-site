@@ -151,8 +151,9 @@ roles, not ASP.NET global roles. No Tool Host endpoint administers campaigns.
 
 GET /tool-host/{slug}/api/campaigns/{campaignId}/context exposes the stable read-only
 campaign projection intended for first-party Tools: campaign identity, every role held by
-the requesting account, active table participants, and active campaign-linked characters.
-The Tool Host does not expose Dorks & Dice EF entities or database access to Tools.
+the requesting account, active campaign members with their scoped roles, and active
+campaign-linked characters. The Tool Host does not expose Dorks & Dice EF entities or
+database access to Tools.
 
 The authenticated upstream ticket is populated from the same native campaign authority.
 Authentication contract version 1 represents one campaign role per entry; a native

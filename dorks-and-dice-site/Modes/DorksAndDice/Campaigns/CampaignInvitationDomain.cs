@@ -12,9 +12,9 @@ public sealed class CampaignInvitation
 {
     public Guid Id { get; set; }
     public Guid CampaignId { get; set; }
-    public Guid? ParticipantId { get; set; }
     public string TokenHash { get; set; } = string.Empty;
     public string Roles { get; set; } = string.Empty;
+    public bool IsReusable { get; set; }
     public CampaignInvitationStatus Status { get; set; } = CampaignInvitationStatus.Pending;
     public Guid CreatedByUserId { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
@@ -25,7 +25,6 @@ public sealed class CampaignInvitation
     public Guid? RevokedByUserId { get; set; }
 
     public Campaign Campaign { get; set; } = null!;
-    public CampaignParticipant? Participant { get; set; }
 }
 
 public sealed record CampaignInvitationGrant(CampaignInvitation Invitation, string Token);
@@ -35,5 +34,5 @@ public sealed record CampaignInvitationPreview(
     Guid CampaignId,
     string CampaignName,
     IReadOnlyList<string> Roles,
-    string? ParticipantName,
+    bool IsReusable,
     DateTimeOffset ExpiresAt);

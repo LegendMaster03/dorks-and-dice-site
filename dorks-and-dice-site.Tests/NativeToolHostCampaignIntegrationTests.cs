@@ -17,25 +17,16 @@ public sealed class NativeToolHostCampaignIntegrationTests(PublishedContentWebAp
     {
         var userId = Guid.NewGuid();
         Guid campaignId;
-        Guid participantId;
         Guid characterId;
 
         using (var scope = factory.Services.CreateScope())
         {
             var campaigns = scope.ServiceProvider.GetRequiredService<ICampaignService>();
-            var participants = scope.ServiceProvider.GetRequiredService<ICampaignParticipantService>();
             var characters = scope.ServiceProvider.GetRequiredService<ICharacterService>();
 
             var campaign = await campaigns.CreateAsync(userId, $"Tool Host {Guid.NewGuid():N}");
             campaignId = campaign.Id;
-            await campaigns.SetMemberRolesAsync(
-                userId,
-                campaign.Id,
-                userId,
-                [CampaignRoles.Dm, CampaignRoles.Player]);
-
-            var participant = await participants.AddGuestAsync(userId, campaign.Id, "Guest Player");
-            participantId = participant.Id;
+            await campaigns.SetMemberRolesAsync(userId, campaign.Id, userId, [CampaignRoles.Dm, CampaignRoles.Player]);
 
             var character = await characters.CreateAsync(userId, "Campaign Hero");
             characterId = character.Id;
@@ -75,24 +66,22 @@ public sealed class NativeToolHostCampaignIntegrationTests(PublishedContentWebAp
                 Assert.Equal("DM", campaign.GetProperty("role").GetString());
             }
 
-            using var context = await client.GetAsync(
-                $"/tool-host/{tool.Slug}/api/campaigns/{campaignId}/context");
+            using var context = await client.GetAsync($"/tool-host/{tool.Slug}/api/campaigns/{campaignId}/context");
             Assert.Equal(HttpStatusCode.OK, context.StatusCode);
             Assert.True(context.Headers.CacheControl?.NoStore);
             using var contextJson = JsonDocument.Parse(await context.Content.ReadAsStringAsync());
             var root = contextJson.RootElement;
             Assert.Equal(campaignId, root.GetProperty("campaignId").GetGuid());
 
-            var roles = root.GetProperty("requestingUserRoles")
-                .EnumerateArray()
-                .Select(item => item.GetString())
-                .ToArray();
+            var roles = root.GetProperty("requestingUserRoles").EnumerateArray().Select(item => item.GetString()).ToArray();
             Assert.Contains(CampaignRoles.Dm, roles);
             Assert.Contains(CampaignRoles.Player, roles);
 
-            var participant = Assert.Single(root.GetProperty("participants").EnumerateArray());
-            Assert.Equal(participantId, participant.GetProperty("participantId").GetGuid());
-            Assert.Equal("Guest Player", participant.GetProperty("displayName").GetString());
+            var member = Assert.Single(root.GetProperty("members").EnumerateArray());
+            Assert.Equal(userId, member.GetProperty("userId").GetGuid());
+            var memberRoles = member.GetProperty("roles").EnumerateArray().Select(item => item.GetString()).ToArray();
+            Assert.Contains(CampaignRoles.Dm, memberRoles);
+            Assert.Contains(CampaignRoles.Player, memberRoles);
 
             var character = Assert.Single(root.GetProperty("characters").EnumerateArray());
             Assert.Equal(characterId, character.GetProperty("characterId").GetGuid());

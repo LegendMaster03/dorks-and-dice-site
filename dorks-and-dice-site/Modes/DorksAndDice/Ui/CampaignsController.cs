@@ -12,12 +12,10 @@ namespace dorks_and_dice_site.Modes.DorksAndDice.Ui;
 [Route("campaigns")]
 public sealed class CampaignsController(
     ICampaignService campaignService,
-    ICampaignParticipantService participantService,
     ICampaignInvitationService invitationService,
     UserManager<ApplicationUser> userManager) : Controller
 {
     private readonly ICampaignService _campaignService = campaignService;
-    private readonly ICampaignParticipantService _participantService = participantService;
     private readonly ICampaignInvitationService _invitationService = invitationService;
     private readonly UserManager<ApplicationUser> _userManager = userManager;
 
@@ -123,49 +121,9 @@ public sealed class CampaignsController(
         return RedirectToAction(nameof(Details), new { campaignId });
     }
 
-    [HttpPost("{campaignId:guid}/participants")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> AddParticipant(Guid campaignId, string displayName, CancellationToken cancellationToken)
-    {
-        if (!TryGetUserId(out var userId)) return Unauthorized();
-        try { await _participantService.AddGuestAsync(userId, campaignId, displayName, cancellationToken); }
-        catch (CampaignDomainException exception) { TempData["CampaignError"] = exception.Message; }
-        return RedirectToAction(nameof(Details), new { campaignId });
-    }
-
-    [HttpPost("{campaignId:guid}/participants/{participantId:guid}/rename")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> RenameParticipant(Guid campaignId, Guid participantId, string displayName, CancellationToken cancellationToken)
-    {
-        if (!TryGetUserId(out var userId)) return Unauthorized();
-        try { await _participantService.RenameAsync(userId, campaignId, participantId, displayName, cancellationToken); }
-        catch (CampaignDomainException exception) { TempData["CampaignError"] = exception.Message; }
-        return RedirectToAction(nameof(Details), new { campaignId });
-    }
-
-    [HttpPost("{campaignId:guid}/participants/{participantId:guid}/retire")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> RetireParticipant(Guid campaignId, Guid participantId, CancellationToken cancellationToken)
-    {
-        if (!TryGetUserId(out var userId)) return Unauthorized();
-        try { await _participantService.RetireAsync(userId, campaignId, participantId, cancellationToken); }
-        catch (CampaignDomainException exception) { TempData["CampaignError"] = exception.Message; }
-        return RedirectToAction(nameof(Details), new { campaignId });
-    }
-
-    [HttpPost("{campaignId:guid}/participants/{participantId:guid}/restore")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> RestoreParticipant(Guid campaignId, Guid participantId, CancellationToken cancellationToken)
-    {
-        if (!TryGetUserId(out var userId)) return Unauthorized();
-        try { await _participantService.RestoreAsync(userId, campaignId, participantId, cancellationToken); }
-        catch (CampaignDomainException exception) { TempData["CampaignError"] = exception.Message; }
-        return RedirectToAction(nameof(Details), new { campaignId });
-    }
-
     [HttpPost("{campaignId:guid}/invitations")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> CreateInvitation(Guid campaignId, bool player, bool dm, Guid? participantId, CancellationToken cancellationToken)
+    public async Task<IActionResult> CreateInvitation(Guid campaignId, bool player, bool dm, bool reusable, CancellationToken cancellationToken)
     {
         if (!TryGetUserId(out var userId)) return Unauthorized();
         var roles = new List<string>();
@@ -178,7 +136,7 @@ public sealed class CampaignsController(
                 throw new CampaignDomainException("Select at least one campaign role for the invitation.");
             }
 
-            var grant = await _invitationService.CreateAsync(userId, campaignId, roles, participantId, cancellationToken);
+            var grant = await _invitationService.CreateAsync(userId, campaignId, roles, reusable, cancellationToken);
             TempData["CampaignInviteLink"] = Url.Action(nameof(Invitation), "Campaigns", new { token = grant.Token }, Request.Scheme) ?? $"/campaigns/invitations/{grant.Token}";
         }
         catch (CampaignDomainException exception) { TempData["CampaignError"] = exception.Message; }
@@ -268,22 +226,16 @@ public sealed class CampaignsController(
                     : "Unknown account",
                 membership.Roles.Select(role => role.Role).OrderBy(role => role).ToArray(),
                 membership.UserId == userId)).ToArray(),
-            Participants = campaign.Participants.OrderBy(participant => participant.Status).ThenBy(participant => participant.DisplayName)
-                .Select(participant => new CampaignParticipantViewModel(participant.Id, participant.DisplayName, participant.UserId, participant.Status == CampaignParticipantStatus.Active)).ToArray(),
             Invitations = invitations.Select(invitation => new CampaignInvitationListItemViewModel(
                 invitation.Id,
                 invitation.Roles.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),
-                invitation.Participant?.DisplayName,
-                invitation.ExpiresAt)).ToArray(),
-            InviteableParticipants = campaign.Participants
-                .Where(participant => (participant.Status == CampaignParticipantStatus.Active && participant.UserId is null) || participant.Status == CampaignParticipantStatus.Former)
-                .OrderBy(participant => participant.DisplayName)
-                .Select(participant => new ParticipantOptionViewModel(participant.Id, participant.DisplayName, participant.Status == CampaignParticipantStatus.Former)).ToArray()
+                invitation.IsReusable,
+                invitation.ExpiresAt)).ToArray()
         };
     }
 
     private static CampaignInvitationPageViewModel ToInvitationPageModel(CampaignInvitationPreview preview, string token, string? error = null) =>
-        new() { Token = token, CampaignId = preview.CampaignId, CampaignName = preview.CampaignName, Roles = preview.Roles, ParticipantName = preview.ParticipantName, ExpiresAt = preview.ExpiresAt, Error = error };
+        new() { Token = token, CampaignId = preview.CampaignId, CampaignName = preview.CampaignName, Roles = preview.Roles, IsReusable = preview.IsReusable, ExpiresAt = preview.ExpiresAt, Error = error };
 
     private bool TryGetUserId(out Guid userId) => Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out userId);
 }

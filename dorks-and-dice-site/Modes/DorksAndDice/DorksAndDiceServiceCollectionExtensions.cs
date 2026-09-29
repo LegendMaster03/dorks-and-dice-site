@@ -14,11 +14,6 @@ public static class DorksAndDiceServiceCollectionExtensions
 {
     private const string SharedMigrationsHistoryTable = "__DorksAndDiceMigrationsHistory";
 
-    /// <summary>
-    /// Registers services owned by the Dorks & Dice normal mode. Campaign, character,
-    /// and other Dorks-specific domain services are composed here rather than in generic
-    /// framework startup code.
-    /// </summary>
     public static IServiceCollection AddDorksAndDiceMode(this IServiceCollection services)
     {
         ArgumentNullException.ThrowIfNull(services);
@@ -34,9 +29,6 @@ public static class DorksAndDiceServiceCollectionExtensions
                 configuration.GetConnectionString("DorksAndDice")
                 ?? configuration[$"{DorksAndDiceStorageOptions.SectionName}:ConnectionString"];
 
-            // An explicitly configured Dorks & Dice store always wins. This keeps the mode
-            // independently deployable even when the default deployment shares the durable
-            // External content database at the physical database level.
             if (!string.IsNullOrWhiteSpace(configuredProvider)
                 || !string.IsNullOrWhiteSpace(configuredConnectionString))
             {
@@ -65,7 +57,6 @@ public static class DorksAndDiceServiceCollectionExtensions
 
         services.AddScoped<ICampaignAccessService, CampaignAccessService>();
         services.AddScoped<ICampaignService, CampaignService>();
-        services.AddScoped<ICampaignParticipantService, CampaignParticipantService>();
         services.AddScoped<ICampaignInvitationService, CampaignInvitationService>();
         services.AddScoped<ICampaignContextService, CampaignContextService>();
         services.AddScoped<ICharacterService, CharacterService>();

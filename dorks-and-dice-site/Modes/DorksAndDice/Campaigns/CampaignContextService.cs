@@ -14,10 +14,9 @@ public sealed record CampaignAccessContext(
     string Name,
     IReadOnlyList<string> Roles);
 
-public sealed record CampaignParticipantContext(
-    Guid ParticipantId,
-    string DisplayName,
-    Guid? UserId);
+public sealed record CampaignMemberContext(
+    Guid UserId,
+    IReadOnlyList<string> Roles);
 
 public sealed record CampaignCharacterContext(
     Guid CharacterId,
@@ -28,7 +27,7 @@ public sealed record CampaignContextSnapshot(
     Guid CampaignId,
     string Name,
     IReadOnlyList<string> RequestingUserRoles,
-    IReadOnlyList<CampaignParticipantContext> Participants,
+    IReadOnlyList<CampaignMemberContext> Members,
     IReadOnlyList<CampaignCharacterContext> Characters);
 
 public interface ICampaignContextService
@@ -101,16 +100,18 @@ public sealed class CampaignContextService(
             .OrderBy(role => role)
             .ToListAsync(cancellationToken);
 
-        var participants = await _dbContext.CampaignParticipants
+        var membershipRows = await _dbContext.CampaignMemberships
             .AsNoTracking()
-            .Where(participant => participant.CampaignId == campaignId
-                && participant.Status == CampaignParticipantStatus.Active)
-            .OrderBy(participant => participant.DisplayName)
-            .Select(participant => new CampaignParticipantContext(
-                participant.Id,
-                participant.DisplayName,
-                participant.UserId))
+            .Where(membership => membership.CampaignId == campaignId
+                && membership.Status == CampaignMembershipStatus.Active)
+            .Include(membership => membership.Roles)
             .ToListAsync(cancellationToken);
+        var members = membershipRows
+            .OrderBy(membership => membership.JoinedAt)
+            .Select(membership => new CampaignMemberContext(
+                membership.UserId,
+                membership.Roles.Select(role => role.Role).OrderBy(role => role).ToArray()))
+            .ToArray();
 
         var characters = await _dbContext.CampaignCharacters
             .AsNoTracking()
@@ -128,7 +129,7 @@ public sealed class CampaignContextService(
             campaign.Id,
             campaign.Name,
             roles,
-            participants,
+            members,
             characters);
     }
 }
