@@ -105,9 +105,9 @@ public sealed class CampaignContextService(
             .Where(membership => membership.CampaignId == campaignId
                 && membership.Status == CampaignMembershipStatus.Active)
             .Include(membership => membership.Roles)
-            .OrderBy(membership => membership.JoinedAt)
             .ToListAsync(cancellationToken);
         var members = membershipRows
+            .OrderBy(membership => membership.JoinedAt)
             .Select(membership => new CampaignMemberContext(
                 membership.UserId,
                 membership.Roles.Select(role => role.Role).OrderBy(role => role).ToArray()))
