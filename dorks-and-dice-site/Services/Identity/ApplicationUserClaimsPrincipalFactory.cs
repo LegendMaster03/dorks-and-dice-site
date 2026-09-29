@@ -25,13 +25,20 @@ public sealed class ApplicationUserClaimsPrincipalFactory
         identity.AddClaim(new Claim(AccountClaimTypes.DisplayName, user.DisplayName));
 
         var directRoles = await _userManager.GetRolesAsync(user);
+        var recognizedGlobalRoles = directRoles
+            .Where(role => AccountRoleHierarchy.GlobalRoleNames.Contains(role, StringComparer.Ordinal))
+            .ToArray();
+
+        // Stored Identity roles can outlive their authorization definition. Ignore retired or
+        // otherwise unknown role names here so removing a global role does not break sign-in for
+        // accounts that still carry the old database assignment.
 
         // Materialize inherited Trusted Access roles that existing ASP.NET authorization
         // policies require as role claims. On public requests the claims transformation strips
         // those Trusted-only roles while preserving any non-privileged role they inherit, such
         // as Global Editor, so safe editor authority remains available without exposing Admin,
         // Owner, or Dev authority.
-        foreach (var directRole in directRoles)
+        foreach (var directRole in recognizedGlobalRoles)
         {
             foreach (var inheritedRole in AccountRoleHierarchy.GetInheritedGlobalRoles(directRole))
             {
@@ -45,7 +52,7 @@ public sealed class ApplicationUserClaimsPrincipalFactory
 
         // Directly assigned non-trusted global roles may safely materialize their
         // inherited scoped capabilities. The hierarchy is the source of truth.
-        foreach (var directRole in directRoles.Where(role =>
+        foreach (var directRole in recognizedGlobalRoles.Where(role =>
                      !AccountRoles.TrustedPrivileged.Contains(role, StringComparer.Ordinal)))
         {
             foreach (var inheritedRole in AccountRoleHierarchy.GetInheritedScopedRoles(directRole))
