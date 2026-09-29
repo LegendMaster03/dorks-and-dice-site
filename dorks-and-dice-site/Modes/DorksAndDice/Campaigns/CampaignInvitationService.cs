@@ -53,11 +53,14 @@ public sealed class CampaignInvitationService(DorksAndDiceDbContext dbContext, I
         await _campaignAccess.RequireRoleAsync(actorUserId, campaignId, CampaignRoles.Dm, cancellationToken);
         await ExpireStalePendingInvitationsAsync(campaignId, _timeProvider.GetUtcNow(), cancellationToken);
 
-        return await _dbContext.CampaignInvitations
+        var pending = await _dbContext.CampaignInvitations
             .AsNoTracking()
             .Where(invitation => invitation.CampaignId == campaignId && invitation.Status == CampaignInvitationStatus.Pending)
-            .OrderBy(invitation => invitation.ExpiresAt)
             .ToListAsync(cancellationToken);
+
+        return pending
+            .OrderBy(invitation => invitation.ExpiresAt)
+            .ToArray();
     }
 
     public async Task<CampaignInvitationPreview?> GetPreviewAsync(string token, CancellationToken cancellationToken = default)
@@ -201,12 +204,14 @@ public sealed class CampaignInvitationService(DorksAndDiceDbContext dbContext, I
 
     private async Task ExpireStalePendingInvitationsAsync(Guid campaignId, DateTimeOffset now, CancellationToken cancellationToken)
     {
-        var stale = await _dbContext.CampaignInvitations
+        var pending = await _dbContext.CampaignInvitations
             .Where(invitation => invitation.CampaignId == campaignId
-                && invitation.Status == CampaignInvitationStatus.Pending
-                && invitation.ExpiresAt <= now)
+                && invitation.Status == CampaignInvitationStatus.Pending)
             .ToListAsync(cancellationToken);
-        if (stale.Count == 0)
+        var stale = pending
+            .Where(invitation => invitation.ExpiresAt <= now)
+            .ToArray();
+        if (stale.Length == 0)
         {
             return;
         }
