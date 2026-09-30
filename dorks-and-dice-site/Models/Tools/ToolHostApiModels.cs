@@ -50,6 +50,17 @@ public sealed class ToolHostAuthenticationContext
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? ToolSlug { get; init; }
 
+    /// <summary>
+    /// Immediate Tool-to-Tool delegation source for target-scoped contexts. These fields are
+    /// omitted for normal browser-to-Tool contexts. A target backend may use this trusted
+    /// provenance to protect private first-party API surfaces from other Tools.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? DelegatedFromToolKey { get; init; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? DelegatedFromToolSlug { get; init; }
+
     public required string SiteMode { get; init; }
     public required ToolHostUserContext User { get; init; }
     public IReadOnlyList<string> GlobalRoles { get; init; } = [];
