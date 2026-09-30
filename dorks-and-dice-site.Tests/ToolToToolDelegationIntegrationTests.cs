@@ -69,7 +69,7 @@ public sealed class ToolToToolDelegationIntegrationTests(PublishedContentWebAppl
             using var sourceRequest = new HttpRequestMessage(
                 HttpMethod.Get,
                 $"/tool-host/{source.Slug}/api/upstream/characters");
-            Authenticate(sourceRequest, userId, AccountRoles.RulesLawyer);
+            Authenticate(sourceRequest, userId, AccountRoles.Owner);
             using var sourceResponse = await client.SendAsync(sourceRequest);
             Assert.Equal(HttpStatusCode.NoContent, sourceResponse.StatusCode);
 
@@ -156,9 +156,14 @@ public sealed class ToolToToolDelegationIntegrationTests(PublishedContentWebAppl
             Assert.Equal(
                 userId.ToString("D"),
                 root.GetProperty("user").GetProperty("id").GetString());
-            Assert.Contains(
+            Assert.DoesNotContain(
                 AccountRoles.RulesLawyer,
                 root.GetProperty("globalRoles")
+                    .EnumerateArray()
+                    .Select(role => role.GetString()));
+            Assert.Contains(
+                ScopedAccountRoles.RulesLawyer,
+                root.GetProperty("scopedRoles")
                     .EnumerateArray()
                     .Select(role => role.GetString()));
             Assert.False(root.TryGetProperty("characters", out _));

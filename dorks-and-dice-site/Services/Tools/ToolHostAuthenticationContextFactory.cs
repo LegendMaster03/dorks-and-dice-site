@@ -61,6 +61,10 @@ public sealed class ToolHostAuthenticationContextFactory(
                 .Where(role => AccountRoleHierarchy.PrincipalHasGlobalRole(principal, role))
                 .OrderBy(role => role, StringComparer.Ordinal)
                 .ToArray(),
+            ScopedRoles = ScopedAccountRoles.ForScope(siteMode)
+                .Where(role => AccountRoleHierarchy.PrincipalHasScopedRole(principal, siteMode, role))
+                .OrderBy(role => role, StringComparer.Ordinal)
+                .ToArray(),
             Campaigns = campaigns
                 .SelectMany(campaign => campaign.Roles.Select(role => new ToolHostCampaignAccessSummary
                 {
@@ -104,6 +108,7 @@ public sealed class ToolHostAuthenticationContextFactory(
                 DisplayName = sourceContext.User.DisplayName
             },
             GlobalRoles = sourceContext.GlobalRoles.ToArray(),
+            ScopedRoles = sourceContext.ScopedRoles.ToArray(),
             Campaigns = sourceContext.Campaigns
                 .Select(campaign => new ToolHostCampaignAccessSummary
                 {

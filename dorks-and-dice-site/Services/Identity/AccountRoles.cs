@@ -9,13 +9,16 @@ public static class AccountRoles
     public const string Admin = "Admin";
     public const string GlobalEditor = "Global Editor";
     public const string Dev = "Dev";
+
+    // Retained only as the legacy ASP.NET Identity role name so existing stored assignments can be
+    // recognized as retired data. Rules Lawyer authority is mode-scoped and is not a global role.
     public const string RulesLawyer = "Rules Lawyer";
 
     // Every top-level global role is Owner-managed. This is derived from the hierarchy so adding
     // a new independent role tree does not require a second manual Owner-inheritance update.
     public static IReadOnlyList<string> OwnerManaged => AccountRoleHierarchy.TopLevelGlobalRoles;
     public static IReadOnlyList<string> AdminManaged { get; } = [GlobalEditor];
-    public static IReadOnlyList<string> UiAssignable { get; } = [Admin, GlobalEditor, Dev, RulesLawyer];
+    public static IReadOnlyList<string> UiAssignable { get; } = [Admin, GlobalEditor, Dev];
     public static IReadOnlyList<string> Privileged { get; } = [Admin, Dev];
     public static IReadOnlyList<string> TrustedPrivileged { get; } = [Owner, Admin, Dev];
 
@@ -76,9 +79,7 @@ public static class AccountRoleHierarchy
             .ToArray();
 
     public static IReadOnlyList<AccountRoleInheritanceNode> GetInheritedScopedRoles(string role) =>
-        GetInheritedNodes(role)
-            .Where(node => node.Kind == AccountRoleInheritanceNodeKind.ScopedRole)
-            .ToArray();
+        GetInheritedNodes(role).Where(node => node.Kind == AccountRoleInheritanceNodeKind.ScopedRole).ToArray();
 
     public static bool InheritsGlobalRole(string sourceRole, string targetRole) =>
         GetInheritedGlobalRoles(sourceRole).Contains(targetRole, StringComparer.Ordinal);
@@ -88,10 +89,17 @@ public static class AccountRoleHierarchy
             string.Equals(node.Scope, scope, StringComparison.Ordinal)
             && string.Equals(node.ScopedRole, scopedRole, StringComparison.Ordinal));
 
-    public static bool PrincipalHasGlobalRole(ClaimsPrincipal principal, string role) =>
-        principal.IsInRole(role)
-        || GlobalRoleNames.Any(sourceRole =>
-            principal.IsInRole(sourceRole) && InheritsGlobalRole(sourceRole, role));
+    public static bool PrincipalHasGlobalRole(ClaimsPrincipal principal, string role)
+    {
+        if (!GlobalNodes.ContainsKey(role))
+        {
+            return false;
+        }
+
+        return principal.IsInRole(role)
+            || GlobalRoleNames.Any(sourceRole =>
+                principal.IsInRole(sourceRole) && InheritsGlobalRole(sourceRole, role));
+    }
 
     public static bool PrincipalHasScopedRole(ClaimsPrincipal principal, string scope, string role)
     {
@@ -200,15 +208,15 @@ public static class AccountRoleHierarchy
             testerChildren);
 
         var rulesLawyer = new AccountRoleInheritanceNode(
-            $"global:{AccountRoles.RulesLawyer}",
-            AccountRoles.RulesLawyer,
-            AccountRoleInheritanceNodeKind.GlobalRole,
-            AccountRoles.RulesLawyer,
+            $"scoped:{AccountRoleScopes.DorksAndDice}:{ScopedAccountRoles.RulesLawyer}",
+            $"{AccountRoleScopes.GetDisplayName(AccountRoleScopes.DorksAndDice)} {ScopedAccountRoles.RulesLawyer}",
+            AccountRoleInheritanceNodeKind.ScopedRole,
             null,
-            null,
+            AccountRoleScopes.DorksAndDice,
+            ScopedAccountRoles.RulesLawyer,
             []);
 
-        var nonOwnerNodes = new[] { admin, globalEditor, dev, rulesLawyer };
+        var nonOwnerNodes = new[] { admin, globalEditor, dev };
         var inheritedGlobalRoles = nonOwnerNodes
             .SelectMany(node => Flatten(node.Children))
             .Where(node => node.Kind == AccountRoleInheritanceNodeKind.GlobalRole && node.GlobalRole is not null)
@@ -225,15 +233,14 @@ public static class AccountRoleHierarchy
             AccountRoles.Owner,
             null,
             null,
-            topLevelNodes);
+            topLevelNodes.Append(rulesLawyer).ToArray());
 
         return new Dictionary<string, AccountRoleInheritanceNode>(StringComparer.Ordinal)
         {
             [AccountRoles.Owner] = owner,
             [AccountRoles.Admin] = admin,
             [AccountRoles.GlobalEditor] = globalEditor,
-            [AccountRoles.Dev] = dev,
-            [AccountRoles.RulesLawyer] = rulesLawyer
+            [AccountRoles.Dev] = dev
         };
     }
 

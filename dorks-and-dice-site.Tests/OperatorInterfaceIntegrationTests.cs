@@ -52,7 +52,7 @@ public sealed class OperatorInterfaceIntegrationTests
             var me = (await response.Content.ReadFromJsonAsync<OperatorMeResponse>())!;
             Assert.Equal(principal.UserId, me.UserId);
             Assert.Equal(AccountKind.ServicePrincipal.ToString(), me.AccountKind);
-            Assert.Contains(AccountRoles.RulesLawyer, me.GlobalRoles);
+            Assert.DoesNotContain(AccountRoles.RulesLawyer, me.GlobalRoles);
             Assert.True(response.Headers.Contains("X-Dorks-Operator-Invocation-Id"));
         }
 
@@ -96,7 +96,12 @@ public sealed class OperatorInterfaceIntegrationTests
 
         var principal = await CreateServicePrincipalAsync(
             factory.Services,
-            [AccountRoles.GlobalEditor, AccountRoles.RulesLawyer]);
+            [AccountRoles.GlobalEditor]);
+        await AssignScopedRoleAsync(
+            factory.Services,
+            principal.UserId,
+            AccountRoleScopes.DorksAndDice,
+            ScopedAccountRoles.RulesLawyer);
         using var operatorClient = CreateOperatorClient(factory, principal.Token);
         var bootstrap = await IssueBootstrapAsync(operatorClient);
 
@@ -156,7 +161,8 @@ public sealed class OperatorInterfaceIntegrationTests
             Assert.NotNull(proxy.AuthenticationContext);
             Assert.Equal(principal.UserId.ToString("D"), proxy.AuthenticationContext!.User.Id);
             Assert.Contains(AccountRoles.GlobalEditor, proxy.AuthenticationContext.GlobalRoles);
-            Assert.Contains(AccountRoles.RulesLawyer, proxy.AuthenticationContext.GlobalRoles);
+            Assert.DoesNotContain(AccountRoles.RulesLawyer, proxy.AuthenticationContext.GlobalRoles);
+            Assert.Contains(ScopedAccountRoles.RulesLawyer, proxy.AuthenticationContext.ScopedRoles);
             Assert.Equal(
                 SiteModeValues.DorksAndDiceModeValue,
                 proxy.AuthenticationContext.SiteMode);
@@ -482,6 +488,24 @@ public sealed class OperatorInterfaceIntegrationTests
             user.Id,
             credential.Credential.Id,
             credential.Token);
+    }
+
+    private static async Task AssignScopedRoleAsync(
+        IServiceProvider services,
+        Guid userId,
+        string scopeName,
+        string role)
+    {
+        using var scope = services.CreateScope();
+        var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+        var scopedRoles = scope.ServiceProvider.GetRequiredService<IScopedRoleService>();
+        var user = await userManager.FindByIdAsync(userId.ToString("D"));
+        Assert.NotNull(user);
+
+        var result = await scopedRoles.SetRoleAsync(user, scopeName, role, enabled: true);
+        Assert.True(
+            result.Succeeded,
+            string.Join(", ", result.Errors.Select(error => error.Description)));
     }
 
     private static async Task<CreatedCredential> CreateCredentialAsync(

@@ -20,7 +20,7 @@ public sealed class ToolHostRulesAuthorizationIntegrationTests
     }
 
     [Fact]
-    public async Task SessionExposesEffectiveRulesLawyerAuthorityToAuthenticatedToolUi()
+    public async Task SessionDoesNotExposeScopedRulesLawyerAsGlobalRole()
     {
         var tool = new ToolRegistration
         {
@@ -59,7 +59,7 @@ public sealed class ToolHostRulesAuthorizationIntegrationTests
                 .ToArray();
 
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-            Assert.Contains(AccountRoles.RulesLawyer, roles);
+            Assert.DoesNotContain(AccountRoles.RulesLawyer, roles);
             Assert.Equal(
                 TestRoleAuthenticationHandler.DefaultUserId,
                 json.RootElement.GetProperty("user").GetProperty("id").GetString());

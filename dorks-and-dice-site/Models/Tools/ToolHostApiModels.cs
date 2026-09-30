@@ -53,12 +53,19 @@ public sealed class ToolHostAuthenticationContext
     public required string SiteMode { get; init; }
     public required ToolHostUserContext User { get; init; }
     public IReadOnlyList<string> GlobalRoles { get; init; } = [];
+
+    /// <summary>
+    /// Effective account roles scoped to SiteMode. This additive contract-v1 field is always
+    /// emitted by current Site versions; older Site versions omit it.
+    /// </summary>
+    public IReadOnlyList<string> ScopedRoles { get; init; } = [];
+
     public IReadOnlyList<ToolHostCampaignAccessSummary> Campaigns { get; init; } = [];
 
     /// <summary>
     /// Optional Tool-specific Character ownership projection. It is populated for Character Sheet
     /// and omitted for Tools that do not need Character ownership so their version-1 payload stays
-    /// unchanged apart from the additive stable registration key.
+    /// unchanged apart from additive fields and the stable registration key.
     /// </summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public IReadOnlyList<ToolHostCharacterAccessSummary>? Characters { get; init; }

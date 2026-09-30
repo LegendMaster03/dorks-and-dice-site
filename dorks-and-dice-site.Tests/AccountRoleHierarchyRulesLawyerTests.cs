@@ -1,3 +1,5 @@
+using System.Security.Claims;
+using dorks_and_dice_site.Models.Identity;
 using dorks_and_dice_site.Services.Identity;
 
 namespace dorks_and_dice_site.Tests;
@@ -5,29 +7,58 @@ namespace dorks_and_dice_site.Tests;
 public sealed class AccountRoleHierarchyRulesLawyerTests
 {
     [Fact]
-    public void RulesLawyerIsIndependentTopLevelRoleOwnedByOwner()
+    public void RulesLawyerIsDorksAndDiceScopedRole()
     {
-        Assert.Contains(AccountRoles.RulesLawyer, AccountRoleHierarchy.TopLevelGlobalRoles);
-        Assert.Contains(AccountRoles.RulesLawyer, AccountRoles.OwnerManaged);
-        Assert.Contains(AccountRoles.RulesLawyer, AccountRoles.UiAssignable);
-        Assert.DoesNotContain(AccountRoles.RulesLawyer, AccountRoles.TrustedPrivileged);
-        Assert.Empty(AccountRoleHierarchy.GetGlobalRole(AccountRoles.RulesLawyer).Children);
+        Assert.DoesNotContain(AccountRoles.RulesLawyer, AccountRoleHierarchy.GlobalRoleNames);
+        Assert.DoesNotContain(AccountRoles.RulesLawyer, AccountRoleHierarchy.TopLevelGlobalRoles);
+        Assert.DoesNotContain(AccountRoles.RulesLawyer, AccountRoles.OwnerManaged);
+        Assert.DoesNotContain(AccountRoles.RulesLawyer, AccountRoles.UiAssignable);
+        Assert.Contains(
+            ScopedAccountRoles.RulesLawyer,
+            ScopedAccountRoles.ForScope(AccountRoleScopes.DorksAndDice));
+        Assert.DoesNotContain(
+            ScopedAccountRoles.RulesLawyer,
+            ScopedAccountRoles.ForScope(AccountRoleScopes.Professional));
     }
 
     [Fact]
-    public void OwnerAutomaticallyInheritsEveryTopLevelGlobalRole()
+    public void OwnerInheritsDorksAndDiceRulesLawyerButOtherGlobalRolesDoNot()
     {
-        Assert.DoesNotContain(AccountRoles.Owner, AccountRoleHierarchy.TopLevelGlobalRoles);
-        Assert.DoesNotContain(AccountRoles.GlobalEditor, AccountRoleHierarchy.TopLevelGlobalRoles);
+        Assert.True(AccountRoleHierarchy.InheritsScopedRole(
+            AccountRoles.Owner,
+            AccountRoleScopes.DorksAndDice,
+            ScopedAccountRoles.RulesLawyer));
+        Assert.False(AccountRoleHierarchy.InheritsScopedRole(
+            AccountRoles.Admin,
+            AccountRoleScopes.DorksAndDice,
+            ScopedAccountRoles.RulesLawyer));
+        Assert.False(AccountRoleHierarchy.InheritsScopedRole(
+            AccountRoles.Dev,
+            AccountRoleScopes.DorksAndDice,
+            ScopedAccountRoles.RulesLawyer));
+    }
 
-        foreach (var role in AccountRoleHierarchy.TopLevelGlobalRoles)
-        {
-            Assert.True(
-                AccountRoleHierarchy.InheritsGlobalRole(AccountRoles.Owner, role),
-                $"Owner did not inherit top-level role '{role}'.");
-        }
+    [Fact]
+    public void DirectRulesLawyerClaimIsLimitedToDorksAndDice()
+    {
+        var identity = new ClaimsIdentity(
+        [
+            new Claim(
+                AccountClaimTypes.ScopedRole,
+                $"{AccountRoleScopes.DorksAndDice}:{ScopedAccountRoles.RulesLawyer}")
+        ], "test");
+        var principal = new ClaimsPrincipal(identity);
 
-        Assert.True(AccountRoleHierarchy.InheritsGlobalRole(AccountRoles.Owner, AccountRoles.RulesLawyer));
-        Assert.True(AccountRoleHierarchy.InheritsGlobalRole(AccountRoles.Owner, AccountRoles.GlobalEditor));
+        Assert.True(AccountRoleHierarchy.PrincipalHasScopedRole(
+            principal,
+            AccountRoleScopes.DorksAndDice,
+            ScopedAccountRoles.RulesLawyer));
+        Assert.False(AccountRoleHierarchy.PrincipalHasScopedRole(
+            principal,
+            AccountRoleScopes.Professional,
+            ScopedAccountRoles.RulesLawyer));
+        Assert.False(AccountRoleHierarchy.PrincipalHasGlobalRole(
+            principal,
+            AccountRoles.RulesLawyer));
     }
 }
