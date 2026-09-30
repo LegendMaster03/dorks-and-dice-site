@@ -50,6 +50,21 @@ public sealed class ToolHostAuthenticationContext
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? ToolSlug { get; init; }
 
+    /// <summary>
+    /// Stable registration key of the immediate source Tool for a Tool-to-Tool delegated request.
+    /// This is null for direct Tool Host requests. Targets can use this additive contract-v1 field
+    /// to enforce first-party caller boundaries without trusting browser-supplied headers.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? DelegatedFromToolKey { get; init; }
+
+    /// <summary>
+    /// Optional source Tool slug paired with DelegatedFromToolKey when the source registration has
+    /// a slug. The stable key remains authoritative for access-control decisions.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? DelegatedFromToolSlug { get; init; }
+
     public required string SiteMode { get; init; }
     public required ToolHostUserContext User { get; init; }
     public IReadOnlyList<string> GlobalRoles { get; init; } = [];
