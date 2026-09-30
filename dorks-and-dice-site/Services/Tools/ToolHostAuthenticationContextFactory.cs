@@ -92,6 +92,12 @@ public sealed class ToolHostAuthenticationContextFactory(
             return null;
         }
 
+        var sourceToolKey = sourceContext.RegistrationKey;
+        if (string.IsNullOrWhiteSpace(sourceToolKey))
+        {
+            return null;
+        }
+
         var characters = await BuildCharacterAccessProjectionAsync(
             targetTool.Key,
             userId,
@@ -101,6 +107,8 @@ public sealed class ToolHostAuthenticationContextFactory(
         {
             ToolKey = targetTool.Key,
             ToolSlug = targetTool.Slug,
+            DelegatedFromToolKey = sourceToolKey,
+            DelegatedFromToolSlug = sourceContext.ToolSlug,
             SiteMode = sourceContext.SiteMode,
             User = new ToolHostUserContext
             {
