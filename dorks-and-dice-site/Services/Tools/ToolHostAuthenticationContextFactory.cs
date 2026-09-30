@@ -101,6 +101,8 @@ public sealed class ToolHostAuthenticationContextFactory(
         {
             ToolKey = targetTool.Key,
             ToolSlug = targetTool.Slug,
+            DelegatedFromToolKey = sourceContext.RegistrationKey,
+            DelegatedFromToolSlug = sourceContext.ToolSlug,
             SiteMode = sourceContext.SiteMode,
             User = new ToolHostUserContext
             {
