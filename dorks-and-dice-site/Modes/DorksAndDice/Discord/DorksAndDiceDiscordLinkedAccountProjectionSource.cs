@@ -15,6 +15,12 @@ public sealed class DorksAndDiceDiscordLinkedAccountProjectionSource(
     public const string ProjectionSourceId = "dorks-and-dice-linked-accounts";
     private const string ModeId = SiteModeValues.DorksAndDiceModeValue;
 
+    // Keep the managed Discord object identity that was originally created while Rules Lawyer
+    // was a global Site role. Reusing the key lets reconciliation rename and reassign that role
+    // in place when its Site authority becomes Dorks & Dice-scoped instead of deleting and
+    // recreating a Discord role that already exists in the live guild.
+    private const string RulesLawyerDiscordRoleKey = "site-global-rules-lawyer";
+
     public string SourceId => ProjectionSourceId;
 
     public async Task<IReadOnlyCollection<DiscordGuildWorkspaceProjection>> BuildAsync(
@@ -87,10 +93,18 @@ public sealed class DorksAndDiceDiscordLinkedAccountProjectionSource(
                     .ToArray()));
         }
 
-        foreach (var scopedRole in ScopedAccountRoles.All.OrderBy(role => role, StringComparer.Ordinal))
+        foreach (var scopedRole in ScopedAccountRoles.ForScope(ModeId)
+                     .OrderBy(role => role, StringComparer.Ordinal))
         {
+            var roleKey = string.Equals(
+                scopedRole,
+                ScopedAccountRoles.RulesLawyer,
+                StringComparison.Ordinal)
+                    ? RulesLawyerDiscordRoleKey
+                    : $"site-scoped-{NormalizeRoleKey(scopedRole)}";
+
             desiredRoles.Add(new DiscordDesiredRole(
-                $"site-scoped-{NormalizeRoleKey(scopedRole)}",
+                roleKey,
                 $"{BuiltInSiteModes.DorksAndDice.DisplayName} {scopedRole}",
                 userIds
                     .Where(userId => AccountRoleHierarchy.PrincipalHasScopedRole(
