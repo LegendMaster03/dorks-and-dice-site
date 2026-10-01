@@ -1,3 +1,5 @@
+using dorks_and_dice_site.Models.Tools;
+
 namespace dorks_and_dice_site.Services.Tools;
 
 public static class ToolPrivateTunnelHeaders
@@ -18,6 +20,14 @@ public static class ToolPrivateTunnelHeaders
 public static class ToolPrivateTunnelPolicy
 {
     public const string ConfigurationSection = "ToolHosting:PrivateTunnels";
+
+    public static bool IsSupportedSource(ToolRegistration sourceTool)
+    {
+        ArgumentNullException.ThrowIfNull(sourceTool);
+        return sourceTool.Kind == ToolKind.Service
+            || (sourceTool.Kind == ToolKind.Application
+                && !string.IsNullOrWhiteSpace(sourceTool.Slug));
+    }
 
     public static bool HasTargets(IConfiguration configuration, string sourceToolKey) =>
         GetTargets(configuration, sourceToolKey).Count > 0;
