@@ -97,8 +97,8 @@ public sealed class HeadlessToolServiceBrowserProxyIntegrationTests(PublishedCon
             .GetCustomAttributes<RouteAttribute>()
             .Select(attribute => attribute.Template)
             .ToArray();
-        Assert.Contains("/tool-host/registrations/rules-core/api/upstream", stableRoutes);
-        Assert.Contains("/tool-host/registrations/rules-core/api/upstream/{**proxyPath}", stableRoutes);
+        Assert.Contains("~/tool-host/registrations/rules-core/api/upstream", stableRoutes);
+        Assert.Contains("~/tool-host/registrations/rules-core/api/upstream/{**proxyPath}", stableRoutes);
         Assert.DoesNotContain(stableRoutes, route => route?.Contains("{registrationKey}", StringComparison.Ordinal) == true);
 
         var allRoutes = typeof(ToolServiceApiController)
@@ -107,8 +107,8 @@ public sealed class HeadlessToolServiceBrowserProxyIntegrationTests(PublishedCon
             .Select(attribute => attribute.Template)
             .Where(route => route is not null)
             .ToArray();
-        Assert.DoesNotContain("/tool-host/rules-core/api/upstream", allRoutes);
-        Assert.DoesNotContain("/tool-host/rules-core/api/upstream/{**proxyPath}", allRoutes);
+        Assert.DoesNotContain("~/tool-host/rules-core/api/upstream", allRoutes);
+        Assert.DoesNotContain("~/tool-host/rules-core/api/upstream/{**proxyPath}", allRoutes);
     }
 
     private sealed class FixedToolRegistry(ToolRegistration tool) : IToolRegistry
