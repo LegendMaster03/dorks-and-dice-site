@@ -22,6 +22,8 @@ The detailed contracts are documented under `docs/`, especially:
 - `docs/homepage-content-convergence.md`
 - `docs/plugin-boundaries.md`
 - `docs/tool-hosting-boundaries.md`
+- `docs/headless-tool-services.md`
+- `docs/private-tool-tunnels.md` — canonical private Tool tunnel security model, deployment runbook, verification, persistence, and revocation procedure
 
 The important boundaries are:
 
