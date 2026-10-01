@@ -20,6 +20,7 @@ public sealed class ToolHostApiController : ControllerBase
     private readonly IToolProxyService _toolProxyService;
     private readonly IToolDelegationCapabilityService _delegationCapabilities;
     private readonly IToolUpstreamPolicy _upstreamPolicy;
+    private readonly IConfiguration _configuration;
 
     public ToolHostApiController(
         IToolRegistry toolRegistry,
@@ -27,7 +28,8 @@ public sealed class ToolHostApiController : ControllerBase
         IToolHostAuthenticationContextFactory authenticationContextFactory,
         IToolProxyService toolProxyService,
         IToolDelegationCapabilityService delegationCapabilities,
-        IToolUpstreamPolicy upstreamPolicy)
+        IToolUpstreamPolicy upstreamPolicy,
+        IConfiguration configuration)
     {
         _toolRegistry = toolRegistry;
         _campaignContextService = campaignContextService;
@@ -35,6 +37,7 @@ public sealed class ToolHostApiController : ControllerBase
         _toolProxyService = toolProxyService;
         _delegationCapabilities = delegationCapabilities;
         _upstreamPolicy = upstreamPolicy;
+        _configuration = configuration;
     }
 
     [HttpGet("session")]
@@ -320,11 +323,18 @@ public sealed class ToolHostApiController : ControllerBase
             return Unauthorized();
         }
 
+        string? sourceCapability = null;
         if (registration is not null && CanIssueDelegationCapability(registration, context))
         {
-            var capability = _delegationCapabilities.Issue(registration.Key, context);
-            Response.Headers[ToolDelegationHeaders.Capability] = capability;
+            sourceCapability = _delegationCapabilities.Issue(registration.Key, context);
+            Response.Headers[ToolDelegationHeaders.Capability] = sourceCapability;
             Response.Headers[ToolDelegationHeaders.Path] = DelegationPathTemplate(registration);
+        }
+
+        if (registration is not null && CanIssuePrivateTunnelCapability(registration, context))
+        {
+            sourceCapability ??= _delegationCapabilities.Issue(registration.Key, context);
+            Response.Headers[ToolPrivateTunnelHeaders.Capability] = sourceCapability;
         }
 
         return Ok(context);
@@ -414,6 +424,14 @@ public sealed class ToolHostApiController : ControllerBase
         ToolHostAuthenticationContext context) =>
         sourceTool.Enabled
         && sourceTool.DelegationTargets.Count > 0
+        && ToolVisibility.IsVisibleInMode(sourceTool, context.SiteMode)
+        && IsDelegationSourceSupported(sourceTool);
+
+    private bool CanIssuePrivateTunnelCapability(
+        ToolRegistration sourceTool,
+        ToolHostAuthenticationContext context) =>
+        sourceTool.Enabled
+        && ToolPrivateTunnelPolicy.HasTargets(_configuration, sourceTool.Key)
         && ToolVisibility.IsVisibleInMode(sourceTool, context.SiteMode)
         && IsDelegationSourceSupported(sourceTool);
 
