@@ -4,7 +4,6 @@ public static class ToolPrivateTunnelHeaders
 {
     public const string ReservedPrefix = "X-Dorks-Tool-Private-Tunnel-";
     public const string Capability = "X-Dorks-Tool-Private-Tunnel-Capability";
-    public const string TicketPath = "X-Dorks-Tool-Private-Tunnel-Ticket-Path";
 }
 
 /// <summary>
