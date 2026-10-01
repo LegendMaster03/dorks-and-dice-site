@@ -16,7 +16,7 @@ public sealed class ToolHostIntrospectionRoutingTests
     }
 
     [Fact]
-    public void FrameworkFallbackAllowsOnlyToolHostIntrospectionFromToolHostApiSurface()
+    public void FrameworkFallbackAllowsOnlyToolHostControlPlaneRoutesFromToolHostApiSurface()
     {
         Assert.True(SiteRouteOwnership.IsAllowedInFrameworkFallback(
             new PathString("/tool-host/rules-core/api/introspect")));
@@ -25,11 +25,15 @@ public sealed class ToolHostIntrospectionRoutingTests
         Assert.True(SiteRouteOwnership.IsAllowedInFrameworkFallback(
             new PathString("/tool-host/character-sheet/api/delegate/rules-core/upstream/api/rules")));
         Assert.True(SiteRouteOwnership.IsAllowedInFrameworkFallback(
+            new PathString("/tool-host/rules-wiki/api/private-tunnel/rules-core/ticket")));
+        Assert.True(SiteRouteOwnership.IsAllowedInFrameworkFallback(
             new PathString("/tool-host/registrations/rules-core/api/introspect")));
         Assert.True(SiteRouteOwnership.IsAllowedInFrameworkFallback(
             new PathString("/tool-host/registrations/character-sheet/api/delegate/rules-core/upstream")));
         Assert.True(SiteRouteOwnership.IsAllowedInFrameworkFallback(
             new PathString("/tool-host/registrations/character-sheet/api/delegate/rules-core/upstream/api/rules")));
+        Assert.True(SiteRouteOwnership.IsAllowedInFrameworkFallback(
+            new PathString("/tool-host/registrations/rules-wiki/api/private-tunnel/rules-core/ticket")));
 
         Assert.False(SiteRouteOwnership.IsAllowedInFrameworkFallback(
             new PathString("/tool-host/rules-core/api/session")));
@@ -40,6 +44,10 @@ public sealed class ToolHostIntrospectionRoutingTests
         Assert.False(SiteRouteOwnership.IsAllowedInFrameworkFallback(
             new PathString("/tool-host/character-sheet/api/delegate/rules-core")));
         Assert.False(SiteRouteOwnership.IsAllowedInFrameworkFallback(
+            new PathString("/tool-host/rules-wiki/api/private-tunnel/rules-core")));
+        Assert.False(SiteRouteOwnership.IsAllowedInFrameworkFallback(
+            new PathString("/tool-host/rules-wiki/api/private-tunnel/rules-core/ticket/extra")));
+        Assert.False(SiteRouteOwnership.IsAllowedInFrameworkFallback(
             new PathString("/tool-host/character-sheet/api/session")));
         Assert.False(SiteRouteOwnership.IsAllowedInFrameworkFallback(
             new PathString("/tool-host/registrations/rules-core/api/session")));
@@ -47,6 +55,10 @@ public sealed class ToolHostIntrospectionRoutingTests
             new PathString("/tool-host/registrations/rules-core/context")));
         Assert.False(SiteRouteOwnership.IsAllowedInFrameworkFallback(
             new PathString("/tool-host/registrations/character-sheet/api/delegate/rules-core")));
+        Assert.False(SiteRouteOwnership.IsAllowedInFrameworkFallback(
+            new PathString("/tool-host/registrations/rules-wiki/api/private-tunnel/rules-core")));
+        Assert.False(SiteRouteOwnership.IsAllowedInFrameworkFallback(
+            new PathString("/tool-host/registrations/rules-wiki/api/private-tunnel/rules-core/ticket/extra")));
     }
 
     [Fact]
@@ -115,6 +127,42 @@ public sealed class ToolHostIntrospectionRoutingTests
         using var request = new HttpRequestMessage(
             HttpMethod.Post,
             "/tool-host/registrations/rules-core/api/introspect");
+        request.Headers.Host = "dorks-and-dice-site";
+
+        using var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Equal("no-store", response.Headers.CacheControl?.ToString());
+    }
+
+    [Fact]
+    public async Task PrivateTunnelTicketEndpointIsReachableThroughInternalDockerHostWithoutSiteMode()
+    {
+        using var client = _factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false
+        });
+        using var request = new HttpRequestMessage(
+            HttpMethod.Post,
+            "/tool-host/rules-wiki/api/private-tunnel/rules-core/ticket");
+        request.Headers.Host = "dorks-and-dice-site";
+
+        using var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Equal("no-store", response.Headers.CacheControl?.ToString());
+    }
+
+    [Fact]
+    public async Task StableKeyPrivateTunnelTicketEndpointIsReachableThroughInternalDockerHostWithoutSiteMode()
+    {
+        using var client = _factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false
+        });
+        using var request = new HttpRequestMessage(
+            HttpMethod.Post,
+            "/tool-host/registrations/rules-wiki/api/private-tunnel/rules-core/ticket");
         request.Headers.Host = "dorks-and-dice-site";
 
         using var response = await client.SendAsync(request);

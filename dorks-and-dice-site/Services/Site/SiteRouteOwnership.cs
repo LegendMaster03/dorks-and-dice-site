@@ -121,6 +121,7 @@ public static class SiteRouteOwnership
             || path == "/development-preview"
             || IsToolHostIntrospectionPath(path)
             || IsToolHostDelegatedUpstreamPath(path)
+            || IsToolHostPrivateTunnelTicketPath(path)
             || path == "/operator"
             || path.StartsWith("/operator/", StringComparison.Ordinal)
             || path == "/account"
@@ -170,6 +171,26 @@ public static class SiteRouteOwnership
             && string.Equals(segments[4], "delegate", StringComparison.Ordinal)
             && !string.IsNullOrWhiteSpace(segments[5])
             && string.Equals(segments[6], "upstream", StringComparison.Ordinal);
+    }
+
+    private static bool IsToolHostPrivateTunnelTicketPath(string path)
+    {
+        var segments = path.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        return segments.Length == 6
+            && string.Equals(segments[0], "tool-host", StringComparison.Ordinal)
+            && !string.IsNullOrWhiteSpace(segments[1])
+            && string.Equals(segments[2], "api", StringComparison.Ordinal)
+            && string.Equals(segments[3], "private-tunnel", StringComparison.Ordinal)
+            && !string.IsNullOrWhiteSpace(segments[4])
+            && string.Equals(segments[5], "ticket", StringComparison.Ordinal)
+            || segments.Length == 7
+            && string.Equals(segments[0], "tool-host", StringComparison.Ordinal)
+            && string.Equals(segments[1], "registrations", StringComparison.Ordinal)
+            && !string.IsNullOrWhiteSpace(segments[2])
+            && string.Equals(segments[3], "api", StringComparison.Ordinal)
+            && string.Equals(segments[4], "private-tunnel", StringComparison.Ordinal)
+            && !string.IsNullOrWhiteSpace(segments[5])
+            && string.Equals(segments[6], "ticket", StringComparison.Ordinal);
     }
 
     private static bool IsContentMediaPath(string path)
