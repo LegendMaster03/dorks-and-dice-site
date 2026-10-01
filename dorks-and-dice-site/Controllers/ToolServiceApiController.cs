@@ -8,12 +8,14 @@ using Microsoft.AspNetCore.Mvc;
 namespace dorks_and_dice_site.Controllers;
 
 /// <summary>
-/// Browser-facing public gateway for headless Tool services.
+/// Browser-facing public gateway for the headless Rules Core service.
 ///
-/// Services have stable registration keys but deliberately have no public Tool slug. Browser-hosted
-/// applications still need a same-origin path to stable public service APIs such as Rules Core.
-/// This gateway preserves the normal Tool Host authentication/ticket contract while resolving the
-/// target by stable registration key instead of application slug.
+/// Rules Core has a stable registration key but deliberately has no public Tool slug. Browser-hosted
+/// applications still need a same-origin path to its stable public API. This gateway preserves the
+/// normal Tool Host authentication/ticket contract while resolving Rules Core by stable key.
+/// It is intentionally Rules Core-specific rather than a general browser gateway for headless
+/// services; other services remain unreachable from browser Tool routes unless explicitly designed
+/// and reviewed for that exposure.
 /// </summary>
 [Authorize]
 public sealed class ToolServiceApiController(
@@ -26,13 +28,12 @@ public sealed class ToolServiceApiController(
     [AllowAnonymous]
     [DisableFormValueModelBinding]
     [AcceptVerbs("GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")]
-    [Route("~/tool-host/registrations/{registrationKey}/api/upstream")]
-    [Route("~/tool-host/registrations/{registrationKey}/api/upstream/{**proxyPath}")]
-    public Task<IActionResult> RegistrationUpstream(
-        [FromRoute] string registrationKey,
+    [Route("~/tool-host/registrations/rules-core/api/upstream")]
+    [Route("~/tool-host/registrations/rules-core/api/upstream/{**proxyPath}")]
+    public Task<IActionResult> RulesCoreRegistrationUpstream(
         [FromRoute] string? proxyPath,
         CancellationToken cancellationToken) =>
-        ProxyServiceAsync(registrationKey, proxyPath, cancellationToken);
+        ProxyRulesCoreAsync(proxyPath, cancellationToken);
 
     /// <summary>
     /// Compatibility bridge for browser consumers that predate Rules Core becoming a headless
@@ -47,20 +48,20 @@ public sealed class ToolServiceApiController(
     public Task<IActionResult> LegacyRulesCoreUpstream(
         [FromRoute] string? proxyPath,
         CancellationToken cancellationToken) =>
-        ProxyServiceAsync(RulesCoreKey, proxyPath, cancellationToken);
+        ProxyRulesCoreAsync(proxyPath, cancellationToken);
 
-    private async Task<IActionResult> ProxyServiceAsync(
-        string registrationKey,
+    private async Task<IActionResult> ProxyRulesCoreAsync(
         string? proxyPath,
         CancellationToken cancellationToken)
     {
         Response.Headers.CacheControl = "no-store";
 
-        var tool = await toolRegistry.GetByKeyAsync(registrationKey, cancellationToken);
+        var tool = await toolRegistry.GetByKeyAsync(RulesCoreKey, cancellationToken);
         var modeId = HttpContext.GetSiteModeContext().ActiveModeId;
         if (tool is null
             || tool.Kind != ToolKind.Service
             || !tool.Enabled
+            || string.IsNullOrWhiteSpace(modeId)
             || !ToolVisibility.IsVisibleInMode(tool, modeId)
             || string.IsNullOrWhiteSpace(tool.UpstreamBaseUrl))
         {
