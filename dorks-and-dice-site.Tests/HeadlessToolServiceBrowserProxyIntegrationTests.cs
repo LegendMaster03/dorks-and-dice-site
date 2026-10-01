@@ -87,7 +87,7 @@ public sealed class HeadlessToolServiceBrowserProxyIntegrationTests(PublishedCon
     }
 
     [Fact]
-    public void RulesCoreRoutesAreExplicitRatherThanGenericServiceExposure()
+    public void RulesCoreStableRouteIsExplicitRatherThanGenericServiceExposure()
     {
         var stableMethod = typeof(ToolServiceApiController).GetMethod(
             nameof(ToolServiceApiController.RulesCoreRegistrationUpstream),
@@ -101,16 +101,14 @@ public sealed class HeadlessToolServiceBrowserProxyIntegrationTests(PublishedCon
         Assert.Contains("/tool-host/registrations/rules-core/api/upstream/{**proxyPath}", stableRoutes);
         Assert.DoesNotContain(stableRoutes, route => route?.Contains("{registrationKey}", StringComparison.Ordinal) == true);
 
-        var legacyMethod = typeof(ToolServiceApiController).GetMethod(
-            nameof(ToolServiceApiController.LegacyRulesCoreUpstream),
-            BindingFlags.Instance | BindingFlags.Public);
-        Assert.NotNull(legacyMethod);
-        var legacyRoutes = legacyMethod!
-            .GetCustomAttributes<RouteAttribute>()
+        var allRoutes = typeof(ToolServiceApiController)
+            .GetMethods(BindingFlags.Instance | BindingFlags.Public)
+            .SelectMany(method => method.GetCustomAttributes<RouteAttribute>())
             .Select(attribute => attribute.Template)
+            .Where(route => route is not null)
             .ToArray();
-        Assert.Contains("/tool-host/rules-core/api/upstream", legacyRoutes);
-        Assert.Contains("/tool-host/rules-core/api/upstream/{**proxyPath}", legacyRoutes);
+        Assert.DoesNotContain("/tool-host/rules-core/api/upstream", allRoutes);
+        Assert.DoesNotContain("/tool-host/rules-core/api/upstream/{**proxyPath}", allRoutes);
     }
 
     private sealed class FixedToolRegistry(ToolRegistration tool) : IToolRegistry
