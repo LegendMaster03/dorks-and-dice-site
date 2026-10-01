@@ -101,13 +101,7 @@ public sealed class ToolPrivateTunnelApiController(
     private static bool IsSourceAvailable(ToolRegistration sourceTool, string siteMode) =>
         sourceTool.Enabled
         && ToolVisibility.IsVisibleInMode(sourceTool, siteMode)
-        && IsSourceSupported(sourceTool);
-
-    private static bool IsSourceSupported(ToolRegistration sourceTool) =>
-        sourceTool.Kind == ToolKind.Service
-        || (sourceTool.Kind == ToolKind.Application
-            && sourceTool.IntegrationType == ToolIntegrationType.EmbeddedModule
-            && ToolIntegrationContractPolicy.IsSupported(sourceTool));
+        && ToolPrivateTunnelPolicy.IsSupportedSource(sourceTool);
 
     private static string AuthenticationIntrospectionPath(ToolRegistration tool) =>
         tool.Kind == ToolKind.Application && !string.IsNullOrWhiteSpace(tool.Slug)
