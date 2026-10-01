@@ -433,7 +433,7 @@ public sealed class ToolHostApiController : ControllerBase
         sourceTool.Enabled
         && ToolPrivateTunnelPolicy.HasTargets(_configuration, sourceTool.Key)
         && ToolVisibility.IsVisibleInMode(sourceTool, context.SiteMode)
-        && IsDelegationSourceSupported(sourceTool);
+        && ToolPrivateTunnelPolicy.IsSupportedSource(sourceTool);
 
     private static bool IsDelegationSourceAvailable(ToolRegistration sourceTool, string siteMode) =>
         sourceTool.Enabled
