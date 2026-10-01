@@ -33,17 +33,7 @@ public sealed class ToolPrivateTunnelIntegrationTests(PublishedContentWebApplica
         await SaveToolsAsync(testFactory.Services, source, target);
         try
         {
-            var sourceContext = new ToolHostAuthenticationContext
-            {
-                ToolKey = source.Key,
-                ToolSlug = source.Slug,
-                SiteMode = "dorks-and-dice",
-                User = new ToolHostUserContext
-                {
-                    Id = Guid.NewGuid().ToString("D"),
-                    DisplayName = "Private Tunnel User"
-                }
-            };
+            var sourceContext = SourceContext(source);
             var sourceTicket = ToolAuthenticationTickets.Issue(sourceContext);
             using var client = testFactory.CreateClient();
 
@@ -103,6 +93,54 @@ public sealed class ToolPrivateTunnelIntegrationTests(PublishedContentWebApplica
     }
 
     [Fact]
+    public async Task ProxiedApplicationCanUsePrivateTunnelWithoutBecomingDelegationSource()
+    {
+        var suffix = Guid.NewGuid().ToString("N");
+        var source = Tool(
+            $"proxied-private-source-{suffix}",
+            ToolIntegrationType.ProxiedApplication);
+        var target = Tool($"proxied-private-target-{suffix}");
+
+        using var testFactory = factory.WithWebHostBuilder(builder =>
+        {
+            builder.ConfigureAppConfiguration((_, configuration) =>
+            {
+                configuration.AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    [$"{ToolPrivateTunnelPolicy.ConfigurationSection}:{source.Key}:0"] = target.Key
+                });
+            });
+        });
+
+        await SaveToolsAsync(testFactory.Services, source, target);
+        try
+        {
+            var sourceTicket = ToolAuthenticationTickets.Issue(SourceContext(source));
+            using var client = testFactory.CreateClient();
+            using var sourceIntrospection = await IntrospectAsync(client, source.Slug!, sourceTicket);
+
+            Assert.Equal(HttpStatusCode.OK, sourceIntrospection.StatusCode);
+            Assert.False(sourceIntrospection.Headers.Contains(ToolDelegationHeaders.Capability));
+            Assert.True(sourceIntrospection.Headers.TryGetValues(
+                ToolPrivateTunnelHeaders.Capability,
+                out var privateCapabilities));
+            var capability = Assert.Single(privateCapabilities);
+
+            using var issueRequest = new HttpRequestMessage(
+                HttpMethod.Post,
+                $"/tool-host/{source.Slug}/api/private-tunnel/{target.Key}/ticket");
+            issueRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", capability);
+            using var issueResponse = await client.SendAsync(issueRequest);
+
+            Assert.Equal(HttpStatusCode.OK, issueResponse.StatusCode);
+        }
+        finally
+        {
+            await DeleteToolsAsync(testFactory.Services, source, target);
+        }
+    }
+
+    [Fact]
     public async Task PrivateTunnelRejectsUnconfiguredTarget()
     {
         var suffix = Guid.NewGuid().ToString("N");
@@ -124,17 +162,7 @@ public sealed class ToolPrivateTunnelIntegrationTests(PublishedContentWebApplica
         await SaveToolsAsync(testFactory.Services, source, approvedTarget, deniedTarget);
         try
         {
-            var sourceContext = new ToolHostAuthenticationContext
-            {
-                ToolKey = source.Key,
-                ToolSlug = source.Slug,
-                SiteMode = "dorks-and-dice",
-                User = new ToolHostUserContext
-                {
-                    Id = Guid.NewGuid().ToString("D"),
-                    DisplayName = "Private Tunnel User"
-                }
-            };
+            var sourceContext = SourceContext(source);
             var capability = testFactory.Services
                 .GetRequiredService<IToolDelegationCapabilityService>()
                 .Issue(source.Key, sourceContext);
@@ -154,17 +182,33 @@ public sealed class ToolPrivateTunnelIntegrationTests(PublishedContentWebApplica
         }
     }
 
-    private static ToolRegistration Tool(string key) => new()
+    private static ToolHostAuthenticationContext SourceContext(ToolRegistration source) => new()
+    {
+        ToolKey = source.Key,
+        ToolSlug = source.Slug,
+        SiteMode = "dorks-and-dice",
+        User = new ToolHostUserContext
+        {
+            Id = Guid.NewGuid().ToString("D"),
+            DisplayName = "Private Tunnel User"
+        }
+    };
+
+    private static ToolRegistration Tool(
+        string key,
+        ToolIntegrationType integrationType = ToolIntegrationType.EmbeddedModule) => new()
     {
         Id = Guid.NewGuid(),
         Key = key,
         Kind = ToolKind.Application,
         Slug = key,
         DisplayName = key,
-        IntegrationType = ToolIntegrationType.EmbeddedModule,
-        IntegrationContractVersion = ToolIntegrationContractVersions.EmbeddedModuleCurrent,
+        IntegrationType = integrationType,
+        IntegrationContractVersion = integrationType == ToolIntegrationType.EmbeddedModule
+            ? ToolIntegrationContractVersions.EmbeddedModuleCurrent
+            : null,
         UpstreamBaseUrl = $"http://{key}:8080",
-        FrontendEntryPoint = "/app.js",
+        FrontendEntryPoint = integrationType == ToolIntegrationType.EmbeddedModule ? "/app.js" : null,
         HealthPath = "/ready",
         Modes = ["dorks-and-dice"],
         AllowAnonymous = false,
