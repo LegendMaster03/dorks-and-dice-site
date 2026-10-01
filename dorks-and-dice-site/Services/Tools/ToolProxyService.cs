@@ -203,13 +203,15 @@ public sealed class ToolProxyService : IToolProxyService
         BlockedRequestHeaders.Contains(headerName)
         || headerName.StartsWith(ToolAuthenticationHeaders.ReservedPrefix, StringComparison.OrdinalIgnoreCase)
         || headerName.StartsWith(ToolLifecycleHeaders.ReservedPrefix, StringComparison.OrdinalIgnoreCase)
-        || headerName.StartsWith(ToolDelegationHeaders.ReservedPrefix, StringComparison.OrdinalIgnoreCase);
+        || headerName.StartsWith(ToolDelegationHeaders.ReservedPrefix, StringComparison.OrdinalIgnoreCase)
+        || headerName.StartsWith(ToolPrivateTunnelHeaders.ReservedPrefix, StringComparison.OrdinalIgnoreCase);
 
     private static bool IsBlockedResponseHeader(string headerName) =>
         BlockedResponseHeaders.Contains(headerName)
         || headerName.StartsWith(ToolAuthenticationHeaders.ReservedPrefix, StringComparison.OrdinalIgnoreCase)
         || headerName.StartsWith(ToolLifecycleHeaders.ReservedPrefix, StringComparison.OrdinalIgnoreCase)
-        || headerName.StartsWith(ToolDelegationHeaders.ReservedPrefix, StringComparison.OrdinalIgnoreCase);
+        || headerName.StartsWith(ToolDelegationHeaders.ReservedPrefix, StringComparison.OrdinalIgnoreCase)
+        || headerName.StartsWith(ToolPrivateTunnelHeaders.ReservedPrefix, StringComparison.OrdinalIgnoreCase);
 
     private static void CopyResponseHeaders(HttpResponse response, HttpResponseMessage upstreamResponse)
     {
