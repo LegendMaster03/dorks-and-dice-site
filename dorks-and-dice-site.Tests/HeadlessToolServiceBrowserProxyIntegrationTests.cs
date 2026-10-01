@@ -18,25 +18,16 @@ namespace dorks_and_dice_site.Tests;
 public sealed class HeadlessToolServiceBrowserProxyIntegrationTests(PublishedContentWebApplicationFactory factory)
 {
     [Fact]
-    public async Task StableKeyBrowserGatewayTargetsHeadlessServiceAndUsesStableIntrospection()
+    public async Task RulesCoreStableKeyBrowserGatewayUsesStableServiceIntrospection()
     {
         var proxy = new CapturingToolProxyService();
-        using var testFactory = factory.WithWebHostBuilder(builder =>
-        {
-            builder.ConfigureServices(services =>
-            {
-                services.RemoveAll<IToolProxyService>();
-                services.AddSingleton<IToolProxyService>(proxy);
-            });
-        });
-
         var service = new ToolRegistration
         {
             Id = Guid.NewGuid(),
-            Key = $"browser-service-{Guid.NewGuid():N}",
+            Key = "rules-core",
             Kind = ToolKind.Service,
             Slug = null,
-            DisplayName = "Browser service fixture",
+            DisplayName = "Rules Core",
             UpstreamBaseUrl = "http://localhost:8124",
             HealthPath = "/ready",
             Modes = [SiteModeValues.DorksAndDiceModeValue],
@@ -45,80 +36,103 @@ public sealed class HeadlessToolServiceBrowserProxyIntegrationTests(PublishedCon
             CreatedAt = DateTimeOffset.UtcNow,
             UpdatedAt = DateTimeOffset.UtcNow
         };
-        await SaveAsync(testFactory.Services, service);
-
-        try
+        using var testFactory = factory.WithWebHostBuilder(builder =>
         {
-            using var client = testFactory.CreateClient(new WebApplicationFactoryClientOptions
+            builder.ConfigureServices(services =>
             {
-                AllowAutoRedirect = false,
-                BaseAddress = new Uri("https://dorks-and-dice.com")
+                services.RemoveAll<IToolRegistry>();
+                services.AddSingleton<IToolRegistry>(new FixedToolRegistry(service));
+                services.RemoveAll<IToolProxyService>();
+                services.AddSingleton<IToolProxyService>(proxy);
             });
-            var userId = Guid.NewGuid();
-            using var request = new HttpRequestMessage(
-                HttpMethod.Get,
-                $"/tool-host/registrations/{service.Key}/api/upstream/api/rules?entityType=monster&q=goblin&limit=8");
-            request.Headers.Add(TestRoleAuthenticationHandler.RolesHeader, "Member");
-            request.Headers.Add(TestRoleAuthenticationHandler.UserIdHeader, userId.ToString("D"));
+        });
 
-            using var response = await client.SendAsync(request);
-            Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
-
-            var call = Assert.Single(proxy.Calls);
-            Assert.Equal(service.Key, call.ToolKey);
-            Assert.Null(call.ToolSlug);
-            Assert.Equal("/api/rules", call.Path);
-            Assert.Equal(
-                $"/tool-host/registrations/{service.Key}/api/introspect",
-                call.IntrospectionPath);
-
-            using var introspectionRequest = new HttpRequestMessage(
-                HttpMethod.Post,
-                $"/tool-host/registrations/{service.Key}/api/introspect");
-            introspectionRequest.Headers.Authorization =
-                new AuthenticationHeaderValue("Bearer", call.AuthenticationTicket);
-            using var introspection = await client.SendAsync(introspectionRequest);
-            Assert.Equal(HttpStatusCode.OK, introspection.StatusCode);
-
-            using var json = JsonDocument.Parse(await introspection.Content.ReadAsStringAsync());
-            Assert.Equal(service.Key, json.RootElement.GetProperty("toolKey").GetString());
-            Assert.False(json.RootElement.TryGetProperty("toolSlug", out _));
-            Assert.Equal(
-                userId.ToString("D"),
-                json.RootElement.GetProperty("user").GetProperty("id").GetString());
-        }
-        finally
+        using var client = testFactory.CreateClient(new WebApplicationFactoryClientOptions
         {
-            await DeleteAsync(testFactory.Services, service.Id);
-        }
+            AllowAutoRedirect = false,
+            BaseAddress = new Uri("https://dorks-and-dice.com")
+        });
+        var userId = Guid.NewGuid();
+        using var request = new HttpRequestMessage(
+            HttpMethod.Get,
+            "/tool-host/registrations/rules-core/api/upstream/api/rules?entityType=monster&q=goblin&limit=8");
+        request.Headers.Add(TestRoleAuthenticationHandler.RolesHeader, "Member");
+        request.Headers.Add(TestRoleAuthenticationHandler.UserIdHeader, userId.ToString("D"));
+
+        using var response = await client.SendAsync(request);
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+
+        var call = Assert.Single(proxy.Calls);
+        Assert.Equal(service.Key, call.ToolKey);
+        Assert.Null(call.ToolSlug);
+        Assert.Equal("/api/rules", call.Path);
+        Assert.Equal(
+            "/tool-host/registrations/rules-core/api/introspect",
+            call.IntrospectionPath);
+
+        using var introspectionRequest = new HttpRequestMessage(
+            HttpMethod.Post,
+            "/tool-host/registrations/rules-core/api/introspect");
+        introspectionRequest.Headers.Authorization =
+            new AuthenticationHeaderValue("Bearer", call.AuthenticationTicket);
+        using var introspection = await client.SendAsync(introspectionRequest);
+        Assert.Equal(HttpStatusCode.OK, introspection.StatusCode);
+
+        using var json = JsonDocument.Parse(await introspection.Content.ReadAsStringAsync());
+        Assert.Equal("rules-core", json.RootElement.GetProperty("toolKey").GetString());
+        Assert.False(json.RootElement.TryGetProperty("toolSlug", out _));
+        Assert.Equal(
+            userId.ToString("D"),
+            json.RootElement.GetProperty("user").GetProperty("id").GetString());
     }
 
     [Fact]
-    public void RulesCoreLegacyBrowserRouteRemainsAsExplicitCompatibilityAlias()
+    public void RulesCoreRoutesAreExplicitRatherThanGenericServiceExposure()
     {
-        var method = typeof(ToolServiceApiController).GetMethod(
-            nameof(ToolServiceApiController.LegacyRulesCoreUpstream),
+        var stableMethod = typeof(ToolServiceApiController).GetMethod(
+            nameof(ToolServiceApiController.RulesCoreRegistrationUpstream),
             BindingFlags.Instance | BindingFlags.Public);
-        Assert.NotNull(method);
-
-        var routes = method!
+        Assert.NotNull(stableMethod);
+        var stableRoutes = stableMethod!
             .GetCustomAttributes<RouteAttribute>()
             .Select(attribute => attribute.Template)
             .ToArray();
-        Assert.Contains("/tool-host/rules-core/api/upstream", routes);
-        Assert.Contains("/tool-host/rules-core/api/upstream/{**proxyPath}", routes);
+        Assert.Contains("/tool-host/registrations/rules-core/api/upstream", stableRoutes);
+        Assert.Contains("/tool-host/registrations/rules-core/api/upstream/{**proxyPath}", stableRoutes);
+        Assert.DoesNotContain(stableRoutes, route => route?.Contains("{registrationKey}", StringComparison.Ordinal) == true);
+
+        var legacyMethod = typeof(ToolServiceApiController).GetMethod(
+            nameof(ToolServiceApiController.LegacyRulesCoreUpstream),
+            BindingFlags.Instance | BindingFlags.Public);
+        Assert.NotNull(legacyMethod);
+        var legacyRoutes = legacyMethod!
+            .GetCustomAttributes<RouteAttribute>()
+            .Select(attribute => attribute.Template)
+            .ToArray();
+        Assert.Contains("/tool-host/rules-core/api/upstream", legacyRoutes);
+        Assert.Contains("/tool-host/rules-core/api/upstream/{**proxyPath}", legacyRoutes);
     }
 
-    private static async Task SaveAsync(IServiceProvider services, ToolRegistration tool)
+    private sealed class FixedToolRegistry(ToolRegistration tool) : IToolRegistry
     {
-        using var scope = services.CreateScope();
-        await scope.ServiceProvider.GetRequiredService<IToolRegistry>().SaveAsync(tool);
-    }
+        public Task<IReadOnlyList<ToolRegistration>> GetAllAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<ToolRegistration>>([tool]);
 
-    private static async Task DeleteAsync(IServiceProvider services, Guid toolId)
-    {
-        using var scope = services.CreateScope();
-        await scope.ServiceProvider.GetRequiredService<IToolRegistry>().DeleteAsync(toolId);
+        public Task<ToolRegistration?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
+            Task.FromResult<ToolRegistration?>(id == tool.Id ? tool : null);
+
+        public Task<ToolRegistration?> GetByKeyAsync(string key, CancellationToken cancellationToken = default) =>
+            Task.FromResult<ToolRegistration?>(
+                string.Equals(key, tool.Key, StringComparison.OrdinalIgnoreCase) ? tool : null);
+
+        public Task<ToolRegistration?> GetBySlugAsync(string slug, CancellationToken cancellationToken = default) =>
+            Task.FromResult<ToolRegistration?>(null);
+
+        public Task SaveAsync(ToolRegistration registration, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
     }
 
     private sealed record CapturedProxyCall(
