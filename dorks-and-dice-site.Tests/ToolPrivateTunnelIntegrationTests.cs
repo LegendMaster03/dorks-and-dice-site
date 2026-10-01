@@ -37,7 +37,7 @@ public sealed class ToolPrivateTunnelIntegrationTests(PublishedContentWebApplica
             var sourceTicket = ToolAuthenticationTickets.Issue(sourceContext);
             using var client = testFactory.CreateClient();
 
-            using var sourceIntrospection = await IntrospectAsync(
+            using var sourceIntrospection = await IntrospectBySlugAsync(
                 client,
                 source.Slug!,
                 sourceTicket);
@@ -61,12 +61,14 @@ public sealed class ToolPrivateTunnelIntegrationTests(PublishedContentWebApplica
                 new JsonSerializerOptions(JsonSerializerDefaults.Web));
             Assert.NotNull(ticket);
             Assert.Equal(target.Key, ticket.TargetKey);
-            Assert.Equal($"/tool-host/{target.Slug}/api/introspect", ticket.IntrospectionPath);
+            Assert.Equal(
+                $"/tool-host/registrations/{target.Key}/api/introspect",
+                ticket.IntrospectionPath);
             Assert.False(string.IsNullOrWhiteSpace(ticket.Ticket));
 
-            using var targetIntrospection = await IntrospectAsync(
+            using var targetIntrospection = await IntrospectByKeyAsync(
                 client,
-                target.Slug!,
+                target.Key,
                 ticket.Ticket);
             Assert.Equal(HttpStatusCode.OK, targetIntrospection.StatusCode);
 
@@ -117,7 +119,10 @@ public sealed class ToolPrivateTunnelIntegrationTests(PublishedContentWebApplica
         {
             var sourceTicket = ToolAuthenticationTickets.Issue(SourceContext(source));
             using var client = testFactory.CreateClient();
-            using var sourceIntrospection = await IntrospectAsync(client, source.Slug!, sourceTicket);
+            using var sourceIntrospection = await IntrospectBySlugAsync(
+                client,
+                source.Slug!,
+                sourceTicket);
 
             Assert.Equal(HttpStatusCode.OK, sourceIntrospection.StatusCode);
             Assert.False(sourceIntrospection.Headers.Contains(ToolDelegationHeaders.Capability));
@@ -239,14 +244,24 @@ public sealed class ToolPrivateTunnelIntegrationTests(PublishedContentWebApplica
         }
     }
 
-    private static async Task<HttpResponseMessage> IntrospectAsync(
+    private static Task<HttpResponseMessage> IntrospectBySlugAsync(
         HttpClient client,
         string slug,
+        string ticket) =>
+        IntrospectAsync(client, $"/tool-host/{slug}/api/introspect", ticket);
+
+    private static Task<HttpResponseMessage> IntrospectByKeyAsync(
+        HttpClient client,
+        string key,
+        string ticket) =>
+        IntrospectAsync(client, $"/tool-host/registrations/{key}/api/introspect", ticket);
+
+    private static async Task<HttpResponseMessage> IntrospectAsync(
+        HttpClient client,
+        string path,
         string ticket)
     {
-        var request = new HttpRequestMessage(
-            HttpMethod.Post,
-            $"/tool-host/{slug}/api/introspect");
+        var request = new HttpRequestMessage(HttpMethod.Post, path);
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", ticket);
         return await client.SendAsync(request);
     }
