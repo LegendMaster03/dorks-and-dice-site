@@ -35,21 +35,6 @@ public sealed class ToolServiceApiController(
         CancellationToken cancellationToken) =>
         ProxyRulesCoreAsync(proxyPath, cancellationToken);
 
-    /// <summary>
-    /// Compatibility bridge for browser consumers that predate Rules Core becoming a headless
-    /// service. Literal routing intentionally takes precedence over ToolHostApiController's
-    /// application-slug route. New consumers should use the stable registration-key route above.
-    /// </summary>
-    [AllowAnonymous]
-    [DisableFormValueModelBinding]
-    [AcceptVerbs("GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")]
-    [Route("~/tool-host/rules-core/api/upstream")]
-    [Route("~/tool-host/rules-core/api/upstream/{**proxyPath}")]
-    public Task<IActionResult> LegacyRulesCoreUpstream(
-        [FromRoute] string? proxyPath,
-        CancellationToken cancellationToken) =>
-        ProxyRulesCoreAsync(proxyPath, cancellationToken);
-
     private async Task<IActionResult> ProxyRulesCoreAsync(
         string? proxyPath,
         CancellationToken cancellationToken)
