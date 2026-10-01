@@ -94,7 +94,7 @@ public sealed class ToolPrivateTunnelApiController(
         {
             TargetKey = targetTool.Key,
             Ticket = targetTicket,
-            IntrospectionPath = AuthenticationIntrospectionPath(targetTool)
+            IntrospectionPath = $"/tool-host/registrations/{targetTool.Key}/api/introspect"
         });
     }
 
@@ -102,11 +102,6 @@ public sealed class ToolPrivateTunnelApiController(
         sourceTool.Enabled
         && ToolVisibility.IsVisibleInMode(sourceTool, siteMode)
         && ToolPrivateTunnelPolicy.IsSupportedSource(sourceTool);
-
-    private static string AuthenticationIntrospectionPath(ToolRegistration tool) =>
-        tool.Kind == ToolKind.Application && !string.IsNullOrWhiteSpace(tool.Slug)
-            ? $"/tool-host/{tool.Slug}/api/introspect"
-            : $"/tool-host/registrations/{tool.Key}/api/introspect";
 
     private bool TryReadBearerToken(out string token)
     {
