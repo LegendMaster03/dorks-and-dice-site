@@ -19,6 +19,11 @@ public interface IToolHostAuthenticationContextFactory
         ToolRegistration targetTool,
         ToolHostAuthenticationContext sourceContext,
         CancellationToken cancellationToken = default);
+
+    Task<ToolHostAuthenticationContext?> CreatePrivateTunnelAsync(
+        ToolRegistration targetTool,
+        ToolHostAuthenticationContext sourceContext,
+        CancellationToken cancellationToken = default);
 }
 
 public sealed class ToolHostAuthenticationContextFactory(
@@ -79,10 +84,31 @@ public sealed class ToolHostAuthenticationContextFactory(
         };
     }
 
-    public async Task<ToolHostAuthenticationContext?> CreateDelegatedAsync(
+    public Task<ToolHostAuthenticationContext?> CreateDelegatedAsync(
         ToolRegistration targetTool,
         ToolHostAuthenticationContext sourceContext,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default) =>
+        CreateTargetScopedAsync(
+            targetTool,
+            sourceContext,
+            ordinaryDelegation: true,
+            cancellationToken);
+
+    public Task<ToolHostAuthenticationContext?> CreatePrivateTunnelAsync(
+        ToolRegistration targetTool,
+        ToolHostAuthenticationContext sourceContext,
+        CancellationToken cancellationToken = default) =>
+        CreateTargetScopedAsync(
+            targetTool,
+            sourceContext,
+            ordinaryDelegation: false,
+            cancellationToken);
+
+    private async Task<ToolHostAuthenticationContext?> CreateTargetScopedAsync(
+        ToolRegistration targetTool,
+        ToolHostAuthenticationContext sourceContext,
+        bool ordinaryDelegation,
+        CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(targetTool);
         ArgumentNullException.ThrowIfNull(sourceContext);
@@ -101,6 +127,10 @@ public sealed class ToolHostAuthenticationContextFactory(
         {
             ToolKey = targetTool.Key,
             ToolSlug = targetTool.Slug,
+            DelegatedFromToolKey = ordinaryDelegation ? sourceContext.RegistrationKey : null,
+            DelegatedFromToolSlug = ordinaryDelegation ? sourceContext.ToolSlug : null,
+            PrivateTunnelSourceToolKey = ordinaryDelegation ? null : sourceContext.RegistrationKey,
+            PrivateTunnelSourceToolSlug = ordinaryDelegation ? null : sourceContext.ToolSlug,
             SiteMode = sourceContext.SiteMode,
             User = new ToolHostUserContext
             {

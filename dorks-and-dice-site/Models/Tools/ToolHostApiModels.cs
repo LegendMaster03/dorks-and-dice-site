@@ -50,6 +50,27 @@ public sealed class ToolHostAuthenticationContext
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? ToolSlug { get; init; }
 
+    /// <summary>
+    /// Immediate ordinary Tool-to-Tool delegation source for target-scoped contexts. These fields
+    /// are omitted for normal browser-to-Tool and private-tunnel contexts.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? DelegatedFromToolKey { get; init; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? DelegatedFromToolSlug { get; init; }
+
+    /// <summary>
+    /// Immediate source Tool for a target-scoped private-tunnel context. Site emits these fields
+    /// only after the configured private source-to-target relationship has been authorized. They
+    /// are distinct from ordinary Tool delegation provenance.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? PrivateTunnelSourceToolKey { get; init; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? PrivateTunnelSourceToolSlug { get; init; }
+
     public required string SiteMode { get; init; }
     public required ToolHostUserContext User { get; init; }
     public IReadOnlyList<string> GlobalRoles { get; init; } = [];
@@ -75,4 +96,11 @@ public sealed class ToolHostAuthenticationContext
         !string.IsNullOrWhiteSpace(ToolKey)
             ? ToolKey
             : ToolSlug ?? string.Empty;
+}
+
+public sealed class ToolPrivateTunnelTicketResponse
+{
+    public required string TargetKey { get; init; }
+    public required string Ticket { get; init; }
+    public required string IntrospectionPath { get; init; }
 }

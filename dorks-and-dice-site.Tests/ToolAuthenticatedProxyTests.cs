@@ -32,6 +32,7 @@ public sealed class ToolAuthenticatedProxyTests
         context.Request.Headers[ToolLifecycleHeaders.IntrospectionPath] = "/spoofed-lifecycle";
         context.Request.Headers[ToolDelegationHeaders.Capability] = "browser-delegation-spoof";
         context.Request.Headers[ToolDelegationHeaders.Path] = "/spoofed-delegation";
+        context.Request.Headers[ToolPrivateTunnelHeaders.Capability] = "browser-private-tunnel-spoof";
         context.Response.Body = new MemoryStream();
 
         await service.ProxyAuthenticatedAsync(
@@ -52,12 +53,13 @@ public sealed class ToolAuthenticatedProxyTests
         Assert.False(captured.Headers.Contains(ToolLifecycleHeaders.IntrospectionPath));
         Assert.False(captured.Headers.Contains(ToolDelegationHeaders.Capability));
         Assert.False(captured.Headers.Contains(ToolDelegationHeaders.Path));
+        Assert.False(captured.Headers.Contains(ToolPrivateTunnelHeaders.Capability));
         Assert.False(captured.Headers.Contains("Authorization"));
         Assert.Equal("no-store", context.Response.Headers.CacheControl.ToString());
     }
 
     [Fact]
-    public async Task ProxyDoesNotExposeReservedDelegationHeadersFromUpstream()
+    public async Task ProxyDoesNotExposeReservedControlHeadersFromUpstream()
     {
         var handler = new RecordingHandler(_ =>
         {
@@ -67,6 +69,9 @@ public sealed class ToolAuthenticatedProxyTests
             };
             response.Headers.TryAddWithoutValidation(
                 ToolDelegationHeaders.Capability,
+                "must-not-reach-browser");
+            response.Headers.TryAddWithoutValidation(
+                ToolPrivateTunnelHeaders.Capability,
                 "must-not-reach-browser");
             response.Headers.TryAddWithoutValidation(
                 ToolAuthenticationHeaders.Ticket,
@@ -83,6 +88,7 @@ public sealed class ToolAuthenticatedProxyTests
         await service.ProxyAsync(context, Tool(), "/api/rules");
 
         Assert.False(context.Response.Headers.ContainsKey(ToolDelegationHeaders.Capability));
+        Assert.False(context.Response.Headers.ContainsKey(ToolPrivateTunnelHeaders.Capability));
         Assert.False(context.Response.Headers.ContainsKey(ToolAuthenticationHeaders.Ticket));
     }
 
