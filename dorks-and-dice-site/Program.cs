@@ -317,6 +317,7 @@ app.Use(async (context, next) =>
     await next();
 });
 app.UseForwardedHeaders();
+app.UseMiddleware<ServerTimingMiddleware>();
 app.Use(async (context, next) =>
 {
     context.Response.OnStarting(() =>
