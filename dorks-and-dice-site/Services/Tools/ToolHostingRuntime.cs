@@ -48,6 +48,20 @@ public static class ToolVisibility
             || tool.AllowAnonymous
             || principal.Identity?.IsAuthenticated == true);
 
+    /// <summary>
+    /// Returns whether an application is intentionally public and anonymously reachable in the
+    /// supplied site mode. Search discovery surfaces must use this narrower policy instead of
+    /// user-specific visibility so Development, Testing, account-required, disabled, and service
+    /// registrations never leak into public indexes or sitemaps.
+    /// </summary>
+    public static bool IsPubliclyDiscoverable(ToolRegistration tool, string? modeId) =>
+        tool.Kind == ToolKind.Application
+        && !string.IsNullOrWhiteSpace(tool.Slug)
+        && tool.Enabled
+        && tool.ReleaseAudience == ToolReleaseAudience.Public
+        && tool.AllowAnonymous
+        && IsVisibleInMode(tool, modeId);
+
     public static bool CanUseReleaseAudience(
         ToolRegistration tool,
         string? modeId,
