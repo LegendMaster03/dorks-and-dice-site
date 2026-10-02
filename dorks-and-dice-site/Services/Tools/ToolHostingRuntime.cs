@@ -49,9 +49,10 @@ public static class ToolVisibility
             || principal.Identity?.IsAuthenticated == true);
 
     /// <summary>
-    /// Returns whether an application is intentionally public and anonymously reachable in the
-    /// supplied site mode. Search discovery surfaces must use this narrower policy instead of
-    /// user-specific visibility so Development, Testing, account-required, disabled, and service
+    /// Returns whether an application is intentionally public, anonymously reachable, and
+    /// configured well enough to serve its public route in the supplied site mode. Search
+    /// discovery surfaces must use this narrower policy instead of user-specific visibility so
+    /// Development, Testing, account-required, disabled, unsupported, incomplete, and service
     /// registrations never leak into public indexes or sitemaps.
     /// </summary>
     public static bool IsPubliclyDiscoverable(ToolRegistration tool, string? modeId) =>
@@ -60,7 +61,9 @@ public static class ToolVisibility
         && tool.Enabled
         && tool.ReleaseAudience == ToolReleaseAudience.Public
         && tool.AllowAnonymous
-        && IsVisibleInMode(tool, modeId);
+        && IsVisibleInMode(tool, modeId)
+        && ToolIntegrationContractPolicy.IsSupported(tool)
+        && HasPublicRouteConfiguration(tool);
 
     public static bool CanUseReleaseAudience(
         ToolRegistration tool,
@@ -102,6 +105,17 @@ public static class ToolVisibility
             ? tool.Modes
             : [SiteModeValues.DorksAndDiceModeValue];
     }
+
+    private static bool HasPublicRouteConfiguration(ToolRegistration tool) =>
+        tool.IntegrationType switch
+        {
+            ToolIntegrationType.EmbeddedModule =>
+                !string.IsNullOrWhiteSpace(tool.UpstreamBaseUrl)
+                && !string.IsNullOrWhiteSpace(tool.FrontendEntryPoint),
+            ToolIntegrationType.ProxiedApplication =>
+                !string.IsNullOrWhiteSpace(tool.UpstreamBaseUrl),
+            _ => false
+        };
 }
 
 public static class ToolUpstreamUri
