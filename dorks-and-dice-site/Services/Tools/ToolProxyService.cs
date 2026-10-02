@@ -1,4 +1,5 @@
 using dorks_and_dice_site.Models.Tools;
+using dorks_and_dice_site.Services.Site;
 
 namespace dorks_and_dice_site.Services.Tools;
 
@@ -119,9 +120,11 @@ public sealed class ToolProxyService : IToolProxyService
                 }
             }
 
-            using var upstreamResponse = await _httpClientFactory
-                .CreateClient(ToolHttpClientNames.Proxy)
-                .SendAsync(upstreamRequest, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+            using var upstreamResponse = await SendUpstreamAsync(
+                context,
+                tool,
+                upstreamRequest,
+                cancellationToken);
 
             if ((int)upstreamResponse.StatusCode is >= 300 and < 400
                 && upstreamResponse.StatusCode != System.Net.HttpStatusCode.NotModified)
@@ -160,6 +163,20 @@ public sealed class ToolProxyService : IToolProxyService
         {
             context.Response.StatusCode = StatusCodes.Status502BadGateway;
         }
+    }
+
+    private async Task<HttpResponseMessage> SendUpstreamAsync(
+        HttpContext context,
+        ToolRegistration tool,
+        HttpRequestMessage upstreamRequest,
+        CancellationToken cancellationToken)
+    {
+        var client = _httpClientFactory.CreateClient(ToolHttpClientNames.Proxy);
+        using var timing = ServerTimingMiddleware.BeginToolTiming(context, tool.Key);
+        return await client.SendAsync(
+            upstreamRequest,
+            HttpCompletionOption.ResponseHeadersRead,
+            cancellationToken);
     }
 
     private static bool HasRequestBody(HttpRequest request) =>
@@ -224,7 +241,7 @@ public sealed class ToolProxyService : IToolProxyService
                 continue;
             }
 
-            response.Headers[header.Key] = header.Value.ToArray();
+            SetOrAppendResponseHeader(response, header.Key, header.Value.ToArray());
         }
 
         foreach (var header in upstreamResponse.Content.Headers)
@@ -235,10 +252,24 @@ public sealed class ToolProxyService : IToolProxyService
                 continue;
             }
 
-            response.Headers[header.Key] = header.Value.ToArray();
+            SetOrAppendResponseHeader(response, header.Key, header.Value.ToArray());
         }
 
         response.Headers.Remove("transfer-encoding");
+    }
+
+    private static void SetOrAppendResponseHeader(
+        HttpResponse response,
+        string headerName,
+        string[] values)
+    {
+        if (headerName.Equals(ServerTimingMiddleware.HeaderName, StringComparison.OrdinalIgnoreCase))
+        {
+            response.Headers.Append(headerName, values);
+            return;
+        }
+
+        response.Headers[headerName] = values;
     }
 
     private static bool IsRequestBodyTooLarge(Exception exception)

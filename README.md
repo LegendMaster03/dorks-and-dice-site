@@ -23,6 +23,7 @@ The detailed contracts are documented under `docs/`, especially:
 - `docs/plugin-boundaries.md`
 - `docs/tool-hosting-boundaries.md`
 - `docs/headless-tool-services.md`
+- `docs/server-timing.md` — hosted Tool and service performance-timing contract
 - `docs/private-tool-tunnels.md` — canonical private Tool tunnel security model, deployment runbook, verification, persistence, and revocation procedure
 
 The important boundaries are:

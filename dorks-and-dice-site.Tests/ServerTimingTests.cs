@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Net;
 using dorks_and_dice_site.Models.Tools;
 using dorks_and_dice_site.Services.Site;
@@ -26,13 +27,16 @@ public sealed class ServerTimingTests
         await middleware.InvokeAsync(context);
         await responseFeature.FireOnStartingAsync();
 
-        var header = string.Join(',', context.Response.Headers[ServerTimingMiddleware.HeaderName].ToArray());
-        Assert.Contains("tool-db;dur=4.2", header, StringComparison.Ordinal);
-        Assert.Matches(@"(?:^|,)dnd-site;dur=\d+(?:\.\d{1,3})?(?:,|$)", header);
+        var metrics = ReadMetricEntries(context);
+        Assert.Contains(metrics, metric => metric.Name == "tool-db" && metric.DurationMilliseconds == 4.2);
+        Assert.Single(metrics.Where(metric => metric.Name == ServerTimingMiddleware.SiteMetricName));
+        Assert.Single(metrics.Where(metric => metric.Name == ServerTimingMiddleware.TotalMetricName));
+        Assert.DoesNotContain(metrics, metric => metric.Name == ServerTimingMiddleware.ToolMetricName);
+        Assert.DoesNotContain(metrics, metric => metric.Name.StartsWith("dnd-", StringComparison.Ordinal));
     }
 
     [Fact]
-    public async Task MiddlewareRegistersPlatformMetricOnlyOnceWhenRequestIsReExecuted()
+    public async Task MiddlewareRegistersPlatformMetricsOnlyOnceWhenRequestIsReExecuted()
     {
         var responseFeature = new RecordingResponseFeature();
         var context = new DefaultHttpContext();
@@ -43,17 +47,13 @@ public sealed class ServerTimingTests
         await middleware.InvokeAsync(context);
         await responseFeature.FireOnStartingAsync();
 
-        var platformMetrics = context.Response.Headers[ServerTimingMiddleware.HeaderName]
-            .SelectMany(value => value?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                ?? [])
-            .Where(value => value.StartsWith($"{ServerTimingMiddleware.PlatformMetricName};", StringComparison.Ordinal))
-            .ToArray();
-
-        Assert.Single(platformMetrics);
+        var metrics = ReadMetricEntries(context);
+        Assert.Single(metrics.Where(metric => metric.Name == ServerTimingMiddleware.SiteMetricName));
+        Assert.Single(metrics.Where(metric => metric.Name == ServerTimingMiddleware.TotalMetricName));
     }
 
     [Fact]
-    public async Task ToolProxyPreservesUpstreamServerTimingMetrics()
+    public async Task ToolProxyPreservesAndAppendsUpstreamServerTimingMetrics()
     {
         var handler = new RecordingHandler(_ =>
         {
@@ -70,14 +70,58 @@ public sealed class ServerTimingTests
         context.Request.Scheme = "https";
         context.Request.Host = new HostString("dorks-and-dice.com");
         context.Response.Body = new MemoryStream();
+        context.Response.Headers.Append("Server-Timing", "existing;dur=1.5");
 
         await service.ProxyAsync(context, Tool("http://proxy-service:8080"), "/");
 
-        Assert.Equal("db;dur=12.4, app;dur=20", context.Response.Headers["Server-Timing"].ToString());
+        var header = context.Response.Headers["Server-Timing"].ToString();
+        Assert.Contains("existing;dur=1.5", header, StringComparison.Ordinal);
+        Assert.Contains("db;dur=12.4", header, StringComparison.Ordinal);
+        Assert.Contains("app;dur=20", header, StringComparison.Ordinal);
     }
 
     [Fact]
-    public async Task SiteTimingAndToolTimingAreCombinedOnProxiedResponse()
+    public async Task SiteDistinguishesSiteTimeFromNamedToolWaitWithoutToolInstrumentation()
+    {
+        var handler = new RecordingHandler(async _ =>
+        {
+            await Task.Delay(20);
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("ok")
+            };
+        });
+        var service = CreateProxyService(handler);
+        var responseFeature = new RecordingResponseFeature
+        {
+            Body = new MemoryStream()
+        };
+        var context = new DefaultHttpContext();
+        context.Features.Set<IHttpResponseFeature>(responseFeature);
+        context.Request.Method = HttpMethods.Get;
+        context.Request.Scheme = "https";
+        context.Request.Host = new HostString("dorks-and-dice.com");
+
+        var middleware = new ServerTimingMiddleware(nextContext =>
+            service.ProxyAsync(nextContext, Tool("http://proxy-service:8080"), "/"));
+
+        await middleware.InvokeAsync(context);
+        await responseFeature.FireOnStartingAsync();
+
+        var metrics = ReadMetricEntries(context);
+        var site = Assert.Single(metrics.Where(metric => metric.Name == ServerTimingMiddleware.SiteMetricName));
+        var tool = Assert.Single(metrics.Where(metric => metric.Name == ServerTimingMiddleware.ToolMetricName));
+        var total = Assert.Single(metrics.Where(metric => metric.Name == ServerTimingMiddleware.TotalMetricName));
+
+        Assert.Equal("proxy-test", tool.Description);
+        Assert.True(tool.DurationMilliseconds >= 10);
+        Assert.True(total.DurationMilliseconds >= tool.DurationMilliseconds);
+        Assert.True(site.DurationMilliseconds < total.DurationMilliseconds);
+        Assert.DoesNotContain(metrics, metric => metric.Name.StartsWith("dnd-", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task SiteTimingAndToolOwnedTimingAreCombinedOnProxiedResponse()
     {
         var handler = new RecordingHandler(_ =>
         {
@@ -85,7 +129,7 @@ public sealed class ServerTimingTests
             {
                 Content = new StringContent("ok")
             };
-            response.Headers.TryAddWithoutValidation("Server-Timing", "db;dur=12.4, app;dur=20");
+            response.Headers.TryAddWithoutValidation("Server-Timing", "rules-core;dur=20, rules-core-db;dur=12.4");
             return Task.FromResult(response);
         });
         var service = CreateProxyService(handler);
@@ -105,10 +149,15 @@ public sealed class ServerTimingTests
         await middleware.InvokeAsync(context);
         await responseFeature.FireOnStartingAsync();
 
-        var header = string.Join(',', context.Response.Headers[ServerTimingMiddleware.HeaderName].ToArray());
-        Assert.Contains("db;dur=12.4", header, StringComparison.Ordinal);
-        Assert.Contains("app;dur=20", header, StringComparison.Ordinal);
-        Assert.Matches(@"(?:^|,)dnd-site;dur=\d+(?:\.\d{1,3})?(?:,|$)", header);
+        var metrics = ReadMetricEntries(context);
+        Assert.Contains(metrics, metric => metric.Name == "rules-core" && metric.DurationMilliseconds == 20);
+        Assert.Contains(metrics, metric => metric.Name == "rules-core-db" && metric.DurationMilliseconds == 12.4);
+        Assert.Contains(metrics, metric => metric.Name == ServerTimingMiddleware.SiteMetricName);
+        Assert.Contains(metrics, metric =>
+            metric.Name == ServerTimingMiddleware.ToolMetricName
+            && metric.Description == "proxy-test");
+        Assert.Contains(metrics, metric => metric.Name == ServerTimingMiddleware.TotalMetricName);
+        Assert.DoesNotContain(metrics, metric => metric.Name.StartsWith("dnd-", StringComparison.Ordinal));
     }
 
     private static ToolProxyService CreateProxyService(HttpMessageHandler handler)
@@ -122,11 +171,48 @@ public sealed class ServerTimingTests
 
     private static ToolRegistration Tool(string upstream) => new()
     {
+        Key = "proxy-test",
         Slug = "proxy-test",
         IntegrationType = ToolIntegrationType.ProxiedApplication,
         UpstreamBaseUrl = upstream,
         Enabled = true
     };
+
+    private static IReadOnlyList<TimingMetric> ReadMetricEntries(HttpContext context)
+    {
+        var metrics = new List<TimingMetric>();
+        foreach (var rawMetric in context.Response.Headers[ServerTimingMiddleware.HeaderName]
+                     .SelectMany(value => value?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                         ?? []))
+        {
+            var segments = rawMetric.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            Assert.NotEmpty(segments);
+
+            string? description = null;
+            double? duration = null;
+            foreach (var segment in segments.Skip(1))
+            {
+                if (segment.StartsWith("desc=", StringComparison.Ordinal))
+                {
+                    description = segment[5..].Trim('"');
+                }
+                else if (segment.StartsWith("dur=", StringComparison.Ordinal))
+                {
+                    Assert.True(double.TryParse(
+                        segment[4..],
+                        NumberStyles.Float,
+                        CultureInfo.InvariantCulture,
+                        out var parsedDuration));
+                    duration = parsedDuration;
+                }
+            }
+
+            Assert.NotNull(duration);
+            metrics.Add(new TimingMetric(segments[0], description, duration.Value));
+        }
+
+        return metrics;
+    }
 
     private sealed class FixedHttpClientFactory(HttpClient client) : IHttpClientFactory
     {
@@ -169,4 +255,9 @@ public sealed class ServerTimingTests
             HasStarted = true;
         }
     }
+
+    private sealed record TimingMetric(
+        string Name,
+        string? Description,
+        double DurationMilliseconds);
 }
