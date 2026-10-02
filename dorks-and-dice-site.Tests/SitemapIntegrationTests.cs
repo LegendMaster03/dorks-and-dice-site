@@ -43,13 +43,27 @@ public sealed class SitemapIntegrationTests
     }
 
     [Fact]
-    public async Task SitemapIncludesOnlyAnonymousPublicToolsForActiveMode()
+    public async Task SitemapIncludesOnlyRoutableAnonymousPublicToolsForActiveMode()
     {
         var publicTool = await RegisterAsync(new ToolRegistration
         {
             Slug = UniqueSlug("public"),
             DisplayName = "Public Sitemap Tool",
             Modes = [SiteModeValues.DorksAndDiceModeValue],
+            IntegrationType = ToolIntegrationType.EmbeddedModule,
+            UpstreamBaseUrl = "http://localhost:8123",
+            FrontendEntryPoint = "/app.js",
+            ReleaseAudience = ToolReleaseAudience.Public,
+            AllowAnonymous = true,
+            Enabled = true
+        });
+        var proxiedTool = await RegisterAsync(new ToolRegistration
+        {
+            Slug = UniqueSlug("proxied"),
+            DisplayName = "Proxied Sitemap Tool",
+            Modes = [SiteModeValues.DorksAndDiceModeValue],
+            IntegrationType = ToolIntegrationType.ProxiedApplication,
+            UpstreamBaseUrl = "http://localhost:8124",
             ReleaseAudience = ToolReleaseAudience.Public,
             AllowAnonymous = true,
             Enabled = true
@@ -59,6 +73,9 @@ public sealed class SitemapIntegrationTests
             Slug = UniqueSlug("account"),
             DisplayName = "Account Sitemap Tool",
             Modes = [SiteModeValues.DorksAndDiceModeValue],
+            IntegrationType = ToolIntegrationType.EmbeddedModule,
+            UpstreamBaseUrl = "http://localhost:8123",
+            FrontendEntryPoint = "/app.js",
             ReleaseAudience = ToolReleaseAudience.Public,
             AllowAnonymous = false,
             Enabled = true
@@ -68,8 +85,21 @@ public sealed class SitemapIntegrationTests
             Slug = UniqueSlug("testing"),
             DisplayName = "Testing Sitemap Tool",
             Modes = [SiteModeValues.DorksAndDiceModeValue],
+            IntegrationType = ToolIntegrationType.EmbeddedModule,
+            UpstreamBaseUrl = "http://localhost:8123",
+            FrontendEntryPoint = "/app.js",
             ReleaseAudience = ToolReleaseAudience.Testing,
             AllowAnonymous = false,
+            Enabled = true
+        });
+        var incompleteTool = await RegisterAsync(new ToolRegistration
+        {
+            Slug = UniqueSlug("incomplete"),
+            DisplayName = "Incomplete Sitemap Tool",
+            Modes = [SiteModeValues.DorksAndDiceModeValue],
+            IntegrationType = ToolIntegrationType.EmbeddedModule,
+            ReleaseAudience = ToolReleaseAudience.Public,
+            AllowAnonymous = true,
             Enabled = true
         });
 
@@ -83,15 +113,20 @@ public sealed class SitemapIntegrationTests
             Assert.Equal(HttpStatusCode.OK, dorksResponse.StatusCode);
             Assert.Contains("<loc>http://dorks-and-dice.com/tools</loc>", dorksXml);
             Assert.Contains($"<loc>http://dorks-and-dice.com/tools/{publicTool.Slug}</loc>", dorksXml);
+            Assert.Contains($"<loc>http://dorks-and-dice.com/tools/{proxiedTool.Slug}/</loc>", dorksXml);
             Assert.DoesNotContain(accountTool.Slug!, dorksXml, StringComparison.Ordinal);
             Assert.DoesNotContain(testingTool.Slug!, dorksXml, StringComparison.Ordinal);
+            Assert.DoesNotContain(incompleteTool.Slug!, dorksXml, StringComparison.Ordinal);
             Assert.DoesNotContain(publicTool.Slug!, professionalXml, StringComparison.Ordinal);
+            Assert.DoesNotContain(proxiedTool.Slug!, professionalXml, StringComparison.Ordinal);
         }
         finally
         {
             await DeleteAsync(publicTool.Id);
+            await DeleteAsync(proxiedTool.Id);
             await DeleteAsync(accountTool.Id);
             await DeleteAsync(testingTool.Id);
+            await DeleteAsync(incompleteTool.Id);
         }
     }
 
