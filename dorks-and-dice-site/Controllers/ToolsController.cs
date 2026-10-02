@@ -121,9 +121,22 @@ public sealed class ToolsController : Controller
             contextUrl += $"?toolRoute={Uri.EscapeDataString(toolRoute)}";
         }
 
+        var modeId = HttpContext.GetSiteModeContext().ActiveModeId;
+        var publiclyDiscoverable = ToolVisibility.IsPubliclyDiscoverable(tool, modeId);
+
         ViewData["ToolBasePath"] = toolBasePath;
         ViewData["ToolRoute"] = toolRoute;
         ViewData["ToolContextUrl"] = contextUrl;
+        ViewData["MetaTitle"] = tool.DisplayName;
+        if (!string.IsNullOrWhiteSpace(tool.Description))
+        {
+            ViewData["MetaDescription"] = tool.Description.Trim();
+        }
+        if (!publiclyDiscoverable)
+        {
+            ViewData["Robots"] = "noindex,nofollow";
+        }
+
         return View("Details", tool);
     }
 
