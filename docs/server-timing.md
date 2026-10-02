@@ -31,6 +31,7 @@ The namespace is ownership-based.
 - The Tool's whole-request metric should use the key itself, for example `rules-core`.
 - Tool submetrics should use `<tool-key>-<component>`, for example `rules-core-auth` or `rules-core-db`.
 - Use the stable Tool key, not a public slug. Headless services do not necessarily have a slug, while every registration has a stable key.
+- A Tool key used directly as a timing namespace must be valid as a `Server-Timing` metric token. Dorks & Dice timing-capable registrations should use lowercase ASCII letters, digits, and hyphens. Do not silently sanitize an incompatible registration key at emission time because different keys could collapse to the same metric namespace.
 - Metric names should be stable contracts. Do not encode route parameters, user IDs, campaign IDs, entity IDs, query text, or other high-cardinality/request-specific data into metric names.
 
 A Tool may expose only its whole-request metric initially and add useful submetrics later.
@@ -128,7 +129,7 @@ rules-core
 rules-core-auth
 rules-core-db
 rules-core-reference-query
-rules-core-reference-docs
+rules-core-reference-materialize
 rules-core-reference-total
 ```
 
@@ -138,7 +139,7 @@ Their intended meanings are:
 - `rules-core-auth` — Site Tool-ticket introspection performed by Rules Core for the request;
 - `rules-core-db` — aggregate Npgsql database-operation duration for the active request, excluding physical connection-open spans;
 - `rules-core-reference-query` — query-stage time reported by Rules Core's reference catalog service;
-- `rules-core-reference-docs` — mechanical-document/materialization stage time reported by the reference catalog service;
+- `rules-core-reference-materialize` — reference materialization time, including document loading/projection and effective-rule resolution where required;
 - `rules-core-reference-total` — total reference-catalog service operation time.
 
 The `reference-*` metrics describe work owned by the headless Rules Core service. They do not imply that Rules Core contains a Rules Wiki UI. Rules Wiki is a separate Tool that consumes Rules Core's private reference APIs through the established private Tool tunnel architecture.
@@ -146,7 +147,7 @@ The `reference-*` metrics describe work owned by the headless Rules Core service
 A direct Rules Core response may therefore contain values similar to:
 
 ```text
-Server-Timing: rules-core-auth;dur=3.8, rules-core-db;dur=12.1, rules-core-reference-query;dur=9.4, rules-core-reference-docs;dur=2.0, rules-core-reference-total;dur=12.0, rules-core;dur=18.6
+Server-Timing: rules-core-auth;dur=3.8, rules-core-db;dur=12.1, rules-core-reference-query;dur=9.4, rules-core-reference-materialize;dur=2.0, rules-core-reference-total;dur=12.0, rules-core;dur=18.6
 ```
 
 If Site is directly proxying that same response, Site additionally contributes its outer metric:
@@ -181,6 +182,7 @@ Before a Tool timing implementation is considered complete, verify that:
 - existing timing values are preserved when another layer already added them;
 - a response directly proxied through Site contains both the Tool metric and `dnd-site`;
 - private-tunnel timing is not assumed to pass through Site automatically;
+- the Tool key used for the timing namespace is token-safe and is not silently rewritten;
 - component metrics use the Tool-key namespace;
 - no `dnd-*` metric is emitted by the Tool;
 - formatting is culture invariant;
