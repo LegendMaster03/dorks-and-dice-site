@@ -6,9 +6,9 @@ namespace dorks_and_dice_site.Services.Site;
 public sealed class ServerTimingMiddleware(RequestDelegate next)
 {
     public const string HeaderName = "Server-Timing";
-    public const string SiteMetricName = "dnd-site";
-    public const string ToolMetricName = "dnd-tool";
-    public const string TotalMetricName = "dnd-total";
+    public const string SiteMetricName = "platform-site";
+    public const string ToolMetricName = "platform-tool";
+    public const string TotalMetricName = "platform-total";
 
     // Retained for callers/tests that used the original platform metric constant.
     public const string PlatformMetricName = SiteMetricName;
