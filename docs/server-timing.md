@@ -14,7 +14,7 @@ Server-Timing: dnd-site;dur=27.4
 
 `dnd-site` measures Site processing from the Site timing middleware's first execution until response headers are committed. For a proxied Tool request this includes time spent waiting for the upstream Tool to produce its response headers. It is therefore an outer request-to-header duration, not a measure of Site CPU time alone.
 
-When an upstream Tool returns `Server-Timing`, the Tool proxy preserves those values and the Site appends its own platform metric. A proxied response can therefore expose both layers:
+When an upstream Tool returns `Server-Timing` and Site is the HTTP data plane for that request, the Tool proxy preserves those values and Site appends its own platform metric. A proxied response can therefore expose both layers:
 
 ```text
 Server-Timing: rules-core;dur=21.8, rules-core-db;dur=11.2, dnd-site;dur=27.4
@@ -79,7 +79,7 @@ Component timings may overlap each other and may be nested inside the Tool's who
 
 ## Database metrics
 
-When a Tool exposes a database metric, its semantics must be stated precisely. For example, an Entity Framework Core interceptor can report aggregate database command-execution duration for the current HTTP request. That is not necessarily identical to all time attributable to data access, because application-side materialization or later streaming of rows can occur outside the command execution event.
+When a Tool exposes a database metric, its semantics must be stated precisely. A provider- or framework-level timing hook may measure command execution while excluding application-side materialization, connection acquisition, domain transformation, or other persistence-adjacent work.
 
 Use a name such as:
 
@@ -87,7 +87,27 @@ Use a name such as:
 <tool-key>-db
 ```
 
-rather than exposing database product names, connection identities, table names, or SQL statements in `Server-Timing`.
+rather than exposing database product names, connection identities, table names, SQL statements, or parameters in `Server-Timing`.
+
+The reference Rules Core implementation uses Npgsql's built-in activity source so both Entity Framework Core operations and direct Npgsql commands are represented. It requests propagation-only activity data rather than SQL/enrichment data and excludes physical connection-open spans from `rules-core-db`.
+
+## Service-to-service and private-tunnel propagation
+
+A headless Tool emits `Server-Timing` to its direct HTTP caller just like a browser-facing Tool. Whether those downstream metrics reach the browser depends on the data path.
+
+When Site directly proxies the Tool response, Site preserves the Tool metrics automatically and adds `dnd-site`.
+
+Private Tool tunnels are different. Their data traffic goes directly from the source Tool to the target Tool; Site is only the identity/control plane. Site therefore can not observe, infer, or automatically forward target timing from a private-tunnel request.
+
+A browser-facing Tool that calls another Tool server-side may deliberately propagate useful downstream Tool metrics to its own browser response. If it does:
+
+- preserve the downstream Tool's metric names so ownership remains clear;
+- append rather than replace the caller's own metrics;
+- do not rename a downstream metric into the caller's namespace;
+- do not propagate nested `dnd-*` values from an internal call as though they described the outer browser request; and
+- do not collapse or sum repeated downstream metrics unless the caller explicitly defines and documents that aggregate semantic.
+
+This propagation is optional and belongs to the calling Tool because only that Tool knows which downstream calls contributed to the browser response.
 
 ## Cross-origin behavior
 
@@ -116,17 +136,23 @@ Their intended meanings are:
 
 - `rules-core` — end-to-end Rules Core request time until response headers are committed;
 - `rules-core-auth` — Site Tool-ticket introspection performed by Rules Core for the request;
-- `rules-core-db` — aggregate Entity Framework Core database command-execution duration for the request;
+- `rules-core-db` — aggregate Npgsql database-operation duration for the active request, excluding physical connection-open spans;
 - `rules-core-reference-query` — query-stage time reported by Rules Core's reference catalog service;
 - `rules-core-reference-docs` — mechanical-document/materialization stage time reported by the reference catalog service;
 - `rules-core-reference-total` — total reference-catalog service operation time.
 
 The `reference-*` metrics describe work owned by the headless Rules Core service. They do not imply that Rules Core contains a Rules Wiki UI. Rules Wiki is a separate Tool that consumes Rules Core's private reference APIs through the established private Tool tunnel architecture.
 
-A proxied or delegated request may therefore produce a header conceptually similar to:
+A direct Rules Core response may therefore contain values similar to:
 
 ```text
-Server-Timing: rules-core-auth;dur=3.8, rules-core-db;dur=12.1, rules-core-reference-query;dur=9.4, rules-core-reference-docs;dur=2.0, rules-core-reference-total;dur=12.0, rules-core;dur=18.6, dnd-site;dur=24.3
+Server-Timing: rules-core-auth;dur=3.8, rules-core-db;dur=12.1, rules-core-reference-query;dur=9.4, rules-core-reference-docs;dur=2.0, rules-core-reference-total;dur=12.0, rules-core;dur=18.6
+```
+
+If Site is directly proxying that same response, Site additionally contributes its outer metric:
+
+```text
+Server-Timing: rules-core-auth;dur=3.8, rules-core-db;dur=12.1, rules-core;dur=18.6, dnd-site;dur=24.3
 ```
 
 Exact ordering is not part of the contract.
@@ -142,7 +168,7 @@ The Site and Rules Core implementations use the same general pattern:
 - use a per-request timing state to accumulate optional component durations; and
 - let component-specific code record into that state without owning the final header lifecycle.
 
-This keeps header emission centralized while allowing database interceptors, authentication middleware, and domain services to contribute useful measurements.
+This keeps header emission centralized while allowing database diagnostics, authentication middleware, and domain services to contribute useful measurements.
 
 Equivalent behavior is acceptable in non-.NET Tools. The contract is the HTTP output and metric semantics, not a specific framework implementation.
 
@@ -153,7 +179,8 @@ Before a Tool timing implementation is considered complete, verify that:
 - an ordinary successful response contains the Tool's whole-request metric;
 - a normal handled error response still contains the metric;
 - existing timing values are preserved when another layer already added them;
-- a hosted response through Site contains both the Tool metric and `dnd-site`;
+- a response directly proxied through Site contains both the Tool metric and `dnd-site`;
+- private-tunnel timing is not assumed to pass through Site automatically;
 - component metrics use the Tool-key namespace;
 - no `dnd-*` metric is emitted by the Tool;
 - formatting is culture invariant;
