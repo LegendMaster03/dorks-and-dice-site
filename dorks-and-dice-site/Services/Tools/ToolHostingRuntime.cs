@@ -40,7 +40,7 @@ public static class ToolVisibility
         string? modeId,
         ClaimsPrincipal principal) =>
         tool.Kind == ToolKind.Application
-        && !string.IsNullOrWhiteSpace(tool.Slug)
+        && ToolPublicRoute.CanBuild(tool)
         && tool.Enabled
         && IsVisibleInMode(tool, modeId)
         && CanUseReleaseAudience(tool, modeId, principal)
