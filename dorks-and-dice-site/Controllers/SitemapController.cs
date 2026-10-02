@@ -3,13 +3,15 @@ using System.Text;
 using dorks_and_dice_site.Models.Content;
 using dorks_and_dice_site.Services.Content;
 using dorks_and_dice_site.Services.Site;
+using dorks_and_dice_site.Services.Tools;
 using Microsoft.AspNetCore.Mvc;
 
 namespace dorks_and_dice_site.Controllers;
 
 /// <summary>
-/// Generates the public sitemap from the active normal mode plus its current public content.
-/// Database-backed content therefore becomes discoverable without rebuilding the application.
+/// Generates the public sitemap from the active normal mode plus its current public content and
+/// anonymously reachable public Tools. Database-backed content and separately deployed
+/// applications therefore become discoverable without rebuilding the application.
 /// </summary>
 public sealed class SitemapController : Controller
 {
@@ -22,11 +24,16 @@ public sealed class SitemapController : Controller
     ];
 
     private readonly IContentCatalogService _catalog;
+    private readonly IToolRegistry _toolRegistry;
     private readonly SiteModeOptions _siteModeOptions;
 
-    public SitemapController(IContentCatalogService catalog, SiteModeOptions siteModeOptions)
+    public SitemapController(
+        IContentCatalogService catalog,
+        IToolRegistry toolRegistry,
+        SiteModeOptions siteModeOptions)
     {
         _catalog = catalog;
+        _toolRegistry = toolRegistry;
         _siteModeOptions = siteModeOptions;
     }
 
@@ -58,6 +65,19 @@ public sealed class SitemapController : Controller
                 }
 
                 paths.Add(ContentPublicRoute.GetPath(item.Slug, item.Tags));
+            }
+        }
+
+        var publicTools = (await _toolRegistry.GetAllAsync(cancellationToken))
+            .Where(tool => ToolVisibility.IsPubliclyDiscoverable(tool, modeContext.ActiveModeId))
+            .ToArray();
+
+        if (publicTools.Length > 0)
+        {
+            paths.Add("/tools");
+            foreach (var tool in publicTools)
+            {
+                paths.Add($"/tools/{tool.Slug}");
             }
         }
 
