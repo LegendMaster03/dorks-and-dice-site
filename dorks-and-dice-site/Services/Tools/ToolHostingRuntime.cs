@@ -44,9 +44,8 @@ public static class ToolVisibility
         && tool.Enabled
         && IsVisibleInMode(tool, modeId)
         && CanUseReleaseAudience(tool, modeId, principal)
-        && (tool.ReleaseAudience != ToolReleaseAudience.Public
-            || tool.AllowAnonymous
-            || principal.Identity?.IsAuthenticated == true);
+        && (principal.Identity?.IsAuthenticated == true
+            || IsPubliclyDiscoverable(tool, modeId));
 
     /// <summary>
     /// Returns whether an application is intentionally public, anonymously reachable, and
