@@ -1,7 +1,6 @@
 using System.Security;
 using System.Text;
 using dorks_and_dice_site.Models.Content;
-using dorks_and_dice_site.Models.Tools;
 using dorks_and_dice_site.Services.Content;
 using dorks_and_dice_site.Services.Site;
 using dorks_and_dice_site.Services.Tools;
@@ -78,8 +77,7 @@ public sealed class SitemapController : Controller
             paths.Add("/tools");
             foreach (var tool in publicTools)
             {
-                var suffix = tool.IntegrationType == ToolIntegrationType.ProxiedApplication ? "/" : string.Empty;
-                paths.Add($"/tools/{tool.Slug}{suffix}");
+                paths.Add(ToolPublicRoute.GetPath(tool));
             }
         }
 
