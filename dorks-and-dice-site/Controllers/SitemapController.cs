@@ -1,6 +1,7 @@
 using System.Security;
 using System.Text;
 using dorks_and_dice_site.Models.Content;
+using dorks_and_dice_site.Models.Tools;
 using dorks_and_dice_site.Services.Content;
 using dorks_and_dice_site.Services.Site;
 using dorks_and_dice_site.Services.Tools;
