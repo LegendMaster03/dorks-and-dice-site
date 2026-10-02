@@ -49,13 +49,17 @@ public sealed class ToolHostingRuntimeTests
     }
 
     [Fact]
-    public void PublicDiscoverabilityRequiresAnonymousPublicApplication()
+    public void PublicDiscoverabilityRequiresAnonymousPublicConfiguredApplication()
     {
         var tool = new ToolRegistration
         {
             Kind = ToolKind.Application,
             Slug = "initiative",
             Modes = [SiteModeValues.DorksAndDiceModeValue],
+            IntegrationType = ToolIntegrationType.EmbeddedModule,
+            IntegrationContractVersion = ToolIntegrationContractVersions.EmbeddedModuleCurrent,
+            UpstreamBaseUrl = "http://initiative:8080",
+            FrontendEntryPoint = "/app.js",
             ReleaseAudience = ToolReleaseAudience.Public,
             AllowAnonymous = true,
             Enabled = true
@@ -74,6 +78,14 @@ public sealed class ToolHostingRuntimeTests
         tool.Enabled = false;
         Assert.False(ToolVisibility.IsPubliclyDiscoverable(tool, SiteModeValues.DorksAndDiceModeValue));
         tool.Enabled = true;
+
+        tool.FrontendEntryPoint = null;
+        Assert.False(ToolVisibility.IsPubliclyDiscoverable(tool, SiteModeValues.DorksAndDiceModeValue));
+        tool.FrontendEntryPoint = "/app.js";
+
+        tool.IntegrationContractVersion = ToolIntegrationContractVersions.EmbeddedModuleCurrent + 1;
+        Assert.False(ToolVisibility.IsPubliclyDiscoverable(tool, SiteModeValues.DorksAndDiceModeValue));
+        tool.IntegrationContractVersion = ToolIntegrationContractVersions.EmbeddedModuleCurrent;
 
         tool.Kind = ToolKind.Service;
         Assert.False(ToolVisibility.IsPubliclyDiscoverable(tool, SiteModeValues.DorksAndDiceModeValue));
