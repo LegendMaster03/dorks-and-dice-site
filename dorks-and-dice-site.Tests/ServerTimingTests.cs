@@ -32,6 +32,7 @@ public sealed class ServerTimingTests
         Assert.Single(metrics.Where(metric => metric.Name == ServerTimingMiddleware.SiteMetricName));
         Assert.Single(metrics.Where(metric => metric.Name == ServerTimingMiddleware.TotalMetricName));
         Assert.DoesNotContain(metrics, metric => metric.Name == ServerTimingMiddleware.ToolMetricName);
+        Assert.DoesNotContain(metrics, metric => metric.Name.StartsWith("dnd-", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -116,6 +117,7 @@ public sealed class ServerTimingTests
         Assert.True(tool.DurationMilliseconds >= 10);
         Assert.True(total.DurationMilliseconds >= tool.DurationMilliseconds);
         Assert.True(site.DurationMilliseconds < total.DurationMilliseconds);
+        Assert.DoesNotContain(metrics, metric => metric.Name.StartsWith("dnd-", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -155,6 +157,7 @@ public sealed class ServerTimingTests
             metric.Name == ServerTimingMiddleware.ToolMetricName
             && metric.Description == "proxy-test");
         Assert.Contains(metrics, metric => metric.Name == ServerTimingMiddleware.TotalMetricName);
+        Assert.DoesNotContain(metrics, metric => metric.Name.StartsWith("dnd-", StringComparison.Ordinal));
     }
 
     private static ToolProxyService CreateProxyService(HttpMessageHandler handler)
