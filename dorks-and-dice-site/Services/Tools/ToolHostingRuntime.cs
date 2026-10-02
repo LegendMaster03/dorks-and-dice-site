@@ -105,16 +105,23 @@ public static class ToolVisibility
             : [SiteModeValues.DorksAndDiceModeValue];
     }
 
-    private static bool HasPublicRouteConfiguration(ToolRegistration tool) =>
-        tool.IntegrationType switch
+    private static bool HasPublicRouteConfiguration(ToolRegistration tool)
+    {
+        if (!ToolUpstreamUri.TryBuild(tool, "/", QueryString.Empty, out _))
+        {
+            return false;
+        }
+
+        return tool.IntegrationType switch
         {
             ToolIntegrationType.EmbeddedModule =>
-                !string.IsNullOrWhiteSpace(tool.UpstreamBaseUrl)
-                && !string.IsNullOrWhiteSpace(tool.FrontendEntryPoint),
-            ToolIntegrationType.ProxiedApplication =>
-                !string.IsNullOrWhiteSpace(tool.UpstreamBaseUrl),
+                !string.IsNullOrWhiteSpace(tool.FrontendEntryPoint)
+                && tool.FrontendEntryPoint.StartsWith("/", StringComparison.Ordinal)
+                && ToolUpstreamUri.TryBuild(tool, tool.FrontendEntryPoint, QueryString.Empty, out _),
+            ToolIntegrationType.ProxiedApplication => true,
             _ => false
         };
+    }
 }
 
 /// <summary>
