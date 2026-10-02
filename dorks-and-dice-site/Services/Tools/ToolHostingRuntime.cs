@@ -56,7 +56,7 @@ public static class ToolVisibility
     /// </summary>
     public static bool IsPubliclyDiscoverable(ToolRegistration tool, string? modeId) =>
         tool.Kind == ToolKind.Application
-        && !string.IsNullOrWhiteSpace(tool.Slug)
+        && ToolPublicRoute.CanBuild(tool)
         && tool.Enabled
         && tool.ReleaseAudience == ToolReleaseAudience.Public
         && tool.AllowAnonymous
