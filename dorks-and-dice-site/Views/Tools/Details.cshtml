@@ -19,13 +19,23 @@
         @if (string.IsNullOrWhiteSpace(Model.UpstreamBaseUrl) || string.IsNullOrWhiteSpace(Model.FrontendEntryPoint))
         {
             <div class="card card-body">
+                <h1 class="h4 mb-2">@Model.DisplayName</h1>
+                @if (!string.IsNullOrWhiteSpace(Model.Description))
+                {
+                    <p class="text-body-secondary">@Model.Description</p>
+                }
                 <p class="mb-0 text-body-secondary">This tool is registered but its embedded module endpoint is not configured yet.</p>
             </div>
         }
         else
         {
             <div id="tool-load-status" class="card card-body" role="status" aria-live="polite">
-                <p class="mb-0 text-body-secondary">Loading tool…</p>
+                <h1 class="h4 mb-2">@Model.DisplayName</h1>
+                @if (!string.IsNullOrWhiteSpace(Model.Description))
+                {
+                    <p class="text-body-secondary">@Model.Description</p>
+                }
+                <p class="mb-0 text-body-secondary">Loading interactive tool…</p>
             </div>
         }
     </div>
