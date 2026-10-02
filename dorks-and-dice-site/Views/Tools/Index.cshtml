@@ -1,4 +1,5 @@
 @model IReadOnlyList<dorks_and_dice_site.Models.Tools.ToolRegistration>
+@using dorks_and_dice_site.Models.Tools
 @{
     ViewData["Title"] = "Tools";
     ViewData["MetaDescription"] = "Browse interactive tools and utilities available through this site.";
@@ -27,7 +28,7 @@ else
                         {
                             <p class="text-body-secondary">@tool.Description</p>
                         }
-                        <a class="btn btn-primary mt-auto align-self-start" href="/tools/@tool.Slug">Open tool</a>
+                        <a class="btn btn-primary mt-auto align-self-start" href="@ToolPublicRoute.GetPath(tool)">Open tool</a>
                     </div>
                 </section>
             </div>
