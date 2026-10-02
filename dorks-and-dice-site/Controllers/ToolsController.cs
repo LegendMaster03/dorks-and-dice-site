@@ -148,7 +148,7 @@ public sealed class ToolsController : Controller
         var modeId = HttpContext.GetSiteModeContext().ActiveModeId;
         return tool is not null
             && tool.Kind == ToolKind.Application
-            && !string.IsNullOrWhiteSpace(tool.Slug)
+            && ToolPublicRoute.CanBuild(tool)
             && tool.Enabled
             && ToolVisibility.IsVisibleInMode(tool, modeId)
             ? tool
