@@ -104,7 +104,7 @@ public sealed class ToolsController : Controller
             var requestPath = Request.Path.Value ?? string.Empty;
             if (!requestPath.EndsWith("/", StringComparison.Ordinal))
             {
-                return RedirectPreserveMethod($"/tools/{tool.Slug}/{Request.QueryString}");
+                return RedirectPreserveMethod($"{ToolPublicRoute.GetPath(tool)}{Request.QueryString}");
             }
         }
 
@@ -114,7 +114,7 @@ public sealed class ToolsController : Controller
 
     private IActionResult RenderEmbeddedTool(ToolRegistration tool, string toolRoute)
     {
-        var toolBasePath = $"/tools/{tool.Slug}";
+        var toolBasePath = ToolPublicRoute.GetPath(tool);
         var contextUrl = $"/tool-host/{tool.Slug}/context";
         if (!string.Equals(toolRoute, "/", StringComparison.Ordinal))
         {
