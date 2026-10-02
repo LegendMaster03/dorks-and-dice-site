@@ -104,7 +104,7 @@ public sealed class ToolsController : Controller
             var requestPath = Request.Path.Value ?? string.Empty;
             if (!requestPath.EndsWith("/", StringComparison.Ordinal))
             {
-                return RedirectPreserveMethod($"/tools/{tool.Slug}/{Request.QueryString}");
+                return RedirectPreserveMethod($"{ToolPublicRoute.GetPath(tool)}{Request.QueryString}");
             }
         }
 
@@ -114,16 +114,29 @@ public sealed class ToolsController : Controller
 
     private IActionResult RenderEmbeddedTool(ToolRegistration tool, string toolRoute)
     {
-        var toolBasePath = $"/tools/{tool.Slug}";
+        var toolBasePath = ToolPublicRoute.GetPath(tool);
         var contextUrl = $"/tool-host/{tool.Slug}/context";
         if (!string.Equals(toolRoute, "/", StringComparison.Ordinal))
         {
             contextUrl += $"?toolRoute={Uri.EscapeDataString(toolRoute)}";
         }
 
+        var modeId = HttpContext.GetSiteModeContext().ActiveModeId;
+        var publiclyDiscoverable = ToolVisibility.IsPubliclyDiscoverable(tool, modeId);
+
         ViewData["ToolBasePath"] = toolBasePath;
         ViewData["ToolRoute"] = toolRoute;
         ViewData["ToolContextUrl"] = contextUrl;
+        ViewData["MetaTitle"] = tool.DisplayName;
+        if (!string.IsNullOrWhiteSpace(tool.Description))
+        {
+            ViewData["MetaDescription"] = tool.Description.Trim();
+        }
+        if (!publiclyDiscoverable)
+        {
+            ViewData["Robots"] = "noindex,nofollow";
+        }
+
         return View("Details", tool);
     }
 
@@ -135,7 +148,7 @@ public sealed class ToolsController : Controller
         var modeId = HttpContext.GetSiteModeContext().ActiveModeId;
         return tool is not null
             && tool.Kind == ToolKind.Application
-            && !string.IsNullOrWhiteSpace(tool.Slug)
+            && ToolPublicRoute.CanBuild(tool)
             && tool.Enabled
             && ToolVisibility.IsVisibleInMode(tool, modeId)
             ? tool

@@ -40,13 +40,29 @@ public static class ToolVisibility
         string? modeId,
         ClaimsPrincipal principal) =>
         tool.Kind == ToolKind.Application
-        && !string.IsNullOrWhiteSpace(tool.Slug)
+        && ToolPublicRoute.CanBuild(tool)
         && tool.Enabled
         && IsVisibleInMode(tool, modeId)
         && CanUseReleaseAudience(tool, modeId, principal)
-        && (tool.ReleaseAudience != ToolReleaseAudience.Public
-            || tool.AllowAnonymous
-            || principal.Identity?.IsAuthenticated == true);
+        && (principal.Identity?.IsAuthenticated == true
+            || IsPubliclyDiscoverable(tool, modeId));
+
+    /// <summary>
+    /// Returns whether an application is intentionally public, anonymously reachable, and
+    /// configured well enough to serve its public route in the supplied site mode. Search
+    /// discovery surfaces must use this narrower policy instead of user-specific visibility so
+    /// Development, Testing, account-required, disabled, unsupported, incomplete, and service
+    /// registrations never leak into public indexes or sitemaps.
+    /// </summary>
+    public static bool IsPubliclyDiscoverable(ToolRegistration tool, string? modeId) =>
+        tool.Kind == ToolKind.Application
+        && ToolPublicRoute.CanBuild(tool)
+        && tool.Enabled
+        && tool.ReleaseAudience == ToolReleaseAudience.Public
+        && tool.AllowAnonymous
+        && IsVisibleInMode(tool, modeId)
+        && ToolIntegrationContractPolicy.IsSupported(tool)
+        && HasPublicRouteConfiguration(tool);
 
     public static bool CanUseReleaseAudience(
         ToolRegistration tool,
@@ -87,6 +103,24 @@ public static class ToolVisibility
         return tool.Modes is { Count: > 0 }
             ? tool.Modes
             : [SiteModeValues.DorksAndDiceModeValue];
+    }
+
+    private static bool HasPublicRouteConfiguration(ToolRegistration tool)
+    {
+        if (!ToolUpstreamUri.TryBuild(tool, "/", QueryString.Empty, out _))
+        {
+            return false;
+        }
+
+        return tool.IntegrationType switch
+        {
+            ToolIntegrationType.EmbeddedModule =>
+                !string.IsNullOrWhiteSpace(tool.FrontendEntryPoint)
+                && tool.FrontendEntryPoint.StartsWith("/", StringComparison.Ordinal)
+                && ToolUpstreamUri.TryBuild(tool, tool.FrontendEntryPoint, QueryString.Empty, out _),
+            ToolIntegrationType.ProxiedApplication => true,
+            _ => false
+        };
     }
 }
 

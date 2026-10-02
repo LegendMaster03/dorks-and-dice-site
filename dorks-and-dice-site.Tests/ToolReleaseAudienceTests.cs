@@ -46,6 +46,11 @@ public sealed class ToolReleaseAudienceTests
         tool.AllowAnonymous = true;
         Assert.True(ToolVisibility.IsVisibleToUser(tool, BuiltInSiteModes.DorksAndDice.Id, anonymous));
 
+        tool.FrontendEntryPoint = null;
+        Assert.False(ToolVisibility.IsVisibleToUser(tool, BuiltInSiteModes.DorksAndDice.Id, anonymous));
+        Assert.True(ToolVisibility.IsVisibleToUser(tool, BuiltInSiteModes.DorksAndDice.Id, member));
+        tool.FrontendEntryPoint = "/app.js";
+
         tool.AllowAnonymous = false;
         Assert.False(ToolVisibility.IsVisibleToUser(tool, BuiltInSiteModes.DorksAndDice.Id, anonymous));
         Assert.True(ToolVisibility.IsVisibleToUser(tool, BuiltInSiteModes.DorksAndDice.Id, member));
@@ -55,6 +60,10 @@ public sealed class ToolReleaseAudienceTests
     {
         Slug = "release-test",
         Modes = [BuiltInSiteModes.DorksAndDice.Id],
+        IntegrationType = ToolIntegrationType.EmbeddedModule,
+        IntegrationContractVersion = ToolIntegrationContractVersions.EmbeddedModuleCurrent,
+        UpstreamBaseUrl = "http://release-test:8080",
+        FrontendEntryPoint = "/app.js",
         ReleaseAudience = audience,
         AllowAnonymous = audience == ToolReleaseAudience.Public,
         Enabled = true

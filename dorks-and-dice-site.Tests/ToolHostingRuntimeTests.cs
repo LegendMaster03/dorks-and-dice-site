@@ -48,6 +48,49 @@ public sealed class ToolHostingRuntimeTests
         Assert.False(ToolVisibility.IsVisibleInMode(tool, SiteMode.Professional));
     }
 
+    [Fact]
+    public void PublicDiscoverabilityRequiresAnonymousPublicConfiguredApplication()
+    {
+        var tool = new ToolRegistration
+        {
+            Kind = ToolKind.Application,
+            Slug = "initiative",
+            Modes = [SiteModeValues.DorksAndDiceModeValue],
+            IntegrationType = ToolIntegrationType.EmbeddedModule,
+            IntegrationContractVersion = ToolIntegrationContractVersions.EmbeddedModuleCurrent,
+            UpstreamBaseUrl = "http://initiative:8080",
+            FrontendEntryPoint = "/app.js",
+            ReleaseAudience = ToolReleaseAudience.Public,
+            AllowAnonymous = true,
+            Enabled = true
+        };
+
+        Assert.True(ToolVisibility.IsPubliclyDiscoverable(tool, SiteModeValues.DorksAndDiceModeValue));
+
+        tool.AllowAnonymous = false;
+        Assert.False(ToolVisibility.IsPubliclyDiscoverable(tool, SiteModeValues.DorksAndDiceModeValue));
+        tool.AllowAnonymous = true;
+
+        tool.ReleaseAudience = ToolReleaseAudience.Testing;
+        Assert.False(ToolVisibility.IsPubliclyDiscoverable(tool, SiteModeValues.DorksAndDiceModeValue));
+        tool.ReleaseAudience = ToolReleaseAudience.Public;
+
+        tool.Enabled = false;
+        Assert.False(ToolVisibility.IsPubliclyDiscoverable(tool, SiteModeValues.DorksAndDiceModeValue));
+        tool.Enabled = true;
+
+        tool.FrontendEntryPoint = null;
+        Assert.False(ToolVisibility.IsPubliclyDiscoverable(tool, SiteModeValues.DorksAndDiceModeValue));
+        tool.FrontendEntryPoint = "/app.js";
+
+        tool.IntegrationContractVersion = ToolIntegrationContractVersions.EmbeddedModuleCurrent + 1;
+        Assert.False(ToolVisibility.IsPubliclyDiscoverable(tool, SiteModeValues.DorksAndDiceModeValue));
+        tool.IntegrationContractVersion = ToolIntegrationContractVersions.EmbeddedModuleCurrent;
+
+        tool.Kind = ToolKind.Service;
+        Assert.False(ToolVisibility.IsPubliclyDiscoverable(tool, SiteModeValues.DorksAndDiceModeValue));
+    }
+
     [Theory]
     [InlineData("/tools/test-tool")]
     [InlineData("/tool-modules/test-tool/app.js")]
@@ -176,9 +219,9 @@ public sealed class ToolHostingIntegrationTests
     }
 
     [Fact]
-    public async Task EmbeddedToolShellDoesNotDuplicateToolHeadingOrDescription()
+    public async Task EmbeddedToolShellProvidesCrawlableLoadingSummaryAndMetadata()
     {
-        const string shellDescription = "Site shell description marker";
+        const string shellDescription = "Tabletop initiative tracker description marker";
 
         var tool = await RegisterAsync(new ToolRegistration
         {
@@ -187,6 +230,10 @@ public sealed class ToolHostingIntegrationTests
             Description = shellDescription,
             Modes = [SiteModeValues.DorksAndDiceModeValue],
             IntegrationType = ToolIntegrationType.EmbeddedModule,
+            UpstreamBaseUrl = "http://localhost:8123",
+            FrontendEntryPoint = "/app.js",
+            ReleaseAudience = ToolReleaseAudience.Public,
+            AllowAnonymous = true,
             Enabled = true
         });
 
@@ -197,8 +244,42 @@ public sealed class ToolHostingIntegrationTests
 
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
             Assert.Contains("id=\"tool-root\"", html, StringComparison.Ordinal);
-            Assert.DoesNotContain(">Hosted tool<", html, StringComparison.OrdinalIgnoreCase);
-            Assert.DoesNotContain(shellDescription, html, StringComparison.Ordinal);
+            Assert.Contains("id=\"tool-load-status\"", html, StringComparison.Ordinal);
+            Assert.Contains(">Embedded Tool Shell Test</h1>", html, StringComparison.Ordinal);
+            Assert.Contains(shellDescription, html, StringComparison.Ordinal);
+            Assert.Contains($"<meta name=\"description\" content=\"{shellDescription}\"", html, StringComparison.Ordinal);
+            Assert.DoesNotContain("<meta name=\"robots\" content=\"noindex,nofollow\"", html, StringComparison.Ordinal);
+        }
+        finally
+        {
+            await DeleteAsync(tool.Id);
+        }
+    }
+
+    [Fact]
+    public async Task AccountRequiredEmbeddedToolIsNoindexWhenViewedByMember()
+    {
+        var tool = await RegisterAsync(new ToolRegistration
+        {
+            Slug = UniqueSlug(),
+            DisplayName = "Account Tool",
+            Description = "Private account tool",
+            Modes = [SiteModeValues.DorksAndDiceModeValue],
+            IntegrationType = ToolIntegrationType.EmbeddedModule,
+            ReleaseAudience = ToolReleaseAudience.Public,
+            AllowAnonymous = false,
+            Enabled = true
+        });
+
+        try
+        {
+            using var request = CreateRequest("dorks-and-dice.com", $"/tools/{tool.Slug}");
+            request.Headers.Add(TestRoleAuthenticationHandler.RolesHeader, "Member");
+            var response = await SendAsync(request);
+            var html = await response.Content.ReadAsStringAsync();
+
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            Assert.Contains("<meta name=\"robots\" content=\"noindex,nofollow\"", html, StringComparison.Ordinal);
         }
         finally
         {

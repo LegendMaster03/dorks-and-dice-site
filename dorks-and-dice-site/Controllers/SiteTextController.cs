@@ -1,25 +1,32 @@
 using System.Text;
 using System.Text.RegularExpressions;
 using dorks_and_dice_site.Models.Content;
+using dorks_and_dice_site.Models.Tools;
 using dorks_and_dice_site.Services.Content;
 using dorks_and_dice_site.Services.Site;
+using dorks_and_dice_site.Services.Tools;
 using Microsoft.AspNetCore.Mvc;
 
 namespace dorks_and_dice_site.Controllers;
 
 /// <summary>
 /// Public text representations of the active normal site mode. These endpoints deliberately use
-/// the normal content catalog and request mode context so they inherit the same source precedence,
-/// visibility, and listing rules as the public site.
+/// the normal content catalog, Tool registry, and request mode context so they inherit the same
+/// public visibility rules as the web site.
 /// </summary>
 public sealed partial class SiteTextController : Controller
 {
     private readonly IContentCatalogService _catalog;
+    private readonly IToolRegistry _toolRegistry;
     private readonly SiteModeOptions _siteModeOptions;
 
-    public SiteTextController(IContentCatalogService catalog, SiteModeOptions siteModeOptions)
+    public SiteTextController(
+        IContentCatalogService catalog,
+        IToolRegistry toolRegistry,
+        SiteModeOptions siteModeOptions)
     {
         _catalog = catalog;
+        _toolRegistry = toolRegistry;
         _siteModeOptions = siteModeOptions;
     }
 
@@ -33,6 +40,7 @@ public sealed partial class SiteTextController : Controller
         }
 
         var items = await GetPublicItemsAsync(modeContext, cancellationToken);
+        var tools = await GetPublicToolsAsync(modeContext, cancellationToken);
         var output = new StringBuilder();
         output.AppendLine($"# {modeContext.ActiveMode.DisplayName}");
         output.AppendLine($"Canonical site: {BuildAbsoluteUrl(modeContext, "/")}");
@@ -66,6 +74,19 @@ public sealed partial class SiteTextController : Controller
             }
         }
 
+        foreach (var tool in tools)
+        {
+            output.AppendLine();
+            output.AppendLine($"## {tool.DisplayName}");
+            output.AppendLine($"URL: {BuildAbsoluteUrl(modeContext, ToolPublicRoute.GetPath(tool))}");
+            output.AppendLine("Type: Interactive Tool");
+            if (!string.IsNullOrWhiteSpace(tool.Description))
+            {
+                output.AppendLine();
+                output.AppendLine(tool.Description.Trim());
+            }
+        }
+
         Response.Headers.CacheControl = "public, max-age=60";
         return Content(output.ToString(), "text/plain; charset=utf-8");
     }
@@ -80,6 +101,7 @@ public sealed partial class SiteTextController : Controller
         }
 
         var items = await GetPublicItemsAsync(modeContext, cancellationToken);
+        var tools = await GetPublicToolsAsync(modeContext, cancellationToken);
         var output = new StringBuilder();
         output.AppendLine($"# {modeContext.ActiveMode.DisplayName}");
         output.AppendLine();
@@ -94,6 +116,17 @@ public sealed partial class SiteTextController : Controller
             if (!string.IsNullOrWhiteSpace(item.Summary))
             {
                 output.Append(" — ").Append(CollapseWhitespace(item.Summary));
+            }
+            output.AppendLine();
+        }
+
+        foreach (var tool in tools)
+        {
+            output.Append("- ").Append(tool.DisplayName).Append(": ")
+                .Append(BuildAbsoluteUrl(modeContext, ToolPublicRoute.GetPath(tool)));
+            if (!string.IsNullOrWhiteSpace(tool.Description))
+            {
+                output.Append(" — ").Append(CollapseWhitespace(tool.Description));
             }
             output.AppendLine();
         }
@@ -134,6 +167,14 @@ public sealed partial class SiteTextController : Controller
             .ThenBy(item => item.Title, StringComparer.OrdinalIgnoreCase)
             .ToList();
     }
+
+    private async Task<IReadOnlyList<ToolRegistration>> GetPublicToolsAsync(
+        SiteModeContext modeContext,
+        CancellationToken cancellationToken) =>
+        (await _toolRegistry.GetAllAsync(cancellationToken))
+            .Where(tool => ToolVisibility.IsPubliclyDiscoverable(tool, modeContext.ActiveModeId))
+            .OrderBy(tool => tool.DisplayName, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
 
     private string BuildAbsoluteUrl(SiteModeContext modeContext, string path)
     {

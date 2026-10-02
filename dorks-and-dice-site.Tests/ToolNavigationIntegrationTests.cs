@@ -171,6 +171,7 @@ public sealed class ToolNavigationIntegrationTests(PublishedContentWebApplicatio
             DisplayName = $"{displayName} {Guid.NewGuid():N}",
             IntegrationType = ToolIntegrationType.EmbeddedModule,
             IntegrationContractVersion = ToolIntegrationContractVersions.EmbeddedModuleCurrent,
+            UpstreamBaseUrl = "http://localhost:8123",
             FrontendEntryPoint = "/app.js",
             Modes = [mode],
             AllowAnonymous = allowAnonymous,
