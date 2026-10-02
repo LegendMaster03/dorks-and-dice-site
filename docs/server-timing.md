@@ -2,25 +2,54 @@
 
 Dorks & Dice uses the standard HTTP `Server-Timing` response header to expose request-performance diagnostics from the Site platform and independently deployed Tools.
 
-This contract applies to both user-facing Tool applications and headless Tool services. It is intentionally transport-oriented: the Site does not need to understand a Tool's internal implementation in order to preserve and expose its timing metrics.
+This contract applies to both user-facing Tool applications and headless Tool services. The platform baseline does not require a Tool to implement `Server-Timing`: when Site directly proxies a Tool, Site already knows which Tool it dispatched to and when that upstream request produced response headers. Tool-owned instrumentation is an optional deeper layer on top of that baseline.
 
-## Platform behavior
+## Platform baseline
 
-The Site emits its own platform metric on responses:
+Site owns the `dnd-*` timing namespace and emits platform observations at the response-header boundary.
 
-```text
-Server-Timing: dnd-site;dur=27.4
-```
-
-`dnd-site` measures Site processing from the Site timing middleware's first execution until response headers are committed. For a proxied Tool request this includes time spent waiting for the upstream Tool to produce its response headers. It is therefore an outer request-to-header duration, not a measure of Site CPU time alone.
-
-When an upstream Tool returns `Server-Timing` and Site is the HTTP data plane for that request, the Tool proxy preserves those values and Site appends its own platform metric. A proxied response can therefore expose both layers:
+For an ordinary Site response with no proxied Tool, the baseline is:
 
 ```text
-Server-Timing: rules-core;dur=21.8, rules-core-db;dur=11.2, dnd-site;dur=27.4
+Server-Timing: dnd-site;dur=6.2, dnd-total;dur=6.2
 ```
 
-The metrics are not expected to add up. Nested and overlapping timings are valid and useful.
+For a response directly proxied to Rules Core, Site can distinguish its own elapsed time from time spent waiting on that Tool even if Rules Core emits no timing information at all:
+
+```text
+Server-Timing: dnd-site;dur=5.1, dnd-tool;desc="rules-core";dur=21.3, dnd-total;dur=26.4
+```
+
+The platform metrics mean:
+
+- `dnd-total` — elapsed time from the Site timing middleware's first execution until Site response headers are committed;
+- `dnd-tool` — Site-observed elapsed time from dispatching an HTTP request to a directly proxied Tool until that upstream request returns response headers or terminates with an upstream failure; the standard `desc` field contains the Tool's stable registration key;
+- `dnd-site` — `dnd-total` with direct upstream Tool-wait intervals removed, representing elapsed time spent outside those upstream waits in the Site request path.
+
+`dnd-tool` is not pure Tool CPU or application execution time. It can include request-body upload, transport, connection/network latency, and Tool processing until upstream response headers arrive. It is deliberately a Site-observed boundary measurement.
+
+If Site performs more than one direct upstream Tool request during one outer request, each observation may produce a `dnd-tool` entry. Site calculates `dnd-site` by removing the union of the observed upstream wait intervals, so overlapping upstream calls are not double-subtracted from the outer request time.
+
+The Tool identity is carried in `desc` rather than being dynamically concatenated into the metric name. `desc` is part of the Server Timing standard and is exposed to browser code as `PerformanceServerTiming.description`. This preserves the stable `dnd-tool` platform metric while still identifying the service Site accessed.
+
+## Tool-owned detail
+
+A Tool can additionally emit its own standard `Server-Timing` values. Site preserves those values when Site is the HTTP data plane and appends its own platform metrics.
+
+With Rules Core instrumentation enabled, the same request can therefore provide both the platform observation and Rules Core's internal explanation:
+
+```text
+Server-Timing: rules-core;dur=18.7, rules-core-db;dur=12.0, dnd-site;dur=5.1, dnd-tool;desc="rules-core";dur=21.3, dnd-total;dur=26.4
+```
+
+These values answer different questions:
+
+- `dnd-tool;desc="rules-core"` answers how long Site waited on its direct Rules Core HTTP dependency;
+- `rules-core` answers how much request-to-header time Rules Core measured inside its own request pipeline;
+- `rules-core-db` and other `rules-core-*` values explain portions of Rules Core's internal work;
+- the difference between `dnd-tool` and `rules-core` can expose transport/proxy overhead and measurement-boundary differences.
+
+The Tool-owned component metrics can overlap each other and must not be summed blindly.
 
 ## Metric ownership and names
 
@@ -31,14 +60,14 @@ The namespace is ownership-based.
 - The Tool's whole-request metric should use the key itself, for example `rules-core`.
 - Tool submetrics should use `<tool-key>-<component>`, for example `rules-core-auth` or `rules-core-db`.
 - Use the stable Tool key, not a public slug. Headless services do not necessarily have a slug, while every registration has a stable key.
-- A Tool key used directly as a timing namespace must be valid as a `Server-Timing` metric token. Dorks & Dice timing-capable registrations should use lowercase ASCII letters, digits, and hyphens. Do not silently sanitize an incompatible registration key at emission time because different keys could collapse to the same metric namespace.
+- A Tool key used directly as a Tool-owned timing metric name must be valid as a `Server-Timing` metric token. Dorks & Dice timing-capable registrations should use lowercase ASCII letters, digits, and hyphens. Do not silently sanitize an incompatible registration key at emission time because different keys could collapse to the same metric namespace.
 - Metric names should be stable contracts. Do not encode route parameters, user IDs, campaign IDs, entity IDs, query text, or other high-cardinality/request-specific data into metric names.
 
-A Tool may expose only its whole-request metric initially and add useful submetrics later.
+A Tool may expose only its whole-request metric initially and add useful submetrics later. A Tool may also expose no timing metrics at all; the Site baseline still distinguishes Site time from direct proxy wait time.
 
 ## Required Tool behavior
 
-A conforming hosted Tool should:
+A Tool that implements deeper Server Timing should:
 
 1. measure request duration from the Tool's earliest practical request-pipeline boundary until response headers are committed;
 2. append a whole-request metric named with its stable Tool key;
@@ -55,17 +84,19 @@ Three decimal places are sufficient for Dorks & Dice diagnostics:
 rules-core;dur=12.347
 ```
 
-Descriptions are optional. If used, they must remain low-cardinality and must not expose internal hostnames, SQL, credentials, tokens, paths containing private identifiers, or other sensitive infrastructure details.
+Descriptions are optional for Tool-owned metrics. If used, they must remain low-cardinality and must not expose internal hostnames, SQL, credentials, tokens, paths containing private identifiers, or other sensitive infrastructure details.
 
 ## Whole-request timing semantics
 
-The whole-request metric represents time to response headers, not complete response-body transmission. This is deliberate: ordinary response headers must be finalized before the body is streamed.
+Whole-request header metrics represent time to response headers, not complete response-body transmission. This is deliberate: ordinary response headers must be finalized before the body is streamed.
 
-For most Dorks & Dice APIs this is a useful approximation of server work and time to first byte. A Tool that streams a long response body should not mislabel the whole-request header metric as full-body duration.
+For most Dorks & Dice APIs this is a useful approximation of server work and time to first byte. A Tool that streams a long response body should not mislabel its whole-request header metric as full-body duration.
+
+The same boundary applies to the Site platform values. `dnd-total`, `dnd-site`, and `dnd-tool` describe the path to response headers, not the complete transfer of a large proxied response body.
 
 ## Component metrics
 
-Submetrics should answer operational questions that can change a developer's next action. Good examples include:
+Tool submetrics should answer operational questions that can change a developer's next action. Good examples include:
 
 - authentication or Site ticket introspection;
 - aggregate database-command execution;
@@ -76,7 +107,7 @@ Submetrics should answer operational questions that can change a developer's nex
 
 Do not create a metric merely because a method exists. Too many low-value metrics make the header harder to interpret and increase maintenance cost.
 
-Component timings may overlap each other and may be nested inside the Tool's whole-request duration. Consumers must not assume that subtracting or summing arbitrary metrics produces another meaningful duration unless that relationship is explicitly documented by the Tool.
+Component timings may overlap each other and may be nested inside the Tool's whole-request duration. Consumers must not assume that subtracting or summing arbitrary Tool-owned metrics produces another meaningful duration unless that relationship is explicitly documented by the Tool.
 
 ## Database metrics
 
@@ -94,11 +125,11 @@ The reference Rules Core implementation uses Npgsql's built-in activity source s
 
 ## Service-to-service and private-tunnel propagation
 
-A headless Tool emits `Server-Timing` to its direct HTTP caller just like a browser-facing Tool. Whether those downstream metrics reach the browser depends on the data path.
+The Site platform baseline only observes requests for which Site is actually on the HTTP data path.
 
-When Site directly proxies the Tool response, Site preserves the Tool metrics automatically and adds `dnd-site`.
+When Site directly proxies a Tool response, Site can always produce `dnd-tool` and preserve any Tool-owned metrics returned by the upstream service.
 
-Private Tool tunnels are different. Their data traffic goes directly from the source Tool to the target Tool; Site is only the identity/control plane. Site therefore can not observe, infer, or automatically forward target timing from a private-tunnel request.
+Private Tool tunnels are different. Their data traffic goes directly from the source Tool to the target Tool; Site is only the identity/control plane. Site therefore can not produce a `dnd-tool` observation for that private data transfer and can not infer the target Tool's internal timing.
 
 A browser-facing Tool that calls another Tool server-side may deliberately propagate useful downstream Tool metrics to its own browser response. If it does:
 
@@ -108,7 +139,7 @@ A browser-facing Tool that calls another Tool server-side may deliberately propa
 - do not propagate nested `dnd-*` values from an internal call as though they described the outer browser request; and
 - do not collapse or sum repeated downstream metrics unless the caller explicitly defines and documents that aggregate semantic.
 
-This propagation is optional and belongs to the calling Tool because only that Tool knows which downstream calls contributed to the browser response.
+A calling Tool may also expose its own low-cardinality dependency timing if that is operationally useful, but such a metric belongs to the calling Tool's namespace, not `dnd-*`.
 
 ## Cross-origin behavior
 
@@ -137,30 +168,30 @@ Their intended meanings are:
 
 - `rules-core` — end-to-end Rules Core request time until response headers are committed;
 - `rules-core-auth` — Site Tool-ticket introspection performed by Rules Core for the request;
-- `rules-core-db` — aggregate Npgsql database-operation duration for the active request, excluding physical connection-open spans;
+- `rules-core-db` — aggregate Npgsql database-operation duration for the active request before response headers are committed, excluding physical connection-open spans;
 - `rules-core-reference-query` — query-stage time reported by Rules Core's reference catalog service;
 - `rules-core-reference-materialize` — reference materialization time, including document loading/projection and effective-rule resolution where required;
 - `rules-core-reference-total` — total reference-catalog service operation time.
 
 The `reference-*` metrics describe work owned by the headless Rules Core service. They do not imply that Rules Core contains a Rules Wiki UI. Rules Wiki is a separate Tool that consumes Rules Core's private reference APIs through the established private Tool tunnel architecture.
 
-A direct Rules Core response may therefore contain values similar to:
+A direct Rules Core response can therefore contain values similar to:
 
 ```text
 Server-Timing: rules-core-auth;dur=3.8, rules-core-db;dur=12.1, rules-core-reference-query;dur=9.4, rules-core-reference-materialize;dur=2.0, rules-core-reference-total;dur=12.0, rules-core;dur=18.6
 ```
 
-If Site is directly proxying that same response, Site additionally contributes its outer metric:
+If Site is directly proxying that response, the outer response additionally contains the independent platform observations:
 
 ```text
-Server-Timing: rules-core-auth;dur=3.8, rules-core-db;dur=12.1, rules-core;dur=18.6, dnd-site;dur=24.3
+Server-Timing: rules-core-auth;dur=3.8, rules-core-db;dur=12.1, rules-core;dur=18.6, dnd-site;dur=5.2, dnd-tool;desc="rules-core";dur=21.0, dnd-total;dur=26.2
 ```
 
 Exact ordering is not part of the contract.
 
 ## Implementation guidance for ASP.NET Core Tools
 
-The Site and Rules Core implementations use the same general pattern:
+The Rules Core reference implementation uses this general Tool-side pattern:
 
 - capture a monotonic timestamp at the earliest request boundary;
 - register `Response.OnStarting` once per `HttpContext`;
@@ -169,22 +200,33 @@ The Site and Rules Core implementations use the same general pattern:
 - use a per-request timing state to accumulate optional component durations; and
 - let component-specific code record into that state without owning the final header lifecycle.
 
-This keeps header emission centralized while allowing database diagnostics, authentication middleware, and domain services to contribute useful measurements.
+The Site platform independently measures its direct Tool dependency at the proxy boundary. A Tool does not need to call a Site API or duplicate Site's `dnd-tool` observation.
 
-Equivalent behavior is acceptable in non-.NET Tools. The contract is the HTTP output and metric semantics, not a specific framework implementation.
+Equivalent behavior is acceptable in non-.NET Tools. The Tool contract is the HTTP output and metric semantics, not a specific framework implementation.
 
 ## Validation checklist
 
-Before a Tool timing implementation is considered complete, verify that:
+For the Site platform baseline, verify that:
+
+- an ordinary non-Tool response contains one `dnd-site` and one `dnd-total` metric and no `dnd-tool` metric;
+- a directly proxied Tool response contains `dnd-site`, `dnd-total`, and a `dnd-tool` whose description identifies the stable Tool key even when the Tool emits no timing of its own;
+- `dnd-site` excludes the union of direct upstream Tool-wait intervals rather than labeling the entire outer request as Site time;
+- upstream `Server-Timing` values are appended rather than replacing existing timing values; and
+- middleware re-execution does not duplicate the platform timing callback.
+
+For a Tool-owned timing implementation, verify that:
 
 - an ordinary successful response contains the Tool's whole-request metric;
 - a normal handled error response still contains the metric;
-- existing timing values are preserved when another layer already added them;
-- a response directly proxied through Site contains both the Tool metric and `dnd-site`;
-- private-tunnel timing is not assumed to pass through Site automatically;
-- the Tool key used for the timing namespace is token-safe and is not silently rewritten;
+- the Tool key used for its timing namespace is token-safe and is not silently rewritten;
 - component metrics use the Tool-key namespace;
 - no `dnd-*` metric is emitted by the Tool;
 - formatting is culture invariant;
 - duplicate callbacks do not create duplicate whole-request metrics; and
 - tests assert metric presence and parseability without asserting fragile exact durations.
+
+For cross-service behavior, verify that:
+
+- a response directly proxied through Site preserves Tool-owned metrics when present while still providing the independent Site baseline;
+- private-tunnel timing is not assumed to pass through Site automatically; and
+- lack of Tool-owned instrumentation does not prevent Site from identifying and timing the direct Tool dependency it proxies.
