@@ -113,6 +113,16 @@ public sealed class ToolHostAuthenticationContextFactory(
         ArgumentNullException.ThrowIfNull(targetTool);
         ArgumentNullException.ThrowIfNull(sourceContext);
 
+        // Services are governed by the separate delegation/private-tunnel service policy. When
+        // the target is an application, the initiating user's authoritative Tool Host context
+        // must independently satisfy that destination application's current mode and release
+        // audience so an accessible source Tool can not act as a confused deputy.
+        if (targetTool.Kind == ToolKind.Application
+            && !ToolApplicationAccessPolicy.CanAccessFromHostContext(targetTool, sourceContext))
+        {
+            return null;
+        }
+
         if (!Guid.TryParse(sourceContext.User.Id, out var userId))
         {
             return null;

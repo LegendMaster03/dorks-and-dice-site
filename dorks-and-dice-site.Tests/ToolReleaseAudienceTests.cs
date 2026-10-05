@@ -56,6 +56,78 @@ public sealed class ToolReleaseAudienceTests
         Assert.True(ToolVisibility.IsVisibleToUser(tool, BuiltInSiteModes.DorksAndDice.Id, member));
     }
 
+    [Fact]
+    public void ApplicationAccessPolicyGivesReleaseAudiencePrecedenceOverAllowAnonymous()
+    {
+        var anonymous = new ClaimsPrincipal(new ClaimsIdentity());
+        var tester = ScopedPrincipal(BuiltInSiteModes.DorksAndDice.Id, ScopedAccountRoles.Tester);
+        var member = AuthenticatedPrincipal();
+        var dev = GlobalPrincipal(AccountRoles.Dev);
+        var development = Tool(ToolReleaseAudience.Development);
+        development.AllowAnonymous = true;
+        var testing = Tool(ToolReleaseAudience.Testing);
+        testing.AllowAnonymous = true;
+        var publicAccountRequired = Tool(ToolReleaseAudience.Public);
+        publicAccountRequired.AllowAnonymous = false;
+
+        Assert.Equal(
+            ToolApplicationAccessDecision.ReleaseAudienceDenied,
+            ToolApplicationAccessPolicy.Evaluate(development, BuiltInSiteModes.DorksAndDice.Id, anonymous));
+        Assert.Equal(
+            ToolApplicationAccessDecision.ReleaseAudienceDenied,
+            ToolApplicationAccessPolicy.Evaluate(development, BuiltInSiteModes.DorksAndDice.Id, tester));
+        Assert.Equal(
+            ToolApplicationAccessDecision.Allowed,
+            ToolApplicationAccessPolicy.Evaluate(development, BuiltInSiteModes.DorksAndDice.Id, dev));
+
+        Assert.Equal(
+            ToolApplicationAccessDecision.ReleaseAudienceDenied,
+            ToolApplicationAccessPolicy.Evaluate(testing, BuiltInSiteModes.DorksAndDice.Id, anonymous));
+        Assert.Equal(
+            ToolApplicationAccessDecision.Allowed,
+            ToolApplicationAccessPolicy.Evaluate(testing, BuiltInSiteModes.DorksAndDice.Id, tester));
+        Assert.Equal(
+            ToolApplicationAccessDecision.Allowed,
+            ToolApplicationAccessPolicy.Evaluate(testing, BuiltInSiteModes.DorksAndDice.Id, dev));
+
+        Assert.Equal(
+            ToolApplicationAccessDecision.AuthenticationRequired,
+            ToolApplicationAccessPolicy.Evaluate(publicAccountRequired, BuiltInSiteModes.DorksAndDice.Id, anonymous));
+        Assert.Equal(
+            ToolApplicationAccessDecision.Allowed,
+            ToolApplicationAccessPolicy.Evaluate(publicAccountRequired, BuiltInSiteModes.DorksAndDice.Id, member));
+    }
+
+    [Fact]
+    public void ApplicationAccessPolicyRequiresBothModeAndTestingAuthority()
+    {
+        var tool = Tool(ToolReleaseAudience.Testing);
+        tool.Modes = [BuiltInSiteModes.Professional.Id];
+        var dorksTester = ScopedPrincipal(BuiltInSiteModes.DorksAndDice.Id, ScopedAccountRoles.Tester);
+        var professionalTester = ScopedPrincipal(BuiltInSiteModes.Professional.Id, ScopedAccountRoles.Tester);
+
+        Assert.Equal(
+            ToolApplicationAccessDecision.Unavailable,
+            ToolApplicationAccessPolicy.Evaluate(tool, BuiltInSiteModes.DorksAndDice.Id, dorksTester));
+        Assert.Equal(
+            ToolApplicationAccessDecision.Allowed,
+            ToolApplicationAccessPolicy.Evaluate(tool, BuiltInSiteModes.Professional.Id, professionalTester));
+    }
+
+    [Fact]
+    public void DelegatedApplicationTargetUsesInitiatingUserReleaseAuthority()
+    {
+        var development = Tool(ToolReleaseAudience.Development);
+        var testing = Tool(ToolReleaseAudience.Testing);
+        var testerContext = HostContext(scopedRoles: [ScopedAccountRoles.Tester]);
+        var devContext = HostContext(globalRoles: [AccountRoles.Dev], scopedRoles: [ScopedAccountRoles.Tester]);
+
+        Assert.False(ToolApplicationAccessPolicy.CanAccessFromHostContext(development, testerContext));
+        Assert.True(ToolApplicationAccessPolicy.CanAccessFromHostContext(development, devContext));
+        Assert.True(ToolApplicationAccessPolicy.CanAccessFromHostContext(testing, testerContext));
+        Assert.True(ToolApplicationAccessPolicy.CanAccessFromHostContext(testing, devContext));
+    }
+
     private static ToolRegistration Tool(ToolReleaseAudience audience) => new()
     {
         Slug = "release-test",
@@ -67,6 +139,22 @@ public sealed class ToolReleaseAudienceTests
         ReleaseAudience = audience,
         AllowAnonymous = audience == ToolReleaseAudience.Public,
         Enabled = true
+    };
+
+    private static ToolHostAuthenticationContext HostContext(
+        IReadOnlyList<string>? globalRoles = null,
+        IReadOnlyList<string>? scopedRoles = null) => new()
+    {
+        ToolKey = "source",
+        ToolSlug = "source",
+        SiteMode = BuiltInSiteModes.DorksAndDice.Id,
+        User = new ToolHostUserContext
+        {
+            Id = "11111111-2222-3333-4444-555555555555",
+            DisplayName = "Release tester"
+        },
+        GlobalRoles = globalRoles ?? [],
+        ScopedRoles = scopedRoles ?? []
     };
 
     private static ClaimsPrincipal ScopedPrincipal(string scope, string role) =>
@@ -104,12 +192,12 @@ public sealed class ToolReleaseAudienceIntegrationTests
     }
 
     [Fact]
-    public async Task TestingToolChallengesAnonymousAndAllowsTesterOrInheritedDevAuthority()
+    public async Task TestingToolHidesFromUnauthorizedUsersAndAllowsTesterOrInheritedDevAuthority()
     {
         var tool = await RegisterAsync(ToolReleaseAudience.Testing);
         try
         {
-            Assert.Equal(HttpStatusCode.Unauthorized, (await SendAsync(tool)).StatusCode);
+            Assert.Equal(HttpStatusCode.NotFound, (await SendAsync(tool)).StatusCode);
             Assert.Equal(HttpStatusCode.NotFound, (await SendAsync(tool, roles: "Member")).StatusCode);
             Assert.Equal(
                 HttpStatusCode.OK,

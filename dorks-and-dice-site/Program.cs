@@ -352,6 +352,7 @@ app.UseHttpsRedirection();
 app.UseMiddleware<SiteModeMiddleware>();
 app.UseRouting();
 app.UseAuthentication();
+app.UseMiddleware<ToolApplicationAccessMiddleware>();
 app.UseMiddleware<ToolProxyRequestBodyLimitMiddleware>();
 app.UseStatusCodePagesWithReExecute("/Home/NotFoundPage");
 app.UseRateLimiter();
