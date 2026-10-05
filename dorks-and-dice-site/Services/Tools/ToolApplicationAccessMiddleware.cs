@@ -26,18 +26,21 @@ public sealed class ToolApplicationAccessMiddleware(
         var modeId = context.GetSiteModeContext().ActiveModeId;
         var decision = ToolApplicationAccessPolicy.Evaluate(tool, modeId, context.User);
 
+        // The response varies by account/release authorization even when access is denied. Apply
+        // cache isolation before branching so a shared cache can not preserve a restrictive 404
+        // or authentication challenge and later serve it to an authorized user.
+        if (tool is not null && ToolApplicationAccessPolicy.RequiresPrivateNoStore(tool))
+        {
+            context.Response.OnStarting(() =>
+            {
+                context.Response.Headers.CacheControl = "private, no-store";
+                return Task.CompletedTask;
+            });
+        }
+
         switch (decision)
         {
             case ToolApplicationAccessDecision.Allowed:
-                if (tool is not null && ToolApplicationAccessPolicy.RequiresPrivateNoStore(tool))
-                {
-                    context.Response.OnStarting(() =>
-                    {
-                        context.Response.Headers.CacheControl = "private, no-store";
-                        return Task.CompletedTask;
-                    });
-                }
-
                 await next(context);
                 return;
 
