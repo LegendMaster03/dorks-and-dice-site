@@ -51,7 +51,9 @@ Backend ticket, introspection, delegation, lifecycle, and private-tunnel capabil
 
 A delegated or private-tunnel destination that is an application is different: the initiating user's authoritative `ToolHostAuthenticationContext` carries the active Site mode plus effective global and scoped roles. `ToolApplicationAccessPolicy.CanAccessFromHostContext(...)` re-evaluates that destination application's current mode and release audience before a target application context is created. Access to a source Tool therefore does not imply access to a Development- or Testing-only destination application.
 
-This destination check prevents an accessible Tool from acting as a confused deputy for a user who could not access the target application directly. Service destinations continue to use their deliberately separate internal policy.
+Application sources are also re-read from the current Tool registry before a delegated or private-tunnel target context is created. If a source application's release audience becomes more restrictive after a short-lived source capability was issued, that capability does not preserve the user's former execution authority: the current source mode and release audience must still admit the carried user context. Service sources continue to use their separate capability policy.
+
+These source and destination checks prevent an accessible Tool from acting as a confused deputy and prevent a stale application capability from outliving a release-audience change. Service destinations continue to use their deliberately separate internal policy.
 
 ## Future Tool-hosting routes
 
