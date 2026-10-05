@@ -28,7 +28,8 @@ public interface IToolHostAuthenticationContextFactory
 
 public sealed class ToolHostAuthenticationContextFactory(
     ICampaignContextService campaignContextService,
-    ICharacterService characterService) : IToolHostAuthenticationContextFactory
+    ICharacterService characterService,
+    IToolRegistry toolRegistry) : IToolHostAuthenticationContextFactory
 {
     public async Task<ToolHostAuthenticationContext?> CreateAsync(
         ToolRegistration tool,
@@ -112,6 +113,20 @@ public sealed class ToolHostAuthenticationContextFactory(
     {
         ArgumentNullException.ThrowIfNull(targetTool);
         ArgumentNullException.ThrowIfNull(sourceContext);
+
+        // A capability may remain valid briefly after its source application's release audience
+        // changes. Re-read the current source registration and re-apply application audience
+        // authorization before creating any delegated/private-tunnel target context. Structural
+        // source availability remains the calling controller's responsibility, and services keep
+        // their separate capability policy.
+        var sourceTool = await toolRegistry.GetByKeyAsync(
+            sourceContext.RegistrationKey,
+            cancellationToken);
+        if (sourceTool?.Kind == ToolKind.Application
+            && !ToolApplicationAccessPolicy.CanAccessFromHostContext(sourceTool, sourceContext))
+        {
+            return null;
+        }
 
         // Services are governed by the separate delegation/private-tunnel service policy. When
         // the target is an application, the initiating user's authoritative Tool Host context
