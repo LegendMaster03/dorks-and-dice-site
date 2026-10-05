@@ -13,6 +13,80 @@ public static class ToolHttpClientNames
     public const string Proxy = "tool-proxy";
 }
 
+public enum ToolApplicationAccessDecision
+{
+    Allowed,
+    Unavailable,
+    ReleaseAudienceDenied,
+    AuthenticationRequired
+}
+
+/// <summary>
+/// Authoritative access policy for user-facing application execution. Discovery surfaces may
+/// apply additional indexing/listing rules, but opening, bootstrapping, loading, or calling an
+/// application must first satisfy this policy.
+/// </summary>
+public static class ToolApplicationAccessPolicy
+{
+    public static ToolApplicationAccessDecision Evaluate(
+        ToolRegistration? tool,
+        string? modeId,
+        ClaimsPrincipal principal)
+    {
+        ArgumentNullException.ThrowIfNull(principal);
+
+        if (tool is null
+            || tool.Kind != ToolKind.Application
+            || !ToolPublicRoute.CanBuild(tool)
+            || !tool.Enabled
+            || !ToolVisibility.IsVisibleInMode(tool, modeId))
+        {
+            return ToolApplicationAccessDecision.Unavailable;
+        }
+
+        if (!ToolVisibility.CanUseReleaseAudience(tool, modeId, principal))
+        {
+            return ToolApplicationAccessDecision.ReleaseAudienceDenied;
+        }
+
+        if (principal.Identity?.IsAuthenticated != true && !tool.AllowAnonymous)
+        {
+            return ToolApplicationAccessDecision.AuthenticationRequired;
+        }
+
+        return ToolApplicationAccessDecision.Allowed;
+    }
+
+    /// <summary>
+    /// Applies the application release-audience and mode boundary to an authenticated Tool Host
+    /// context used for Tool-to-Tool delegation or private tunnel target scoping. Structural
+    /// availability remains the calling boundary's responsibility. Service registrations
+    /// deliberately use their separate service/delegation policy and do not call this method.
+    /// </summary>
+    public static bool CanAccessFromHostContext(
+        ToolRegistration tool,
+        ToolHostAuthenticationContext context)
+    {
+        ArgumentNullException.ThrowIfNull(tool);
+        ArgumentNullException.ThrowIfNull(context);
+
+        return tool.Kind == ToolKind.Application
+            && ToolVisibility.IsVisibleInMode(tool, context.SiteMode)
+            && ToolVisibility.CanUseReleaseAudience(tool, context);
+    }
+
+    /// <summary>
+    /// Any application response whose availability depends on account state or release audience
+    /// must not be reusable from a shared/public cache.
+    /// </summary>
+    public static bool RequiresPrivateNoStore(ToolRegistration tool)
+    {
+        ArgumentNullException.ThrowIfNull(tool);
+        return tool.Kind == ToolKind.Application
+            && (tool.ReleaseAudience != ToolReleaseAudience.Public || !tool.AllowAnonymous);
+    }
+}
+
 public static class ToolVisibility
 {
     public static bool IsVisibleInMode(ToolRegistration tool, SiteMode siteMode)
@@ -39,11 +113,8 @@ public static class ToolVisibility
         ToolRegistration tool,
         string? modeId,
         ClaimsPrincipal principal) =>
-        tool.Kind == ToolKind.Application
-        && ToolPublicRoute.CanBuild(tool)
-        && tool.Enabled
-        && IsVisibleInMode(tool, modeId)
-        && CanUseReleaseAudience(tool, modeId, principal)
+        ToolApplicationAccessPolicy.Evaluate(tool, modeId, principal)
+            == ToolApplicationAccessDecision.Allowed
         && (principal.Identity?.IsAuthenticated == true
             || IsPubliclyDiscoverable(tool, modeId));
 
@@ -88,6 +159,30 @@ public static class ToolVisibility
                     principal,
                     modeId,
                     ScopedAccountRoles.Tester),
+            ToolReleaseAudience.Public => true,
+            _ => false
+        };
+    }
+
+    public static bool CanUseReleaseAudience(
+        ToolRegistration tool,
+        ToolHostAuthenticationContext context)
+    {
+        ArgumentNullException.ThrowIfNull(tool);
+        ArgumentNullException.ThrowIfNull(context);
+
+        if (tool.Kind != ToolKind.Application || string.IsNullOrWhiteSpace(context.SiteMode))
+        {
+            return false;
+        }
+
+        return tool.ReleaseAudience switch
+        {
+            ToolReleaseAudience.Development =>
+                context.GlobalRoles.Contains(AccountRoles.Dev, StringComparer.Ordinal),
+            ToolReleaseAudience.Testing =>
+                context.ScopedRoles.Contains(ScopedAccountRoles.Tester, StringComparer.Ordinal)
+                || context.GlobalRoles.Contains(AccountRoles.Dev, StringComparer.Ordinal),
             ToolReleaseAudience.Public => true,
             _ => false
         };
