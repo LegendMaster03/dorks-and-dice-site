@@ -58,10 +58,10 @@ public static class ToolApplicationAccessPolicy
     }
 
     /// <summary>
-    /// Applies the same application release-audience and mode boundary to an authenticated Tool
-    /// Host context used for Tool-to-Tool delegation or private tunnel target scoping. Service
-    /// registrations deliberately use their separate service/delegation policy and do not call
-    /// this method.
+    /// Applies the application release-audience and mode boundary to an authenticated Tool Host
+    /// context used for Tool-to-Tool delegation or private tunnel target scoping. Structural
+    /// availability remains the calling boundary's responsibility. Service registrations
+    /// deliberately use their separate service/delegation policy and do not call this method.
     /// </summary>
     public static bool CanAccessFromHostContext(
         ToolRegistration tool,
@@ -71,8 +71,6 @@ public static class ToolApplicationAccessPolicy
         ArgumentNullException.ThrowIfNull(context);
 
         return tool.Kind == ToolKind.Application
-            && ToolPublicRoute.CanBuild(tool)
-            && tool.Enabled
             && ToolVisibility.IsVisibleInMode(tool, context.SiteMode)
             && ToolVisibility.CanUseReleaseAudience(tool, context);
     }
