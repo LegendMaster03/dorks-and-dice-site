@@ -252,12 +252,12 @@ public sealed class OperatorInterfaceIntegrationTests
             using var direct = await browser.GetAsync($"/tools/{tool.Slug}");
             Assert.Equal(HttpStatusCode.OK, direct.StatusCode);
 
-            using var context = await browser.GetAsync($"/tool-host/{tool.Slug}/context");
-            Assert.Equal(HttpStatusCode.OK, context.StatusCode);
-            var hostContext = await context.Content.ReadFromJsonAsync<ToolHostContextResponse>();
-            Assert.NotNull(hostContext);
-            Assert.Contains(ScopedAccountRoles.Tester, hostContext.Authentication.ScopedRoles);
-            Assert.Equal(SiteModeValues.DorksAndDiceModeValue, hostContext.Authentication.SiteMode);
+            using var session = await browser.GetAsync($"/tool-host/{tool.Slug}/api/session");
+            Assert.Equal(HttpStatusCode.OK, session.StatusCode);
+            var hostSession = await session.Content.ReadFromJsonAsync<ToolHostApiSession>();
+            Assert.NotNull(hostSession);
+            Assert.Equal(principal.UserId.ToString("D"), hostSession.User.Id);
+            Assert.Equal(SiteModeValues.DorksAndDiceModeValue, hostSession.SiteMode);
         }
         finally
         {
