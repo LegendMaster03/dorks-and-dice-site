@@ -201,6 +201,71 @@ public sealed class OperatorInterfaceIntegrationTests
     }
 
     [Fact]
+    public async Task BrowserBootstrapPreservesScopedTesterAccessToTestingTools()
+    {
+        var connectionString = Environment.GetEnvironmentVariable("IDENTITY_TEST_POSTGRES");
+        if (string.IsNullOrWhiteSpace(connectionString)) return;
+
+        using var factory = new IdentityWebApplicationFactory(connectionString);
+        var principal = await CreateServicePrincipalAsync(factory.Services, []);
+        await AssignScopedRoleAsync(
+            factory.Services,
+            principal.UserId,
+            AccountRoleScopes.DorksAndDice,
+            ScopedAccountRoles.Tester);
+
+        using var operatorClient = CreateOperatorClient(factory, principal.Token);
+        var bootstrap = await IssueBootstrapAsync(operatorClient);
+        using var browser = CreateBrowserClient(factory);
+        Assert.Equal(
+            HttpStatusCode.Redirect,
+            (await browser.GetAsync(bootstrap.BootstrapUrl)).StatusCode);
+
+        var tool = new ToolRegistration
+        {
+            Id = Guid.NewGuid(),
+            Slug = $"operator-testing-{Guid.NewGuid():N}",
+            DisplayName = "Operator Testing Audience Tool",
+            IntegrationType = ToolIntegrationType.EmbeddedModule,
+            IntegrationContractVersion = ToolIntegrationContractVersions.EmbeddedModuleCurrent,
+            UpstreamBaseUrl = "http://operator-testing-tool",
+            FrontendEntryPoint = "/app.js",
+            Modes = [SiteModeValues.DorksAndDiceModeValue],
+            ReleaseAudience = ToolReleaseAudience.Testing,
+            AllowAnonymous = false,
+            Enabled = true,
+            CreatedAt = DateTimeOffset.UtcNow,
+            UpdatedAt = DateTimeOffset.UtcNow
+        };
+
+        var registry = factory.Services.GetRequiredService<IToolRegistry>();
+        await registry.SaveAsync(tool);
+        try
+        {
+            using var listing = await browser.GetAsync("/tools");
+            Assert.Equal(HttpStatusCode.OK, listing.StatusCode);
+            Assert.Contains(
+                tool.DisplayName,
+                await listing.Content.ReadAsStringAsync(),
+                StringComparison.Ordinal);
+
+            using var direct = await browser.GetAsync($"/tools/{tool.Slug}");
+            Assert.Equal(HttpStatusCode.OK, direct.StatusCode);
+
+            using var context = await browser.GetAsync($"/tool-host/{tool.Slug}/context");
+            Assert.Equal(HttpStatusCode.OK, context.StatusCode);
+            var hostContext = await context.Content.ReadFromJsonAsync<ToolHostContextResponse>();
+            Assert.NotNull(hostContext);
+            Assert.Contains(ScopedAccountRoles.Tester, hostContext.Authentication.ScopedRoles);
+            Assert.Equal(SiteModeValues.DorksAndDiceModeValue, hostContext.Authentication.SiteMode);
+        }
+        finally
+        {
+            await registry.DeleteAsync(tool.Id);
+        }
+    }
+
+    [Fact]
     public async Task OperatorCredentialDoesNotGrantUnassignedRulesLawyerThroughToolHost()
     {
         var connectionString = Environment.GetEnvironmentVariable("IDENTITY_TEST_POSTGRES");
