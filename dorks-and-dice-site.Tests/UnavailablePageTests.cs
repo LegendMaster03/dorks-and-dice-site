@@ -18,6 +18,7 @@ public sealed class UnavailablePageTests(PublishedContentWebApplicationFactory f
         });
         using var response = await client.GetAsync(path);
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.Contains("no-store", response.Headers.CacheControl?.ToString() ?? string.Empty);
         var html = await response.Content.ReadAsStringAsync();
         Assert.Contains("This page may not exist, or you may need to sign in", html);
         Assert.Contains("/account/login", html);
