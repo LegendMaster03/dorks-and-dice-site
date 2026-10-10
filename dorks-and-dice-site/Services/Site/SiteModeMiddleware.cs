@@ -7,6 +7,8 @@ namespace dorks_and_dice_site.Services.Site;
 
 public sealed class SiteModeMiddleware
 {
+    public const string OriginalBlockedRequestTargetKey = "SiteMode.OriginalBlockedRequestTarget";
+
     private readonly RequestDelegate _next;
     private readonly SiteModeOptions _options;
     private readonly ISiteModeRegistry _siteModeRegistry;
@@ -68,6 +70,10 @@ public sealed class SiteModeMiddleware
         // synthetic Development control-plane surface.
         if (!hasDeveloperAccess && !isAllowedInRequest)
         {
+            // Keep the original local destination for the anonymous sign-in recovery link
+            // before rewriting a route that the current mode does not own.
+            context.Items[OriginalBlockedRequestTargetKey] =
+                $"{context.Request.PathBase}{context.Request.Path}{context.Request.QueryString}";
             context.Request.Path = "/Home/NotFoundPage";
             await _next(context);
             return;

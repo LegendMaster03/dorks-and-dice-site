@@ -197,8 +197,18 @@ public sealed class ToolReleaseAudienceIntegrationTests
         var tool = await RegisterAsync(ToolReleaseAudience.Testing);
         try
         {
-            Assert.Equal(HttpStatusCode.NotFound, (await SendAsync(tool)).StatusCode);
-            Assert.Equal(HttpStatusCode.NotFound, (await SendAsync(tool, roles: "Member")).StatusCode);
+            using (var anonymousResponse = await SendAsync(tool))
+            {
+                Assert.Equal(HttpStatusCode.NotFound, anonymousResponse.StatusCode);
+                var html = await anonymousResponse.Content.ReadAsStringAsync();
+                Assert.Contains("This page may not exist, or you may need to sign in", html);
+                Assert.Contains("/account/login", html);
+            }
+            using (var signedInResponse = await SendAsync(tool, roles: "Member"))
+            {
+                Assert.Equal(HttpStatusCode.NotFound, signedInResponse.StatusCode);
+                Assert.DoesNotContain("Sign in</a>", await signedInResponse.Content.ReadAsStringAsync());
+            }
             Assert.Equal(
                 HttpStatusCode.OK,
                 (await SendAsync(

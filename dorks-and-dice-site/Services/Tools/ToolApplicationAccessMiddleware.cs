@@ -1,6 +1,7 @@
 using dorks_and_dice_site.Models.Tools;
 using dorks_and_dice_site.Services.Site;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Diagnostics;
 
 namespace dorks_and_dice_site.Services.Tools;
 
@@ -49,6 +50,16 @@ public sealed class ToolApplicationAccessMiddleware(
                 return;
 
             case ToolApplicationAccessDecision.ReleaseAudienceDenied:
+                // Browser document navigation receives the generic 404 page. API calls,
+                // module assets, and non-GET operations remain plain 404 responses.
+                if (!IsBrowserDocumentRequest(context.Request))
+                {
+                    var statusPages = context.Features.Get<IStatusCodePagesFeature>();
+                    if (statusPages is not null)
+                    {
+                        statusPages.Enabled = false;
+                    }
+                }
                 context.Response.StatusCode = StatusCodes.Status404NotFound;
                 return;
 
@@ -60,6 +71,25 @@ public sealed class ToolApplicationAccessMiddleware(
                 await next(context);
                 return;
         }
+    }
+
+    private static bool IsBrowserDocumentRequest(HttpRequest request)
+    {
+        if (!HttpMethods.IsGet(request.Method)
+            || request.Path.StartsWithSegments("/tool-modules")
+            || request.Path.StartsWithSegments("/tool-host")
+            || request.Path.Value?.Contains("/api/", StringComparison.OrdinalIgnoreCase) == true
+            || request.Path.Value?.EndsWith("/api", StringComparison.OrdinalIgnoreCase) == true
+            || System.IO.Path.HasExtension(request.Path.Value))
+        {
+            return false;
+        }
+
+        // Browser navigations advertise HTML. No Accept header is treated as navigation
+        // for compatibility with direct URL visits and standard HTTP test clients.
+        var accept = request.Headers.Accept.ToString();
+        return string.IsNullOrWhiteSpace(accept)
+            || accept.Contains("text/html", StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool TryGetUserFacingApplicationSlug(PathString path, out string slug)

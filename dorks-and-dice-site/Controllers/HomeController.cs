@@ -50,6 +50,19 @@ namespace dorks_and_dice_site.Controllers
                 return new EmptyResult();
             }
 
+            // Make both missing pages and restricted-tool documents private and uncacheable
+            // so their browser-facing cache policy does not disclose resource existence.
+            Response.Headers.CacheControl = "private, no-store";
+            var originalTarget = HttpContext.Items[SiteModeMiddleware.OriginalBlockedRequestTargetKey]
+                as string;
+            originalTarget ??= reExecuteFeature is null
+                ? null
+                : $"{reExecuteFeature.OriginalPathBase}{reExecuteFeature.OriginalPath}{reExecuteFeature.OriginalQueryString}";
+            ViewData["LoginReturnUrl"] = !string.IsNullOrWhiteSpace(originalTarget)
+                && Url.IsLocalUrl(originalTarget)
+                    ? originalTarget
+                    : "/";
+            ViewData["Robots"] = "noindex,nofollow";
             return View();
         }
 

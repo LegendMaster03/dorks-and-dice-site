@@ -352,9 +352,11 @@ app.UseHttpsRedirection();
 app.UseMiddleware<SiteModeMiddleware>();
 app.UseRouting();
 app.UseAuthentication();
+// Keep status-code handling outside Tool access enforcement so restricted browser routes
+// and missing routes share the same anonymous recovery page.
+app.UseStatusCodePagesWithReExecute("/Home/NotFoundPage");
 app.UseMiddleware<ToolApplicationAccessMiddleware>();
 app.UseMiddleware<ToolProxyRequestBodyLimitMiddleware>();
-app.UseStatusCodePagesWithReExecute("/Home/NotFoundPage");
 app.UseRateLimiter();
 app.UseAuthorization();
 

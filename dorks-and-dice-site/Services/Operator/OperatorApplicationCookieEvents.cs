@@ -8,6 +8,23 @@ namespace dorks_and_dice_site.Services.Operator;
 
 public sealed class OperatorApplicationCookieEvents : CookieAuthenticationEvents
 {
+    // Only remembered logins get the longer cookie lifetime. Ordinary browser sessions
+    // retain the 12-hour ticket lifetime configured in Program.cs.
+    private static readonly TimeSpan RememberedLoginLifetime = TimeSpan.FromDays(30);
+
+    public override Task SigningIn(CookieSigningInContext context)
+    {
+        if (context.Properties.IsPersistent)
+        {
+            // ASP.NET Identity sets IsPersistent from the RememberMe checkbox. The cookie
+            // handler has already populated the default ticket expiration before this event.
+            var issuedUtc = context.Properties.IssuedUtc ?? DateTimeOffset.UtcNow;
+            context.Properties.ExpiresUtc = issuedUtc.Add(RememberedLoginLifetime);
+        }
+
+        return Task.CompletedTask;
+    }
+
     public override async Task ValidatePrincipal(CookieValidatePrincipalContext context)
     {
         var credentialClaim = context.Principal?.FindFirst(OperatorClaimTypes.CredentialId)?.Value;

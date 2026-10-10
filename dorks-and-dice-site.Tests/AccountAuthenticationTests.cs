@@ -91,6 +91,53 @@ public sealed class AccountAuthenticationTests
         Assert.True(user.EmailConfirmed);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task RememberMeControlsLongLivedPersistentAuthenticationCookie(bool rememberMe)
+    {
+        var connectionString = Environment.GetEnvironmentVariable("IDENTITY_TEST_POSTGRES");
+        if (string.IsNullOrWhiteSpace(connectionString)) return;
+
+        using var factory = new IdentityWebApplicationFactory(connectionString);
+        var email = $"remember-me-{Guid.NewGuid():N}@example.test";
+        const string password = "correct horse battery staple";
+        await CreateConfirmedUserAsync(factory.Services, email, password);
+
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+            HandleCookies = true,
+            BaseAddress = new Uri("https://dorks-and-dice.com")
+        });
+        var loginPage = await client.GetAsync("/account/login");
+        Assert.Equal(HttpStatusCode.OK, loginPage.StatusCode);
+        var token = ExtractAntiforgeryToken(await loginPage.Content.ReadAsStringAsync());
+        using var form = new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["Email"] = email,
+            ["Password"] = password,
+            ["RememberMe"] = rememberMe.ToString().ToLowerInvariant(),
+            ["__RequestVerificationToken"] = token
+        });
+        using var login = await client.PostAsync("/account/login", form);
+        Assert.Equal(HttpStatusCode.Redirect, login.StatusCode);
+        var authCookie = login.Headers.GetValues("Set-Cookie").Single(header =>
+            header.StartsWith("__Host-dorks-and-dice.auth=", StringComparison.Ordinal));
+        var match = Regex.Match(authCookie, @"(?:^|;\s*)expires=([^;]+)", RegexOptions.IgnoreCase);
+        if (rememberMe)
+        {
+            Assert.True(match.Success, "Remembered login must set a persistent cookie expiry.");
+            Assert.True(DateTimeOffset.TryParse(match.Groups[1].Value, out var expiresUtc));
+            Assert.InRange((expiresUtc - DateTimeOffset.UtcNow).TotalDays, 29, 31);
+        }
+        else
+        {
+            Assert.False(match.Success, "An ordinary login must remain a browser-session cookie.");
+        }
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/account")).StatusCode);
+    }
+
     [Fact]
     public async Task AccountPageRequiresAuthenticationButPublicHomeDoesNot()
     {
