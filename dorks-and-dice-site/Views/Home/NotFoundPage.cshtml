@@ -1,12 +1,21 @@
 @{
-    ViewData["Title"] = "Page Not Found";
+    var isAuthenticated = User.Identity?.IsAuthenticated == true;
+    var loginReturnUrl = ViewData["LoginReturnUrl"] as string ?? "/";
+    ViewData["Title"] = isAuthenticated ? "Page Not Found" : "Page Unavailable";
+    ViewData["Robots"] = "noindex,nofollow";
 }
 
 <section class="py-4">
-    <h1 class="mb-3">404 - Page Not Found</h1>
-    <p class="mb-3">
-        The page you requested could not be found.
-    </p>
+    @if (isAuthenticated)
+    {
+        <h1 class="mb-3">404 - Page Not Found</h1>
+        <p class="mb-3">The page you requested could not be found.</p>
+    }
+    else
+    {
+        <h1 class="mb-3">Page unavailable</h1>
+        <p class="mb-3">This page may not exist, or you may need to sign in to access it.</p>
+    }
     @if (ViewData["DevelopmentModeError"] is string developmentModeError)
     {
         <div class="alert alert-warning" role="alert">
@@ -15,6 +24,10 @@
         </div>
     }
     <div class="d-flex gap-2 flex-wrap">
-        <a class="btn btn-primary" asp-controller="Home" asp-action="Index">Back to Home</a>
+        @if (!isAuthenticated)
+        {
+            <a class="btn btn-primary" asp-controller="Account" asp-action="Login" asp-route-returnUrl="@loginReturnUrl">Sign in</a>
+        }
+        <a class="btn @(isAuthenticated ? "btn-primary" : "btn-outline-secondary")" asp-controller="Home" asp-action="Index">Back to Home</a>
     </div>
 </section>
