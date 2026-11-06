@@ -406,6 +406,8 @@ public sealed class AccountController : Controller
                 return RedirectToAction(nameof(Index));
             }
 
+            // Bind the external callback to the signed-in account, provider, and
+            // original Site mode before accepting the returned external identity.
             var currentModeId = HttpContext.GetSiteModeContext().ActiveModeId;
             if (!external.Properties.Items.TryGetValue(
                     AccountLinkAuthenticationProperties.ProviderId,
@@ -440,6 +442,8 @@ public sealed class AccountController : Controller
                 return RedirectToAction(nameof(Index));
             }
 
+            // The protected callback properties are insufficient on their own:
+            // the stored one-time nonce prevents an earlier challenge from being replayed.
             var nonceName = AccountLinkTokenNames.Nonce(provider.Descriptor.Id);
             var pendingNonce = await _userManager.GetAuthenticationTokenAsync(
                 user,
@@ -451,6 +455,8 @@ public sealed class AccountController : Controller
                 return RedirectToAction(nameof(Index));
             }
 
+            // Consume the challenge token before modifying linked identities.
+            // Failure to consume it leaves the account link unchanged.
             var consumeResult = await _userManager.RemoveAuthenticationTokenAsync(
                 user,
                 AccountLinkTokenNames.LoginProvider,
@@ -727,6 +733,8 @@ public sealed class AccountController : Controller
             return View(model);
         }
 
+        // Deleting the final usable administrator would leave the site without
+        // an account capable of administering its identity and roles.
         if (await IsLastActiveAdministratorAsync(user))
         {
             ModelState.AddModelError(
@@ -972,6 +980,8 @@ public sealed class AccountController : Controller
             && CryptographicOperations.FixedTimeEquals(leftBytes, rightBytes);
     }
 
+    // Count only accounts that can currently sign in; assigned Admin/Owner
+    // roles on deleted or locked-out accounts are not operational fallbacks.
     private async Task<bool> IsLastActiveAdministratorAsync(ApplicationUser user)
     {
         var isAdministrator = await _userManager.IsInRoleAsync(user, AccountRoles.Admin)
