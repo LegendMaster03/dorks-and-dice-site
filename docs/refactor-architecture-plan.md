@@ -1,5 +1,7 @@
 # Framework and mode architecture refactor plan
 
+> **Document type:** Refactor design and acceptance plan. This file records architectural intentions and migration-stage decisions, including legacy terms retained to explain the transition. It is not a complete inventory of the current running Site or a replacement for implemented contracts. For current Tool authentication and private networking, consult [Tool authentication](tool-authentication-contract.md) and [private Tool tunnels](private-tool-tunnels.md); verify actual runtime behavior against the present repository source and tests.
+
 ## Purpose
 
 This refactor is intended to be the major structural rebuild for the foreseeable future. It must make the repository understandable from its physical structure, remove named-mode knowledge from shared framework code, preserve the tool-hosting model, and leave durable boundaries suitable for later packaging, licensing, or sale.
