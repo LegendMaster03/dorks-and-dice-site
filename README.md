@@ -140,6 +140,17 @@ Tools are separate from plugins and from native mode-owned domain features. The 
 
 A capability is not forced into a Tool merely because it is large. Domain behavior intrinsic to one normal site may remain owned by that mode when keeping it inside the mode gives the correct ownership, routing, authorization, persistence, and extraction boundary. Use a Tool when the capability has an independent application workflow or lifecycle, benefits from a separate data/runtime boundary, or should remain separately deployable. For Dorks & Dice, campaign/account/character relationships may therefore be native mode behavior while Rules Core and Block Initiative remain independently deployable Tools.
 
+### Tool identity, delegation, and private tunnels
+
+The Site owns the Tool Host authentication and authorization control plane. Browser requests reach a hosted Tool through the Site's authenticated gateway; the Tool backend redeems a short-lived Site-issued ticket instead of trusting browser-controlled identity headers. Domain authority (for example, campaign access or Rules Core source grants) remains enforced by the destination Tool. See [the Tool authentication contract](docs/tool-authentication-contract.md).
+
+Two cross-Tool integration mechanisms have different security boundaries:
+
+- **Ordinary Tool delegation** follows the registered `DelegationTargets` policy and may route through the Site Tool gateway. It does not authorize a private target API.
+- **Private Tool tunnels** use a separately configured source/target pair allowlist, a pair-specific network, and a Site-issued target ticket carrying private-tunnel provenance. The source sends the data request **directly** to the private target ingress; Site exchanges credentials but does not relay that request. See [the private-tunnel security model and runbook](docs/private-tool-tunnels.md).
+
+The source Tool must keep delegation capabilities and target tickets server-side. Neither mechanism grants cross-Tool access merely because a browser shares the Site origin or can discover another Tool's registration.
+
 ## Local development
 
 From the repository root:
