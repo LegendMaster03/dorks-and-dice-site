@@ -7,6 +7,10 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// Delegated and private-tunnel calls revalidate the initiating source Tool's
+/// current release audience, not only its captured authorization context.
+/// </summary>
 [Collection(PublishedContentIntegrationCollection.Name)]
 public sealed class ToolReleaseAudienceDelegationSourceTests(
     PublishedContentWebApplicationFactory factory)

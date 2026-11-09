@@ -3,6 +3,10 @@ using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// Unavailable pages must not expose whether restricted content or Tools
+/// exist, while presenting appropriate sign-in guidance to anonymous visitors.
+/// </summary>
 [Collection(PublishedContentIntegrationCollection.Name)]
 public sealed class UnavailablePageTests(PublishedContentWebApplicationFactory factory)
 {

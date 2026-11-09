@@ -7,6 +7,10 @@ using Microsoft.AspNetCore.Http;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// Public requests strip Trusted Access-only global roles while preserving
+/// safe inherited capabilities; trusted requests retain privileged claims.
+/// </summary>
 public sealed class TrustedPrivilegeClaimsTransformationTests
 {
     [Fact]

@@ -7,6 +7,11 @@ using Microsoft.Extensions.Configuration;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// The proxy preserves supported methods, bodies, encodings, and safe headers
+/// while blocking upstream cookies, unapproved hosts, redirects, and
+/// connection-specific transport headers.
+/// </summary>
 public sealed class ToolProxyServiceTests
 {
     [Fact]

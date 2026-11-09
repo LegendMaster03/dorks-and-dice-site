@@ -2,6 +2,10 @@ using dorks_and_dice_site.Models.Tools;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// Canonical Tool application roots differ by Embedded Module and proxied
+/// hosting contract; invalid slugs must not become public routes.
+/// </summary>
 public sealed class ToolPublicRouteTests
 {
     [Theory]

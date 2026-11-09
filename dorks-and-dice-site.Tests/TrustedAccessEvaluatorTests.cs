@@ -4,6 +4,11 @@ using Microsoft.AspNetCore.Http;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// Trusted controls require original loopback or valid Tailscale ingress
+/// capability. Forwarded hostnames, spoofed capability headers, and server IPs
+/// do not grant trust.
+/// </summary>
 public sealed class TrustedAccessEvaluatorTests
 {
     private readonly SiteModeOptions _options = new();

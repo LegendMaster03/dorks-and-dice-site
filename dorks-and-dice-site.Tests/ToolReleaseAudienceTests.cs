@@ -10,6 +10,11 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// Public, Testing, and Development Tool audiences require distinct grants;
+/// allowing anonymous application access can not override a restrictive
+/// audience or mode boundary.
+/// </summary>
 public sealed class ToolReleaseAudienceTests
 {
     [Fact]

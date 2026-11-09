@@ -17,6 +17,11 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// Only approved source-to-target delegation preserves user authority and
+/// rebuilds target context. Target availability, mode, upstream policy, and
+/// contract constraints remain mandatory.
+/// </summary>
 [Collection(PublishedContentIntegrationCollection.Name)]
 public sealed class ToolToToolDelegationIntegrationTests(PublishedContentWebApplicationFactory factory)
 {
