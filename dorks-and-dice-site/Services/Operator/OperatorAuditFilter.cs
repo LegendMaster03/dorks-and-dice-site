@@ -8,6 +8,10 @@ using Microsoft.AspNetCore.Mvc.Filters;
 
 namespace dorks_and_dice_site.Services.Operator;
 
+/// <summary>
+/// Persists the identity, credential, capability, and outcome of Operator
+/// API calls. An invocation ID links the response to its audit record.
+/// </summary>
 public sealed class OperatorAuditFilter(IdentityDbContext dbContext) : IAsyncActionFilter
 {
     public async Task OnActionExecutionAsync(

@@ -49,6 +49,11 @@ public interface IOperatorCredentialService
         CancellationToken cancellationToken = default);
 }
 
+/// <summary>
+/// Issues and validates bearer credentials for service principals. Raw
+/// secrets are returned only during creation; persistent records contain
+/// verifier hashes and revocation/expiry metadata.
+/// </summary>
 public sealed class OperatorCredentialService : IOperatorCredentialService
 {
     private readonly IdentityDbContext _dbContext;

@@ -31,6 +31,11 @@ public interface IOperatorBrowserBootstrapService
         CancellationToken cancellationToken = default);
 }
 
+/// <summary>
+/// Converts a credential-authorized operator action into a short-lived,
+/// single-use browser bootstrap. Issuance and redemption are tied to the
+/// originating service principal and operator credential.
+/// </summary>
 public sealed class OperatorBrowserBootstrapService(
     IdentityDbContext dbContext) : IOperatorBrowserBootstrapService
 {

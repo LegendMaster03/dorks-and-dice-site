@@ -1,5 +1,9 @@
 namespace dorks_and_dice_site.Framework.Operator;
 
+/// <summary>
+/// Declares the stable capability required to call an Operator API action.
+/// This is independent of a normal hosted site's route or editor permission.
+/// </summary>
 [AttributeUsage(AttributeTargets.Method, AllowMultiple = false, Inherited = true)]
 public sealed class OperatorCapabilityAttribute(string name) : Attribute
 {

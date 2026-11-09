@@ -1,5 +1,9 @@
 namespace dorks_and_dice_site.Framework.Operator;
 
+/// <summary>
+/// Current Operator bearer scheme and versioned token prefix. The public
+/// identifiers retain deployment-specific naming pending framework extraction.
+/// </summary>
 public static class OperatorAuthenticationDefaults
 {
     public const string Scheme = "OperatorBearer";

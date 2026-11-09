@@ -4,6 +4,11 @@ using Microsoft.EntityFrameworkCore.Metadata;
 
 namespace dorks_and_dice_site.Modes.DorksAndDice.Persistence;
 
+/// <summary>
+/// Compares EF relational model signatures with the recorded migration snapshot
+/// before mode-owned storage initialization. This prevents untracked schema
+/// changes even where EF's general pending-model warning is suppressed.
+/// </summary>
 public static class DorksAndDiceMigrationModelGuard
 {
     public static bool HasDifferences(IModel snapshotModel, IModel currentModel)

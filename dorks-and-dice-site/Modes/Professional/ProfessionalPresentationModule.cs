@@ -4,6 +4,11 @@ using dorks_and_dice_site.Services.Site;
 
 namespace dorks_and_dice_site.Modes.Professional;
 
+/// <summary>
+/// Professional-mode metadata, profile links, and structured-data presentation.
+/// This site identity and media belong to the Professional module, not the
+/// generic reusable framework.
+/// </summary>
 public sealed class ProfessionalPresentationModule : ISiteModePresentationModule
 {
     private const string HeadshotPath =

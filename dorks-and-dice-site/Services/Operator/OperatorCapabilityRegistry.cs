@@ -2,6 +2,10 @@ using dorks_and_dice_site.Framework.Operator;
 
 namespace dorks_and_dice_site.Services.Operator;
 
+/// <summary>
+/// Advertises the currently implemented framework Operator API operations.
+/// Discovery does not itself authorize execution of any capability.
+/// </summary>
 public sealed class OperatorCapabilityRegistry : IOperatorCapabilityRegistry
 {
     private static readonly IReadOnlyList<OperatorCapabilityDescriptor> Capabilities =
