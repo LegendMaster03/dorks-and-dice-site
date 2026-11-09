@@ -7,6 +7,11 @@ using Microsoft.Extensions.Configuration;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// Checks that managed media requires a current, effective, mode-visible page
+/// reference. Attachment, upload, or an older revision alone does not make media
+/// publicly accessible.
+/// </summary>
 public sealed class ContentAssetVisibilityTests
 {
     [Fact]

@@ -8,6 +8,11 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// Protects shared Identity account eligibility: email confirmation, cookie
+/// persistence, privilege isolation on public hosts, and preservation of a usable
+/// administrator when roles or accounts change.
+/// </summary>
 [Collection(PostgresIntegrationCollection.Name)]
 public sealed class AccountAuthenticationTests
 {

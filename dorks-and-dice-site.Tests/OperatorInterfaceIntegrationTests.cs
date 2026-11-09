@@ -19,6 +19,11 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// Service-principal credentials, one-use browser bootstrap, and independent
+/// credential-bound sessions must never become ordinary password sign-ins or
+/// survive revocation and expiry.
+/// </summary>
 [Collection(PostgresIntegrationCollection.Name)]
 public sealed class OperatorInterfaceIntegrationTests
 {

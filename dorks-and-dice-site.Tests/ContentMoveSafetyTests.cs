@@ -4,6 +4,10 @@ using Microsoft.Extensions.Configuration;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// Cross-source content promotion must reject a conflicting target history
+/// rather than silently overwriting stable page IDs or slugs.
+/// </summary>
 public sealed class ContentMoveSafetyTests
 {
     [Fact]

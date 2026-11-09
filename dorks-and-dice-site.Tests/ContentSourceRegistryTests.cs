@@ -5,6 +5,10 @@ using Microsoft.Extensions.Configuration;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// Tests deployment-owned source composition, stable normal-mode IDs, and
+/// synthetic Development overrides without requiring a legacy enum entry.
+/// </summary>
 public sealed class ContentSourceRegistryTests
 {
     [Fact]

@@ -6,6 +6,10 @@ using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// Verifies the two public host identities, route and asset isolation, canonical
+/// metadata, and synthetic Development overlays through the running Site pipeline.
+/// </summary>
 [Collection(PublishedContentIntegrationCollection.Name)]
 public sealed class SiteModeIntegrationTests
 {

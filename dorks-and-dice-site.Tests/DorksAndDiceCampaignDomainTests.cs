@@ -6,6 +6,11 @@ using Microsoft.EntityFrameworkCore;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// Campaign DM and Player grants are mode-owned membership roles independent
+/// of global Identity. Leaving or losing Player must end associations while
+/// preserving the character and unrelated campaigns.
+/// </summary>
 public sealed class DorksAndDiceCampaignDomainTests
 {
     [Fact]

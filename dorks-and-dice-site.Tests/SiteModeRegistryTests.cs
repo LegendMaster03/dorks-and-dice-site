@@ -4,6 +4,10 @@ using Microsoft.AspNetCore.Http;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// Keeps generic mode registration independent of the two legacy named modes.
+/// Fallback and Trusted Preview must never become normal registered site identities.
+/// </summary>
 public sealed class SiteModeRegistryTests
 {
     [Fact]

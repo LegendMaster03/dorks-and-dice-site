@@ -12,6 +12,11 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// End-to-end Tool Host security boundary: route availability precedes upstream
+/// calls, browser identity can not be spoofed, and privileged management requires
+/// both the correct role and trusted ingress.
+/// </summary>
 [Collection(PublishedContentIntegrationCollection.Name)]
 public sealed class ToolHostingClosureTests(PublishedContentWebApplicationFactory factory)
 {

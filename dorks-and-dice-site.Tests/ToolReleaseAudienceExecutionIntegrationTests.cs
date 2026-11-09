@@ -12,6 +12,11 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// Restrictive Tool release audiences must block execution through every
+/// user-facing route, including direct URLs and delegated upstream access,
+/// not merely hide entries from discovery lists.
+/// </summary>
 [Collection(PublishedContentIntegrationCollection.Name)]
 public sealed class ToolReleaseAudienceExecutionIntegrationTests(
     PublishedContentWebApplicationFactory factory)

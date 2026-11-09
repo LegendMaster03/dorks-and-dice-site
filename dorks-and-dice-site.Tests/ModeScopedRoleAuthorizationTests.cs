@@ -10,6 +10,10 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// Verifies that normal-mode Editor claims do not cross site boundaries and
+/// that global editor inheritance differs from Development preview selection.
+/// </summary>
 public sealed class ModeScopedRoleAuthorizationTests
 {
     [Fact]

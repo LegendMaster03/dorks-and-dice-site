@@ -12,6 +12,11 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// Exercises global external account links separately from mode-specific
+/// provider activation. Callback nonces and mode selection must prevent replay
+/// and cross-mode linking.
+/// </summary>
 [Collection(PostgresIntegrationCollection.Name)]
 public sealed class AccountLinkingTests
 {
