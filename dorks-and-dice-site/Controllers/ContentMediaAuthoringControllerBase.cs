@@ -6,6 +6,11 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace dorks_and_dice_site.Controllers;
 
+/// <summary>
+/// Shares media attachment and dependency editing between the normal Editor and
+/// Development. Source selection and page-edit permission depend on the concrete
+/// entry point and the resolved request context.
+/// </summary>
 public abstract class ContentMediaAuthoringControllerBase : Controller
 {
     private readonly IContentAssetService _assets;

@@ -8,6 +8,11 @@ using Microsoft.EntityFrameworkCore;
 
 namespace dorks_and_dice_site.Controllers;
 
+/// <summary>
+/// Administer accounts and their global and normal-mode-scoped roles.
+/// Mode identities come from the registry; this is shared account administration,
+/// not an administrative surface owned by either hosted site.
+/// </summary>
 [Authorize(Policy = AuthorizationPolicies.AdminAccess)]
 [Route("admin/accounts")]
 public sealed class AdminAccountsController : Controller

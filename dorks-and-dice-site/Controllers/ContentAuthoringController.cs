@@ -6,6 +6,10 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace dorks_and_dice_site.Controllers;
 
+/// <summary>
+/// Mode-scoped editor route for the shared content authoring implementation.
+/// Unlike Development authoring, this entry point is bounded by ModeEditor.
+/// </summary>
 [Authorize(Policy = AuthorizationPolicies.ModeEditor)]
 [Route("editor/content")]
 [RequestSizeLimit(ContentInputPolicy.MaxAuthoringRequestBytes)]

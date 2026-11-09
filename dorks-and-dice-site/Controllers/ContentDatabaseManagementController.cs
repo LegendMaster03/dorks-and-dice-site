@@ -5,6 +5,10 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace dorks_and_dice_site.Controllers;
 
+/// <summary>
+/// Development-only controls for deliberate movement of authored pages between
+/// named sources. A move checks target conflicts instead of replacing history.
+/// </summary>
 [Authorize(Policy = AuthorizationPolicies.DevAccess)]
 [Route("development/databases")]
 public sealed class ContentDatabaseManagementController : Controller

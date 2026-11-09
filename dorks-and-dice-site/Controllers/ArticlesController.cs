@@ -6,6 +6,11 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace dorks_and_dice_site.Controllers;
 
+/// <summary>
+/// Lists articles from the current request's effective content catalog and
+/// normal-mode presentation. Article records belong to shared content storage,
+/// not to a separate article store for each hosted site.
+/// </summary>
 [Route("articles")]
 public class ArticlesController : Controller
 {

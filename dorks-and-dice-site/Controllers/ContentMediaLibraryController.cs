@@ -7,6 +7,10 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace dorks_and_dice_site.Controllers;
 
+/// <summary>
+/// Mode-scoped Editor media library for the configured authoring source.
+/// This surface does not grant access to the Development source-selection UI.
+/// </summary>
 [Authorize(Policy = AuthorizationPolicies.ModeEditor)]
 [Route("editor/media")]
 [RequestSizeLimit(ContentInputPolicy.MaxAssetUploadBytes + 65_536)]

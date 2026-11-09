@@ -9,6 +9,11 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace dorks_and_dice_site.Controllers;
 
+/// <summary>
+/// Shared page authoring workflow for the normal Editor and central Development
+/// surfaces. Concrete controllers supply the authority context; this base keeps
+/// editing and preview behavior consistent without granting cross-mode access.
+/// </summary>
 public abstract class ContentAuthoringControllerBase : Controller
 {
     private static readonly Regex DirectiveLinePattern = new(

@@ -6,6 +6,9 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace dorks_and_dice_site.Controllers;
 
+/// <summary>
+/// Normal Editor entry point for mode-scoped media attachments to authored pages.
+/// </summary>
 [Authorize(Policy = AuthorizationPolicies.ModeEditor)]
 [Route("editor/content/{slug}/media")]
 [RequestSizeLimit(ContentInputPolicy.MaxAssetUploadBytes + 65_536)]

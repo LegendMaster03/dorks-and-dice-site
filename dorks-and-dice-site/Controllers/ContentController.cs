@@ -7,6 +7,11 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace dorks_and_dice_site.Controllers;
 
+/// <summary>
+/// Resolves public content detail routes through mode-aware content, redirects,
+/// and the shared renderer. The Professional resume alias is route-owned by its
+/// mode even though content revisions live in shared infrastructure.
+/// </summary>
 public sealed class ContentController : Controller
 {
     private readonly IContentCatalogService _catalog;
@@ -29,6 +34,8 @@ public sealed class ContentController : Controller
         _siteHosting = siteHosting;
     }
 
+    // This shared route adapter is called only when the Professional mode owns
+    // the /resume path; route ownership is enforced before MVC dispatch.
     [HttpGet("/resume/{slug}")]
     public Task<IActionResult> ResumeDetail(string slug, CancellationToken cancellationToken)
     {

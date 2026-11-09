@@ -4,6 +4,11 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace dorks_and_dice_site.Controllers;
 
+/// <summary>
+/// Serves content-managed media only after the asset service confirms an
+/// effective, visible page reference. Responses use content-hash ETags;
+/// passive SVG responses additionally receive a restrictive CSP.
+/// </summary>
 [Route("content/media")]
 public sealed class ContentMediaController : Controller
 {
@@ -43,6 +48,8 @@ public sealed class ContentMediaController : Controller
         Response.Headers.XContentTypeOptions = "nosniff";
         Response.Headers.CacheControl = "public, max-age=0, must-revalidate";
 
+        // Asset URLs remain stable after replacement, so cache validation must
+        // use the current content hash rather than immutable URL caching.
         var etag = $"\"sha256-{asset.Sha256}\"";
         Response.Headers.ETag = etag;
         if (Request.Headers.IfNoneMatch.Any(header =>

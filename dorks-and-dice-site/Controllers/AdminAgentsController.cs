@@ -9,6 +9,11 @@ using Microsoft.EntityFrameworkCore;
 
 namespace dorks_and_dice_site.Controllers;
 
+/// <summary>
+/// Owner-only administration of service-principal accounts and operator credentials.
+/// Credential issuance and revocation are delegated to operator services rather
+/// than treated as normal user sign-in or site-mode state.
+/// </summary>
 [Authorize(Policy = AuthorizationPolicies.OwnerAccess)]
 [Route("admin/agents")]
 public sealed class AdminAgentsController(
