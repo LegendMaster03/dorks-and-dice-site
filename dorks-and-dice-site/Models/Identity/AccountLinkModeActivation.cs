@@ -1,5 +1,9 @@
 namespace dorks_and_dice_site.Models.Identity;
 
+/// <summary>
+/// Records activation of an external provider resource for one normal
+/// site mode, without duplicating the globally linked account identity.
+/// </summary>
 public sealed class AccountLinkModeActivation
 {
     public const int ModeIdMaxLength = 100;

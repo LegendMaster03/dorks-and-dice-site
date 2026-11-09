@@ -7,6 +7,10 @@ public sealed class ContentAssetUsageInfo
     public string Relationship { get; init; } = string.Empty;
 }
 
+/// <summary>
+/// Source-aware media catalog entry. Asset identity is distinct from
+/// an attachment to a page; dependencies can reference global sources.
+/// </summary>
 public sealed class ContentAssetInfo
 {
     public string AssetKey { get; init; } = string.Empty;

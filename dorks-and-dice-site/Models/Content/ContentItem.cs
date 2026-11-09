@@ -2,6 +2,11 @@ using System.Text.Json.Serialization;
 
 namespace dorks_and_dice_site.Models.Content;
 
+/// <summary>
+/// Context and internal tags for revision-oriented content. Projects,
+/// experience, articles, and homepages share one store rather than
+/// requiring separate mode-owned content tables.
+/// </summary>
 public static class ContentTags
 {
     public const string Project = "project";
@@ -21,6 +26,11 @@ public static class ContentTags
     public static bool IsPublic(string tag) => !IsContext(tag) && !IsInternal(tag);
 }
 
+/// <summary>
+/// Authorable content revision with stable identity, route slug, presentation
+/// metadata, and eligible normal-mode IDs. SourceKey and RevisionId are
+/// persistence projections rather than portable authored fields.
+/// </summary>
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed class ContentItem
 {

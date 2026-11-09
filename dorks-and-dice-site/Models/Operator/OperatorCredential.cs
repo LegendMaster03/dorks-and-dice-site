@@ -1,5 +1,9 @@
 namespace dorks_and_dice_site.Models.Operator;
 
+/// <summary>
+/// Metadata and verifier for one operator service-principal credential.
+/// Only a hash and identifying prefix are stored, not the bearer secret.
+/// </summary>
 public sealed class OperatorCredential
 {
     public const int NameMaxLength = 100;

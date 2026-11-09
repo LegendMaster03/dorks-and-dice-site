@@ -2,6 +2,11 @@ using Microsoft.AspNetCore.Identity;
 
 namespace dorks_and_dice_site.Models.Identity;
 
+/// <summary>
+/// Shared Identity account for either hosted site. AccountKind distinguishes
+/// humans from service principals, while mode-specific roles and external
+/// workspace activation are stored separately from this record.
+/// </summary>
 public sealed class ApplicationUser : IdentityUser<Guid>
 {
     public const int DisplayNameMaxLength = 80;

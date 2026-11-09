@@ -1,5 +1,9 @@
 namespace dorks_and_dice_site.Models.Tools;
 
+/// <summary>
+/// Browser-visible hosting context for an application Tool. It describes
+/// route and presentation information, not a server-to-server auth ticket.
+/// </summary>
 public sealed class ToolHostContext
 {
     public int ContractVersion { get; init; } = 1;

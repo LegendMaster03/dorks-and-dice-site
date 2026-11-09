@@ -1,5 +1,9 @@
 namespace dorks_and_dice_site.Models.Operator;
 
+/// <summary>
+/// Tracks an operator capability invocation by principal and credential,
+/// including its requested resource and completion outcome for auditing.
+/// </summary>
 public sealed class OperatorAuditRecord
 {
     public const int ClientMaxLength = 100;

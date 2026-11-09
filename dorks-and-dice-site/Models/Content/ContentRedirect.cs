@@ -1,5 +1,9 @@
 namespace dorks_and_dice_site.Models.Content;
 
+/// <summary>
+/// Separates article and resume redirect namespaces so a historical slug
+/// can be resolved in the context of its public route family.
+/// </summary>
 public static class ContentRouteNamespaces
 {
     public const string Resume = "resume";
