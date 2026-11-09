@@ -11,6 +11,10 @@ namespace dorks_and_dice_site.Tests;
 /// Delegated and private-tunnel calls revalidate the initiating source Tool's
 /// current release audience, not only its captured authorization context.
 /// </summary>
+/// <summary>
+/// Delegation and private tunnel contexts must recheck the initiating Tool's
+/// current release audience, not rely solely on eligibility captured earlier.
+/// </summary>
 [Collection(PublishedContentIntegrationCollection.Name)]
 public sealed class ToolReleaseAudienceDelegationSourceTests(
     PublishedContentWebApplicationFactory factory)

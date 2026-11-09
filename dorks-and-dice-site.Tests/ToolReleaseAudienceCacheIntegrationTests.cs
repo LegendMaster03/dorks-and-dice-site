@@ -11,6 +11,11 @@ namespace dorks_and_dice_site.Tests;
 /// Restricted Tool execution and account-required challenges must be private
 /// and uncacheable to prevent cross-user denial or disclosure through caches.
 /// </summary>
+/// <summary>
+/// Restricted Tool responses, including denial and login challenges, must
+/// prevent shared caching so one account's authorization result can not leak
+/// to a different viewer.
+/// </summary>
 [Collection(PublishedContentIntegrationCollection.Name)]
 public sealed class ToolReleaseAudienceCacheIntegrationTests(
     PublishedContentWebApplicationFactory factory)

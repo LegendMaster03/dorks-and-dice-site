@@ -12,6 +12,11 @@ namespace dorks_and_dice_site.Tests;
 /// while blocking upstream cookies, unapproved hosts, redirects, and
 /// connection-specific transport headers.
 /// </summary>
+/// <summary>
+/// Tool upstream proxying preserves allowed method, path, body, and response
+/// semantics while stripping browser credentials, hop-by-hop headers, and
+/// untrusted redirects before contacting the remote Tool.
+/// </summary>
 public sealed class ToolProxyServiceTests
 {
     [Fact]

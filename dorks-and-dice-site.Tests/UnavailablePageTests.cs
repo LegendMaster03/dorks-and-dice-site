@@ -7,6 +7,11 @@ namespace dorks_and_dice_site.Tests;
 /// Unavailable pages must not expose whether restricted content or Tools
 /// exist, while presenting appropriate sign-in guidance to anonymous visitors.
 /// </summary>
+/// <summary>
+/// The shared unavailable-page response must not disclose whether protected
+/// content exists. Anonymous visitors see a sign-in path; authenticated users
+/// do not receive redundant sign-in advice.
+/// </summary>
 [Collection(PublishedContentIntegrationCollection.Name)]
 public sealed class UnavailablePageTests(PublishedContentWebApplicationFactory factory)
 {

@@ -15,6 +15,11 @@ namespace dorks_and_dice_site.Tests;
 /// allowing anonymous application access can not override a restrictive
 /// audience or mode boundary.
 /// </summary>
+/// <summary>
+/// Tool release-audience policy combines active normal-mode visibility with
+/// Tester/Dev authority and must take precedence over AllowAnonymous when
+/// an application is restricted.
+/// </summary>
 public sealed class ToolReleaseAudienceTests
 {
     [Fact]

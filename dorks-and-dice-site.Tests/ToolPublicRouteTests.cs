@@ -6,6 +6,10 @@ namespace dorks_and_dice_site.Tests;
 /// Canonical Tool application roots differ by Embedded Module and proxied
 /// hosting contract; invalid slugs must not become public routes.
 /// </summary>
+/// <summary>
+/// Canonical Tool routes differ for embedded modules and proxied
+/// applications. Invalid public slugs must never create an accessible Tool path.
+/// </summary>
 public sealed class ToolPublicRouteTests
 {
     [Theory]

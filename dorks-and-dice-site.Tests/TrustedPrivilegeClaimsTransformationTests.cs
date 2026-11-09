@@ -11,6 +11,11 @@ namespace dorks_and_dice_site.Tests;
 /// Public requests strip Trusted Access-only global roles while preserving
 /// safe inherited capabilities; trusted requests retain privileged claims.
 /// </summary>
+/// <summary>
+/// Public requests suppress Admin/Dev trusted privileges but retain safe
+/// inherited Global Editor and mode-scoped capabilities. Trusted ingress
+/// preserves the original roles.
+/// </summary>
 public sealed class TrustedPrivilegeClaimsTransformationTests
 {
     [Fact]

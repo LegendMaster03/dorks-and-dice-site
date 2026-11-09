@@ -22,6 +22,11 @@ namespace dorks_and_dice_site.Tests;
 /// rebuilds target context. Target availability, mode, upstream policy, and
 /// contract constraints remain mandatory.
 /// </summary>
+/// <summary>
+/// Only explicitly approved source Tools can delegate to permitted targets.
+/// The target context must rederive current user/campaign authorization and
+/// observe target mode, version, and upstream policy.
+/// </summary>
 [Collection(PublishedContentIntegrationCollection.Name)]
 public sealed class ToolToToolDelegationIntegrationTests(PublishedContentWebApplicationFactory factory)
 {

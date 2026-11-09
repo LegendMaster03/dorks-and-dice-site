@@ -9,6 +9,11 @@ namespace dorks_and_dice_site.Tests;
 /// capability. Forwarded hostnames, spoofed capability headers, and server IPs
 /// do not grant trust.
 /// </summary>
+/// <summary>
+/// Trusted access is grounded in the original connection and configured
+/// capability, not a spoofable Host header or forwarded loopback address.
+/// Untrusted public ingress must not activate the Development control plane.
+/// </summary>
 public sealed class TrustedAccessEvaluatorTests
 {
     private readonly SiteModeOptions _options = new();
