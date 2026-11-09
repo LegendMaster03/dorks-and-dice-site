@@ -5,6 +5,11 @@ using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// Normal-mode editors may author only their assigned site's content;
+/// central Development authoring requires separate trusted access and role
+/// authority without silently transferring that power to scoped editors.
+/// </summary>
 [Collection(PublishedContentIntegrationCollection.Name)]
 public sealed class ContentAuthoringIntegrationTests
 {

@@ -8,6 +8,11 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// The Discord plugin updates only its managed workspace resources; account
+/// activation and guild ownership are checked independently of campaign
+/// projection intent.
+/// </summary>
 public sealed class DiscordWorkspaceSyncTests
 {
     [Fact]

@@ -6,6 +6,11 @@ using Microsoft.EntityFrameworkCore;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// DM membership transitions retain at least one active DM and remove
+/// character associations when a player loses that role without deleting
+/// the character itself.
+/// </summary>
 public sealed class DorksAndDiceCampaignRoleTests
 {
     [Fact]

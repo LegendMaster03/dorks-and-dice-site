@@ -8,6 +8,10 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// Discord role membership reconciliation removes stale managed assignments
+/// when a previously seeded guild member has no active Site account link.
+/// </summary>
 public sealed class DiscordManagedRoleMembershipReconcilerTests
 {
     [Fact]

@@ -7,6 +7,11 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// An anonymous Tool application can reach its permitted upstream gateway,
+/// but an account-required Tool must challenge and a proxied application must
+/// not reuse the embedded upstream route.
+/// </summary>
 [Collection(PublishedContentIntegrationCollection.Name)]
 public sealed class AnonymousToolUpstreamIntegrationTests
 {

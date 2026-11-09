@@ -5,6 +5,11 @@ using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// Trusted Preview source and unlisted-content controls have distinct role
+/// requirements. Developers can choose an explicit empty source set without
+/// falling back to hidden deployment data.
+/// </summary>
 [Collection(PublishedContentIntegrationCollection.Name)]
 public sealed class ContentSourceIntegrationTests
 {

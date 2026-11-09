@@ -6,6 +6,11 @@ using Microsoft.Extensions.Configuration;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// Author-authored Markdown is untrusted: HTML, unsafe schemes, unknown
+/// directives, and internal tags must be constrained without removing safe
+/// links, section IDs, or presentation classes.
+/// </summary>
 public sealed class ContentSecurityTests
 {
     [Fact]

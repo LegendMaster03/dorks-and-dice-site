@@ -6,6 +6,10 @@ using Microsoft.EntityFrameworkCore;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// New authored content must derive its default mode from the registry,
+/// not from hard-coded Dorks & Dice or Professional enum cases.
+/// </summary>
 public sealed class ContentAuthoringModeDefaultTests
 {
     [Fact]

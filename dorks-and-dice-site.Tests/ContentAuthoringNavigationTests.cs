@@ -9,6 +9,10 @@ using Microsoft.Extensions.Configuration;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// The public URL, editor workspace, and source options must remain coherent
+/// across normal-mode editing and explicit synthetic Development selection.
+/// </summary>
 public sealed class ContentAuthoringNavigationTests
 {
     [Fact]

@@ -3,6 +3,10 @@ using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// Historical slugs redirect within their route namespace without bypassing
+/// the destination page's current normal-mode publication visibility.
+/// </summary>
 [Collection(PublishedContentIntegrationCollection.Name)]
 public sealed class ContentRedirectIntegrationTests
 {

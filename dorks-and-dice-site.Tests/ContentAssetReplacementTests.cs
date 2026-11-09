@@ -5,6 +5,11 @@ using Microsoft.Extensions.Configuration;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// Replacing managed media retains the original identity and dependencies;
+/// deduplicated staging assets and invalid media changes must not destroy
+/// existing records.
+/// </summary>
 public sealed class ContentAssetReplacementTests
 {
     [Fact]

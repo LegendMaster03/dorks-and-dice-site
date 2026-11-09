@@ -6,6 +6,10 @@ using Microsoft.EntityFrameworkCore;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// Tool-consumable campaign context contains only active membership,
+/// role, and character projections visible to the requesting campaign member.
+/// </summary>
 public sealed class DorksAndDiceCampaignContextTests
 {
     [Fact]
