@@ -3,6 +3,10 @@ using dorks_and_dice_site.Services.Identity;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// Captures shared Identity notification messages for assertions without
+/// sending SMTP or depending on an external mail account.
+/// </summary>
 public sealed record SentAccountEmail(
     AccountEmailSenderIdentity SenderIdentity,
     string Recipient,

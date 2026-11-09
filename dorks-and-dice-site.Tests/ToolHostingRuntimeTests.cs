@@ -9,6 +9,10 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// Tool mode visibility and safe upstream URL construction cover registered
+/// stable IDs, legacy defaults, path traversal, and deployment host policy.
+/// </summary>
 public sealed class ToolHostingRuntimeTests
 {
     [Fact]

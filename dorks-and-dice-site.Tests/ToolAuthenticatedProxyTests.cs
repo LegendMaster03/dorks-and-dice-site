@@ -6,6 +6,11 @@ using Microsoft.Extensions.Configuration;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// The upstream proxy substitutes server-authored Tool tickets and strips
+/// browser-supplied authentication, lifecycle, and other reserved control
+/// headers in both directions.
+/// </summary>
 public sealed class ToolAuthenticatedProxyTests
 {
     [Fact]

@@ -9,6 +9,10 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// Tool navigation matches mode/user visibility, and Professional navigation
+/// must not inherit Dorks & Dice Tool, campaign, or character links.
+/// </summary>
 [Collection(PublishedContentIntegrationCollection.Name)]
 public sealed class ToolNavigationIntegrationTests(PublishedContentWebApplicationFactory factory)
 {

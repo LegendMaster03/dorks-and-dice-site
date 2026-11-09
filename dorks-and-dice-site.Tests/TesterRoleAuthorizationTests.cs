@@ -5,6 +5,10 @@ using dorks_and_dice_site.Services.Site;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// Tester is a normal-mode-scoped release capability, not an editor role;
+/// Dev and Owner inheritance is distinct from Admin authority.
+/// </summary>
 public sealed class TesterRoleAuthorizationTests
 {
     [Fact]

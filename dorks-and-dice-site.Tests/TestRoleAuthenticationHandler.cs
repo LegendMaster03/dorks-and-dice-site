@@ -7,6 +7,10 @@ using Microsoft.Extensions.Options;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// Supplies controlled test principals and roles for authorization tests;
+/// it is not a production alternate authentication scheme.
+/// </summary>
 public sealed class TestRoleAuthenticationHandler : AuthenticationHandler<AuthenticationSchemeOptions>
 {
     public new const string Scheme = "IntegrationTestRoles";

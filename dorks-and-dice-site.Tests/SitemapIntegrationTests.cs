@@ -8,6 +8,10 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// Canonical sitemaps combine mode-owned routes, effective database content,
+/// and anonymous public Tool roots for the current host only.
+/// </summary>
 [Collection(PublishedContentIntegrationCollection.Name)]
 public sealed class SitemapIntegrationTests
 {

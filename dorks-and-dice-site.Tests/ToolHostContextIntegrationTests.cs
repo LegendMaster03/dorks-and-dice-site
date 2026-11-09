@@ -8,6 +8,10 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// Browser Tool context reveals only safe route and identity summaries;
+/// authoritative Tool sessions require authentication and mode eligibility.
+/// </summary>
 [Collection(PublishedContentIntegrationCollection.Name)]
 public sealed class ToolHostContextIntegrationTests
 {

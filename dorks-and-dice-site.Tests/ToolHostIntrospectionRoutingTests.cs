@@ -5,6 +5,10 @@ using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// Internal Tool control-plane endpoints remain reachable without a normal
+/// public host mode, while fallback blocks unrelated user-facing Tool routes.
+/// </summary>
 [Collection(PublishedContentIntegrationCollection.Name)]
 public sealed class ToolHostIntrospectionRoutingTests
 {

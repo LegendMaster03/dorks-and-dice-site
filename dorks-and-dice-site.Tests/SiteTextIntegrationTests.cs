@@ -7,6 +7,10 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// Public text indexes mirror the current normal-mode catalog and list only
+/// publicly accessible Tools, without leaking Testing/Development releases.
+/// </summary>
 [Collection(PublishedContentIntegrationCollection.Name)]
 public sealed class SiteTextIntegrationTests
 {

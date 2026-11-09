@@ -11,6 +11,10 @@ using Microsoft.Extensions.Options;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// Raised body limits apply only to Tool Host upstream namespaces; ordinary
+/// routes retain Kestrel limits and oversized chunked uploads return 413.
+/// </summary>
 public sealed class ToolProxyRequestBodyLimitKestrelTests
 {
     private const long OldKestrelLimitBytes = 30_000_000;

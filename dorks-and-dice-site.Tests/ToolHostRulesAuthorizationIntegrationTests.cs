@@ -9,6 +9,10 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// A Dorks & Dice-scoped Rules Lawyer claim must never be serialized as a
+/// global Tool Host role.
+/// </summary>
 [Collection(PublishedContentIntegrationCollection.Name)]
 public sealed class ToolHostRulesAuthorizationIntegrationTests
 {
