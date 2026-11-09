@@ -2,6 +2,10 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace dorks_and_dice_site.Framework.Plugins;
 
+/// <summary>
+/// Registers installed in-process plugins after checking the complete manifest set.
+/// A plugin is an executable extension, not a normal site mode or a separately hosted Tool.
+/// </summary>
 public static class SitePluginRegistrationExtensions
 {
     public static IServiceCollection AddSitePlugins(
@@ -11,6 +15,8 @@ public static class SitePluginRegistrationExtensions
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(plugins);
 
+        // Validate every manifest before any plugin can register services. This catches
+        // duplicates and unresolved dependencies without partially registering plugins.
         var installed = plugins.ToList();
         var manifests = Validate(installed);
 

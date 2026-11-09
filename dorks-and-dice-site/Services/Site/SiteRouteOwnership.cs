@@ -2,6 +2,11 @@ using dorks_and_dice_site.Models.Site;
 
 namespace dorks_and_dice_site.Services.Site;
 
+/// <summary>
+/// Checks which routes belong to the shared framework, a normal site mode, or a
+/// synthetic runtime state. Route ownership is a visibility boundary; endpoint
+/// authentication and authorization remain separate responsibilities.
+/// </summary>
 public static class SiteRouteOwnership
 {
     public static bool IsModeAdaptivePath(PathString path)

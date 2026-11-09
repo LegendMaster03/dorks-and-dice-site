@@ -5,6 +5,11 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace dorks_and_dice_site.Services.Site;
 
+/// <summary>
+/// Resolves the request's normal site identity or synthetic framework state, then
+/// applies route ownership before MVC routing. Trusted developer preview remains
+/// distinct from the public mode resolved for an ordinary hosted request.
+/// </summary>
 public sealed class SiteModeMiddleware
 {
     public const string OriginalBlockedRequestTargetKey = "SiteMode.OriginalBlockedRequestTarget";

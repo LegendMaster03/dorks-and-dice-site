@@ -2,6 +2,10 @@ using dorks_and_dice_site.Models.Site;
 
 namespace dorks_and_dice_site.Services.Site;
 
+/// <summary>
+/// Exposes registered normal site identities by stable ID. The legacy enum mapping is
+/// a compatibility lookup, not the contract required of future site modes.
+/// </summary>
 public interface ISiteModeRegistry
 {
     IReadOnlyList<SiteModeDefinition> All { get; }
@@ -11,6 +15,10 @@ public interface ISiteModeRegistry
     SiteModeDefinition GetByLegacyMode(SiteMode mode);
 }
 
+/// <summary>
+/// Validates the deployment-supplied normal-mode definitions once and exposes immutable
+/// lookup tables. This generic registry does not select hostnames or own mode behavior.
+/// </summary>
 public sealed class SiteModeRegistry : ISiteModeRegistry
 {
     private readonly IReadOnlyDictionary<string, SiteModeDefinition> _byId;

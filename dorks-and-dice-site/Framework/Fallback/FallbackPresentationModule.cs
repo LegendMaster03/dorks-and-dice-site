@@ -3,6 +3,10 @@ using dorks_and_dice_site.Services.Site;
 
 namespace dorks_and_dice_site.Framework.Fallback;
 
+/// <summary>
+/// Provides neutral metadata for the unassigned-host fallback. These values do not
+/// represent the branding or content scope of a registered normal site mode.
+/// </summary>
 public sealed class FallbackPresentationModule : ISiteModePresentationModule
 {
     public string PresentationKey => FrameworkRuntimeStates.Fallback.Id;

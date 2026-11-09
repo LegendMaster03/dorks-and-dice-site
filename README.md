@@ -1,6 +1,6 @@
 # dorks-and-dice-site
 
-One ASP.NET Core MVC application currently serves the **Dorks & Dice** site and the **Kyle Barnett professional** site. The codebase is being structured as a reusable multi-mode framework: normal site modes compose shared framework behavior, database-backed content, presentation, plugins, Tools, and mode-owned specialization without duplicating the application.
+One ASP.NET Core MVC application currently serves the **Dorks & Dice** site and the **Kyle Barnett professional** site. The repository is also the working prototype of an as-yet-unnamed reusable web architecture. Its framework-oriented infrastructure, normal site modes, and deployment-specific composition are kept distinct so the architecture can be extracted later without treating either hosted site as part of the generic framework. Extraction and framework packaging are not yet complete.
 
 ## Stack
 
@@ -16,6 +16,7 @@ One ASP.NET Core MVC application currently serves the **Dorks & Dice** site and 
 
 The detailed contracts are documented under `docs/`, especially:
 
+- `docs/repository-ownership-boundaries.md` — current code ownership versus future framework extraction
 - `docs/site-mode-architecture.md`
 - `docs/refactor-architecture-plan.md`
 - `docs/mode-definition-decision.md`

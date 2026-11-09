@@ -10,6 +10,11 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace dorks_and_dice_site.Modes.DorksAndDice;
 
+/// <summary>
+/// Wires Dorks & Dice-owned domain services and storage into the shared application.
+/// Campaign, character, and Discord workspace behavior remains mode-specific rather
+/// than becoming a dependency of the reusable framework.
+/// </summary>
 public static class DorksAndDiceServiceCollectionExtensions
 {
     private const string SharedMigrationsHistoryTable = "__DorksAndDiceMigrationsHistory";
@@ -29,6 +34,8 @@ public static class DorksAndDiceServiceCollectionExtensions
                 configuration.GetConnectionString("DorksAndDice")
                 ?? configuration[$"{DorksAndDiceStorageOptions.SectionName}:ConnectionString"];
 
+            // Explicit mode storage takes precedence over the optional shared content
+            // source; absent either setting, a local SQLite database is used.
             if (!string.IsNullOrWhiteSpace(configuredProvider)
                 || !string.IsNullOrWhiteSpace(configuredConnectionString))
             {
@@ -107,6 +114,8 @@ public static class DorksAndDiceServiceCollectionExtensions
         throw new NotSupportedException($"Dorks & Dice storage provider '{provider}' is not supported.");
     }
 
+    // A shared database needs a distinct migration-history table so mode-owned
+    // schema migrations are tracked separately from content-source migrations.
     private static void ConfigureSharedContentSource(
         DbContextOptionsBuilder options,
         ContentSourceDefinition contentSource)

@@ -3,6 +3,10 @@ using dorks_and_dice_site.Services.Site;
 
 namespace dorks_and_dice_site.Framework.TrustedPreview;
 
+/// <summary>
+/// Presentation for the synthetic Development/Trusted Preview control-plane state.
+/// Its metadata must not be mistaken for a normal hosted site's identity.
+/// </summary>
 public sealed class TrustedPreviewPresentationModule : ISiteModePresentationModule
 {
     public string PresentationKey => FrameworkRuntimeStates.TrustedPreview.Id;
