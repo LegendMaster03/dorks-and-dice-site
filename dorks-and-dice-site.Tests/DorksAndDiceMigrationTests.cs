@@ -5,6 +5,10 @@ using Npgsql;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// Mode-owned campaign migrations create a usable schema on both SQLite and
+/// PostgreSQL without relying on shared content tables.
+/// </summary>
 [Collection(PostgresIntegrationCollection.Name)]
 public sealed class DorksAndDiceMigrationTests
 {

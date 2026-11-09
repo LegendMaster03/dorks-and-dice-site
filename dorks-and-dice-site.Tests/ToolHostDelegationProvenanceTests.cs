@@ -4,6 +4,10 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// Delegated Tool contexts must identify the immediate source registration;
+/// the gateway must not confuse it with the original user's application.
+/// </summary>
 [Collection(PublishedContentIntegrationCollection.Name)]
 public sealed class ToolHostDelegationProvenanceTests(PublishedContentWebApplicationFactory factory)
 {

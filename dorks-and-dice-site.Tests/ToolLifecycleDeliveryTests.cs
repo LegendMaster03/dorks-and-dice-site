@@ -10,6 +10,10 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// A downstream Tool acknowledgement completes the durable outbox record;
+/// failed notifications stay pending and can be retried without re-deletion.
+/// </summary>
 public sealed class ToolLifecycleDeliveryTests
 {
     [Fact]

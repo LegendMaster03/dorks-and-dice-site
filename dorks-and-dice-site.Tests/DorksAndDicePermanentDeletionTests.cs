@@ -7,6 +7,10 @@ using Microsoft.EntityFrameworkCore;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// Domain deletion authorization and Tool lifecycle outbox insertion form
+/// one transaction. A failed outbox write must roll back canonical deletion.
+/// </summary>
 public sealed class DorksAndDicePermanentDeletionTests
 {
     [Fact]

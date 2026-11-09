@@ -6,6 +6,10 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// The checked-in Dorks & Dice migration snapshot must match its live EF
+/// relational model across supported database providers.
+/// </summary>
 public sealed class DorksAndDiceMigrationModelTests
 {
     [Theory]

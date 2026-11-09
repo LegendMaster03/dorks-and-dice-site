@@ -2,6 +2,10 @@ using dorks_and_dice_site.Services.Tools;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// Tool lifecycle tickets are registration-scoped, single-use, and contain
+/// lifecycle metadata rather than a human user's authorization context.
+/// </summary>
 public sealed class ToolLifecycleTicketTests
 {
     [Fact]

@@ -10,6 +10,10 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// The Dorks & Dice mode can share a physical content database while retaining
+/// separate domain entities and durable campaign/character state after restart.
+/// </summary>
 public sealed class DorksAndDiceSharedStorageTests
 {
     [Fact]

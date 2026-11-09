@@ -4,6 +4,11 @@ using Microsoft.Extensions.Configuration;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// Existing content databases receive compatibility additions without losing
+/// media or redirect data; known Tool delegation defaults are applied only
+/// where the legacy schema requires them.
+/// </summary>
 public sealed class ContentStorageSchemaTests
 {
     [Fact]

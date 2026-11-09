@@ -14,6 +14,10 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// Character Sheet receives only owner-authorized character projections;
+/// older Tool authentication contract versions retain their compatible shape.
+/// </summary>
 [Collection(PublishedContentIntegrationCollection.Name)]
 public sealed class ToolHostCharacterAuthorizationIntegrationTests(PublishedContentWebApplicationFactory factory)
 {

@@ -8,6 +8,11 @@ using Microsoft.Extensions.Configuration;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// Copying a page preserves revision history and owned media; moving the
+/// page removes the source only after the destination copy succeeds and verifies
+/// that external media dependencies are available.
+/// </summary>
 public sealed class ContentSourceTransferServiceTests
 {
     [Fact]

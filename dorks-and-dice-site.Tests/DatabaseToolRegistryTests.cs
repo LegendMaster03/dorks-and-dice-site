@@ -5,6 +5,10 @@ using Microsoft.Extensions.Configuration;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// SQLite and PostgreSQL Tool registries preserve registration identities,
+/// normal-mode assignments, and delegation initialization across persistence.
+/// </summary>
 public sealed class DatabaseToolRegistryTests
 {
     [Fact]

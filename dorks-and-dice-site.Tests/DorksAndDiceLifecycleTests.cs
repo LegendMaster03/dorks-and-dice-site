@@ -6,6 +6,10 @@ using Microsoft.EntityFrameworkCore;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// Campaign and character archive/restore differ from permanent deletion:
+/// historical memberships persist, but live invitations and connections end.
+/// </summary>
 public sealed class DorksAndDiceLifecycleTests
 {
     [Fact]
