@@ -13,6 +13,11 @@ using Microsoft.EntityFrameworkCore;
 
 namespace dorks_and_dice_site.Controllers;
 
+/// <summary>
+/// Shared account registration, recovery, and external-link management for both
+/// hosted sites. Accounts are global; external-provider activation is scoped to
+/// the current normal mode and its configured external resource.
+/// </summary>
 [Route("account")]
 public sealed class AccountController : Controller
 {
@@ -324,6 +329,8 @@ public sealed class AccountController : Controller
     [HttpPost("links/{providerId}/connect")]
     [ValidateAntiForgeryToken]
     [EnableRateLimiting("authentication")]
+    // A provider identity is linked once to the global account; enabling that
+    // provider on a normal site mode is a separate activation record.
     public async Task<IActionResult> ConnectAccountLink(string providerId)
     {
         var user = await _userManager.GetUserAsync(User);
@@ -382,6 +389,8 @@ public sealed class AccountController : Controller
     [AcceptVerbs("GET", "POST")]
     [Route("links/callback/{providerId}")]
     [IgnoreAntiforgeryToken]
+    // Verify the protected callback account, provider, mode, and single-use
+    // nonce before accepting a globally linked external identity.
     public async Task<IActionResult> AccountLinkCallback(string providerId)
     {
         if (!_accountLinkProviders.TryGet(providerId, out var provider))
@@ -543,6 +552,8 @@ public sealed class AccountController : Controller
     [Authorize]
     [HttpPost("links/{providerId}/disconnect")]
     [ValidateAntiForgeryToken]
+    // Disconnecting a site removes only its mode activation, not the global
+    // provider login; another hosted site may still depend on that identity.
     public async Task<IActionResult> DisconnectAccountLink(string providerId)
     {
         var user = await _userManager.GetUserAsync(User);
@@ -699,6 +710,8 @@ public sealed class AccountController : Controller
     [HttpPost("delete")]
     [ValidateAntiForgeryToken]
     [EnableRateLimiting("authentication")]
+    // Account deletion preserves a tombstone identity for referential history
+    // while removing external links and disabling future authentication.
     public async Task<IActionResult> Delete(DeleteAccountViewModel model)
     {
         if (!ModelState.IsValid)
@@ -772,6 +785,8 @@ public sealed class AccountController : Controller
         await _identityDbContext.SaveChangesAsync();
 
         var deletedAt = DateTimeOffset.UtcNow;
+        // The non-deliverable tombstone releases the previous email/username
+        // while keeping the same stable account ID for related records.
         var tombstoneIdentity = $"deleted-{user.Id:N}@deleted.invalid";
         user.DeletedAt = deletedAt;
         user.DisplayName = "Deleted account";

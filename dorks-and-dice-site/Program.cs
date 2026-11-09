@@ -22,6 +22,9 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
+// This is the deployment composition root for two hosted normal site modes and
+// the reusable, not-yet-extracted application architecture. Generic contracts
+// belong in Framework/Services; mode behavior belongs in Modes/ and plugins.
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -33,6 +36,8 @@ builder.Services
     });
 builder.Services.AddContentStorage(builder.Configuration, builder.Environment.ContentRootPath);
 builder.Services.AddAccountLinking();
+// In-process plugins provide executable features, not separately hosted Tools.
+// This installation chooses the plugin set without embedding it in the framework.
 builder.Services.AddSitePlugins(
 [
     new ProfessionalPortfolioPlugin(),
@@ -80,6 +85,8 @@ builder.Services
         AllowAutoRedirect = false,
         UseCookies = false
     });
+// The deployment registers normal site modes and hostname policy separately:
+// future site identities should not require edits to the generic registry.
 builder.Services.AddSingleton<SiteModeOptions>();
 builder.Services.AddSingleton<ISiteModeRegistrationSource, DeploymentSiteModeRegistrationSource>();
 builder.Services.AddSingleton<ISiteModeRegistry>(serviceProvider =>
@@ -92,6 +99,8 @@ builder.Services.AddSingleton<ISiteModePartialResolver, SiteModePartialResolver>
 builder.Services.AddSingleton<ISiteModeStylesheetResolver, SiteModeStylesheetResolver>();
 builder.Services.AddSingleton<ISiteModePresentationService, SiteModePresentationService>();
 builder.Services.AddSingleton<ISiteModeArchitectureSummaryService, SiteModeArchitectureSummaryService>();
+// Dorks & Dice campaign/character storage is mode-owned and intentionally
+// registered beside, rather than inside, generic framework infrastructure.
 builder.Services.AddDorksAndDiceMode();
 builder.Services.AddSingleton<ISiteModePresentationModule, dorks_and_dice_site.Modes.Professional.ProfessionalPresentationModule>();
 builder.Services.AddSingleton<ISiteModePresentationModule, dorks_and_dice_site.Framework.TrustedPreview.TrustedPreviewPresentationModule>();
@@ -349,6 +358,8 @@ app.Use(async (context, next) =>
     await next();
 });
 app.UseHttpsRedirection();
+// Mode selection and route ownership must precede MVC routing and Tool checks.
+// Authentication/authorization remain independent of mode visibility.
 app.UseMiddleware<SiteModeMiddleware>();
 app.UseRouting();
 app.UseAuthentication();
@@ -369,6 +380,8 @@ app.MapGet("/robots.txt", (HttpContext context) =>
     return Results.Text($"User-agent: *\nAllow: /\nSitemap: {sitemapUrl}\n", "text/plain");
 });
 
+// Trusted Preview is a synthetic control-plane state, not a third site.
+// Mutating preview cookies requires trusted ingress and per-setting role checks.
 app.MapPost("/development-preview", async (
     HttpContext context,
     IContentSourceRegistry contentSourceRegistry,
