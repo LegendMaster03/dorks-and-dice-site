@@ -1,5 +1,9 @@
 namespace dorks_and_dice_site.Services.Identity;
 
+/// <summary>
+/// Names the shared authorization policies for global administrative access,
+/// trusted development controls, and normal-mode-scoped editing.
+/// </summary>
 public static class AuthorizationPolicies
 {
     public const string TrustedAccess = "TrustedAccess";

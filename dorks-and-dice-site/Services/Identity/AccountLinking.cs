@@ -22,6 +22,11 @@ public sealed record AccountLinkAuthenticationResult(
     AccountLinkIdentity Identity,
     AuthenticationProperties Properties);
 
+/// <summary>
+/// Protocol adapter for linking an external identity to an existing global
+/// account. The challenge carries the account ID and one-time nonce;
+/// persistence and mode-specific activation are separate responsibilities.
+/// </summary>
 public interface IAccountLinkProvider
 {
     AccountLinkProviderDescriptor Descriptor { get; }

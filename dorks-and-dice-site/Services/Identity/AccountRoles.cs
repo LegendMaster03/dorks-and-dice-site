@@ -48,6 +48,11 @@ public sealed record AccountRoleInheritanceNode(
     string? ScopedRole,
     IReadOnlyList<AccountRoleInheritanceNode> Children);
 
+/// <summary>
+/// Declares the global and mode-scoped role inheritance graph. Normal-mode
+/// scoped capabilities are derived from the registry, while synthetic
+/// Development authority is managed separately.
+/// </summary>
 public static class AccountRoleHierarchy
 {
     private static readonly IReadOnlyDictionary<string, AccountRoleInheritanceNode> GlobalNodes = BuildGlobalNodes();

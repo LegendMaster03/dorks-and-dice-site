@@ -5,6 +5,11 @@ using Microsoft.Extensions.Options;
 
 namespace dorks_and_dice_site.Services.Identity;
 
+/// <summary>
+/// Materializes account display information and recognized inherited roles
+/// into the Identity principal. A later trusted-access transformation controls
+/// which privileged claims survive on public requests.
+/// </summary>
 public sealed class ApplicationUserClaimsPrincipalFactory
     : UserClaimsPrincipalFactory<ApplicationUser, IdentityRole<Guid>>
 {

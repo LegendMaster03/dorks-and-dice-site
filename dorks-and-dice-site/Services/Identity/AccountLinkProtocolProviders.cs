@@ -5,6 +5,11 @@ using OpenIddict.Client.AspNetCore;
 
 namespace dorks_and_dice_site.Services.Identity;
 
+/// <summary>
+/// Implements the OAuth account-link handshake through ASP.NET external auth.
+/// Provider identity is linked to a global account rather than creating a
+/// separate login identity for each hosted site mode.
+/// </summary>
 public sealed class OAuthAccountLinkProvider : IAccountLinkProvider
 {
     public OAuthAccountLinkProvider(AccountLinkProviderDescriptor descriptor)

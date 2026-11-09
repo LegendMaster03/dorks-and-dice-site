@@ -3,6 +3,10 @@ using Npgsql;
 
 namespace dorks_and_dice_site.Services.Identity;
 
+/// <summary>
+/// Resolves deployment-supplied Identity database credentials and provider
+/// settings. Identity is global across site modes, not a per-mode database.
+/// </summary>
 public static class IdentityConnectionStringResolver
 {
     public static string Resolve(IConfiguration configuration, string? contentRootPath = null)

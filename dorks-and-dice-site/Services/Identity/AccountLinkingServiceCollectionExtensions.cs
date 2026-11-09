@@ -2,6 +2,11 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace dorks_and_dice_site.Services.Identity;
 
+/// <summary>
+/// Registers shared account-link providers. OpenIddict token storage is
+/// intentionally disabled so the Site persists identity associations rather
+/// than provider access or refresh tokens.
+/// </summary>
 public static class AccountLinkingServiceCollectionExtensions
 {
     public static IServiceCollection AddAccountLinking(this IServiceCollection services)
