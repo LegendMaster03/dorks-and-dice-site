@@ -6,6 +6,10 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// Test host for global Identity integration with isolated database and
+/// service configuration; no production connection settings are reused.
+/// </summary>
 public sealed class IdentityWebApplicationFactory : WebApplicationFactory<Program>
 {
     private readonly string _identityConnectionString;

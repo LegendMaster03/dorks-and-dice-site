@@ -3,6 +3,10 @@ using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// Migrated Markdown must render to structured sanitized HTML and retain
+/// responsive presentation without restoring compiled article templates.
+/// </summary>
 [Collection(PublishedContentIntegrationCollection.Name)]
 public sealed class InitialContentMarkdownIntegrationTests
 {

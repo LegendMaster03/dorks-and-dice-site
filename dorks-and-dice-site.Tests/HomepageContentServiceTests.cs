@@ -5,6 +5,10 @@ using dorks_and_dice_site.Services.Site;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// A normal mode composes its visible homepage content, while synthetic
+/// states without a selected normal mode do not borrow another site's homepage.
+/// </summary>
 public sealed class HomepageContentServiceTests
 {
     [Fact]

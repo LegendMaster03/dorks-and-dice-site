@@ -6,6 +6,10 @@ using Npgsql;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// Legacy PostgreSQL Tool registrations gain stable service keys without
+/// breaking the previously public application routes.
+/// </summary>
 [Collection(PostgresIntegrationCollection.Name)]
 public sealed class HeadlessToolServicePostgresMigrationTests
 {

@@ -8,6 +8,11 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// Dorks & Dice authored homepage content can invoke installed Discord and
+/// Minecraft components without embedding plugin implementation in the
+/// shared content renderer.
+/// </summary>
 public sealed class HomepagePluginIntegrationTests
 {
     [Fact]

@@ -8,6 +8,11 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// Global Editor grants scoped content-editing authority without inheriting
+/// Admin/Dev. Direct role assignment follows the separate Admin-versus-Owner
+/// management hierarchy.
+/// </summary>
 [Collection(PostgresIntegrationCollection.Name)]
 public sealed class GlobalEditorRoleIntegrationTests
 {

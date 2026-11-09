@@ -4,6 +4,10 @@ using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// A trusted local administrator can use shared account management with
+/// SQLite Identity storage; the route is not tied to PostgreSQL deployment.
+/// </summary>
 [Collection(PublishedContentIntegrationCollection.Name)]
 public sealed class LocalAccountManagementIntegrationTests
 {

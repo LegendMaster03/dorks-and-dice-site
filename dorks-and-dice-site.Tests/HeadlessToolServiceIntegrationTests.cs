@@ -16,6 +16,10 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// Service registrations have stable keys and upstream health/delegation
+/// contracts but no public application slug or browseable Tool shell.
+/// </summary>
 [Collection(PublishedContentIntegrationCollection.Name)]
 public sealed class HeadlessToolServiceIntegrationTests(PublishedContentWebApplicationFactory factory)
 {

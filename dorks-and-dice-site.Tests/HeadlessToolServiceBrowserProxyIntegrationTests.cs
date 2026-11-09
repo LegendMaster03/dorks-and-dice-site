@@ -14,6 +14,11 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// Rules Core is the explicitly reviewed browser exception for a headless
+/// Tool service. Its stable-key gateway must not become generic public routing
+/// for every registered backend service.
+/// </summary>
 [Collection(PublishedContentIntegrationCollection.Name)]
 public sealed class HeadlessToolServiceBrowserProxyIntegrationTests(PublishedContentWebApplicationFactory factory)
 {

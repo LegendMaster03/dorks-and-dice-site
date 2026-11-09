@@ -3,6 +3,10 @@ using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// Professional homepage project/experience sections are rendered through
+/// the shared content-component system rather than a hard-coded portfolio table.
+/// </summary>
 public sealed class HomepageComponentIntegrationTests
 {
     [Fact]

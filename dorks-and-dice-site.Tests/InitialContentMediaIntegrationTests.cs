@@ -3,6 +3,10 @@ using dorks_and_dice_site.Services.Site;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// Normal-mode route policy allows managed media requests to reach the
+/// asset service, where actual publication visibility is enforced.
+/// </summary>
 public sealed class InitialContentMediaIntegrationTests
 {
     [Fact]
