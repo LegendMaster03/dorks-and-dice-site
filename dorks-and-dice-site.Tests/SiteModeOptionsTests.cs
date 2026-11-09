@@ -3,6 +3,10 @@ using Microsoft.Extensions.Configuration;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// Deployment-configured hostnames map to stable normal-mode IDs; an unknown
+/// host must not silently become one of the two public sites.
+/// </summary>
 public sealed class SiteModeOptionsTests
 {
     [Fact]

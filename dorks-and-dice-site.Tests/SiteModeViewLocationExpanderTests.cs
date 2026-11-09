@@ -10,6 +10,10 @@ using Microsoft.AspNetCore.Routing;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// Mode-specific Razor search paths and cache keys do not leak views across
+/// hosts; unassigned fallback uses the common MVC locations.
+/// </summary>
 public sealed class SiteModeViewLocationExpanderTests
 {
     [Fact]

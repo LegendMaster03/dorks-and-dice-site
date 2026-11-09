@@ -7,6 +7,10 @@ using Microsoft.Extensions.FileProviders;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// Normal mode metadata, synthetic Development overlay, and framework
+/// fallback stay separate; duplicate module keys are not permitted.
+/// </summary>
 public sealed class SiteModePresentationServiceTests
 {
     [Fact]

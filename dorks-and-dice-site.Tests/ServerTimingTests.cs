@@ -9,6 +9,10 @@ using Microsoft.Extensions.Configuration;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// Site request timing excludes overlapping Tool wait intervals and preserves
+/// upstream metrics without duplication or loss during re-execution.
+/// </summary>
 public sealed class ServerTimingTests
 {
     [Fact]

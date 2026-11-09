@@ -5,6 +5,10 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// The Professional resume entry point delegates homepage resolution to the
+/// shared Site home service instead of directly selecting compiled views.
+/// </summary>
 public sealed class ResumeControllerTests
 {
     [Fact]

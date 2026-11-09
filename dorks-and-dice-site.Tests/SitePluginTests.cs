@@ -7,6 +7,11 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// Installed plugin manifests are validated before registration; authored
+/// page components permit only declared parameters and do not expose
+/// infrastructure configuration.
+/// </summary>
 public sealed class SitePluginTests
 {
     [Fact]

@@ -4,6 +4,10 @@ using dorks_and_dice_site.Services.Site;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// Database-authored homepages take precedence over transitional compiled
+/// modules, with framework fallback for missing normal site identities.
+/// </summary>
 public sealed class SiteModeHomeServiceTests
 {
     [Fact]

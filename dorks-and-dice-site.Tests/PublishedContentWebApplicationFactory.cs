@@ -20,6 +20,11 @@ public sealed class PublishedContentIntegrationCollection : ICollectionFixture<P
 /// Gives HTTP integration tests deterministic published content without coupling
 /// them to either the empty Local authoring workspace or the live External store.
 /// </summary>
+/// <summary>
+/// Shared integration-test host with controlled published content, mode-host
+/// mappings, and test authentication. Production data sources must not be
+/// implicitly consulted by these fixtures.
+/// </summary>
 public sealed class PublishedContentWebApplicationFactory : WebApplicationFactory<Program>
 {
     private readonly string _directory = Path.Combine(

@@ -2,6 +2,10 @@ using dorks_and_dice_site.Services.Content;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// Sanitized Markdown retains explicitly permitted layout classes and
+/// section anchors while rejecting untrusted generic HTML attributes.
+/// </summary>
 public sealed class RichMarkdownLayoutTests
 {
     [Fact]

@@ -5,6 +5,11 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// An installation can replace its mode registration source to introduce a
+/// third site without modifying the generic registry or legacy compatibility
+/// facade.
+/// </summary>
 [Collection(PublishedContentIntegrationCollection.Name)]
 public sealed class SiteModeRegistrationSourceIntegrationTests
 {

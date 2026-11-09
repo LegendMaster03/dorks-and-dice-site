@@ -9,6 +9,10 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// Retired bootstrap endpoints must not allow unauthenticated elevation to
+/// Admin, Owner, Developer, or another privileged global role.
+/// </summary>
 [Collection(PostgresIntegrationCollection.Name)]
 public sealed class RemovedPrivilegeBootstrapIntegrationTests
 {
