@@ -2,6 +2,10 @@ using Microsoft.EntityFrameworkCore;
 
 namespace dorks_and_dice_site.Services.Content.Storage;
 
+/// <summary>
+/// Maintains shared content and Tool-registry storage compatibility on SQLite
+/// and PostgreSQL, separate from the Dorks & Dice mode's EF migrations.
+/// </summary>
 internal static class ContentStorageSchema
 {
     public static async Task EnsureCurrentAsync(

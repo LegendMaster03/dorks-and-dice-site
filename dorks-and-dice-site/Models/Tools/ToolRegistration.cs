@@ -1,5 +1,9 @@
 namespace dorks_and_dice_site.Models.Tools;
 
+/// <summary>
+/// Separates public-facing Tool applications from headless Tool services, which
+/// have no application slug or frontend integration contract.
+/// </summary>
 public enum ToolKind
 {
     Application,
@@ -37,6 +41,10 @@ public sealed record ToolHealthResult(
     int? StatusCode,
     long? DurationMilliseconds);
 
+/// <summary>
+/// Deployment-managed Tool registration. Key is the stable authorization and
+/// delegation identity; Slug is optional public application routing metadata.
+/// </summary>
 public sealed class ToolRegistration
 {
     public Guid Id { get; set; }

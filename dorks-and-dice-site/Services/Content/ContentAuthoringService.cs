@@ -8,6 +8,11 @@ using Microsoft.EntityFrameworkCore;
 
 namespace dorks_and_dice_site.Services.Content;
 
+/// <summary>
+/// Creates immutable page revisions in a selected source while maintaining
+/// stable page identities, redirects, and media dependencies. Source selection
+/// and mode visibility remain separate from either hosted site's presentation.
+/// </summary>
 public sealed class ContentAuthoringService : IContentAuthoringService
 {
     private static readonly JsonSerializerOptions MetadataJsonOptions = CreateMetadataJsonOptions();
@@ -186,6 +191,7 @@ public sealed class ContentAuthoringService : IContentAuthoringService
             .SingleOrDefaultAsync(candidate => candidate.ContentKey == item.Id, cancellationToken)
             ?? throw new InvalidOperationException($"Content page '{item.Id}' no longer exists.");
 
+        // A stale editor must not replace revisions committed after it was opened.
         if (page.CurrentRevisionId != document.ExpectedRevisionId)
         {
             throw new ContentAuthoringConflictException(
@@ -265,6 +271,8 @@ public sealed class ContentAuthoringService : IContentAuthoringService
         ValidatePromotionSources(sourceKey, targetSourceKey);
 
         var transfer = new ContentSourceTransferService(_sourceRegistry);
+        // Copy before deleting the source. The two databases do not share one
+        // transaction, so a failure after the copy is not rolled back atomically.
         await transfer.CopyAsync(sourceKey, targetSourceKey, slug, cancellationToken);
 
         await using var sourceContext = CreateContext(sourceKey);

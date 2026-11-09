@@ -3,6 +3,10 @@ using System.Text.Json;
 
 namespace dorks_and_dice_site.Services.Site;
 
+/// <summary>
+/// Evaluates access to the development control-plane surface. This does not
+/// select a normal site mode or grant editor/application roles by itself.
+/// </summary>
 public static class TrustedAccessEvaluator
 {
     private static readonly object OriginalConnectionItemKey = new();

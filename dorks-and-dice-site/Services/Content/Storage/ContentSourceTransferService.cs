@@ -11,6 +11,10 @@ public interface IContentSourceTransferService
         CancellationToken cancellationToken = default);
 }
 
+/// <summary>
+/// Copies a page, revisions, redirects, and media to a distinct content source,
+/// rejecting collisions and missing dependencies. It does not delete the source.
+/// </summary>
 public sealed class ContentSourceTransferService : IContentSourceTransferService
 {
     private readonly IContentSourceRegistry _sourceRegistry;
@@ -45,6 +49,8 @@ public sealed class ContentSourceTransferService : IContentSourceTransferService
         }
 
         await EnsureDependenciesAvailableAsync(targetContext, target.Key, sourcePage, cancellationToken);
+        // The destination copy is transactional within its own database, not
+        // atomically coordinated with a later source deletion.
         await using var transaction = await targetContext.Database.BeginTransactionAsync(cancellationToken);
         await CopyPageAsync(targetContext, sourcePage, cancellationToken);
         await transaction.CommitAsync(cancellationToken);

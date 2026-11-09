@@ -10,6 +10,10 @@ public static class DorksAndDiceStorageOptions
     public const string SectionName = "DorksAndDiceStorage";
 }
 
+/// <summary>
+/// Starts mode-owned schema migrations when enabled in deployment configuration.
+/// The model snapshot guard rejects unrecorded relational model changes.
+/// </summary>
 public sealed class DorksAndDiceStorageInitializer(IServiceScopeFactory scopeFactory, IConfiguration configuration) : IHostedService
 {
     private static readonly SemaphoreSlim InitializationGate = new(1, 1);
@@ -22,6 +26,7 @@ public sealed class DorksAndDiceStorageInitializer(IServiceScopeFactory scopeFac
             ?? _configuration.GetValue($"{DorksAndDiceStorageOptions.SectionName}:EnsureCreatedOnStartup", true);
         if (!migrateOnStartup) return;
 
+        // Serialize initialization within the process before migration checks.
         await InitializationGate.WaitAsync(cancellationToken);
         try
         {
