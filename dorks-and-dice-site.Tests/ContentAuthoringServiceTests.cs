@@ -8,6 +8,10 @@ using Microsoft.Extensions.Configuration;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// Revision edits preserve stable page identity, reject stale editors, and
+/// maintain direct redirects across repeated slug changes.
+/// </summary>
 public sealed class ContentAuthoringServiceTests
 {
     [Fact]

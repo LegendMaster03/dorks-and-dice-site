@@ -4,6 +4,10 @@ using dorks_and_dice_site.Services.Tools;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// Server-to-server Tool authentication tickets are single-use and scoped
+/// to one registration, carrying distinct global, scoped, and campaign context.
+/// </summary>
 public sealed class ToolAuthenticationTicketTests
 {
     [Fact]

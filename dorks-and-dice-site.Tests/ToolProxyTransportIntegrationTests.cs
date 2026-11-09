@@ -16,6 +16,10 @@ using Microsoft.Extensions.Options;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// Tool upstream forwarding preserves binary bodies and response semantics
+/// while enforcing configurable size/time limits and cancellation.
+/// </summary>
 [Collection(PublishedContentIntegrationCollection.Name)]
 public sealed class ToolProxyTransportIntegrationTests(PublishedContentWebApplicationFactory factory)
 {

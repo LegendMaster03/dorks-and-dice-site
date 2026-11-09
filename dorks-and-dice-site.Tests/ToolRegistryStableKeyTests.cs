@@ -7,6 +7,10 @@ using Microsoft.Extensions.FileProviders;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// Stable Tool authorization keys can not be silently renamed by editing a
+/// registration, although public application slugs may change independently.
+/// </summary>
 public sealed class ToolRegistryStableKeyTests
 {
     [Fact]

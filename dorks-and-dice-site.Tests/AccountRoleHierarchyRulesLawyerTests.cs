@@ -4,6 +4,11 @@ using dorks_and_dice_site.Services.Identity;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// Rules Lawyer authority is a Dorks & Dice scoped role, not a global Identity
+/// role. Owner inheritance is deliberate and must not broaden this role to
+/// Professional or unrelated normal modes.
+/// </summary>
 public sealed class AccountRoleHierarchyRulesLawyerTests
 {
     [Fact]

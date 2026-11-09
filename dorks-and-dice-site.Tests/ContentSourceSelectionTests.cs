@@ -4,6 +4,10 @@ using Microsoft.Extensions.Configuration;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// Normal mode, framework fallback, and synthetic Development each have
+/// distinct source-composition rules; explicit empty selections remain empty.
+/// </summary>
 public sealed class ContentSourceSelectionTests
 {
     [Fact]

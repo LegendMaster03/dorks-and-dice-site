@@ -4,6 +4,10 @@ using dorks_and_dice_site.Services.Site;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// Normal site publication boundaries remain enforced during Trusted Preview;
+/// only authorized Development inspection can list across normal modes.
+/// </summary>
 public sealed class ContentCatalogSyntheticModeTests
 {
     [Fact]

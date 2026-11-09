@@ -3,6 +3,10 @@ using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// Shared WebXR module serving and same-origin spatial-tracking headers are
+/// verified without requiring the Site to import Three.js in its common layout.
+/// </summary>
 [Collection(PublishedContentIntegrationCollection.Name)]
 public sealed class WebXrFrameworkIntegrationTests(PublishedContentWebApplicationFactory factory)
 {

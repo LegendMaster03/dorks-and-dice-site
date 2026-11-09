@@ -3,6 +3,11 @@ using dorks_and_dice_site.Services.Content;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// Installed components are parsed as inert Markdown markers before sanitized
+/// rendering. Nested containers and stable anchors must survive composition,
+/// and unknown parameterized directives are rejected.
+/// </summary>
 public sealed class ContentPageComposerTests
 {
     [Fact]

@@ -10,6 +10,10 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// Trusted Preview switches among registered normal modes without changing
+/// the public host's identity; untrusted callers can not mutate preview state.
+/// </summary>
 [Collection(PublishedContentIntegrationCollection.Name)]
 public sealed class DevelopmentPreviewModeSwitchIntegrationTests
 {

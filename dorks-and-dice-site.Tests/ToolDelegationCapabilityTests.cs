@@ -4,6 +4,10 @@ using dorks_and_dice_site.Services.Tools;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// Delegation capabilities are source-key-bound, short-lived and bounded in
+/// uses; they are distinct from single-use Tool authentication tickets.
+/// </summary>
 public sealed class ToolDelegationCapabilityTests
 {
     [Fact]

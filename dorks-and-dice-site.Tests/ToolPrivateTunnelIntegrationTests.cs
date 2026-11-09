@@ -9,6 +9,10 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// Private-tunnel target allowlists do not imply normal Site-proxied delegation.
+/// Unconfigured destinations and unsupported sources must not receive tickets.
+/// </summary>
 [Collection(PublishedContentIntegrationCollection.Name)]
 public sealed class ToolPrivateTunnelIntegrationTests(PublishedContentWebApplicationFactory factory)
 {
