@@ -2,6 +2,10 @@ using System.ComponentModel.DataAnnotations;
 
 namespace dorks_and_dice_site.Models.Identity;
 
+/// <summary>
+/// Global human registration form, shared by normal site modes. Registering
+/// does not automatically grant site-scoped roles or external activations.
+/// </summary>
 public sealed class RegisterViewModel
 {
     [Required]

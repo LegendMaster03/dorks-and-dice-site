@@ -1,5 +1,10 @@
 namespace dorks_and_dice_site.Models.Site;
 
+/// <summary>
+/// Synthetic Development control-plane options for selecting a preview mode
+/// and source composition. Permission flags derive from trusted ingress and
+/// actual account roles, not from the selected site branding.
+/// </summary>
 public sealed class DevelopmentPreviewToolbarViewModel
 {
     public string SelectedModeId { get; init; } = string.Empty;

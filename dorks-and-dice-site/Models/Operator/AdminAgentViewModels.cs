@@ -4,6 +4,10 @@ using dorks_and_dice_site.Services.Identity;
 
 namespace dorks_and_dice_site.Models.Operator;
 
+/// <summary>
+/// Owner-only Operator service-principal listing. Credential records are
+/// represented by status and counts, never their original bearer secrets.
+/// </summary>
 public sealed class AdminAgentListViewModel
 {
     public IReadOnlyList<AdminAgentListItemViewModel> Agents { get; init; } = [];

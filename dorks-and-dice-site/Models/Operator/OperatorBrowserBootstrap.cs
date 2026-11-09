@@ -1,5 +1,9 @@
 namespace dorks_and_dice_site.Models.Operator;
 
+/// <summary>
+/// One-use, short-lived operator browser-session exchange record. Its
+/// persistent verifier is a hash; the bearer secret is not stored.
+/// </summary>
 public sealed class OperatorBrowserBootstrap
 {
     public const int SecretHashMaxLength = 64;
