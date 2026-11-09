@@ -1,3 +1,6 @@
+// Presents a structured editor over the same JSON metadata field used by the
+// source tab. Switching views and submitting must keep the serialized field
+// synchronized; validation remains enforced on the server.
 (() => {
   const source = document.getElementById("Document_MetadataJson");
   const standardTab = document.getElementById("metadata-standard-tab");

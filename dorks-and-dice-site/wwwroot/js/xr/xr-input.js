@@ -1,3 +1,5 @@
+// Creates detached, immutable snapshots of XR input pose and gamepad state.
+// The runtime-facing representation does not retain live browser objects.
 function copyTransform(transform) {
     if (!transform) {
         return null;

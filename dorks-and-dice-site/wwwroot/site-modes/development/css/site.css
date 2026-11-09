@@ -1,3 +1,5 @@
+/* Synthetic Development control-plane styles. These supplement preview
+   presentation without defining another public normal site mode. */
 .development-preview-toolbar {
   background: #fff7e6;
   color: #4d3800;

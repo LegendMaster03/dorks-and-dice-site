@@ -1,3 +1,6 @@
+// Shared browser behaviors used by both hosted normal modes. Site-specific
+// presentation belongs in each mode's assets rather than being inferred from
+// the current hostname here.
 (() => {
     const themeStorageKey = "site-theme";
     const toggleButton = document.getElementById("themeToggle");

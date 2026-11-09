@@ -1,3 +1,5 @@
+// Pluggable XR device identity hints. Resolver results provide best-effort
+// descriptions, not authoritative hardware identity or access rights.
 function normalizeIdentityHint(hint, fallback = {}) {
     if (!hint || typeof hint !== "object") {
         return Object.freeze({ ...fallback });

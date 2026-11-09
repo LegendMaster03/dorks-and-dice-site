@@ -1,3 +1,6 @@
+// Browser-side visual/source editing for authored Markdown and registered page
+// directives. This is a convenience serializer, not a trusted HTML execution
+// path; server-side composition and sanitization remain authoritative.
 (() => {
   const modeCheckboxes = [...document.querySelectorAll(".content-visible-mode")];
   const modeSummary = document.getElementById("visible-mode-summary");

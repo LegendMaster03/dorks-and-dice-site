@@ -1,3 +1,6 @@
+// WebXR capability probes for the optional shared XR runtime. Browser support
+// is evaluated at runtime; a missing device, insecure context, or WebGL
+// capability must not be treated as a supported immersive session.
 const SESSION_MODES = Object.freeze([
     "inline",
     "immersive-vr",

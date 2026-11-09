@@ -1,3 +1,6 @@
+// Generic WebXR session and render lifecycle. A separately registered
+// experience supplies scene behavior; device probing and input are isolated
+// from Dorks & Dice and Professional site-specific presentation.
 import { detectXrCapabilities } from "./xr-capabilities.js";
 import { createDefaultXrDeviceProfileRegistry } from "./xr-device-profiles.js";
 import { XrInputManager } from "./xr-input.js";

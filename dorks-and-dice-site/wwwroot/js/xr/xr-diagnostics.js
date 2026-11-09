@@ -1,3 +1,5 @@
+// A framework-owned WebXR diagnostic experience used to inspect input and
+// rendering support without depending on either hosted site's domain data.
 import { createXrRuntime } from "./xr-runtime.js";
 
 const DIAGNOSTIC_EXPERIENCE_ID = "framework-diagnostics";

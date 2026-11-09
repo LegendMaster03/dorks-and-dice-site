@@ -1,3 +1,6 @@
+// Browser display adapter for the plugin-owned status snapshot endpoint.
+// Polling reads the server's cached result rather than connecting to the
+// configured Minecraft host directly from user browsers.
 (() => {
     const guardKey = "__dorksMinecraftServerStatusLive";
     if (window[guardKey]) {
