@@ -21,6 +21,11 @@ public interface IToolDelegationCapabilityService
         out ToolHostAuthenticationContext? authenticationContext);
 }
 
+/// <summary>
+/// Issues short-lived, server-only delegation capabilities scoped to a source
+/// Tool's authenticated registration key. Uses are bounded and independently
+/// validated; browser-facing Tool tickets are not delegation capabilities.
+/// </summary>
 public sealed class ToolDelegationCapabilityService : IToolDelegationCapabilityService
 {
     public static readonly TimeSpan Lifetime = TimeSpan.FromSeconds(30);

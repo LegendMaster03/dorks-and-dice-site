@@ -2,6 +2,11 @@ using dorks_and_dice_site.Models.Tools;
 
 namespace dorks_and_dice_site.Services.Tools;
 
+/// <summary>
+/// Rejects unsupported Embedded Module frontend contract versions while
+/// allowing headless services and non-embedded application registrations
+/// to follow their own integration contracts.
+/// </summary>
 public static class ToolIntegrationContractPolicy
 {
     public static bool IsSupported(ToolRegistration tool)

@@ -1,5 +1,9 @@
 namespace dorks_and_dice_site.Services.Tools;
 
+/// <summary>
+/// Deployment-configurable request size and timeout limits for Tool upstream
+/// proxying. They do not change the Tool identity or per-mode exposure policy.
+/// </summary>
 public sealed class ToolProxyOptions
 {
     public const string SectionName = "ToolHosting:Proxy";

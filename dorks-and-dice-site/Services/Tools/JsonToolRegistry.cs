@@ -13,6 +13,11 @@ public interface IToolRegistry
     Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default);
 }
 
+/// <summary>
+/// File-backed Tool registration store for deployments using JSON rather than
+/// the database registry. A process-wide gate serializes reads and writes;
+/// this does not provide cross-instance distributed synchronization.
+/// </summary>
 public sealed class JsonToolRegistry : IToolRegistry
 {
     public const string RegistryPathConfigurationKey = "ToolHosting:RegistryPath";

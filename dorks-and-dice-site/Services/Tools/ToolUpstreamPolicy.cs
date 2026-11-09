@@ -14,6 +14,11 @@ public interface IToolUpstreamPolicy
         out string? reason);
 }
 
+/// <summary>
+/// Validates configured HTTP(S) Tool upstreams against deployment-owned host
+/// restrictions and constructs the permitted target URI. Upstream selection
+/// is a hosting/security concern, not authored page or mode content.
+/// </summary>
 public sealed class ToolUpstreamPolicy : IToolUpstreamPolicy
 {
     private readonly HashSet<string> _allowedHosts;

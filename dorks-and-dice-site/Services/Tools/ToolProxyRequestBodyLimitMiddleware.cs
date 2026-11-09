@@ -3,6 +3,11 @@ using Microsoft.Extensions.Options;
 
 namespace dorks_and_dice_site.Services.Tools;
 
+/// <summary>
+/// Applies the configured upload bound only to Tool Host upstream requests.
+/// It adjusts Kestrel's writable request limit and returns 413 for oversized
+/// requests before the proxy forwards their bodies.
+/// </summary>
 public sealed class ToolProxyRequestBodyLimitMiddleware
 {
     private readonly RequestDelegate _next;

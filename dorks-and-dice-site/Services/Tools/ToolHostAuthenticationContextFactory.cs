@@ -26,6 +26,12 @@ public interface IToolHostAuthenticationContextFactory
         CancellationToken cancellationToken = default);
 }
 
+/// <summary>
+/// Creates registration-scoped Tool authentication contexts and delegated
+/// contexts. Campaign and character projections currently depend directly
+/// on Dorks & Dice mode services; extraction must address that integration
+/// rather than claiming the factory is already mode-agnostic.
+/// </summary>
 public sealed class ToolHostAuthenticationContextFactory(
     ICampaignContextService campaignContextService,
     ICharacterService characterService,

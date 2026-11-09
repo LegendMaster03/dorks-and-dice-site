@@ -20,6 +20,11 @@ public interface IToolProxyService
         CancellationToken cancellationToken = default);
 }
 
+/// <summary>
+/// Forwards Tool HTTP traffic to allowed upstreams while removing hop-by-hop,
+/// browser credential, and untrusted forwarding headers. Authenticated proxy
+/// requests carry a server-issued Tool ticket, not the browser's cookie.
+/// </summary>
 public sealed class ToolProxyService : IToolProxyService
 {
     private static readonly HashSet<string> HopByHopHeaders = new(StringComparer.OrdinalIgnoreCase)
