@@ -18,6 +18,10 @@ public interface IOperatorPrincipalService
         CancellationToken cancellationToken = default);
 }
 
+/// <summary>
+/// Creates service-principal Identity accounts with permitted global roles and
+/// an initial operator credential; these are not human login accounts.
+/// </summary>
 public sealed class OperatorPrincipalService(
     UserManager<ApplicationUser> userManager,
     RoleManager<IdentityRole<Guid>> roleManager,

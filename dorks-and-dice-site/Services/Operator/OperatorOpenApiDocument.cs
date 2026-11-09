@@ -2,6 +2,11 @@ using dorks_and_dice_site.Framework.Operator;
 
 namespace dorks_and_dice_site.Services.Operator;
 
+/// <summary>
+/// Builds the current Operator OpenAPI document from capability descriptors.
+/// Its title and bearer-format identifiers still use deployment-specific names
+/// and must be reviewed when the architecture is extracted.
+/// </summary>
 public static class OperatorOpenApiDocument
 {
     public static object Create(IReadOnlyList<OperatorCapabilityDescriptor> capabilities)

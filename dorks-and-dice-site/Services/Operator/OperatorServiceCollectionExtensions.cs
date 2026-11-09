@@ -6,6 +6,10 @@ using Microsoft.AspNetCore.Identity;
 
 namespace dorks_and_dice_site.Services.Operator;
 
+/// <summary>
+/// Registers the Operator bearer scheme, credential lifecycle, capability API,
+/// and cookie validation separately from normal site-mode presentation.
+/// </summary>
 public static class OperatorServiceCollectionExtensions
 {
     public static IServiceCollection AddOperatorInterface(this IServiceCollection services)

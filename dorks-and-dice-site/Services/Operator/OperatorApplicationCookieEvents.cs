@@ -6,6 +6,11 @@ using Microsoft.AspNetCore.Identity;
 
 namespace dorks_and_dice_site.Services.Operator;
 
+/// <summary>
+/// Preserves ordinary human Identity-cookie validation while rechecking the
+/// operator credential bound to a bootstrapped service-principal session.
+/// Revoking that credential invalidates its browser session.
+/// </summary>
 public sealed class OperatorApplicationCookieEvents : CookieAuthenticationEvents
 {
     // Only remembered logins get the longer cookie lifetime. Ordinary browser sessions

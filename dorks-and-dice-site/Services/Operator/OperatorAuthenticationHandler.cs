@@ -8,6 +8,10 @@ using Microsoft.Extensions.Options;
 
 namespace dorks_and_dice_site.Services.Operator;
 
+/// <summary>
+/// Authenticates Operator bearer credentials as service principals through
+/// a dedicated scheme. Ordinary human logins use the Identity cookie scheme.
+/// </summary>
 public sealed class OperatorAuthenticationHandler : AuthenticationHandler<AuthenticationSchemeOptions>
 {
     private readonly IOperatorCredentialService _credentialService;

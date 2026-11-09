@@ -3,6 +3,10 @@ using dorks_and_dice_site.Services.Identity;
 
 namespace dorks_and_dice_site.Services.Operator;
 
+/// <summary>
+/// Runs one-shot Operator provisioning commands through the Site's configured
+/// services and then stops the host instead of starting normal web serving.
+/// </summary>
 public sealed class OperatorProvisioningHostedService(
     IServiceProvider services,
     IHostApplicationLifetime lifetime,
