@@ -2,6 +2,11 @@ using Microsoft.EntityFrameworkCore;
 
 namespace dorks_and_dice_site.Services.Content.Storage;
 
+/// <summary>
+/// Composes the generic content repository, catalog, media, authoring, and
+/// page-component services for the current deployment. Site-owned presentation
+/// components register separately through their modes or plugins.
+/// </summary>
 public static class ContentStorageServiceCollectionExtensions
 {
     public static IServiceCollection AddContentStorage(

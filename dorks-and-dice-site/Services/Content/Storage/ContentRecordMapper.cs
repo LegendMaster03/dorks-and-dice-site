@@ -5,6 +5,10 @@ using dorks_and_dice_site.Services.Site;
 
 namespace dorks_and_dice_site.Services.Content.Storage;
 
+/// <summary>
+/// Converts current-revision storage records to the authored content model,
+/// including normal-mode ID normalization for legacy stored values.
+/// </summary>
 internal static class ContentRecordMapper
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);

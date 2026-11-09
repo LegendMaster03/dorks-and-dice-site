@@ -26,6 +26,11 @@ public interface IContentSourceRegistry
     void ConfigureDbContext(DbContextOptionsBuilder options, string sourceKey);
 }
 
+/// <summary>
+/// Loads named content database definitions and per-mode source composition
+/// from deployment configuration. Global sources are independent of either
+/// normal site's private authoring source or framework mode identity.
+/// </summary>
 public sealed class ContentSourceRegistry : IContentSourceRegistry
 {
     private readonly IConfiguration _configuration;

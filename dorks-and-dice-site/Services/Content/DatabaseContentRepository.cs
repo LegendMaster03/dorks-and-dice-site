@@ -4,6 +4,11 @@ using Microsoft.EntityFrameworkCore;
 
 namespace dorks_and_dice_site.Services.Content;
 
+/// <summary>
+/// Reads the current revision of each page in one configured content source.
+/// Cross-source precedence and normal-mode visibility are applied by higher
+/// layers rather than by this source-local repository.
+/// </summary>
 public sealed class DatabaseContentRepository : IContentRepository
 {
     private readonly ContentDbContext _context;

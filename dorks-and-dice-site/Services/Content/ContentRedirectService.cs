@@ -13,6 +13,11 @@ public interface IContentRedirectService
         CancellationToken cancellationToken = default);
 }
 
+/// <summary>
+/// Resolves historical content slugs within an explicit route namespace and
+/// the request's effective source composition. Later content sources take
+/// precedence when overlapping redirects have been authored.
+/// </summary>
 public sealed class ContentRedirectService : IContentRedirectService
 {
     private readonly IContentSourceRegistry _sourceRegistry;

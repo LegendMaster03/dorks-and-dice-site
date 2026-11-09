@@ -7,6 +7,11 @@ using Markdig;
 
 namespace dorks_and_dice_site.Services.Content;
 
+/// <summary>
+/// Renders Markdown with HTML disabled, expands registered block directives,
+/// and sanitizes the result. Only installed application directives may add
+/// executable presentation behavior; authored Markdown remains untrusted.
+/// </summary>
 public sealed class ContentBodyRenderer : IContentBodyRenderer
 {
     private static readonly MarkdownPipeline MarkdownPipeline = new MarkdownPipelineBuilder()

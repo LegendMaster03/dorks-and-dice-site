@@ -3,6 +3,11 @@ using dorks_and_dice_site.Models.Content;
 
 namespace dorks_and_dice_site.Services.Content;
 
+/// <summary>
+/// Applies limits and allowed-value rules to browser-authored page metadata,
+/// tags, CSS tokens, mode selections, and media references before persistence.
+/// Validation is shared by both site modes and central Development authoring.
+/// </summary>
 internal static class ContentInputValidator
 {
     private static readonly Regex KeyPattern = new(

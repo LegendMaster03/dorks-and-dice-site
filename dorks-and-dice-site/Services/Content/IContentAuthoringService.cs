@@ -2,6 +2,11 @@ using dorks_and_dice_site.Models.Content;
 
 namespace dorks_and_dice_site.Services.Content;
 
+/// <summary>
+/// Shared authoring contract for creating revisions, resolving editor models,
+/// and moving pages between content sources. Mode authorization belongs to
+/// its editor entry points and explicit source-selection policies.
+/// </summary>
 public interface IContentAuthoringService
 {
     string DefaultSourceKey { get; }

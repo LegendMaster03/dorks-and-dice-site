@@ -7,6 +7,10 @@ public interface IContentStorageInitializer
     Task InitializeAsync(CancellationToken cancellationToken = default);
 }
 
+/// <summary>
+/// Initializes the shared content schema for every configured source before
+/// use. It does not migrate the separately owned Dorks & Dice domain schema.
+/// </summary>
 public sealed class ContentStorageInitializer : IContentStorageInitializer
 {
     private readonly IContentSourceRegistry _sourceRegistry;

@@ -2,6 +2,11 @@ using System.Text.RegularExpressions;
 
 namespace dorks_and_dice_site.Services.Content;
 
+/// <summary>
+/// Finds references to managed-media keys in authored Markdown and metadata.
+/// This recognizes canonical media URLs; it does not establish whether a
+/// referenced asset exists or is authorized for publication.
+/// </summary>
 internal static partial class ContentAssetReferenceParser
 {
     public static IReadOnlySet<string> FindAssetKeys(string body, string metadataJson)

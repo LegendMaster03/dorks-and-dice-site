@@ -2,6 +2,11 @@ using Microsoft.EntityFrameworkCore;
 
 namespace dorks_and_dice_site.Services.Content.Storage;
 
+/// <summary>
+/// Shared authored-content schema: stable page identities, immutable revisions,
+/// revision mode/tag membership, managed media, and redirects. Each configured
+/// source has its own context; mode-owned campaign data is stored separately.
+/// </summary>
 public sealed class ContentDbContext : DbContext
 {
     public ContentDbContext(DbContextOptions<ContentDbContext> options)

@@ -4,6 +4,10 @@ using dorks_and_dice_site.Services.Site;
 
 namespace dorks_and_dice_site.Services.Content;
 
+/// <summary>
+/// Queries the effective content catalog under the request's normal-mode
+/// visibility and source-precedence rules. Legacy enum overloads are temporary.
+/// </summary>
 public interface IContentCatalogService
 {
     Task<IReadOnlyList<ContentItem>> GetByContextAsync(
