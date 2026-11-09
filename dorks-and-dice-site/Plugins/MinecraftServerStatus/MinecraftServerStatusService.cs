@@ -5,6 +5,11 @@ using Microsoft.Extensions.Options;
 
 namespace dorks_and_dice_site.Plugins.MinecraftServerStatus;
 
+/// <summary>
+/// Queries a configured Minecraft server using the protocol status exchange.
+/// Successful and failed probes have separate cache lifetimes; concurrent
+/// refreshes share a lock rather than sending parallel requests.
+/// </summary>
 public sealed class MinecraftServerStatusService : IMinecraftServerStatusService
 {
     private readonly MinecraftServerOptions _options;

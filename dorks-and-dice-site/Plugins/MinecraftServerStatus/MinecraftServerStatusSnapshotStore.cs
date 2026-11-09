@@ -7,6 +7,10 @@ public interface IMinecraftServerStatusSnapshotStore
     MinecraftServerStatus Current { get; }
 }
 
+/// <summary>
+/// Stores the latest immutable poll result for web requests. Volatile
+/// reads/writes publish snapshots without holding a request-scoped lock.
+/// </summary>
 public sealed class MinecraftServerStatusSnapshotStore : IMinecraftServerStatusSnapshotStore
 {
     private MinecraftServerStatus _current = MinecraftServerStatus.Unavailable("Status has not been checked yet.");

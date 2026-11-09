@@ -6,6 +6,11 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace dorks_and_dice_site.Plugins.MinecraftServerStatus;
 
+/// <summary>
+/// Installs Minecraft-specific status polling and constrained authored-page
+/// components. Connection settings and transport belong to deployment/plugin
+/// configuration rather than the portable content store.
+/// </summary>
 public sealed class MinecraftServerStatusPlugin : ISitePlugin
 {
     public SitePluginManifest Manifest { get; } = new(

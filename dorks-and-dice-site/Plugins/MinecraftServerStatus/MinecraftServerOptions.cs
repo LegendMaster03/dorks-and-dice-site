@@ -1,5 +1,10 @@
 namespace dorks_and_dice_site.Plugins.MinecraftServerStatus;
 
+/// <summary>
+/// Deployment configuration for server address, protocol, and polling policy.
+/// The current default host is installation-specific and should be externalized
+/// when packaging this plugin for another deployment.
+/// </summary>
 public sealed class MinecraftServerOptions
 {
     public const string SectionName = "GameServers:Minecraft";

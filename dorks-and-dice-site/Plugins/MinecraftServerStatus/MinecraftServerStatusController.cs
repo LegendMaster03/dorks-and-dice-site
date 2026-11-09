@@ -3,6 +3,10 @@ using Microsoft.Extensions.Options;
 
 namespace dorks_and_dice_site.Plugins.MinecraftServerStatus;
 
+/// <summary>
+/// Publishes the latest background-polled Minecraft snapshot without making
+/// a remote server query for each browser refresh.
+/// </summary>
 [ApiController]
 [Route("plugins/minecraft-server-status")]
 public sealed class MinecraftServerStatusController : ControllerBase

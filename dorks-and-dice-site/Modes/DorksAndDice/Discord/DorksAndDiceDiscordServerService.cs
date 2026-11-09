@@ -32,6 +32,11 @@ public interface IDorksAndDiceDiscordServerService
         CancellationToken cancellationToken = default);
 }
 
+/// <summary>
+/// Manages the Dorks & Dice mode's Discord guild-to-campaign bindings.
+/// Global account links and bot ownership checks are separate prerequisites;
+/// campaign selection remains mode-owned domain behavior.
+/// </summary>
 public sealed class DorksAndDiceDiscordServerService(
     DorksAndDiceDbContext dbContext,
     IdentityDbContext identityDbContext,

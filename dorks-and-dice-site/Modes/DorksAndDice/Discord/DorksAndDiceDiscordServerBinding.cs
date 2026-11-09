@@ -7,6 +7,10 @@ public enum DiscordServerCampaignScope
     AllDmCampaigns = 2
 }
 
+/// <summary>
+/// Mode-owned association between a Discord guild owner and the campaigns
+/// whose workspace information may be projected into that guild.
+/// </summary>
 public sealed class DorksAndDiceDiscordServerBinding
 {
     public const int GuildIdMaxLength = 32;

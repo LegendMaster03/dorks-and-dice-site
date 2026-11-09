@@ -11,6 +11,10 @@ public static class ToolLifecycleTargets
     public const string CharacterSheet = "character-sheet";
 }
 
+/// <summary>
+/// Persisted delivery attempt for a mode-owned lifecycle event. Outbox state
+/// survives downstream Tool failures and records retry/delivery timing.
+/// </summary>
 public sealed class ToolLifecycleOutboxEvent
 {
     public Guid EventId { get; set; }

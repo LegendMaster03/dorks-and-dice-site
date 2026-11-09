@@ -1,5 +1,9 @@
 namespace dorks_and_dice_site.Plugins.MinecraftServerStatus;
 
+/// <summary>
+/// Timestamped result of a Minecraft status probe, including unavailable
+/// results that distinguish missing data from a reported online server.
+/// </summary>
 public sealed record MinecraftServerStatus(
     bool IsOnline,
     string? Motd,
