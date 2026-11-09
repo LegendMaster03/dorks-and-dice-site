@@ -1,3 +1,6 @@
+@* Shared detail view for content already filtered by source and mode visibility.
+RenderedBodyHtml was sanitized by the content renderer before it reaches Html.Raw;
+this view must not process unsanitized authored Markdown as HTML. *@
 @model dorks_and_dice_site.Models.Content.ContentDetailViewModel
 @{
     ViewData["Title"] = Model.Item.Title;
