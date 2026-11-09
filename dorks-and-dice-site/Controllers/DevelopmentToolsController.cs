@@ -8,6 +8,11 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace dorks_and_dice_site.Controllers;
 
+/// <summary>
+/// Development administration for Tool application and service registrations.
+/// This configures independently hosted capabilities; it does not make them
+/// framework plugins or Dorks & Dice mode-owned implementations.
+/// </summary>
 [Authorize(Policy = AuthorizationPolicies.DevAccess)]
 [Route("development/tools")]
 public sealed partial class DevelopmentToolsController : Controller
@@ -41,6 +46,8 @@ public sealed partial class DevelopmentToolsController : Controller
         return View(items);
     }
 
+    // Registration choices are limited to stable normal mode IDs supplied by
+    // the current registry; no new mode is implicitly created here.
     [HttpGet("new")]
     public IActionResult Create() =>
         View("Edit", PopulateModeOptions(new ToolRegistrationEditViewModel()));

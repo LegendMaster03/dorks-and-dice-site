@@ -6,6 +6,10 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace dorks_and_dice_site.Controllers;
 
+/// <summary>
+/// Development-only media editing entry point with central source selection.
+/// The base implementation also serves the normal mode-scoped Editor route.
+/// </summary>
 [Authorize(Policy = AuthorizationPolicies.DevAccess)]
 [Route("development/content/{slug}/media")]
 [RequestSizeLimit(ContentInputPolicy.MaxAssetUploadBytes + 65_536)]

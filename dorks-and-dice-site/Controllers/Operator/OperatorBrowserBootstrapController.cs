@@ -9,6 +9,11 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace dorks_and_dice_site.Controllers.Operator;
 
+/// <summary>
+/// Exchanges a short-lived operator browser-bootstrap token for an ordinary
+/// Identity cookie bound to the authorizing operator credential. This route
+/// is deliberately separate from password-based interactive login.
+/// </summary>
 [AllowAnonymous]
 public sealed class OperatorBrowserBootstrapController(
     IOperatorBrowserBootstrapService browserBootstrapService,

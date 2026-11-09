@@ -3,6 +3,11 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace dorks_and_dice_site.Controllers;
 
+/// <summary>
+/// Compatibility entry point for Professional resume presentation using the
+/// shared mode-home service. Access to the route is owned by the Professional
+/// mode rather than being universally available on both hosted domains.
+/// </summary>
 public class ResumeController : Controller
 {
     private readonly ISiteModeHomeService _siteModeHomeService;

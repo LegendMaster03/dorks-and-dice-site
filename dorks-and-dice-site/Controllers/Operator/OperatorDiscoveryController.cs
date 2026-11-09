@@ -10,6 +10,11 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace dorks_and_dice_site.Controllers.Operator;
 
+/// <summary>
+/// Operator API discovery and browser-bootstrap initiation for authenticated
+/// service principals. Capability gates and auditing apply independently
+/// of normal hosted-site page routes.
+/// </summary>
 [ApiController]
 [Authorize(AuthenticationSchemes = OperatorAuthenticationDefaults.Scheme)]
 [ServiceFilter(typeof(OperatorAuditFilter))]

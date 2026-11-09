@@ -7,6 +7,10 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace dorks_and_dice_site.Controllers;
 
+/// <summary>
+/// Development media library with explicit named-source selection. This control
+/// plane has broader source choices than the normal site's Editor media library.
+/// </summary>
 [Authorize(Policy = AuthorizationPolicies.DevAccess)]
 [Route("development/media")]
 [RequestSizeLimit(ContentInputPolicy.MaxAssetUploadBytes + 65_536)]

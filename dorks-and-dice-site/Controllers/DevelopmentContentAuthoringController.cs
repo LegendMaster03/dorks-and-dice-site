@@ -6,6 +6,10 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace dorks_and_dice_site.Controllers;
 
+/// <summary>
+/// Development-only entry point for shared page authoring with explicit
+/// cross-source selection; it does not confer central authority on ModeEditor.
+/// </summary>
 [Authorize(Policy = AuthorizationPolicies.DevAccess)]
 [Route("development/content")]
 [RequestSizeLimit(ContentInputPolicy.MaxAuthoringRequestBytes)]

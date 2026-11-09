@@ -6,6 +6,11 @@ using System.Diagnostics;
 
 namespace dorks_and_dice_site.Controllers
 {
+    /// <summary>
+    /// Chooses the homepage of the resolved normal mode or framework fallback.
+    /// Trusted Preview without a selected normal mode receives a diagnostic
+    /// rather than an arbitrary hosted site's homepage.
+    /// </summary>
     public class HomeController : Controller
     {
         private readonly ISiteModeHomeService _siteModeHomeService;

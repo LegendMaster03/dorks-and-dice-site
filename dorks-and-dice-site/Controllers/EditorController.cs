@@ -5,6 +5,10 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace dorks_and_dice_site.Controllers;
 
+/// <summary>
+/// Compatibility entry point for the normal mode-scoped editor. Actual editing
+/// authority is checked against the resolved request mode before redirecting.
+/// </summary>
 [Authorize]
 [Route("editor")]
 public sealed class EditorController : Controller
