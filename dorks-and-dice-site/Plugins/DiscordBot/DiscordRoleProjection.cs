@@ -25,6 +25,10 @@ public sealed record DiscordGuildWorkspaceProjection(
     IReadOnlyCollection<DiscordDesiredRole> Roles,
     IReadOnlyCollection<DiscordDesiredChannel> Channels);
 
+/// <summary>
+/// Mode-owned contribution of desired Discord workspace roles/channels.
+/// SourceId identifies the contributor independently from a shared guild.
+/// </summary>
 public interface IDiscordWorkspaceProjectionSource
 {
     string SourceId { get; }

@@ -7,6 +7,11 @@ using OpenIddict.Client.WebIntegration;
 
 namespace dorks_and_dice_site.Plugins.AccountLinks.Discord;
 
+/// <summary>
+/// Configures Discord as an optional external account-link provider for the
+/// shared Identity account. Guild/workspace permissions are resolved separately
+/// by the active normal site mode.
+/// </summary>
 public sealed class DiscordAccountLinkPlugin : ISitePlugin
 {
     public const string ProviderId = DiscordProvider.Id;

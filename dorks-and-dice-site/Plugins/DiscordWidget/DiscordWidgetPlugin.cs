@@ -8,6 +8,11 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace dorks_and_dice_site.Plugins.DiscordWidget;
 
+/// <summary>
+/// Provides a constrained display component for authored Markdown. Optional
+/// guild selection affects the public embed only; it does not redirect
+/// account authorization or mode-owned Discord workspace bindings.
+/// </summary>
 public sealed class DiscordWidgetPlugin : ISitePlugin
 {
     public SitePluginManifest Manifest { get; } = new(

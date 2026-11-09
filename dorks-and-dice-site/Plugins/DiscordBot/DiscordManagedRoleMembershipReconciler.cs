@@ -4,6 +4,11 @@ using Microsoft.EntityFrameworkCore;
 
 namespace dorks_and_dice_site.Plugins.DiscordBot;
 
+/// <summary>
+/// Reconciles mode-supplied desired Discord roles with actual guild members,
+/// considering active per-mode account-link activations. The plugin consumes
+/// projections without owning campaign or other mode-domain relationships.
+/// </summary>
 public sealed class DiscordManagedRoleMembershipReconciler(
     IdentityDbContext identityDbContext,
     IEnumerable<IDiscordWorkspaceProjectionSource> projectionSources,

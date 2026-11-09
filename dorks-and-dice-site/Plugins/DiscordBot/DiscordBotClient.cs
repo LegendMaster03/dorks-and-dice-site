@@ -14,6 +14,11 @@ public sealed record DiscordGuildChannel(
     DiscordManagedChannelKind Kind,
     string? ParentId);
 
+/// <summary>
+/// Typed Discord guild, role, member, and channel API boundary. Callers
+/// should use this abstraction rather than assuming network access belongs
+/// to the reusable core site framework.
+/// </summary>
 public interface IDiscordBotClient
 {
     Task<DiscordGuild?> GetGuildAsync(

@@ -28,6 +28,11 @@ public interface IDiscordGuildOwnershipVerifier
         CancellationToken cancellationToken = default);
 }
 
+/// <summary>
+/// Confirms that the globally linked Discord identity owns a requested guild
+/// and that the configured bot can inspect it. Linking alone does not prove
+/// permission to manage an arbitrary guild.
+/// </summary>
 public sealed class DiscordGuildOwnershipVerifier(
     IdentityDbContext identityDbContext,
     IDiscordBotClient discord) : IDiscordGuildOwnershipVerifier

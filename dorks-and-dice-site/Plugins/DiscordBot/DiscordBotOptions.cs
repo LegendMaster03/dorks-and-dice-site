@@ -1,5 +1,9 @@
 namespace dorks_and_dice_site.Plugins.DiscordBot;
 
+/// <summary>
+/// Deployment-owned bot credentials, polling interval, and HTTP timeout.
+/// A bot token is never portable site-mode or authored-content metadata.
+/// </summary>
 public sealed class DiscordBotOptions
 {
     public const string SectionName = "DiscordBot";

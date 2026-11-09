@@ -10,6 +10,11 @@ public interface IDiscordWorkspaceSyncService
     Task SynchronizeAsync(CancellationToken cancellationToken = default);
 }
 
+/// <summary>
+/// Reconciles declared mode workspace roles and channels through the Discord
+/// API. Projection sources own domain intent; this plugin owns remote
+/// synchronization and persisted managed-resource mappings.
+/// </summary>
 public sealed class DiscordWorkspaceSyncService(
     IdentityDbContext identityDbContext,
     IEnumerable<IDiscordWorkspaceProjectionSource> projectionSources,

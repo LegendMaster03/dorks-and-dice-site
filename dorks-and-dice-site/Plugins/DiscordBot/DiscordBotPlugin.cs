@@ -5,6 +5,11 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace dorks_and_dice_site.Plugins.DiscordBot;
 
+/// <summary>
+/// Registers the optional Discord workspace integration and reconciliation
+/// worker. It depends on global account linking while receiving site-owned
+/// workspace projections through an extension interface.
+/// </summary>
 public sealed class DiscordBotPlugin(IConfiguration configuration) : ISitePlugin
 {
     public SitePluginManifest Manifest { get; } = new(
