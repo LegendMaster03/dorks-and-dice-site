@@ -1,5 +1,9 @@
 namespace dorks_and_dice_site.Services.Identity;
 
+/// <summary>
+/// Deployment configuration for the global Identity store and migration policy.
+/// Normal site modes share this account store rather than configuring their own.
+/// </summary>
 public sealed class IdentityStorageOptions
 {
     public const string SectionName = "IdentityStorage";

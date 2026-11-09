@@ -3,6 +3,11 @@ using dorks_and_dice_site.Services.Site;
 
 namespace dorks_and_dice_site.Services.Identity;
 
+/// <summary>
+/// Defines scoped role names. Rules Lawyer is currently enabled only for the
+/// Dorks & Dice scope; generic scope registration must not assume that
+/// site-specific role exists for every normal mode.
+/// </summary>
 public static class ScopedAccountRoles
 {
     public const string Editor = "Editor";

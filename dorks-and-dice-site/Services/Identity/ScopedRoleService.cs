@@ -12,6 +12,11 @@ public interface IScopedRoleService
     Task<IdentityResult> SetRoleAsync(ApplicationUser user, string scope, string role, bool enabled);
 }
 
+/// <summary>
+/// Reads and writes mode-scoped role claims on shared Identity accounts.
+/// Scopes must correspond to registered normal modes; claims do not grant
+/// permission to the synthetic Development or fallback runtime states.
+/// </summary>
 public sealed class ScopedRoleService : IScopedRoleService
 {
     private readonly UserManager<ApplicationUser> _userManager;

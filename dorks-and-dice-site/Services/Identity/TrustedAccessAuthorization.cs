@@ -7,6 +7,11 @@ public sealed class TrustedAccessRequirement : IAuthorizationRequirement
 {
 }
 
+/// <summary>
+/// Bridges the network/trusted-ingress evaluator into ASP.NET authorization.
+/// Trusted access is a prerequisite for privileged controls, not itself
+/// proof that the principal holds a privileged role.
+/// </summary>
 public sealed class TrustedAccessAuthorizationHandler : AuthorizationHandler<TrustedAccessRequirement>
 {
     private readonly IHttpContextAccessor _httpContextAccessor;

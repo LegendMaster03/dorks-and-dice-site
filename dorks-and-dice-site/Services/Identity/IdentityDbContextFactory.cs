@@ -3,6 +3,10 @@ using Microsoft.EntityFrameworkCore.Design;
 
 namespace dorks_and_dice_site.Services.Identity;
 
+/// <summary>
+/// Design-time PostgreSQL context creation for EF migrations. The fallback
+/// connection string is for local migration tooling, not production startup.
+/// </summary>
 public sealed class IdentityDbContextFactory : IDesignTimeDbContextFactory<IdentityDbContext>
 {
     public IdentityDbContext CreateDbContext(string[] args)

@@ -5,6 +5,11 @@ using Microsoft.Extensions.Options;
 
 namespace dorks_and_dice_site.Services.Identity;
 
+/// <summary>
+/// Sends account notifications through deployment-configured SMTP with a
+/// site-specific sender domain. Development without SMTP logs mail instead;
+/// production requires a configured transport.
+/// </summary>
 public sealed class SmtpAccountEmailSender : IAccountEmailSender
 {
     private readonly AccountEmailOptions _options;

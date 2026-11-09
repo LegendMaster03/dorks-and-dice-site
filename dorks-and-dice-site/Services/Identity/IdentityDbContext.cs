@@ -6,6 +6,11 @@ using Microsoft.EntityFrameworkCore;
 
 namespace dorks_and_dice_site.Services.Identity;
 
+/// <summary>
+/// Global account and operator persistence shared by both hosted sites.
+/// Discord-managed role tables are currently stored here as integration data;
+/// they are existing deployment coupling, not generic framework requirements.
+/// </summary>
 public sealed class IdentityDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid>, Guid>
 {
     public IdentityDbContext(DbContextOptions<IdentityDbContext> options)
