@@ -4,6 +4,11 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace dorks_and_dice_site.Controllers;
 
+/// <summary>
+/// Redeems Tool lifecycle tickets at application-slug or stable-key endpoints.
+/// AllowAnonymous permits a Tool to present its one-time bearer ticket; it
+/// does not bypass the ticket verification performed for each registration.
+/// </summary>
 [ApiController]
 [AllowAnonymous]
 public sealed class ToolLifecycleIntrospectionController(IToolRegistry toolRegistry) : ControllerBase

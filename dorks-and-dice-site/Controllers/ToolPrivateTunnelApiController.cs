@@ -6,6 +6,11 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace dorks_and_dice_site.Controllers;
 
+/// <summary>
+/// Issues target-scoped private-tunnel tickets only after validating the
+/// source capability and deployment-configured source-to-target relationship.
+/// Private tunnels are separate from ordinary Tool delegation targets.
+/// </summary>
 [Authorize]
 public sealed class ToolPrivateTunnelApiController(
     IToolRegistry toolRegistry,

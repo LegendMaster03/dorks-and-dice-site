@@ -8,6 +8,11 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace dorks_and_dice_site.Controllers;
 
+/// <summary>
+/// Builds the browser-visible bootstrap context for an enabled Tool application.
+/// Registration, mode visibility, integration version, and authentication are
+/// checked before publishing context; service registrations have no such route.
+/// </summary>
 [Route("tool-host")]
 public sealed class ToolHostContextController : ControllerBase
 {

@@ -10,6 +10,11 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace dorks_and_dice_site.Controllers;
 
+/// <summary>
+/// Implements the shared Tool Host session, introspection, delegation, and
+/// upstream endpoints. Campaign context is currently supplied by the
+/// Dorks & Dice mode; that integration must remain explicit during extraction.
+/// </summary>
 [Authorize]
 [Route("tool-host/{slug}/api")]
 public sealed class ToolHostApiController : ControllerBase

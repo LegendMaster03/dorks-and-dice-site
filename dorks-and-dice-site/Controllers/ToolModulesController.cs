@@ -6,6 +6,11 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace dorks_and_dice_site.Controllers;
 
+/// <summary>
+/// Forwards embedded Tool module assets after checking application eligibility,
+/// the active normal mode, supported contract version, and upstream policy.
+/// This asset route is distinct from Tool API authorization and delegation.
+/// </summary>
 [Route("tool-modules")]
 public sealed class ToolModulesController : ControllerBase
 {

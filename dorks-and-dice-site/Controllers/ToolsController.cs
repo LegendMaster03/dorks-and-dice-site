@@ -6,6 +6,11 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace dorks_and_dice_site.Controllers;
 
+/// <summary>
+/// Discovers and dispatches user-facing Tool applications within the selected
+/// normal mode. Registered headless services are excluded from the public
+/// Tool list and do not acquire application pages through this controller.
+/// </summary>
 [Route("tools")]
 public sealed class ToolsController : Controller
 {
