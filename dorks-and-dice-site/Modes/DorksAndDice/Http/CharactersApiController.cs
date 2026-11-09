@@ -6,6 +6,10 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace dorks_and_dice_site.Modes.DorksAndDice.Http;
 
+/// <summary>
+/// Dorks & Dice character identity API; the external Character Sheet Tool
+/// remains responsible for richer sheet content and editing workflows.
+/// </summary>
 [ApiController]
 [Authorize]
 [Route("characters/api")]

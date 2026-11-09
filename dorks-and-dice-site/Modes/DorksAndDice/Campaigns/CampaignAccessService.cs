@@ -11,6 +11,10 @@ public interface ICampaignAccessService
     Task RequireRoleAsync(Guid userId, Guid campaignId, string role, CancellationToken cancellationToken = default);
 }
 
+/// <summary>
+/// Enforces Dorks & Dice campaign membership and role requirements against
+/// active memberships in active campaigns, independent of global Site roles.
+/// </summary>
 public sealed class CampaignAccessService(DorksAndDiceDbContext dbContext) : ICampaignAccessService
 {
     private readonly DorksAndDiceDbContext _dbContext = dbContext;

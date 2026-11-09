@@ -5,6 +5,10 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace dorks_and_dice_site.Modes.DorksAndDice.Http;
 
+/// <summary>
+/// Dorks & Dice campaign API backed by the mode's own access and lifecycle
+/// services. These routes are not generic site-mode or framework APIs.
+/// </summary>
 [ApiController]
 [Authorize]
 [Route("campaigns/api")]

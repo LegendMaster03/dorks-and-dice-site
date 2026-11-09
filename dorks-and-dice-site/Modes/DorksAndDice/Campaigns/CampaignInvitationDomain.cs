@@ -8,6 +8,10 @@ public enum CampaignInvitationStatus
     Expired = 3
 }
 
+/// <summary>
+/// Persisted campaign invitation state. The transferable invitation secret
+/// is not stored here; only its hash and grant/expiry metadata are retained.
+/// </summary>
 public sealed class CampaignInvitation
 {
     public Guid Id { get; set; }

@@ -7,6 +7,11 @@ using Microsoft.EntityFrameworkCore.Diagnostics;
 
 namespace dorks_and_dice_site.Modes.DorksAndDice.Persistence;
 
+/// <summary>
+/// Mode-owned EF schema for campaigns, characters, Discord bindings, and Tool
+/// lifecycle delivery. It may share a physical database with framework content
+/// but uses separate entities and migration history.
+/// </summary>
 public sealed class DorksAndDiceDbContext(DbContextOptions<DorksAndDiceDbContext> options) : DbContext(options)
 {
     public DbSet<Campaign> Campaigns => Set<Campaign>();

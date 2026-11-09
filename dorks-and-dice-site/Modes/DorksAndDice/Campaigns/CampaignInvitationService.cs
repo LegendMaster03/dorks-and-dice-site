@@ -15,6 +15,11 @@ public interface ICampaignInvitationService
     Task RevokeAsync(Guid actorUserId, Guid campaignId, Guid invitationId, CancellationToken cancellationToken = default);
 }
 
+/// <summary>
+/// Creates, previews, accepts, and revokes time-limited Dorks & Dice campaign
+/// invitations. DM authority, token hashing, and membership assignment belong
+/// to the campaign domain rather than the shared account-linking framework.
+/// </summary>
 public sealed class CampaignInvitationService(DorksAndDiceDbContext dbContext, ICampaignAccessService campaignAccess, TimeProvider timeProvider) : ICampaignInvitationService
 {
     private static readonly TimeSpan DefaultLifetime = TimeSpan.FromDays(7);

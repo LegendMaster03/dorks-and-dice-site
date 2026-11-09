@@ -5,6 +5,10 @@ namespace dorks_and_dice_site.Modes.DorksAndDice.Characters;
 public enum CharacterStatus { Active = 0, Archived = 1 }
 public enum CampaignCharacterAssociationStatus { Active = 0, Ended = 1 }
 
+/// <summary>
+/// Site-owned character identity and lifecycle record. The external Character
+/// Sheet Tool can hold richer sheet state without owning this identity.
+/// </summary>
 public sealed class Character
 {
     public Guid Id { get; set; }

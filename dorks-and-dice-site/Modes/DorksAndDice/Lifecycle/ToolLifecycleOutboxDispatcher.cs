@@ -10,6 +10,11 @@ public interface IToolLifecycleOutboxDispatcher
     Task<int> DispatchDueAsync(CancellationToken cancellationToken = default);
 }
 
+/// <summary>
+/// Delivers Dorks & Dice deletion notifications to registered Tools from a
+/// durable mode-owned outbox. Failures are retried without undoing the
+/// original local deletion transaction.
+/// </summary>
 public sealed class ToolLifecycleOutboxDispatcher(
     DorksAndDiceDbContext dbContext,
     IToolRegistry toolRegistry,

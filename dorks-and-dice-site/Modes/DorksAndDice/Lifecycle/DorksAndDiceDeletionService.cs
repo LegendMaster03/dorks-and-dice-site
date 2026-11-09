@@ -10,6 +10,11 @@ public interface IDorksAndDiceDeletionService
     Task DeleteCampaignAsync(Guid actorUserId, Guid campaignId, CancellationToken cancellationToken = default);
 }
 
+/// <summary>
+/// Permanently deletes mode-owned campaigns or characters while recording
+/// Tool lifecycle outbox events in the same database transaction. Delivery
+/// to downstream Tools is asynchronous and independently retried.
+/// </summary>
 public sealed class DorksAndDiceDeletionService(
     DorksAndDiceDbContext dbContext,
     TimeProvider timeProvider) : IDorksAndDiceDeletionService

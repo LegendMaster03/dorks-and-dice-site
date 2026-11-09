@@ -5,6 +5,10 @@ namespace dorks_and_dice_site.Modes.DorksAndDice.Campaigns;
 public enum CampaignStatus { Active = 0, Archived = 1 }
 public enum CampaignMembershipStatus { Active = 0, Left = 1, Removed = 2 }
 
+/// <summary>
+/// Normalizes the mode-owned DM and Player roles; these are campaign membership
+/// grants rather than global Identity or site-mode authorization roles.
+/// </summary>
 public static class CampaignRoles
 {
     public const string Dm = "dm";

@@ -42,6 +42,10 @@ public interface ICampaignContextService
         CancellationToken cancellationToken = default);
 }
 
+/// <summary>
+/// Produces read-only campaign and character projections for authenticated
+/// consumers such as Tool Host integrations without exposing EF entities.
+/// </summary>
 public sealed class CampaignContextService(
     DorksAndDiceDbContext dbContext,
     ICampaignAccessService campaignAccess) : ICampaignContextService
