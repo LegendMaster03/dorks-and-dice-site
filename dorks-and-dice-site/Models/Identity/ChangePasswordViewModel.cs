@@ -2,6 +2,10 @@ using System.ComponentModel.DataAnnotations;
 
 namespace dorks_and_dice_site.Models.Identity;
 
+/// <summary>
+/// Human account password-change form; password validation and session
+/// refresh are enforced by the shared Identity controller.
+/// </summary>
 public sealed class ChangePasswordViewModel
 {
     [Required]

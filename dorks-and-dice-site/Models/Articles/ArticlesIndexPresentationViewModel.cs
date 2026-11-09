@@ -1,5 +1,9 @@
 namespace dorks_and_dice_site.Models.Articles;
 
+/// <summary>
+/// Mode-owned labels and filter visibility for the shared articles list.
+/// Content queries stay in the catalog rather than this presentation model.
+/// </summary>
 public sealed class ArticlesIndexPresentationViewModel
 {
     public string MetaTitle { get; init; } = string.Empty;

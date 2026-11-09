@@ -2,6 +2,10 @@ using System.ComponentModel.DataAnnotations;
 
 namespace dorks_and_dice_site.Models.Identity;
 
+/// <summary>
+/// Shared account settings projection, including both global external links
+/// and their separate active normal-mode connections.
+/// </summary>
 public sealed class AccountViewModel
 {
     public Guid UserId { get; init; }

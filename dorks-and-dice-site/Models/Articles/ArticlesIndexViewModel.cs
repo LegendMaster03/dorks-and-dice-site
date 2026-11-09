@@ -3,6 +3,10 @@ using dorks_and_dice_site.Models.Site;
 
 namespace dorks_and_dice_site.Models.Articles;
 
+/// <summary>
+/// Combines the effective articles catalog with mode-specific presentation
+/// and Development preview visibility. SiteMode is a legacy view projection.
+/// </summary>
 public class ArticlesIndexViewModel
 {
     public List<ContentItem> Articles { get; set; } = [];

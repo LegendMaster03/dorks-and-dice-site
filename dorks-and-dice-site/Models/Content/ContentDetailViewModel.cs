@@ -1,5 +1,9 @@
 namespace dorks_and_dice_site.Models.Content;
 
+/// <summary>
+/// Published content detail projection with sanitized rendered HTML and
+/// request-dependent navigation and Development visibility flags.
+/// </summary>
 public sealed class ContentDetailViewModel
 {
     public required ContentItem Item { get; init; }

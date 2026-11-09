@@ -2,6 +2,10 @@ using dorks_and_dice_site.Services.Identity;
 
 namespace dorks_and_dice_site.Models.Identity;
 
+/// <summary>
+/// Administrator account listing over the shared Identity store, not
+/// accounts isolated by normal hosted site mode.
+/// </summary>
 public sealed class AdminAccountListViewModel
 {
     public List<AdminAccountListItemViewModel> Accounts { get; init; } = [];

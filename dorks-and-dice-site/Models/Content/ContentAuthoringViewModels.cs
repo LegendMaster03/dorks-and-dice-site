@@ -2,6 +2,11 @@ using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
 
 namespace dorks_and_dice_site.Models.Content;
 
+/// <summary>
+/// Browser form for revision-aware content authoring. ExpectedRevisionId
+/// supports optimistic conflict detection, while VisibleModesSelection
+/// contains stable registered normal-mode IDs.
+/// </summary>
 public sealed class ContentAuthoringDocument
 {
     private string _visibleModesText = string.Empty;
