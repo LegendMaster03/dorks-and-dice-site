@@ -5,6 +5,10 @@ using Npgsql;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// Published deployments must not expose local development content sources.
+/// PostgreSQL connection configuration may load credentials from a secret file.
+/// </summary>
 public sealed class PostgresContentSourceTests
 {
     [Fact]

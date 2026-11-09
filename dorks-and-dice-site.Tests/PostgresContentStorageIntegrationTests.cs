@@ -4,6 +4,10 @@ using Npgsql;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// Shared content schema creation on PostgreSQL is repeatable without
+/// replacing existing data or requiring site-owned EF migrations.
+/// </summary>
 [Collection(PostgresIntegrationCollection.Name)]
 public sealed class PostgresContentStorageIntegrationTests
 {

@@ -3,6 +3,10 @@ using dorks_and_dice_site.Services.Operator;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// Capability discovery and OpenAPI exposure cover the implemented shared
+/// Operator endpoints rather than the site's unrelated controller routes.
+/// </summary>
 public sealed class OperatorOpenApiTests
 {
     [Fact]

@@ -8,6 +8,10 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// Owner-inherited editing authority works for normal site modes without
+/// requiring redundant direct mode-scoped editor claims.
+/// </summary>
 [Collection(PostgresIntegrationCollection.Name)]
 public sealed class ModeEditorInheritanceIntegrationTests
 {

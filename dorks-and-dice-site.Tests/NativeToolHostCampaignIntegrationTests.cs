@@ -9,6 +9,10 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// The Tool Host's current campaign roster comes from Dorks & Dice domain
+/// projections rather than a generic framework persistence model.
+/// </summary>
 [Collection(PublishedContentIntegrationCollection.Name)]
 public sealed class NativeToolHostCampaignIntegrationTests(PublishedContentWebApplicationFactory factory)
 {

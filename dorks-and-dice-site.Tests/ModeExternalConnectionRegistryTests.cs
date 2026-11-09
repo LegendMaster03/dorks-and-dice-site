@@ -3,6 +3,10 @@ using Microsoft.Extensions.Configuration;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// External resource bindings are mode-scoped even when two modes intentionally
+/// reference the same external guild; unknown modes and missing IDs are rejected.
+/// </summary>
 public sealed class ModeExternalConnectionRegistryTests
 {
     [Fact]

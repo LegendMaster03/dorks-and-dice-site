@@ -8,6 +8,10 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// Owner inherits trusted Admin and Developer authority, but is not
+/// assignable through normal account management or deletable through the UI.
+/// </summary>
 [Collection(PostgresIntegrationCollection.Name)]
 public sealed class OwnerRoleIntegrationTests
 {

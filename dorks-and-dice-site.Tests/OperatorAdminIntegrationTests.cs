@@ -9,6 +9,10 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// Only Owner may administer service principals and bearer credentials;
+/// new agents can not receive the Owner role.
+/// </summary>
 [Collection(PublishedContentIntegrationCollection.Name)]
 public sealed class OperatorAdminIntegrationTests(PublishedContentWebApplicationFactory factory)
 {

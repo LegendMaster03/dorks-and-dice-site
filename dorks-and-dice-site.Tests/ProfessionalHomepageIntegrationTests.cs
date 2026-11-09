@@ -3,6 +3,10 @@ using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// Professional homepage routes use database-authored content after the
+/// compiled fallback has been retired.
+/// </summary>
 [Collection(PublishedContentIntegrationCollection.Name)]
 public sealed class ProfessionalHomepageIntegrationTests
 {

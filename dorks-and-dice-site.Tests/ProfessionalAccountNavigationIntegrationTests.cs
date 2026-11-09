@@ -5,6 +5,10 @@ using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// Professional-mode navigation hides anonymous login when configured while
+/// still exposing ordinary global account navigation after authentication.
+/// </summary>
 [Collection(PublishedContentIntegrationCollection.Name)]
 public sealed class ProfessionalAccountNavigationIntegrationTests
 {

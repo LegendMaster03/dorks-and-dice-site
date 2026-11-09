@@ -4,6 +4,10 @@ using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// Published pages must not leak legacy markup and every rendered managed
+/// image must remain accessible through the content asset visibility contract.
+/// </summary>
 [Collection(PublishedContentIntegrationCollection.Name)]
 public sealed partial class PublishedContentSmokeTests
 {
