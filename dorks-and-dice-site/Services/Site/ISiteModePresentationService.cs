@@ -3,6 +3,10 @@ using dorks_and_dice_site.Models.Site;
 
 namespace dorks_and_dice_site.Services.Site;
 
+/// <summary>
+/// Presents site-mode metadata from the resolved request context, falling back
+/// to framework defaults when the active presentation does not supply a part.
+/// </summary>
 public interface ISiteModePresentationService
 {
     string GetTitleSuffix(SiteModeContext context);

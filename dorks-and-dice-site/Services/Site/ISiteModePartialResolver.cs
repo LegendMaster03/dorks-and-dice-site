@@ -2,6 +2,10 @@ using dorks_and_dice_site.Models.Site;
 
 namespace dorks_and_dice_site.Services.Site;
 
+/// <summary>
+/// Resolves mode-owned Razor partials with a framework fallback. Legacy enum
+/// overloads are compatibility entry points, not required for future modes.
+/// </summary>
 public interface ISiteModePartialResolver
 {
     string GetPartialPath(SiteModeContext context, string partialName);

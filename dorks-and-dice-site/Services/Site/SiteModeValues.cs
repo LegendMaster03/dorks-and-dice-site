@@ -3,6 +3,11 @@ using dorks_and_dice_site.Models.Site;
 
 namespace dorks_and_dice_site.Services.Site;
 
+/// <summary>
+/// Provides migration-era cookie keys and legacy mode-name conversions.
+/// The two named normal-mode constants are compatibility values; generic
+/// framework consumers should use registered stable mode IDs instead.
+/// </summary>
 public static class SiteModeValues
 {
     public const string DevelopmentSiteModeCookie = "DevelopmentPreviewSiteMode";

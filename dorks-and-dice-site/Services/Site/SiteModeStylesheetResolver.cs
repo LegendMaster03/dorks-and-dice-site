@@ -2,6 +2,11 @@ using dorks_and_dice_site.Models.Site;
 
 namespace dorks_and_dice_site.Services.Site;
 
+/// <summary>
+/// Composes the normal-mode and synthetic-mode stylesheets from the request
+/// context. Development can add its stylesheet without replacing the
+/// selected normal site's branding.
+/// </summary>
 public sealed class SiteModeStylesheetResolver : ISiteModeStylesheetResolver
 {
     public IReadOnlyList<string> GetStylesheetPaths(SiteModeContext context)

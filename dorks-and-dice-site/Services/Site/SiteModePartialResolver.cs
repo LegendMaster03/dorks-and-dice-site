@@ -3,6 +3,10 @@ using Microsoft.AspNetCore.Mvc.ViewEngines;
 
 namespace dorks_and_dice_site.Services.Site;
 
+/// <summary>
+/// Prefers a selected mode's Razor partial when available and otherwise uses
+/// the framework fallback view folder; controllers need no mode-name switch.
+/// </summary>
 public sealed class SiteModePartialResolver : ISiteModePartialResolver
 {
     private readonly ICompositeViewEngine _viewEngine;

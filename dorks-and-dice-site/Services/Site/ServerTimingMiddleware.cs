@@ -3,6 +3,11 @@ using System.Globalization;
 
 namespace dorks_and_dice_site.Services.Site;
 
+/// <summary>
+/// Emits shared Server-Timing metrics for the full request, Site processing,
+/// and Tool wait intervals. Overlapping Tool intervals are combined rather
+/// than double-counted when deriving Site time.
+/// </summary>
 public sealed class ServerTimingMiddleware(RequestDelegate next)
 {
     public const string HeaderName = "Server-Timing";
