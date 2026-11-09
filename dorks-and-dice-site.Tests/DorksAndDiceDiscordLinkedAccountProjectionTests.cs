@@ -9,6 +9,11 @@ using Microsoft.EntityFrameworkCore;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// Only globally linked Discord accounts activated for the Dorks & Dice
+/// resource contribute desired guild roles; missing mode connections produce
+/// no projection.
+/// </summary>
 public sealed class DorksAndDiceDiscordLinkedAccountProjectionTests
 {
     [Fact]

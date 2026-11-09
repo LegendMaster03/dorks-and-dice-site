@@ -4,6 +4,10 @@ using Microsoft.Extensions.Configuration;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// Legacy Tool registrations gain versioned Embedded Module metadata without
+/// blindly upgrading unknown integration implementations.
+/// </summary>
 public sealed class EmbeddedModuleContractMigrationTests
 {
     [Fact]

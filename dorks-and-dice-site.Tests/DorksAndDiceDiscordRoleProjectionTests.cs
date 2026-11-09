@@ -8,6 +8,10 @@ using Microsoft.EntityFrameworkCore;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// Dorks & Dice campaign-to-guild projections follow active DM ownership.
+/// Main-guild role rules differ from selected or single-campaign guilds.
+/// </summary>
 public sealed class DorksAndDiceDiscordProjectionTests
 {
     [Fact]

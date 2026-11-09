@@ -4,6 +4,10 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// Dorks & Dice-owned services and presentation are registered by its mode
+/// module, not indirectly as mandatory dependencies of the generic framework.
+/// </summary>
 public sealed class DorksAndDiceModeRegistrationTests
 {
     [Fact]

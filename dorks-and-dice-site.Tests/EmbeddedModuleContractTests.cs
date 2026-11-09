@@ -8,6 +8,10 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// Versioned Embedded Module contracts reject unsupported runtimes at the
+/// hosting boundaries while proxied applications retain separate contracts.
+/// </summary>
 public sealed class ToolIntegrationContractPolicyTests
 {
     [Fact]

@@ -10,6 +10,10 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// Embedded Tool routes remain directly refreshable and mode-gated;
+/// proxied Tool applications continue to own their nested upstream responses.
+/// </summary>
 [Collection(PublishedContentIntegrationCollection.Name)]
 public sealed class EmbeddedToolRouteIntegrationTests(PublishedContentWebApplicationFactory factory)
 {

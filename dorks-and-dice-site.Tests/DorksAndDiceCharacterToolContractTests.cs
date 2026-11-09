@@ -2,6 +2,10 @@ using dorks_and_dice_site.Modes.DorksAndDice.Characters;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// Site-owned character identity is passed to the external Character Sheet
+/// Tool through stable routes rather than duplicated ownership records.
+/// </summary>
 public sealed class DorksAndDiceCharacterToolContractTests
 {
     [Fact]

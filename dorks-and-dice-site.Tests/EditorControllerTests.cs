@@ -8,6 +8,10 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// The editor landing route respects the selected registered mode even when
+/// running inside the synthetic Development control plane.
+/// </summary>
 public sealed class EditorControllerTests
 {
     [Fact]

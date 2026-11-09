@@ -3,6 +3,10 @@ using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// The live Dorks & Dice homepage is composed from database-backed content,
+/// not from the retired compiled homepage fallback.
+/// </summary>
 [Collection(PublishedContentIntegrationCollection.Name)]
 public sealed class DorksAndDiceHomepageIntegrationTests
 {

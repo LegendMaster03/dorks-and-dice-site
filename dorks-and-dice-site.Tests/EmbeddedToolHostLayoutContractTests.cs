@@ -2,6 +2,10 @@ using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// The shared Site shell exposes the layout contract required by embedded
+/// Tool applications without adopting their internal UI implementation.
+/// </summary>
 [Collection(PublishedContentIntegrationCollection.Name)]
 public sealed class EmbeddedToolHostLayoutContractTests(PublishedContentWebApplicationFactory factory)
 {

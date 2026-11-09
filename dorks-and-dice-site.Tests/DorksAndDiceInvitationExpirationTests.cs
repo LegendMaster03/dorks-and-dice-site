@@ -5,6 +5,10 @@ using Microsoft.EntityFrameworkCore;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// Reusable invitations may grant multiple memberships only while valid;
+/// expired invitations must be persisted as expired when observed.
+/// </summary>
 public sealed class DorksAndDiceInvitationExpirationTests
 {
     [Fact]

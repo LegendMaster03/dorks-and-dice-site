@@ -9,6 +9,10 @@ using Microsoft.EntityFrameworkCore;
 
 namespace dorks_and_dice_site.Tests;
 
+/// <summary>
+/// The migration from global to Dorks & Dice-scoped Rules Lawyer authority
+/// must retain the previously created managed Discord role identity.
+/// </summary>
 public sealed class DorksAndDiceDiscordLinkedAccountProjectionSourceTests
 {
     [Fact]
