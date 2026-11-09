@@ -17,6 +17,11 @@ public interface ICharacterService
     Task DisconnectFromCampaignAsync(Guid ownerUserId, Guid characterId, Guid campaignId, CancellationToken cancellationToken = default);
 }
 
+/// <summary>
+/// Owns Dorks & Dice character records independently of external character-sheet
+/// Tools. Character ownership governs edits; active campaign association requires
+/// the owner to have the campaign's Player role.
+/// </summary>
 public sealed class CharacterService(DorksAndDiceDbContext dbContext, ICampaignAccessService campaignAccess, TimeProvider timeProvider) : ICharacterService
 {
     private readonly DorksAndDiceDbContext _dbContext = dbContext;
@@ -59,6 +64,8 @@ public sealed class CharacterService(DorksAndDiceDbContext dbContext, ICampaignA
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
 
+    // Archiving the character ends active campaign associations rather than
+    // deleting the historical campaign relationship records.
     public async Task ArchiveAsync(Guid ownerUserId, Guid characterId, CancellationToken cancellationToken = default)
     {
         var character = await GetOwnedCharacterForUpdateAsync(ownerUserId, characterId, cancellationToken);

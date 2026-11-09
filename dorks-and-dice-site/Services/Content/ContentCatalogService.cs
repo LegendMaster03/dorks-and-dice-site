@@ -4,6 +4,11 @@ using dorks_and_dice_site.Services.Site;
 
 namespace dorks_and_dice_site.Services.Content;
 
+/// <summary>
+/// Presents the already-composed content repository through the active normal site's
+/// listing and detail visibility rules. Synthetic developer inspection is a separate
+/// authority path, not a way to expose other modes on public hosts.
+/// </summary>
 public sealed class ContentCatalogService : IContentCatalogService
 {
     private readonly IContentRepository _repository;

@@ -48,6 +48,11 @@ public interface IContentAssetService
         CancellationToken cancellationToken = default);
 }
 
+/// <summary>
+/// Stores content-managed media in named content sources and enforces visibility
+/// when an asset is requested by public URL. Upload validation, source precedence,
+/// page dependencies, and mode visibility are separate checks.
+/// </summary>
 public sealed class ContentAssetService : IContentAssetService
 {
     private static readonly IReadOnlyDictionary<string, string> AllowedMediaTypes =
@@ -204,6 +209,8 @@ public sealed class ContentAssetService : IContentAssetService
 
         await using var context = CreateContext(source.Key);
         await ContentStorageSchema.EnsureCurrentAsync(context, cancellationToken);
+        // Reuse identical bytes within the selected source rather than creating a
+        // second asset identity; this does not deduplicate across every source.
         var existing = await context.Assets
             .AsNoTracking()
             .FirstOrDefaultAsync(asset => asset.Sha256 == sha256, cancellationToken);
@@ -327,6 +334,8 @@ public sealed class ContentAssetService : IContentAssetService
         await context.SaveChangesAsync(cancellationToken);
     }
 
+    // Public asset lookup is not sufficient for publication: an effective,
+    // visible page must reference the asset after content-source overrides.
     public async Task<ContentAssetFile?> GetForRequestAsync(
         string assetKey,
         string fileName,

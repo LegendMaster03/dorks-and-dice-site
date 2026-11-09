@@ -7,6 +7,11 @@ namespace dorks_and_dice_site.Services.Identity;
 
 public sealed record ModeScopedRoleRequirement(string Role) : IAuthorizationRequirement;
 
+/// <summary>
+/// Evaluates global and normal-mode-scoped roles against the resolved request context.
+/// A synthetic Development request does not create a new normal mode or automatically
+/// grant cross-mode editor authority to a role scoped to one hosted site.
+/// </summary>
 public static class ModeScopedRoleAccess
 {
     public static bool PrincipalHasRoleForContext(

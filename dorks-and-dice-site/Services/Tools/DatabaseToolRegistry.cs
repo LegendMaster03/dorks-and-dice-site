@@ -9,6 +9,11 @@ using NpgsqlTypes;
 
 namespace dorks_and_dice_site.Services.Tools;
 
+/// <summary>
+/// Persists Tool application and headless-service registrations in the configured
+/// authoring database. Stable Tool keys are distinct from public application slugs;
+/// this registry is shared infrastructure, not Dorks & Dice campaign storage.
+/// </summary>
 public sealed class DatabaseToolRegistry : IToolRegistry
 {
     private const string SelectColumns = """
@@ -102,6 +107,8 @@ public sealed class DatabaseToolRegistry : IToolRegistry
             throw new InvalidOperationException("A Tool registration key is required.");
         }
 
+        // Tool keys are security identities used by delegation and tickets. Editing a
+        // registration must not silently change its key or collide with another one.
         var existingById = await GetByIdAsync(registration.Id, cancellationToken);
         if (existingById is not null)
         {
@@ -297,6 +304,8 @@ public sealed class DatabaseToolRegistry : IToolRegistry
         }
     }
 
+    // Older authoring databases may lack the release-audience column. Migrate it
+    // once per registry instance while serializing concurrent first-use requests.
     private async Task EnsureReleaseAudienceSchemaAsync(
         DbConnection connection,
         RegistryProvider provider,

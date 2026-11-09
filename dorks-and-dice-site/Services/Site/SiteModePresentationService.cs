@@ -3,6 +3,11 @@ using dorks_and_dice_site.Models.Site;
 
 namespace dorks_and_dice_site.Services.Site;
 
+/// <summary>
+/// Resolves presentation parts from the active normal mode or synthetic runtime
+/// state, using the registered framework fallback when a part is unavailable.
+/// Site-specific branding remains in presentation modules, not this service.
+/// </summary>
 public sealed class SiteModePresentationService : ISiteModePresentationService
 {
     private readonly IReadOnlyDictionary<string, ISiteModePresentationModule> _modules;

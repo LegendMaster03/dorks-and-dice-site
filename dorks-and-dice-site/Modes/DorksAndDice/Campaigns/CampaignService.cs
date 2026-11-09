@@ -19,6 +19,11 @@ public interface ICampaignService
     Task RemoveMemberAsync(Guid actorUserId, Guid campaignId, Guid userId, CancellationToken cancellationToken = default);
 }
 
+/// <summary>
+/// Owns Dorks & Dice campaign membership and lifecycle mutations. DM authorization,
+/// the invariant that an active campaign retains a DM, and association cleanup
+/// belong to the site mode rather than the reusable content or identity framework.
+/// </summary>
 public sealed class CampaignService(DorksAndDiceDbContext dbContext, ICampaignAccessService campaignAccess, TimeProvider timeProvider) : ICampaignService
 {
     private readonly DorksAndDiceDbContext _dbContext = dbContext;
@@ -167,6 +172,8 @@ public sealed class CampaignService(DorksAndDiceDbContext dbContext, ICampaignAc
         var hadPlayerRole = existingRoles.Any(role => role.Role == CampaignRoles.Player);
         if (hadDmRole && !normalizedRoles.Contains(CampaignRoles.Dm)) await EnsureAnotherDmExistsAsync(campaignId, membership.Id, cancellationToken);
 
+        // Role edits and dependent character-association cleanup are committed in
+        // one database transaction when a member loses the Player role.
         var rolesToRemove = existingRoles.Where(role => !normalizedRoles.Contains(role.Role)).ToArray();
         var existingRoleNames = existingRoles.Select(role => role.Role).ToHashSet(StringComparer.Ordinal);
         var rolesToAdd = normalizedRoles.Where(role => !existingRoleNames.Contains(role)).ToArray();

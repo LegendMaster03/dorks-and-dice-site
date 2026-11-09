@@ -4,6 +4,11 @@ using Microsoft.EntityFrameworkCore;
 
 namespace dorks_and_dice_site.Services.Content.Storage;
 
+/// <summary>
+/// Builds the effective content catalog from the sources selected for the request.
+/// Later sources can override earlier content identities and route slugs; this
+/// composition is independent of which normal site mode owns the final page.
+/// </summary>
 public sealed class CompositeContentRepository : IContentRepository
 {
     private readonly IHttpContextAccessor _httpContextAccessor;
