@@ -49,6 +49,26 @@ deployment currently supplies built-in definitions through
 `DeploymentSiteModeRegistrationSource`. Whether future definitions use
 compiled registrations, manifests, or persistent data is still undecided.
 
+## Known dependencies that still affect extraction
+
+The folder structure establishes ownership, but physical separation is not
+complete. The following are verified examples to address when an extraction
+plan is approved; they are not changes requested by this documentation pass.
+
+| Current location | Existing dependency | Extraction consideration |
+| --- | --- | --- |
+| `Program.cs` | Composes both hosted sites, plugins, shared services, and a deployment-named Data Protection application | Separate a reusable composition API from the installation entry point; preserve encrypted-cookie/token compatibility when changing Data Protection identity |
+| `Deployment/SiteModeOptions.cs` | Provides current domain defaults and named-mode compatibility constants | Keep host mapping installation-owned rather than embedding these site identities in portable contracts |
+| `Services/Tools/ToolHostAuthenticationContextFactory.cs` | Depends directly on Dorks & Dice campaign and character services to build Tool contexts | Put domain authorization projections behind an explicit extension contract instead of moving campaign logic into the framework |
+| `Controllers/ToolServiceApiController.cs` | Defines a deliberate, Rules Core-specific browser gateway exception | Treat this as an installed-Tool or deployment policy decision, not a default generic gateway to every headless service |
+| `Services/Content/Storage/ContentStorageSchema.cs` | Contains compatibility migration values for `character-sheet`, `rules-core`, and `block-initiative` registrations | Separate reusable schema evolution from deployment-specific migration data without breaking previously deployed databases |
+| `Services/Identity/IdentityDbContext.cs` | Stores Discord-managed role, channel, and assignment tables beside global account data | Decide how plugin-owned integration persistence is registered and migrated before extracting shared Identity |
+| `Services/Tools/ToolAuthenticationTickets.cs` and `ToolLifecycleTickets.cs` | Existing wire headers use the `X-Dorks-*` prefix; ticket redemption uses process-local storage | Preserve established Tool contracts until a versioned compatibility plan exists; evaluate shared ephemeral storage before multi-instance hosting |
+
+This is a concrete starting inventory, not an exhaustive separation audit.
+None of these dependencies proves that an extracted framework must adopt the
+same implementation or that changing them is already approved.
+
 ## Rules for documentation and eventual extraction
 
 - Describe present implementations separately from planned interfaces and
