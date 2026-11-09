@@ -1,5 +1,10 @@
 namespace dorks_and_dice_site.Models.Identity;
 
+/// <summary>
+/// Persisted mapping from a projection-source role key to the remote Discord
+/// role created by the bot. Sources define desired memberships separately.
+/// </summary>
+
 public sealed class DiscordManagedRole
 {
     public const int SourceIdMaxLength = 100;

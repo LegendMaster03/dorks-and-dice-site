@@ -1,5 +1,5 @@
-/* Please see documentation at https://learn.microsoft.com/aspnet/core/client-side/bundling-and-minification
-for details on configuring this project to bundle and minify static web assets. */
+/* Layout-scoped CSS for the shared Razor shell. Mode-specific presentation
+   belongs to each normal site's stylesheet rather than this shared file. */
 
 a.navbar-brand {
   white-space: normal;
