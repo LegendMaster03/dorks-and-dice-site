@@ -11,6 +11,10 @@ public sealed record DiscordServerBindingViewModel(
     DiscordServerCampaignScope CampaignScope,
     IReadOnlyList<DiscordServerCampaignOptionViewModel> Campaigns);
 
+/// <summary>
+/// Displays owned guild bindings and eligible campaigns without exposing
+/// bot credentials or shared account-link records to the view.
+/// </summary>
 public sealed class DiscordServersViewModel
 {
     public string? InstallUrl { get; init; }

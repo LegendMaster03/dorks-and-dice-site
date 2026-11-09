@@ -10,6 +10,10 @@ public sealed class CampaignsIndexViewModel
 public sealed record CampaignMemberViewModel(Guid UserId, string DisplayName, IReadOnlyList<string> Roles, bool IsCurrentUser);
 public sealed record CampaignInvitationListItemViewModel(Guid Id, IReadOnlyList<string> Roles, bool IsReusable, DateTimeOffset ExpiresAt);
 
+/// <summary>
+/// Mode-owned campaign details projection for Razor presentation. CanManage
+/// is derived by the service/controller rather than inferred from global roles.
+/// </summary>
 public sealed class CampaignDetailsViewModel
 {
     public Guid Id { get; init; }

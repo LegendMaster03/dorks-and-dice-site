@@ -8,6 +8,10 @@ using Microsoft.EntityFrameworkCore;
 
 namespace dorks_and_dice_site.Modes.DorksAndDice.Ui;
 
+/// <summary>
+/// Dorks & Dice campaign pages and invitation workflows. Global sign-in is
+/// required, while membership and DM authorization remain campaign-specific.
+/// </summary>
 [Authorize]
 [Route("campaigns")]
 public sealed class CampaignsController(

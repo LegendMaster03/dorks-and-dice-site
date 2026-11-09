@@ -7,6 +7,10 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace dorks_and_dice_site.Modes.DorksAndDice.Ui;
 
+/// <summary>
+/// UI for a user's Dorks & Dice Discord guild-to-campaign configuration.
+/// Guild ownership and synchronization are supplied by the Discord plugin.
+/// </summary>
 [Authorize]
 [Route("discord-servers")]
 public sealed class DiscordServersController(

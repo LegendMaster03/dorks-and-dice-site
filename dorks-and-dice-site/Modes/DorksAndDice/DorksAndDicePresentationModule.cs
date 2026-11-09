@@ -3,6 +3,10 @@ using dorks_and_dice_site.Services.Site;
 
 namespace dorks_and_dice_site.Modes.DorksAndDice;
 
+/// <summary>
+/// Mode-owned page metadata and presentation defaults for Dorks & Dice.
+/// Generic presentation selection is handled by the shared framework service.
+/// </summary>
 public sealed class DorksAndDicePresentationModule : ISiteModePresentationModule
 {
     public string PresentationKey => BuiltInSiteModes.DorksAndDice.Id;

@@ -28,6 +28,10 @@ public sealed record CharacterSummaryResponse(
     DateTimeOffset? ArchivedAt,
     IReadOnlyCollection<CharacterCampaignResponse> Campaigns);
 
+/// <summary>
+/// Converts Dorks & Dice persistence entities into explicit API response
+/// contracts, avoiding direct exposure of EF navigation graphs.
+/// </summary>
 public static class DorksAndDiceApiMapper
 {
     public static CampaignSummaryResponse ToSummary(Campaign campaign, Guid userId)

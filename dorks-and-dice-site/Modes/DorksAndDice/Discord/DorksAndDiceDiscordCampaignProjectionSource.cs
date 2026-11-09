@@ -7,6 +7,11 @@ using Microsoft.EntityFrameworkCore;
 
 namespace dorks_and_dice_site.Modes.DorksAndDice.Discord;
 
+/// <summary>
+/// Builds the Dorks & Dice campaign role projection consumed by the shared
+/// Discord bot plugin. Campaign selection and DM membership semantics are
+/// mode-owned, while the plugin handles remote guild reconciliation.
+/// </summary>
 public sealed class DorksAndDiceDiscordCampaignProjectionSource(
     DorksAndDiceDbContext dbContext,
     IModeExternalConnectionRegistry modeConnections) : IDiscordWorkspaceProjectionSource

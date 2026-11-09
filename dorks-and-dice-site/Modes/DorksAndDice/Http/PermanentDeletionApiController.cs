@@ -6,6 +6,10 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace dorks_and_dice_site.Modes.DorksAndDice.Http;
 
+/// <summary>
+/// JSON API entry point for mode-owned permanent deletions. It uses the same
+/// domain deletion and outbox behavior as the browser-facing controller.
+/// </summary>
 [ApiController]
 [Authorize]
 public sealed class PermanentDeletionApiController(IDorksAndDiceDeletionService deletionService) : ControllerBase

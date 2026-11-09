@@ -7,6 +7,10 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace dorks_and_dice_site.Modes.DorksAndDice.Ui;
 
+/// <summary>
+/// Dorks & Dice character identity and campaign-association pages. The
+/// separately hosted Character Sheet Tool owns detailed sheet behavior.
+/// </summary>
 [Authorize]
 [Route("characters")]
 public sealed class CharactersController(ICharacterService characterService, ICampaignService campaignService) : Controller

@@ -6,6 +6,10 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace dorks_and_dice_site.Modes.DorksAndDice.Ui;
 
+/// <summary>
+/// Browser-form entry point for irreversible Dorks & Dice deletions.
+/// Domain services authorize the action and persist Tool outbox notifications.
+/// </summary>
 [Authorize]
 public sealed class PermanentDeletionController(IDorksAndDiceDeletionService deletionService) : Controller
 {

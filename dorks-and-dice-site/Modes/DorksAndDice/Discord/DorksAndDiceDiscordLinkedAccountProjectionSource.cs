@@ -8,6 +8,11 @@ using Microsoft.EntityFrameworkCore;
 
 namespace dorks_and_dice_site.Modes.DorksAndDice.Discord;
 
+/// <summary>
+/// Projects active Dorks & Dice-linked identities and scoped Site roles to
+/// Discord managed-role intent. Account identity remains global; mode-specific
+/// activation determines which guild receives the projection.
+/// </summary>
 public sealed class DorksAndDiceDiscordLinkedAccountProjectionSource(
     IdentityDbContext identityDbContext,
     IModeExternalConnectionRegistry modeConnections) : IDiscordWorkspaceProjectionSource
