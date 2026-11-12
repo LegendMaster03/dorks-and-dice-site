@@ -38,6 +38,17 @@ public sealed class ToolHostCharacterAccessSummary
 }
 
 /// <summary>
+/// A campaign-specific DM target verified by Site, not a grant of character ownership.
+/// The target character must be active and currently associated with the active campaign.
+/// Only Character Sheet's private, redeemed Tool authentication context receives this data.
+/// </summary>
+public sealed class ToolHostDmCharacterScope
+{
+    public required Guid CampaignId { get; init; }
+    public required Guid CharacterId { get; init; }
+}
+
+/// <summary>
 /// Authoritative identity/authorization context redeemed by a Tool backend from a short-lived
 /// host-issued authentication ticket. Source-content grants intentionally do not live here;
 /// those remain owned by the Tool that stores the protected content.
@@ -90,6 +101,14 @@ public sealed class ToolHostAuthenticationContext
     /// </summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public IReadOnlyList<ToolHostCharacterAccessSummary>? Characters { get; init; }
+
+    /// <summary>
+    /// Current campaign DM/character-association scope, not an Origin approval.
+    /// An approval must separately identify the ruling, outcome, actor and revision.
+    /// This optional projection does not authorize edits to another user's sheet.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public IReadOnlyList<ToolHostDmCharacterScope>? DmCharacterScopes { get; init; }
 
     [JsonIgnore]
     public string RegistrationKey =>
