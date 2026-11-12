@@ -57,6 +57,9 @@ public sealed class ToolHostAuthenticationContextFactory(
             userId,
             cancellationToken);
 
+        var dmScopes = await BuildDmCharacterScopesAsync(
+            tool.Key, userId, campaigns, cancellationToken);
+
         return new ToolHostAuthenticationContext
         {
             ToolKey = tool.Key,
@@ -87,7 +90,8 @@ public sealed class ToolHostAuthenticationContextFactory(
                         : "Player"
                 }))
                 .ToArray(),
-            Characters = characters
+            Characters = characters,
+            DmCharacterScopes = dmScopes
         };
     }
 
@@ -154,6 +158,13 @@ public sealed class ToolHostAuthenticationContextFactory(
             userId,
             cancellationToken);
 
+        // The source capability is short-lived, but DM target scope must still
+        // be recomputed from the Site's current campaign data for this target.
+        var currentCampaigns = await campaignContextService.GetAccessibleCampaignsAsync(
+            userId, cancellationToken);
+        var dmScopes = await BuildDmCharacterScopesAsync(
+            targetTool.Key, userId, currentCampaigns, cancellationToken);
+
         return new ToolHostAuthenticationContext
         {
             ToolKey = targetTool.Key,
@@ -178,8 +189,47 @@ public sealed class ToolHostAuthenticationContextFactory(
                     Role = campaign.Role
                 })
                 .ToArray(),
-            Characters = characters
+            Characters = characters,
+            DmCharacterScopes = dmScopes
         };
+    }
+
+    /// <summary>
+    /// Computes DM-target associations from live Site campaign data. A DM role
+    /// alone is insufficient: the character must also be actively linked to
+    /// that campaign. This is authority to submit an approval for review, not
+    /// ownership or permission to read private sheet content.
+    /// </summary>
+    private async Task<IReadOnlyList<ToolHostDmCharacterScope>?> BuildDmCharacterScopesAsync(
+        string toolKey, Guid userId, IReadOnlyList<CampaignAccessContext> campaigns,
+        CancellationToken cancellationToken)
+    {
+        if (!string.Equals(toolKey, CharacterToolContract.Slug, StringComparison.Ordinal))
+            return null;
+
+        var targets = new List<ToolHostDmCharacterScope>();
+        foreach (var campaign in campaigns.Where(campaign =>
+            campaign.Roles.Contains(CampaignRoles.Dm, StringComparer.OrdinalIgnoreCase)))
+        {
+            var context = await campaignContextService.GetCampaignContextAsync(
+                userId, campaign.CampaignId, cancellationToken);
+            if (context is null ||
+                !context.RequestingUserRoles.Contains(CampaignRoles.Dm, StringComparer.OrdinalIgnoreCase))
+                continue;
+
+            targets.AddRange(context.Characters
+                .Where(character => character.CharacterId != Guid.Empty)
+                .Select(character => new ToolHostDmCharacterScope
+                {
+                    CampaignId = context.CampaignId,
+                    CharacterId = character.CharacterId
+                }));
+        }
+        return targets
+            .DistinctBy(target => (target.CampaignId, target.CharacterId))
+            .OrderBy(target => target.CampaignId)
+            .ThenBy(target => target.CharacterId)
+            .ToArray();
     }
 
     private async Task<IReadOnlyList<ToolHostCharacterAccessSummary>?> BuildCharacterAccessProjectionAsync(
