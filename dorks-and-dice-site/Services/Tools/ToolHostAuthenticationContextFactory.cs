@@ -181,13 +181,17 @@ public sealed class ToolHostAuthenticationContextFactory(
             },
             GlobalRoles = sourceContext.GlobalRoles.ToArray(),
             ScopedRoles = sourceContext.ScopedRoles.ToArray(),
-            Campaigns = sourceContext.Campaigns
-                .Select(campaign => new ToolHostCampaignAccessSummary
+            // Recompute roles for delegated/private-tunnel tickets. An earlier
+            // source context may retain a campaign DM role that was revoked.
+            Campaigns = currentCampaigns
+                .SelectMany(campaign => campaign.Roles.Select(role => new ToolHostCampaignAccessSummary
                 {
-                    Id = campaign.Id,
+                    Id = campaign.CampaignId,
                     Name = campaign.Name,
-                    Role = campaign.Role
-                })
+                    Role = string.Equals(role, CampaignRoles.Dm, StringComparison.OrdinalIgnoreCase)
+                        ? "DM"
+                        : "Player"
+                }))
                 .ToArray(),
             Characters = characters,
             DmCharacterScopes = dmScopes

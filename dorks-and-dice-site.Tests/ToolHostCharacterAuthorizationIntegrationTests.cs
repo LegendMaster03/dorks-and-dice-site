@@ -107,6 +107,7 @@ public sealed class ToolHostCharacterAuthorizationIntegrationTests(PublishedCont
         var tool = new ToolRegistration
         {
             Id = Guid.NewGuid(),
+            Key = CharacterToolContract.Slug,
             Slug = CharacterToolContract.Slug,
             DisplayName = CharacterToolContract.DisplayName,
             IntegrationType = ToolIntegrationType.EmbeddedModule,
@@ -246,6 +247,57 @@ public sealed class ToolHostCharacterAuthorizationIntegrationTests(PublishedCont
             Assert.Contains((firstCampaignId, activeCharacterId), afterScopes);
             Assert.Equal(2, updated.RootElement.GetProperty("characters")
                 .GetArrayLength());
+
+            // An existing source ticket can outlive a campaign-role change.
+            // Neither ordinary delegation nor private tunneling may reissue
+            // the role that the current Site membership has revoked.
+            var staleSourceContext = new ToolHostAuthenticationContext
+            {
+                ToolKey = CharacterToolContract.Slug,
+                ToolSlug = CharacterToolContract.Slug,
+                SiteMode = SiteModeValues.DorksAndDiceModeValue,
+                User = new ToolHostUserContext
+                {
+                    Id = ownerUserId.ToString("D"),
+                    DisplayName = "Former campaign DM"
+                },
+                GlobalRoles = ["Member"],
+                Campaigns =
+                [
+                    new ToolHostCampaignAccessSummary
+                    {
+                        Id = dmCampaignId,
+                        Name = "Former DM Campaign",
+                        Role = "DM"
+                    }
+                ]
+            };
+            using (var delegatedScope = testFactory.Services.CreateScope())
+            {
+                var contextFactory = delegatedScope.ServiceProvider
+                    .GetRequiredService<IToolHostAuthenticationContextFactory>();
+                var rulesCore = new ToolRegistration
+                {
+                    Id = Guid.NewGuid(),
+                    Key = "rules-core",
+                    Kind = ToolKind.Service,
+                    DisplayName = "Rules Core"
+                };
+                var delegated = await contextFactory.CreateDelegatedAsync(
+                    rulesCore, staleSourceContext);
+                var privateTunnel = await contextFactory.CreatePrivateTunnelAsync(
+                    rulesCore, staleSourceContext);
+                foreach (var freshContext in new[] { delegated, privateTunnel })
+                {
+                    Assert.NotNull(freshContext);
+                    Assert.DoesNotContain(freshContext.Campaigns, campaign =>
+                        campaign.Id == dmCampaignId && campaign.Role == "DM");
+                    Assert.Contains(freshContext.Campaigns, campaign =>
+                        campaign.Id == dmCampaignId && campaign.Role == "Player");
+                    Assert.Contains(freshContext.Campaigns, campaign =>
+                        campaign.Id == firstCampaignId && campaign.Role == "DM");
+                }
+            }
         }
         finally
         {
