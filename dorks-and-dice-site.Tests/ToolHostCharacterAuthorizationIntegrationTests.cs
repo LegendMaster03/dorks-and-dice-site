@@ -191,6 +191,22 @@ public sealed class ToolHostCharacterAuthorizationIntegrationTests(PublishedCont
                 .OrderBy(role => role, StringComparer.Ordinal)
                 .ToArray();
             Assert.Equal(new[] { "DM", "Player" }, firstCampaignRoles);
+
+            // DM rights are independent of owner access: another player's
+            // current campaign-linked character is an approvable target, not
+            // an owner-visible sheet. Ended and archived links are excluded.
+            var dmTargets = root.GetProperty("dmCharacterScopes").EnumerateArray()
+                .Select(item => (
+                    CampaignId: item.GetProperty("campaignId").GetGuid(),
+                    CharacterId: item.GetProperty("characterId").GetGuid()))
+                .ToArray();
+            Assert.Equal(3, dmTargets.Length);
+            Assert.Contains((firstCampaignId, activeCharacterId), dmTargets);
+            Assert.Contains((secondCampaignId, activeCharacterId), dmTargets);
+            Assert.Contains((dmCampaignId, otherCharacterId), dmTargets);
+            Assert.DoesNotContain(dmTargets, target =>
+                target.CharacterId == archivedCharacterId ||
+                target.CampaignId == historicalCampaignId);
         }
         finally
         {
@@ -236,6 +252,7 @@ public sealed class ToolHostCharacterAuthorizationIntegrationTests(PublishedCont
         using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         Assert.Equal(1, json.RootElement.GetProperty("contractVersion").GetInt32());
         Assert.False(json.RootElement.TryGetProperty("characters", out _));
+        Assert.False(json.RootElement.TryGetProperty("dmCharacterScopes", out _));
         var campaign = Assert.Single(json.RootElement.GetProperty("campaigns").EnumerateArray());
         Assert.Equal("DM", campaign.GetProperty("role").GetString());
     }
