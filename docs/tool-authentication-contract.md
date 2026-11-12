@@ -75,6 +75,26 @@ This projection contains only Characters canonically owned by the authenticated 
 
 Campaign authority does not broaden Character ownership. A DM does not receive another player's Character in this projection merely because that Character is associated with a campaign the DM can administer. Cross-owner DM access to detailed Character Sheet data requires a separate authorization contract.
 
+### DM Origin-ruling target scope (backend only)
+
+For the `character-sheet` Tool, the redeemed **backend authentication context**
+also includes `dmCharacterScopes`, a collection of `campaignId` and `characterId`
+pairs. Site emits a pair only when the authenticated user currently holds the
+`dm` role in an active campaign and that character currently has an active
+association with the campaign. Ended associations and archived characters
+are not included. Site recomputes the list for delegated Tool contexts as
+well as direct Tool authentication.
+
+This projection is **not** character ownership, detailed sheet read access,
+or evidence that a particular ruling was approved. The Character Sheet must
+independently store an exact DM actor, target, effective outcome, revocation
+state, and approval event; it must verify this Site-issued projection at the
+time of approval. Rules Core may use the resulting server-held decision only
+through a separately trusted authority adapter. Site never accepts a browser
+claim of DM rights as an authoritative substitute for the projection.
+The Site-side projection alone does not complete mixed-Origin activation.
+
+
 Character Sheet may use this projection to authorize the current request, but it must not persist the projection as its authoritative Character ownership record. The Site remains authoritative for Character identity, account ownership, lifecycle, name, and campaign association.
 
 Tickets expire after 30 seconds, are scoped to one Tool registration identity, and are consumed on redemption. Existing application compatibility retains the legacy slug introspection route while current tickets and headless service tickets use the stable registration key as their authoritative scope. Tickets are process-local because the site currently runs as one application instance. A future multi-instance deployment must replace the ticket store with shared ephemeral storage while preserving the contract.

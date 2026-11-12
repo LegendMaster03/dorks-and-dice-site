@@ -1,6 +1,7 @@
 @* Dorks & Dice campaign management and membership UI. Permission flags are
 provided by the campaign service; this view does not grant DM authority. *@
 @using dorks_and_dice_site.Modes.DorksAndDice.Campaigns
+@using dorks_and_dice_site.Modes.DorksAndDice.Characters
 @model dorks_and_dice_site.Modes.DorksAndDice.Ui.CampaignDetailsViewModel
 @{
     ViewData["Title"] = Model.Name;
@@ -69,6 +70,10 @@ provided by the campaign service; this view does not grant DM authority. *@
 
     <nav class="campaign-section-nav" aria-label="Campaign sections">
         <a href="#roster">Roster</a>
+        @if (Model.CanManage && !Model.IsArchived)
+        {
+            <a href="#origin-review">Origin reviews</a>
+        }
         @if (Model.CanManage && !Model.IsArchived)
         {
             <a href="#invite">Invite</a>
@@ -152,6 +157,39 @@ provided by the campaign service; this view does not grant DM authority. *@
                     }
                 </div>
             </section>
+
+            @if (Model.CanManage && !Model.IsArchived)
+            {
+                <section id="origin-review" class="campaign-section mt-4">
+                    <div class="campaign-section-heading">
+                        <div>
+                            <p class="campaign-eyebrow mb-1">Character Origins</p>
+                            <h2>Mixed Origin reviews</h2>
+                            <p class="text-muted mb-0">Review native Human–Elf source offers for active campaign characters. These links do not grant access to the owner's Character Sheet; DM permission and the exact campaign connection are checked again when the review opens.</p>
+                        </div>
+                    </div>
+                    @if (Model.OriginReviewCharacters.Count == 0)
+                    {
+                        <p class="text-muted mb-0">No active campaign characters are available for Origin review.</p>
+                    }
+                    else
+                    {
+                        <div class="campaign-roster-list">
+                            @foreach (var character in Model.OriginReviewCharacters)
+                            {
+                                <article class="campaign-person-row">
+                                    <div class="campaign-person-main">
+                                        <h3 class="campaign-person-name mb-0">@character.Name</h3>
+                                        <p class="small text-muted mb-0">A saved mixed-Origin draft must exist to review and approve candidates.</p>
+                                    </div>
+                                    <a class="btn btn-sm btn-outline-primary"
+                                       href="@CharacterToolContract.DmOriginReviewPath(Model.Id, character.CharacterId)">Review mixed Origin</a>
+                                </article>
+                            }
+                        </div>
+                    }
+                </section>
+            }
         </div>
 
         <div class="col-xl-4">

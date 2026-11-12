@@ -15,4 +15,17 @@ public static class CharacterToolContract
 
     public static string CharacterPath(Guid characterId) =>
         $"/tools/{Slug}/characters/{characterId:D}";
+
+    /// <summary>
+    /// Restricted campaign-DM review route for an active connected character.
+    /// The route is a navigation hint, not delegated DM authorization.
+    /// Character Sheet verifies fresh campaign role and active association.
+    /// </summary>
+    public static string DmOriginReviewPath(Guid campaignId, Guid characterId)
+    {
+        if (campaignId == Guid.Empty || characterId == Guid.Empty)
+            throw new ArgumentException("DM Origin review requires valid campaign and character IDs.");
+
+        return $"{RootPath}/dm-origin-review/{campaignId:D}/{characterId:D}";
+    }
 }

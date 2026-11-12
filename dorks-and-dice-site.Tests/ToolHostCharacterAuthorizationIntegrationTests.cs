@@ -107,6 +107,7 @@ public sealed class ToolHostCharacterAuthorizationIntegrationTests(PublishedCont
         var tool = new ToolRegistration
         {
             Id = Guid.NewGuid(),
+            Key = CharacterToolContract.Slug,
             Slug = CharacterToolContract.Slug,
             DisplayName = CharacterToolContract.DisplayName,
             IntegrationType = ToolIntegrationType.EmbeddedModule,
@@ -191,6 +192,112 @@ public sealed class ToolHostCharacterAuthorizationIntegrationTests(PublishedCont
                 .OrderBy(role => role, StringComparer.Ordinal)
                 .ToArray();
             Assert.Equal(new[] { "DM", "Player" }, firstCampaignRoles);
+
+            // DM rights are independent of owner access: another player's
+            // current campaign-linked character is an approvable target, not
+            // an owner-visible sheet. Ended and archived links are excluded.
+            var dmTargets = root.GetProperty("dmCharacterScopes").EnumerateArray()
+                .Select(item => (
+                    CampaignId: item.GetProperty("campaignId").GetGuid(),
+                    CharacterId: item.GetProperty("characterId").GetGuid()))
+                .ToArray();
+            Assert.Equal(3, dmTargets.Length);
+            Assert.Contains((firstCampaignId, activeCharacterId), dmTargets);
+            Assert.Contains((secondCampaignId, activeCharacterId), dmTargets);
+            Assert.Contains((dmCampaignId, otherCharacterId), dmTargets);
+            Assert.DoesNotContain(dmTargets, target =>
+                target.CharacterId == archivedCharacterId ||
+                target.CampaignId == historicalCampaignId);
+
+            // A fresh Site ticket must reflect role revocation. The owner
+            // retains access to their own characters, but loses the DM
+            // authorization to approve this other owner's Origin.
+            using (var scope = testFactory.Services.CreateScope())
+            {
+                var campaigns = scope.ServiceProvider.GetRequiredService<ICampaignService>();
+                await campaigns.SetMemberRolesAsync(ownerUserId, dmCampaignId, otherUserId,
+                    [CampaignRoles.Dm, CampaignRoles.Player]);
+                await campaigns.SetMemberRolesAsync(ownerUserId, dmCampaignId, ownerUserId,
+                    [CampaignRoles.Player]);
+            }
+
+            using var afterDemotion = new HttpRequestMessage(
+                HttpMethod.Get,
+                $"/tool-host/{CharacterToolContract.Slug}/api/upstream/characters/{otherCharacterId:D}/sheet");
+            afterDemotion.Headers.Add(TestRoleAuthenticationHandler.RolesHeader, "Member");
+            afterDemotion.Headers.Add(TestRoleAuthenticationHandler.UserIdHeader,
+                ownerUserId.ToString("D"));
+            using var newTicket = await client.SendAsync(afterDemotion);
+            Assert.Equal(HttpStatusCode.NoContent, newTicket.StatusCode);
+            using var newIntrospection = new HttpRequestMessage(
+                HttpMethod.Post, capturingProxy.IntrospectionPath);
+            newIntrospection.Headers.Authorization = new AuthenticationHeaderValue(
+                "Bearer", capturingProxy.AuthenticationTicket);
+            using var newIntrospectionResponse = await client.SendAsync(newIntrospection);
+            Assert.Equal(HttpStatusCode.OK, newIntrospectionResponse.StatusCode);
+            using var updated = JsonDocument.Parse(
+                await newIntrospectionResponse.Content.ReadAsStringAsync());
+            var afterScopes = updated.RootElement.GetProperty("dmCharacterScopes")
+                .EnumerateArray()
+                .Select(item => (
+                    CampaignId: item.GetProperty("campaignId").GetGuid(),
+                    CharacterId: item.GetProperty("characterId").GetGuid()))
+                .ToArray();
+            Assert.DoesNotContain((dmCampaignId, otherCharacterId), afterScopes);
+            Assert.Contains((firstCampaignId, activeCharacterId), afterScopes);
+            Assert.Equal(2, updated.RootElement.GetProperty("characters")
+                .GetArrayLength());
+
+            // An existing source ticket can outlive a campaign-role change.
+            // Neither ordinary delegation nor private tunneling may reissue
+            // the role that the current Site membership has revoked.
+            var staleSourceContext = new ToolHostAuthenticationContext
+            {
+                ToolKey = CharacterToolContract.Slug,
+                ToolSlug = CharacterToolContract.Slug,
+                SiteMode = SiteModeValues.DorksAndDiceModeValue,
+                User = new ToolHostUserContext
+                {
+                    Id = ownerUserId.ToString("D"),
+                    DisplayName = "Former campaign DM"
+                },
+                GlobalRoles = ["Member"],
+                Campaigns =
+                [
+                    new ToolHostCampaignAccessSummary
+                    {
+                        Id = dmCampaignId,
+                        Name = "Former DM Campaign",
+                        Role = "DM"
+                    }
+                ]
+            };
+            using (var delegatedScope = testFactory.Services.CreateScope())
+            {
+                var contextFactory = delegatedScope.ServiceProvider
+                    .GetRequiredService<IToolHostAuthenticationContextFactory>();
+                var rulesCore = new ToolRegistration
+                {
+                    Id = Guid.NewGuid(),
+                    Key = "rules-core",
+                    Kind = ToolKind.Service,
+                    DisplayName = "Rules Core"
+                };
+                var delegated = await contextFactory.CreateDelegatedAsync(
+                    rulesCore, staleSourceContext);
+                var privateTunnel = await contextFactory.CreatePrivateTunnelAsync(
+                    rulesCore, staleSourceContext);
+                foreach (var freshContext in new[] { delegated, privateTunnel })
+                {
+                    Assert.NotNull(freshContext);
+                    Assert.DoesNotContain(freshContext.Campaigns, campaign =>
+                        campaign.Id == dmCampaignId && campaign.Role == "DM");
+                    Assert.Contains(freshContext.Campaigns, campaign =>
+                        campaign.Id == dmCampaignId && campaign.Role == "Player");
+                    Assert.Contains(freshContext.Campaigns, campaign =>
+                        campaign.Id == firstCampaignId && campaign.Role == "DM");
+                }
+            }
         }
         finally
         {
@@ -236,6 +343,7 @@ public sealed class ToolHostCharacterAuthorizationIntegrationTests(PublishedCont
         using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         Assert.Equal(1, json.RootElement.GetProperty("contractVersion").GetInt32());
         Assert.False(json.RootElement.TryGetProperty("characters", out _));
+        Assert.False(json.RootElement.TryGetProperty("dmCharacterScopes", out _));
         var campaign = Assert.Single(json.RootElement.GetProperty("campaigns").EnumerateArray());
         Assert.Equal("DM", campaign.GetProperty("role").GetString());
     }
