@@ -8,6 +8,12 @@ public sealed class CampaignsIndexViewModel
 }
 
 public sealed record CampaignMemberViewModel(Guid UserId, string DisplayName, IReadOnlyList<string> Roles, bool IsCurrentUser);
+/// <summary>
+/// A public Site character identity in an active campaign; this is only
+/// a navigation target, not permission to inspect the owner's Character Sheet.
+/// </summary>
+public sealed record CampaignOriginReviewCharacterViewModel(Guid CharacterId, string Name);
+
 public sealed record CampaignInvitationListItemViewModel(Guid Id, IReadOnlyList<string> Roles, bool IsReusable, DateTimeOffset ExpiresAt);
 
 /// <summary>
@@ -24,6 +30,7 @@ public sealed class CampaignDetailsViewModel
     public bool CanManage { get; init; }
     public IReadOnlyList<string> CurrentUserRoles { get; init; } = [];
     public IReadOnlyList<CampaignMemberViewModel> Members { get; init; } = [];
+    public IReadOnlyList<CampaignOriginReviewCharacterViewModel> OriginReviewCharacters { get; init; } = [];
     public IReadOnlyList<CampaignInvitationListItemViewModel> Invitations { get; init; } = [];
 }
 

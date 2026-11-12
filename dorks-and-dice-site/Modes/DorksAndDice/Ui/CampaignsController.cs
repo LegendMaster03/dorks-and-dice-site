@@ -17,10 +17,12 @@ namespace dorks_and_dice_site.Modes.DorksAndDice.Ui;
 public sealed class CampaignsController(
     ICampaignService campaignService,
     ICampaignInvitationService invitationService,
+    ICampaignContextService campaignContextService,
     UserManager<ApplicationUser> userManager) : Controller
 {
     private readonly ICampaignService _campaignService = campaignService;
     private readonly ICampaignInvitationService _invitationService = invitationService;
+    private readonly ICampaignContextService _campaignContextService = campaignContextService;
     private readonly UserManager<ApplicationUser> _userManager = userManager;
 
     [HttpGet("")]
@@ -214,6 +216,15 @@ public sealed class CampaignsController(
         IReadOnlyList<CampaignInvitation> invitations = canManage && campaign.Status == CampaignStatus.Active
             ? await _invitationService.GetPendingAsync(userId, campaignId, cancellationToken) : [];
 
+        // This list is for navigation, not a grant of cross-owner sheet access.
+        // Query only for an active DM, then independently require the Site's
+        // current campaign projection to affirm that same role and campaign.
+        var reviewTargets = canManage && campaign.Status == CampaignStatus.Active
+            ? CampaignOriginReviewNavigation.FromSiteContext(
+                await _campaignContextService.GetCampaignContextAsync(
+                    userId, campaignId, cancellationToken), campaignId)
+            : [];
+
         return new CampaignDetailsViewModel
         {
             Id = campaign.Id,
@@ -223,6 +234,7 @@ public sealed class CampaignsController(
             CurrentUserId = userId,
             CanManage = canManage,
             CurrentUserRoles = currentRoles,
+            OriginReviewCharacters = reviewTargets,
             Members = activeMemberships.OrderBy(membership => membership.JoinedAt).Select(membership => new CampaignMemberViewModel(
                 membership.UserId,
                 memberDisplayNames.TryGetValue(membership.UserId, out var displayName) && !string.IsNullOrWhiteSpace(displayName)
