@@ -207,6 +207,45 @@ public sealed class ToolHostCharacterAuthorizationIntegrationTests(PublishedCont
             Assert.DoesNotContain(dmTargets, target =>
                 target.CharacterId == archivedCharacterId ||
                 target.CampaignId == historicalCampaignId);
+
+            // A fresh Site ticket must reflect role revocation. The owner
+            // retains access to their own characters, but loses the DM
+            // authorization to approve this other owner's Origin.
+            using (var scope = testFactory.Services.CreateScope())
+            {
+                var campaigns = scope.ServiceProvider.GetRequiredService<ICampaignService>();
+                await campaigns.SetMemberRolesAsync(ownerUserId, dmCampaignId, otherUserId,
+                    [CampaignRoles.Dm, CampaignRoles.Player]);
+                await campaigns.SetMemberRolesAsync(ownerUserId, dmCampaignId, ownerUserId,
+                    [CampaignRoles.Player]);
+            }
+
+            using var afterDemotion = new HttpRequestMessage(
+                HttpMethod.Get,
+                $"/tool-host/{CharacterToolContract.Slug}/api/upstream/characters/{otherCharacterId:D}/sheet");
+            afterDemotion.Headers.Add(TestRoleAuthenticationHandler.RolesHeader, "Member");
+            afterDemotion.Headers.Add(TestRoleAuthenticationHandler.UserIdHeader,
+                ownerUserId.ToString("D"));
+            using var newTicket = await client.SendAsync(afterDemotion);
+            Assert.Equal(HttpStatusCode.NoContent, newTicket.StatusCode);
+            using var newIntrospection = new HttpRequestMessage(
+                HttpMethod.Post, capturingProxy.IntrospectionPath);
+            newIntrospection.Headers.Authorization = new AuthenticationHeaderValue(
+                "Bearer", capturingProxy.AuthenticationTicket);
+            using var newIntrospectionResponse = await client.SendAsync(newIntrospection);
+            Assert.Equal(HttpStatusCode.OK, newIntrospectionResponse.StatusCode);
+            using var updated = JsonDocument.Parse(
+                await newIntrospectionResponse.Content.ReadAsStringAsync());
+            var afterScopes = updated.RootElement.GetProperty("dmCharacterScopes")
+                .EnumerateArray()
+                .Select(item => (
+                    CampaignId: item.GetProperty("campaignId").GetGuid(),
+                    CharacterId: item.GetProperty("characterId").GetGuid()))
+                .ToArray();
+            Assert.DoesNotContain((dmCampaignId, otherCharacterId), afterScopes);
+            Assert.Contains((firstCampaignId, activeCharacterId), afterScopes);
+            Assert.Equal(2, updated.RootElement.GetProperty("characters")
+                .GetArrayLength());
         }
         finally
         {
