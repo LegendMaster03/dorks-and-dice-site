@@ -122,6 +122,36 @@ public sealed class CharacterToolFreshAccessTests(PublishedContentWebApplication
             Assert.Equal(characterId.ToString("D"),
                 currentDm.Body.Value.GetProperty("characterId").GetString());
 
+            // A current DM need not be the character owner. A separate
+            // campaign membership authorizes review only while that DM role
+            // and the target's active association coexist.
+            var otherDmContext = new ToolHostAuthenticationContext
+            {
+                ToolKey = CharacterToolContract.Slug,
+                ToolSlug = CharacterToolContract.Slug,
+                SiteMode = SiteModeValues.DorksAndDiceModeValue,
+                User = new ToolHostUserContext
+                {
+                    Id = secondUser.ToString("D"), DisplayName = "Other DM"
+                }
+            };
+            var otherDmCapability = factory.Services
+                .GetRequiredService<IToolDelegationCapabilityService>()
+                .Issue(CharacterToolContract.Slug, otherDmContext);
+            Assert.Equal(HttpStatusCode.NotFound,
+                (await Read(otherDmCapability)).Status);
+            Assert.Equal(HttpStatusCode.OK,
+                (await Read(otherDmCapability, dmPath)).Status);
+
+            using (var scope = factory.Services.CreateScope())
+                await scope.ServiceProvider.GetRequiredService<ICampaignService>()
+                    .SetMemberRolesAsync(actor, campaignId, secondUser,
+                        [CampaignRoles.Player]);
+            Assert.Equal(HttpStatusCode.NotFound,
+                (await Read(otherDmCapability, dmPath)).Status);
+            Assert.Equal(HttpStatusCode.OK,
+                (await Read(capability, dmPath)).Status);
+
             using (var scope = factory.Services.CreateScope())
                 await scope.ServiceProvider.GetRequiredService<ICharacterService>()
                     .DisconnectFromCampaignAsync(actor, characterId, campaignId);

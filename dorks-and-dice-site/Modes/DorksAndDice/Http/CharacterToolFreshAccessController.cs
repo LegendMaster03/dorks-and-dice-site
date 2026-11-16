@@ -1,10 +1,12 @@
 using dorks_and_dice_site.Models.Tools;
 using dorks_and_dice_site.Modes.DorksAndDice.Characters;
 using dorks_and_dice_site.Modes.DorksAndDice.Campaigns;
+using dorks_and_dice_site.Modes.DorksAndDice.Persistence;
 using dorks_and_dice_site.Services.Site;
 using dorks_and_dice_site.Services.Tools;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace dorks_and_dice_site.Modes.DorksAndDice.Http;
 
@@ -21,7 +23,7 @@ public sealed class CharacterToolFreshAccessController(
     IToolRegistry tools,
     IToolDelegationCapabilityService capabilities,
     ICharacterService characters,
-    ICampaignContextService campaigns) : ControllerBase
+    DorksAndDiceDbContext db) : ControllerBase
 {
     [HttpPost("~/tool-host/registrations/{sourceKey}/api/characters/{characterId:guid}/fresh-access")]
     public async Task<IActionResult> Verify(
@@ -77,12 +79,26 @@ public sealed class CharacterToolFreshAccessController(
         if (actor is not Guid authorizedActor)
             return Unauthorized();
 
-        var live = await campaigns.GetCampaignContextAsync(
-            authorizedActor, campaignId, cancellationToken);
-        if (live is null ||
-            live.CampaignId != campaignId ||
-            !live.RequestingUserRoles.Contains(CampaignRoles.Dm, StringComparer.OrdinalIgnoreCase) ||
-            live.Characters.Count(character => character.CharacterId == characterId) != 1)
+        // Resolve current DM membership, role, campaign lifecycle, and
+        // character association in ONE Site database statement. The generic
+        // campaign-context projection performs several separate reads; a role
+        // from one moment must not combine with an association from another.
+        // This is read-time consistency only, NOT a commit-spanning lease.
+        var hasActiveDmScope = await db.CampaignCharacters.AsNoTracking()
+            .AnyAsync(association =>
+                association.CampaignId == campaignId &&
+                association.CharacterId == characterId &&
+                association.Status == CampaignCharacterAssociationStatus.Active &&
+                association.Campaign.Status == CampaignStatus.Active &&
+                association.Character.Status == CharacterStatus.Active &&
+                association.Character.ArchivedAt == null &&
+                db.CampaignMemberships.Any(membership =>
+                    membership.CampaignId == campaignId &&
+                    membership.UserId == authorizedActor &&
+                    membership.Status == CampaignMembershipStatus.Active &&
+                    membership.Roles.Any(role => role.Role == CampaignRoles.Dm)),
+                cancellationToken);
+        if (!hasActiveDmScope)
             return NotFound();
 
         return Ok(new
