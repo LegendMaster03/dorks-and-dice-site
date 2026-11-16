@@ -1,4 +1,3 @@
-using System.Net.Http.Headers;
 using dorks_and_dice_site.Models.Tools;
 using dorks_and_dice_site.Modes.DorksAndDice.Characters;
 using dorks_and_dice_site.Services.Site;
@@ -40,6 +39,11 @@ public sealed class CharacterToolFreshAccessController(
             !capabilities.TryUse(sourceKey, header[bearer.Length..].Trim(), out var context) ||
             context is null ||
             context.RegistrationKey != sourceKey ||
+            // A delegated or private-tunnel target must not chain its
+            // inherited actor identity into the Character Sheet's live
+            // ownership authority.
+            context.DelegatedFromToolKey is not null ||
+            context.PrivateTunnelSourceToolKey is not null ||
             context.SiteMode != SiteModeValues.DorksAndDiceModeValue ||
             !Guid.TryParse(context.User.Id, out var actor) || actor == Guid.Empty)
             return Unauthorized();
