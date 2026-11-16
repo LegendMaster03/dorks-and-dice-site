@@ -54,6 +54,8 @@ public sealed class CharacterToolFreshAccessTests(PublishedContentWebApplication
             campaignId = campaign.Id;
             await campaigns.SetMemberRolesAsync(actor, campaignId, actor,
                 [CampaignRoles.Dm, CampaignRoles.Player]);
+            await campaigns.AddMemberAsync(actor, campaignId, secondUser,
+                [CampaignRoles.Dm]);
             await characters.ConnectToCampaignAsync(actor, characterId, campaignId);
         }
 
@@ -77,11 +79,14 @@ public sealed class CharacterToolFreshAccessTests(PublishedContentWebApplication
                 BaseAddress = new Uri("https://dorks-and-dice.com")
             });
             var path = $"/tool-host/registrations/character-sheet/api/characters/{characterId:D}/fresh-access";
+            var dmPath =
+                $"/tool-host/registrations/character-sheet/api/campaigns/{campaignId:D}/characters/{characterId:D}/fresh-dm-access";
 
             async Task<(HttpStatusCode Status, System.Text.Json.JsonElement? Body)> Read(
-                string? token)
+                string? token, string? endpoint = null)
             {
-                using var request = new HttpRequestMessage(HttpMethod.Post, path);
+                using var request = new HttpRequestMessage(
+                    HttpMethod.Post, endpoint ?? path);
                 if (token is not null)
                     request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
                 using var response = await client.SendAsync(request);
@@ -107,6 +112,16 @@ public sealed class CharacterToolFreshAccessTests(PublishedContentWebApplication
                 Assert.Single(active.Body.Value.GetProperty("campaignIds")
                     .EnumerateArray()).GetString());
 
+            var currentDm = await Read(capability, dmPath);
+            Assert.Equal(HttpStatusCode.OK, currentDm.Status);
+            Assert.True(currentDm.Body!.Value.GetProperty("hasActiveDmScope").GetBoolean());
+            Assert.Equal(actor.ToString("D"),
+                currentDm.Body.Value.GetProperty("actorUserId").GetString());
+            Assert.Equal(campaignId.ToString("D"),
+                currentDm.Body.Value.GetProperty("campaignId").GetString());
+            Assert.Equal(characterId.ToString("D"),
+                currentDm.Body.Value.GetProperty("characterId").GetString());
+
             using (var scope = factory.Services.CreateScope())
                 await scope.ServiceProvider.GetRequiredService<ICharacterService>()
                     .DisconnectFromCampaignAsync(actor, characterId, campaignId);
@@ -114,6 +129,22 @@ public sealed class CharacterToolFreshAccessTests(PublishedContentWebApplication
             var disconnected = await Read(capability);
             Assert.Equal(HttpStatusCode.OK, disconnected.Status);
             Assert.Empty(disconnected.Body!.Value.GetProperty("campaignIds").EnumerateArray());
+            Assert.Equal(HttpStatusCode.NotFound, (await Read(capability, dmPath)).Status);
+
+            // Reconnect the character and remove the actor's DM role while
+            // retaining Player access. The separate current membership
+            // lookup must deny DM approval even though ownership still holds.
+            using (var scope = factory.Services.CreateScope())
+            {
+                var characters = scope.ServiceProvider.GetRequiredService<ICharacterService>();
+                await characters.ConnectToCampaignAsync(actor, characterId, campaignId);
+                var campaigns = scope.ServiceProvider.GetRequiredService<ICampaignService>();
+                await campaigns.SetMemberRolesAsync(actor, campaignId, actor,
+                    [CampaignRoles.Player]);
+            }
+            Assert.Equal(HttpStatusCode.NotFound, (await Read(capability, dmPath)).Status);
+            Assert.Equal(HttpStatusCode.OK, (await Read(capability)).Status);
+
 
             using (var scope = factory.Services.CreateScope())
                 await scope.ServiceProvider.GetRequiredService<ICharacterService>()
@@ -125,6 +156,7 @@ public sealed class CharacterToolFreshAccessTests(PublishedContentWebApplication
             Assert.False(archived.Body.Value.GetProperty("allowsOrdinaryEditing").GetBoolean());
             Assert.Equal(System.Text.Json.JsonValueKind.String,
                 archived.Body.Value.GetProperty("archivedAt").ValueKind);
+            Assert.Equal(HttpStatusCode.NotFound, (await Read(capability, dmPath)).Status);
 
             var otherContext = new ToolHostAuthenticationContext
             {
@@ -140,6 +172,8 @@ public sealed class CharacterToolFreshAccessTests(PublishedContentWebApplication
                 .GetRequiredService<IToolDelegationCapabilityService>()
                 .Issue(CharacterToolContract.Slug, otherContext);
             Assert.Equal(HttpStatusCode.NotFound, (await Read(otherCapability)).Status);
+            Assert.Equal(HttpStatusCode.NotFound,
+                (await Read(otherCapability, dmPath)).Status);
 
             // The Character Sheet's authority must not be inherited by a
             // chain of delegated Tools, even when the Site-issued capability
@@ -170,6 +204,8 @@ public sealed class CharacterToolFreshAccessTests(PublishedContentWebApplication
                 await scope.ServiceProvider.GetRequiredService<IToolRegistry>()
                     .SaveAsync(source);
             Assert.Equal(HttpStatusCode.Unauthorized, (await Read(capability)).Status);
+            Assert.Equal(HttpStatusCode.Unauthorized,
+                (await Read(capability, dmPath)).Status);
         }
         finally
         {
