@@ -152,6 +152,13 @@ public sealed class CharacterToolFreshAccessTests(PublishedContentWebApplication
             Assert.Equal(HttpStatusCode.OK,
                 (await Read(capability, dmPath)).Status);
 
+            // The later existing test removes the owner's DM role; restore
+            // the second active DM so the campaign's last-DM invariant holds.
+            using (var scope = factory.Services.CreateScope())
+                await scope.ServiceProvider.GetRequiredService<ICampaignService>()
+                    .SetMemberRolesAsync(actor, campaignId, secondUser,
+                        [CampaignRoles.Dm]);
+
             using (var scope = factory.Services.CreateScope())
                 await scope.ServiceProvider.GetRequiredService<ICharacterService>()
                     .DisconnectFromCampaignAsync(actor, characterId, campaignId);
