@@ -141,6 +141,30 @@ public sealed class CharacterToolFreshAccessTests(PublishedContentWebApplication
                 .Issue(CharacterToolContract.Slug, otherContext);
             Assert.Equal(HttpStatusCode.NotFound, (await Read(otherCapability)).Status);
 
+            // The Character Sheet's authority must not be inherited by a
+            // chain of delegated Tools, even when the Site-issued capability
+            // bears the same registration key and owner actor.
+            foreach (var tunnel in new[] { false, true })
+            {
+                var chained = new ToolHostAuthenticationContext
+                {
+                    ToolKey = CharacterToolContract.Slug,
+                    ToolSlug = CharacterToolContract.Slug,
+                    SiteMode = SiteModeValues.DorksAndDiceModeValue,
+                    User = new ToolHostUserContext
+                    {
+                        Id = actor.ToString("D"), DisplayName = "Chained actor"
+                    },
+                    DelegatedFromToolKey = tunnel ? null : "rules-wiki",
+                    PrivateTunnelSourceToolKey = tunnel ? "rules-wiki" : null
+                };
+                var chainedCapability = factory.Services
+                    .GetRequiredService<IToolDelegationCapabilityService>()
+                    .Issue(CharacterToolContract.Slug, chained);
+                Assert.Equal(HttpStatusCode.Unauthorized,
+                    (await Read(chainedCapability)).Status);
+            }
+
             source.Enabled = false;
             using (var scope = factory.Services.CreateScope())
                 await scope.ServiceProvider.GetRequiredService<IToolRegistry>()
