@@ -125,8 +125,11 @@ public sealed class CharacterToolFreshAccessTests(PublishedContentWebApplication
             Assert.Equal(System.Text.Json.JsonValueKind.String,
                 archived.Body.Value.GetProperty("archivedAt").ValueKind);
 
-            var otherContext = context with
+            var otherContext = new ToolHostAuthenticationContext
             {
+                ToolKey = CharacterToolContract.Slug,
+                ToolSlug = CharacterToolContract.Slug,
+                SiteMode = SiteModeValues.DorksAndDiceModeValue,
                 User = new ToolHostUserContext
                 {
                     Id = secondUser.ToString("D"), DisplayName = "Other owner"
