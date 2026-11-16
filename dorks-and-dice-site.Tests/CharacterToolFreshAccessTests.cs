@@ -52,7 +52,8 @@ public sealed class CharacterToolFreshAccessTests(PublishedContentWebApplication
             var campaign = await campaigns.CreateAsync(
                 actor, "Fresh scope " + Guid.NewGuid().ToString("N"));
             campaignId = campaign.Id;
-            await campaigns.SetMemberRolesAsync(actor, campaignId, actor, [CampaignRoles.Player]);
+            await campaigns.SetMemberRolesAsync(actor, campaignId, actor,
+                [CampaignRoles.Dm, CampaignRoles.Player]);
             await characters.ConnectToCampaignAsync(actor, characterId, campaignId);
         }
 
