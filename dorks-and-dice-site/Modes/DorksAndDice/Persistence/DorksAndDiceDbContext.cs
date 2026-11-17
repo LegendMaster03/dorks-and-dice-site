@@ -1,3 +1,4 @@
+using dorks_and_dice_site.Modes.DorksAndDice.Authorization;
 using dorks_and_dice_site.Modes.DorksAndDice.Campaigns;
 using dorks_and_dice_site.Modes.DorksAndDice.Characters;
 using dorks_and_dice_site.Modes.DorksAndDice.Discord;
@@ -23,6 +24,12 @@ public sealed class DorksAndDiceDbContext(DbContextOptions<DorksAndDiceDbContext
     public DbSet<DorksAndDiceDiscordServerBinding> DiscordServerBindings => Set<DorksAndDiceDiscordServerBinding>();
     public DbSet<DorksAndDiceDiscordServerCampaign> DiscordServerCampaigns => Set<DorksAndDiceDiscordServerCampaign>();
     public DbSet<ToolLifecycleOutboxEvent> ToolLifecycleOutboxEvents => Set<ToolLifecycleOutboxEvent>();
+
+    public DbSet<ProtectedMutationScopeGate> ProtectedMutationScopeGates => Set<ProtectedMutationScopeGate>();
+    public DbSet<ProtectedMutationIntent> ProtectedMutationIntents => Set<ProtectedMutationIntent>();
+    public DbSet<ProtectedMutationIntentScope> ProtectedMutationIntentScopes => Set<ProtectedMutationIntentScope>();
+    public DbSet<ProtectedMutationRevocation> ProtectedMutationRevocations => Set<ProtectedMutationRevocation>();
+    public DbSet<ProtectedMutationRevocationScope> ProtectedMutationRevocationScopes => Set<ProtectedMutationRevocationScope>();
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
@@ -110,6 +117,59 @@ public sealed class DorksAndDiceDbContext(DbContextOptions<DorksAndDiceDbContext
             entity.HasOne(item => item.Binding).WithMany(item => item.Campaigns).HasForeignKey(item => item.BindingId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne(item => item.Campaign).WithMany().HasForeignKey(item => item.CampaignId).OnDelete(DeleteBehavior.Cascade);
         });
+
+        modelBuilder.Entity<ProtectedMutationScopeGate>(entity =>
+        {
+            entity.ToTable("dd_protected_mutation_scope");
+            entity.HasKey(item => item.ScopeKey);
+            entity.Property(item => item.ScopeKey).HasMaxLength(180).IsRequired();
+            entity.Property(item => item.Generation).IsRequired();
+            entity.HasIndex(item => item.PendingRevocationId);
+        });
+        modelBuilder.Entity<ProtectedMutationIntent>(entity =>
+        {
+            entity.ToTable("dd_protected_mutation_intent");
+            entity.HasKey(item => item.OperationId);
+            entity.Property(item => item.OperationId).ValueGeneratedNever();
+            entity.Property(item => item.OperationKind).HasMaxLength(80).IsRequired();
+            entity.Property(item => item.CommandDigest).HasMaxLength(64).IsRequired();
+            entity.Property(item => item.Status).HasConversion<int>();
+            entity.Property(item => item.TerminalReceiptDigest).HasMaxLength(64);
+            entity.HasIndex(item => new { item.CharacterId, item.Status });
+            entity.HasIndex(item => new { item.ActorUserId, item.Status });
+        });
+        modelBuilder.Entity<ProtectedMutationIntentScope>(entity =>
+        {
+            entity.ToTable("dd_protected_mutation_intent_scope");
+            entity.HasKey(item => new { item.OperationId, item.ScopeKey });
+            entity.Property(item => item.ScopeKey).HasMaxLength(180).IsRequired();
+            entity.HasIndex(item => item.ScopeKey);
+            entity.HasOne<ProtectedMutationIntent>().WithMany()
+                .HasForeignKey(item => item.OperationId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<ProtectedMutationScopeGate>().WithMany()
+                .HasForeignKey(item => item.ScopeKey).OnDelete(DeleteBehavior.Restrict);
+        });
+        modelBuilder.Entity<ProtectedMutationRevocation>(entity =>
+        {
+            entity.ToTable("dd_protected_mutation_revocation");
+            entity.HasKey(item => item.RevocationId);
+            entity.Property(item => item.RevocationId).ValueGeneratedNever();
+            entity.Property(item => item.ChangeKind).HasMaxLength(80).IsRequired();
+            entity.Property(item => item.Status).HasConversion<int>();
+            entity.HasIndex(item => new { item.SubjectId, item.Status });
+        });
+        modelBuilder.Entity<ProtectedMutationRevocationScope>(entity =>
+        {
+            entity.ToTable("dd_protected_mutation_revocation_scope");
+            entity.HasKey(item => new { item.RevocationId, item.ScopeKey });
+            entity.Property(item => item.ScopeKey).HasMaxLength(180).IsRequired();
+            entity.HasIndex(item => item.ScopeKey);
+            entity.HasOne<ProtectedMutationRevocation>().WithMany()
+                .HasForeignKey(item => item.RevocationId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<ProtectedMutationScopeGate>().WithMany()
+                .HasForeignKey(item => item.ScopeKey).OnDelete(DeleteBehavior.Restrict);
+        });
+
         modelBuilder.Entity<ToolLifecycleOutboxEvent>(entity =>
         {
             entity.ToTable("dd_tool_lifecycle_outbox");
