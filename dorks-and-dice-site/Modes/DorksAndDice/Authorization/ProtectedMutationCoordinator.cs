@@ -209,10 +209,13 @@ public sealed class ProtectedMutationCoordinator(DorksAndDiceDbContext db, TimeP
             });
             // Gates are queried without tracking so a partial request cannot
             // reuse a tracked stale snapshot from an earlier operation.
-            await db.ProtectedMutationScopeGates.Where(item =>
+            var changed = await db.ProtectedMutationScopeGates.Where(item =>
                 item.ScopeKey == gate.ScopeKey && item.PendingRevocationId == null)
                 .ExecuteUpdateAsync(update =>
                     update.SetProperty(item => item.PendingRevocationId, revocationId), ct);
+            if (changed != 1)
+                throw new InvalidOperationException(
+                    "A Site authorization scope changed during revocation serialization.");
         }
 
         await db.SaveChangesAsync(ct);

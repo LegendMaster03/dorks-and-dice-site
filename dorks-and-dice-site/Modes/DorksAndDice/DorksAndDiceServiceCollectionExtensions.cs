@@ -1,3 +1,4 @@
+using dorks_and_dice_site.Modes.DorksAndDice.Authorization;
 using dorks_and_dice_site.Modes.DorksAndDice.Campaigns;
 using dorks_and_dice_site.Modes.DorksAndDice.Characters;
 using dorks_and_dice_site.Modes.DorksAndDice.Discord;
@@ -62,6 +63,9 @@ public static class DorksAndDiceServiceCollectionExtensions
                 serviceProvider.GetRequiredService<IHostEnvironment>());
         });
 
+        // Internal R3 journal only. Do not expose a mutation-admission endpoint until
+        // Tool/Identity authority and the Sheet terminal protocol are enforced.
+        services.AddScoped<ProtectedMutationCoordinator>();
         services.AddScoped<ICampaignAccessService, CampaignAccessService>();
         services.AddScoped<ICampaignService, CampaignService>();
         services.AddScoped<ICampaignInvitationService, CampaignInvitationService>();
