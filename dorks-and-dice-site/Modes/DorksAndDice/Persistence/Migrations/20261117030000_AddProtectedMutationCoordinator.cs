@@ -77,9 +77,9 @@ public sealed class AddProtectedMutationCoordinator : Migration
             constraints: table =>
             {
                 table.PrimaryKey("PK_dd_protected_mutation_intent_scope", x => new { x.OperationId, x.ScopeKey });
-                table.ForeignKey("FK_dd_protected_mutation_intent_scope_dd_protected_mutation_intent_OperationId",
+                table.ForeignKey("FK_dd_r3_intscope_intent",
                     x => x.OperationId, "dd_protected_mutation_intent", "OperationId", onDelete: ReferentialAction.Cascade);
-                table.ForeignKey("FK_dd_protected_mutation_intent_scope_dd_protected_mutation_scope_ScopeKey",
+                table.ForeignKey("FK_dd_r3_intscope_gate",
                     x => x.ScopeKey, "dd_protected_mutation_scope", "ScopeKey", onDelete: ReferentialAction.Restrict);
             });
         migrationBuilder.CreateIndex(
@@ -96,9 +96,9 @@ public sealed class AddProtectedMutationCoordinator : Migration
             constraints: table =>
             {
                 table.PrimaryKey("PK_dd_protected_mutation_revocation_scope", x => new { x.RevocationId, x.ScopeKey });
-                table.ForeignKey("FK_dd_protected_mutation_revocation_scope_dd_protected_mutation_revocation_RevocationId",
+                table.ForeignKey("FK_dd_r3_revscope_revocation",
                     x => x.RevocationId, "dd_protected_mutation_revocation", "RevocationId", onDelete: ReferentialAction.Cascade);
-                table.ForeignKey("FK_dd_protected_mutation_revocation_scope_dd_protected_mutation_scope_ScopeKey",
+                table.ForeignKey("FK_dd_r3_revscope_gate",
                     x => x.ScopeKey, "dd_protected_mutation_scope", "ScopeKey", onDelete: ReferentialAction.Restrict);
             });
         migrationBuilder.CreateIndex(

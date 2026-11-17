@@ -219,17 +219,21 @@ public sealed class DorksAndDiceDbContextModelSnapshot : ModelSnapshot
         modelBuilder.Entity("dorks_and_dice_site.Modes.DorksAndDice.Authorization.ProtectedMutationIntentScope", b =>
         {
             b.HasOne("dorks_and_dice_site.Modes.DorksAndDice.Authorization.ProtectedMutationIntent", null)
-                .WithMany().HasForeignKey("OperationId").OnDelete(DeleteBehavior.Cascade).IsRequired();
+                .WithMany().HasForeignKey("OperationId").OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("FK_dd_r3_intscope_intent").IsRequired();
             b.HasOne("dorks_and_dice_site.Modes.DorksAndDice.Authorization.ProtectedMutationScopeGate", null)
-                .WithMany().HasForeignKey("ScopeKey").OnDelete(DeleteBehavior.Restrict).IsRequired();
+                .WithMany().HasForeignKey("ScopeKey").OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("FK_dd_r3_intscope_gate").IsRequired();
         });
 
         modelBuilder.Entity("dorks_and_dice_site.Modes.DorksAndDice.Authorization.ProtectedMutationRevocationScope", b =>
         {
             b.HasOne("dorks_and_dice_site.Modes.DorksAndDice.Authorization.ProtectedMutationRevocation", null)
-                .WithMany().HasForeignKey("RevocationId").OnDelete(DeleteBehavior.Cascade).IsRequired();
+                .WithMany().HasForeignKey("RevocationId").OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("FK_dd_r3_revscope_revocation").IsRequired();
             b.HasOne("dorks_and_dice_site.Modes.DorksAndDice.Authorization.ProtectedMutationScopeGate", null)
-                .WithMany().HasForeignKey("ScopeKey").OnDelete(DeleteBehavior.Restrict).IsRequired();
+                .WithMany().HasForeignKey("ScopeKey").OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("FK_dd_r3_revscope_gate").IsRequired();
         });
 
         modelBuilder.Entity("dorks_and_dice_site.Modes.DorksAndDice.Discord.DorksAndDiceDiscordServerCampaign", b =>

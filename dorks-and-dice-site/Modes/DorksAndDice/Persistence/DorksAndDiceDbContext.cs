@@ -145,9 +145,11 @@ public sealed class DorksAndDiceDbContext(DbContextOptions<DorksAndDiceDbContext
             entity.Property(item => item.ScopeKey).HasMaxLength(180).IsRequired();
             entity.HasIndex(item => item.ScopeKey);
             entity.HasOne<ProtectedMutationIntent>().WithMany()
-                .HasForeignKey(item => item.OperationId).OnDelete(DeleteBehavior.Cascade);
+                .HasForeignKey(item => item.OperationId).OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("FK_dd_r3_intscope_intent");
             entity.HasOne<ProtectedMutationScopeGate>().WithMany()
-                .HasForeignKey(item => item.ScopeKey).OnDelete(DeleteBehavior.Restrict);
+                .HasForeignKey(item => item.ScopeKey).OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("FK_dd_r3_intscope_gate");
         });
         modelBuilder.Entity<ProtectedMutationRevocation>(entity =>
         {
@@ -165,9 +167,11 @@ public sealed class DorksAndDiceDbContext(DbContextOptions<DorksAndDiceDbContext
             entity.Property(item => item.ScopeKey).HasMaxLength(180).IsRequired();
             entity.HasIndex(item => item.ScopeKey);
             entity.HasOne<ProtectedMutationRevocation>().WithMany()
-                .HasForeignKey(item => item.RevocationId).OnDelete(DeleteBehavior.Cascade);
+                .HasForeignKey(item => item.RevocationId).OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("FK_dd_r3_revscope_revocation");
             entity.HasOne<ProtectedMutationScopeGate>().WithMany()
-                .HasForeignKey(item => item.ScopeKey).OnDelete(DeleteBehavior.Restrict);
+                .HasForeignKey(item => item.ScopeKey).OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("FK_dd_r3_revscope_gate");
         });
 
         modelBuilder.Entity<ToolLifecycleOutboxEvent>(entity =>
