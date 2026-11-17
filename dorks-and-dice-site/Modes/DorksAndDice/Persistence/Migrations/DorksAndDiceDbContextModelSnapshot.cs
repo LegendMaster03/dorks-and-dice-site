@@ -1,3 +1,4 @@
+using dorks_and_dice_site.Modes.DorksAndDice.Authorization;
 using dorks_and_dice_site.Modes.DorksAndDice.Campaigns;
 using dorks_and_dice_site.Modes.DorksAndDice.Characters;
 using dorks_and_dice_site.Modes.DorksAndDice.Discord;
@@ -13,6 +14,68 @@ public sealed class DorksAndDiceDbContextModelSnapshot : ModelSnapshot
     protected override void BuildModel(ModelBuilder modelBuilder)
     {
         modelBuilder.HasAnnotation("ProductVersion", "10.0.10");
+
+
+        modelBuilder.Entity("dorks_and_dice_site.Modes.DorksAndDice.Authorization.ProtectedMutationScopeGate", b =>
+        {
+            b.Property<string>("ScopeKey").IsRequired().HasMaxLength(180);
+            b.Property<long>("Generation");
+            b.Property<Guid?>("PendingRevocationId");
+            b.HasKey("ScopeKey");
+            b.HasIndex("PendingRevocationId");
+            b.ToTable("dd_protected_mutation_scope");
+        });
+
+        modelBuilder.Entity("dorks_and_dice_site.Modes.DorksAndDice.Authorization.ProtectedMutationIntent", b =>
+        {
+            b.Property<Guid>("OperationId").ValueGeneratedNever();
+            b.Property<Guid>("ActorUserId");
+            b.Property<DateTimeOffset>("AdmittedAt");
+            b.Property<Guid?>("CampaignId");
+            b.Property<Guid>("CharacterId");
+            b.Property<string>("CommandDigest").IsRequired().HasMaxLength(64);
+            b.Property<string>("OperationKind").IsRequired().HasMaxLength(80);
+            b.Property<ProtectedMutationIntentStatus>("Status").HasConversion<int>();
+            b.Property<DateTimeOffset?>("TerminalObservedAt");
+            b.Property<string>("TerminalReceiptDigest").HasMaxLength(64);
+            b.HasKey("OperationId");
+            b.HasIndex("ActorUserId", "Status");
+            b.HasIndex("CharacterId", "Status");
+            b.ToTable("dd_protected_mutation_intent");
+        });
+
+        modelBuilder.Entity("dorks_and_dice_site.Modes.DorksAndDice.Authorization.ProtectedMutationIntentScope", b =>
+        {
+            b.Property<Guid>("OperationId");
+            b.Property<string>("ScopeKey").IsRequired().HasMaxLength(180);
+            b.Property<long>("AdmittedGeneration");
+            b.HasKey("OperationId", "ScopeKey");
+            b.HasIndex("ScopeKey");
+            b.ToTable("dd_protected_mutation_intent_scope");
+        });
+
+        modelBuilder.Entity("dorks_and_dice_site.Modes.DorksAndDice.Authorization.ProtectedMutationRevocation", b =>
+        {
+            b.Property<Guid>("RevocationId").ValueGeneratedNever();
+            b.Property<string>("ChangeKind").IsRequired().HasMaxLength(80);
+            b.Property<DateTimeOffset?>("EffectiveAt");
+            b.Property<Guid>("InitiatorUserId");
+            b.Property<DateTimeOffset>("RequestedAt");
+            b.Property<ProtectedMutationRevocationStatus>("Status").HasConversion<int>();
+            b.Property<Guid>("SubjectId");
+            b.HasKey("RevocationId");
+            b.HasIndex("SubjectId", "Status");
+            b.ToTable("dd_protected_mutation_revocation");
+        });
+
+        modelBuilder.Entity("dorks_and_dice_site.Modes.DorksAndDice.Authorization.ProtectedMutationRevocationScope", b =>
+        {
+            b.Property<Guid>("RevocationId");
+            b.Property<string>("ScopeKey").IsRequired().HasMaxLength(180);
+            b.HasKey("RevocationId", "ScopeKey");
+            b.HasIndex("ScopeKey");
+            b.ToTable("dd_protected_mutation_revocation_scope");
+        });
 
         modelBuilder.Entity("dorks_and_dice_site.Modes.DorksAndDice.Campaigns.Campaign", b =>
         {
@@ -150,6 +213,23 @@ public sealed class DorksAndDiceDbContextModelSnapshot : ModelSnapshot
             b.HasIndex("DeliveredAt", "NextAttemptAt");
             b.HasIndex("TargetToolSlug");
             b.ToTable("dd_tool_lifecycle_outbox");
+        });
+
+
+        modelBuilder.Entity("dorks_and_dice_site.Modes.DorksAndDice.Authorization.ProtectedMutationIntentScope", b =>
+        {
+            b.HasOne("dorks_and_dice_site.Modes.DorksAndDice.Authorization.ProtectedMutationIntent", null)
+                .WithMany().HasForeignKey("OperationId").OnDelete(DeleteBehavior.Cascade).IsRequired();
+            b.HasOne("dorks_and_dice_site.Modes.DorksAndDice.Authorization.ProtectedMutationScopeGate", null)
+                .WithMany().HasForeignKey("ScopeKey").OnDelete(DeleteBehavior.Restrict).IsRequired();
+        });
+
+        modelBuilder.Entity("dorks_and_dice_site.Modes.DorksAndDice.Authorization.ProtectedMutationRevocationScope", b =>
+        {
+            b.HasOne("dorks_and_dice_site.Modes.DorksAndDice.Authorization.ProtectedMutationRevocation", null)
+                .WithMany().HasForeignKey("RevocationId").OnDelete(DeleteBehavior.Cascade).IsRequired();
+            b.HasOne("dorks_and_dice_site.Modes.DorksAndDice.Authorization.ProtectedMutationScopeGate", null)
+                .WithMany().HasForeignKey("ScopeKey").OnDelete(DeleteBehavior.Restrict).IsRequired();
         });
 
         modelBuilder.Entity("dorks_and_dice_site.Modes.DorksAndDice.Discord.DorksAndDiceDiscordServerCampaign", b =>
